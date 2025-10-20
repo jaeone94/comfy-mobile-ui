@@ -421,13 +421,13 @@ export class ComfyFileService {
   async uploadFile(options: IComfyFileUploadOptions): Promise<IComfyFileUploadResponse | null> {
     try {
       const { file, filename, subfolder = '', type = 'input', overwrite = false } = options;
-      
+
       const formData = new FormData();
-      
+
       // Add the file
       const finalFilename = filename || (file instanceof File ? file.name : 'upload');
       formData.append('image', file, finalFilename);
-      
+
       // Add metadata
       if (subfolder) {
         formData.append('subfolder', subfolder);
@@ -454,6 +454,102 @@ export class ComfyFileService {
     } catch (error) {
       console.error('Failed to upload file:', error);
       return null;
+    }
+  }
+
+  /**
+   * Upload a model file to ComfyUI models directory using Mobile API Extension
+   */
+  async uploadModel(options: {
+    file: File | Blob;
+    filename?: string;
+    folder: string;
+    subfolder?: string;
+    overwrite?: boolean;
+    onProgress?: (progress: number) => void;
+  }): Promise<{ success: boolean; message?: string; file_info?: any; error?: string }> {
+    try {
+      const { file, filename, folder, subfolder = '', overwrite = false, onProgress } = options;
+
+      console.log('📤 Uploading model file:', {
+        filename: filename || (file instanceof File ? file.name : 'model'),
+        folder,
+        subfolder,
+        size: file.size,
+        overwrite
+      });
+
+      const formData = new FormData();
+
+      // Add the file
+      const finalFilename = filename || (file instanceof File ? file.name : 'model.safetensors');
+      formData.append('file', file, finalFilename);
+
+      // Add metadata
+      formData.append('folder', folder);
+
+      if (subfolder) {
+        formData.append('subfolder', subfolder);
+      }
+
+      if (filename) {
+        formData.append('filename', filename);
+      }
+
+      if (overwrite) {
+        formData.append('overwrite', 'true');
+      }
+
+      const endpoint = `${this.serverUrl}/comfymobile/api/models/upload`;
+
+      const response = await axios.post(endpoint, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+        timeout: 3600000, // 1 hour
+        onUploadProgress: (progressEvent) => {
+          if (onProgress && progressEvent.total) {
+            const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+            onProgress(percentCompleted);
+          }
+        }
+      });
+
+      console.log('📤 Model upload response:', {
+        status: response.status,
+        success: response.data?.success,
+        filename: response.data?.file_info?.filename
+      });
+
+      if (response.data?.success) {
+        console.log('✅ Model uploaded successfully:', {
+          filename: response.data.file_info?.filename,
+          size: response.data.file_info?.size_mb + ' MB',
+          path: response.data.file_info?.relative_path
+        });
+
+        return {
+          success: true,
+          message: response.data.message,
+          file_info: response.data.file_info
+        };
+      } else {
+        throw new Error(`API returned success: false`);
+      }
+    } catch (error: any) {
+      console.warn('❌ Model upload failed:', {
+        filename: options.filename || (options.file instanceof File ? options.file.name : 'model'),
+        folder: options.folder,
+        message: error.message,
+        status: error.response?.status,
+        statusText: error.response?.statusText,
+        data: error.response?.data
+      });
+
+      return {
+        success: false,
+        error: error.response?.data?.error || error.message || 'Failed to upload model file'
+      };
     }
   }
 

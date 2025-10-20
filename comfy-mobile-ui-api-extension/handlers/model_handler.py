@@ -864,26 +864,26 @@ async def search_models(request):
     try:
         query = request.query.get('q', '').strip()
         folder_type = request.query.get('folder_type', '').strip()
-        
+
         if not query:
             return web.json_response({
                 "success": False,
                 "error": "Search query parameter 'q' is required"
             }, status=400)
-        
+
         # Get models directory path
         models_path = os.path.join(folder_paths.base_path, "models")
-        
+
         if not os.path.exists(models_path):
             return web.json_response({
                 "success": False,
                 "error": "Models directory not found",
                 "results": []
             })
-        
+
         results = []
         query_lower = query.lower()
-        
+
         # Determine search path
         search_path = models_path
         if folder_type:
@@ -896,12 +896,12 @@ async def search_models(request):
                     "error": f"Folder type not found: {folder_type}",
                     "results": []
                 })
-        
+
         # Recursively search for matching files
         for root, dirs, files in os.walk(search_path):
             # Skip hidden directories
             dirs[:] = [d for d in dirs if not d.startswith('.') and not d.startswith('__')]
-            
+
             # Calculate relative path from models directory
             rel_path = os.path.relpath(root, models_path)
             if rel_path == ".":
@@ -911,24 +911,24 @@ async def search_models(request):
                 path_parts = rel_path.split(os.sep)
                 current_folder_type = path_parts[0]
                 subfolder = os.path.join(*path_parts[1:]).replace(os.sep, "/") if len(path_parts) > 1 else ""
-            
+
             for filename in files:
                 if filename.startswith('.') or filename.startswith('__'):
                     continue
-                
+
                 # Skip .json files (ComfyUI auto-generated files)
                 if filename.lower().endswith('.json'):
                     continue
-                
+
                 # Check if filename contains the search query
                 if query_lower not in filename.lower():
                     continue
-                
+
                 # Get file extension
                 file_ext = os.path.splitext(filename)[1].lower()
-                
+
                 file_path = os.path.join(root, filename)
-                
+
                 # Get file info
                 try:
                     stat_info = os.stat(file_path)
@@ -937,7 +937,7 @@ async def search_models(request):
                 except OSError:
                     file_size = 0
                     modified_time = 0
-                
+
                 # Create result entry
                 result_info = {
                     "name": filename,
@@ -954,9 +954,9 @@ async def search_models(request):
                     "modified_iso": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(modified_time)),
                     "match_type": "filename"
                 }
-                
+
                 results.append(result_info)
-        
+
         # Sort by relevance (exact matches first, then by name)
         def sort_key(item):
             filename_lower = item['filename'].lower()
@@ -966,14 +966,14 @@ async def search_models(request):
                 return (1, filename_lower)  # Starts with query
             else:
                 return (2, filename_lower)  # Contains query
-        
+
         results.sort(key=sort_key)
-        
+
         # Limit results to avoid overwhelming the client
         max_results = 100
         if len(results) > max_results:
             results = results[:max_results]
-        
+
         return web.json_response({
             "success": True,
             "query": query,
@@ -982,10 +982,434 @@ async def search_models(request):
             "total_found": len(results),
             "limited": len(results) == max_results
         })
-        
+
     except Exception as e:
         return web.json_response({
             "success": False,
             "error": f"Failed to search models: {str(e)}",
             "results": []
         }, status=500)
+
+
+async def check_file_exists(request):
+    """Check if a file already exists before uploading"""
+    try:
+        data = await request.json()
+        filename = data.get('filename')
+        folder = data.get('folder')
+        subfolder = data.get('subfolder', '')
+
+        if not filename or not folder:
+            return web.json_response({
+                "success": False,
+                "error": "filename and folder are required"
+            }, status=400)
+
+        # Security checks
+        if '..' in folder or '/' in folder or '\\' in folder:
+            return web.json_response({
+                "success": False,
+                "error": "Invalid folder name"
+            }, status=400)
+
+        if subfolder and ('..' in subfolder or subfolder.startswith('/') or subfolder.startswith('\\')):
+            return web.json_response({
+                "success": False,
+                "error": "Invalid subfolder path"
+            }, status=400)
+
+        if '..' in filename or '/' in filename or '\\' in filename:
+            return web.json_response({
+                "success": False,
+                "error": "Invalid filename"
+            }, status=400)
+
+        # Build target path
+        models_path = os.path.join(folder_paths.base_path, "models")
+        target_folder_path = os.path.join(models_path, folder)
+        if subfolder:
+            target_folder_path = os.path.join(target_folder_path, subfolder)
+
+        target_file_path = os.path.join(target_folder_path, filename)
+
+        # Check if file exists
+        exists = os.path.exists(target_file_path)
+
+        return web.json_response({
+            "success": True,
+            "exists": exists,
+            "path": target_file_path if exists else None
+        })
+
+    except Exception as e:
+        return web.json_response({
+            "success": False,
+            "error": f"Failed to check file: {str(e)}"
+        }, status=500)
+
+
+async def list_partial_uploads(request):
+    """List all partial/incomplete uploads that can be resumed"""
+    try:
+        models_path = os.path.join(folder_paths.base_path, "models")
+
+        if not os.path.exists(models_path):
+            return web.json_response({
+                "success": False,
+                "error": "Models directory not found",
+                "partial_uploads": []
+            })
+
+        partial_uploads = []
+
+        # Find all .uploading_* files in models directory
+        for item in os.listdir(models_path):
+            if item.startswith('.uploading_') and os.path.isfile(os.path.join(models_path, item)):
+                file_path = os.path.join(models_path, item)
+
+                # Extract original filename
+                original_filename = item.replace('.uploading_', '')
+
+                # Get file info
+                try:
+                    stat_info = os.stat(file_path)
+                    file_size = stat_info.st_size
+                    modified_time = stat_info.st_mtime
+
+                    partial_uploads.append({
+                        "filename": original_filename,
+                        "partial_filename": item,
+                        "partial_path": file_path,
+                        "bytes_uploaded": file_size,
+                        "size_mb": round(file_size / (1024 * 1024), 2),
+                        "modified": modified_time,
+                        "modified_iso": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(modified_time))
+                    })
+                except OSError:
+                    continue
+
+        # Sort by modification time (newest first)
+        partial_uploads.sort(key=lambda x: x['modified'], reverse=True)
+
+        return web.json_response({
+            "success": True,
+            "partial_uploads": partial_uploads,
+            "total_count": len(partial_uploads)
+        })
+
+    except Exception as e:
+        return web.json_response({
+            "success": False,
+            "error": f"Failed to list partial uploads: {str(e)}",
+            "partial_uploads": []
+        }, status=500)
+
+
+async def delete_partial_upload(request):
+    """Delete a specific partial upload file"""
+    try:
+        data = await request.json()
+        partial_filename = data.get('partial_filename')
+
+        if not partial_filename:
+            return web.json_response({
+                "success": False,
+                "error": "partial_filename is required"
+            }, status=400)
+
+        models_path = os.path.join(folder_paths.base_path, "models")
+        partial_path = os.path.join(models_path, partial_filename)
+
+        if not os.path.exists(partial_path):
+            return web.json_response({
+                "success": False,
+                "error": f"Partial upload file not found: {partial_filename}"
+            }, status=404)
+
+        # Security: ensure it's a .uploading_ file
+        if not partial_filename.startswith('.uploading_'):
+            return web.json_response({
+                "success": False,
+                "error": "Invalid partial filename"
+            }, status=400)
+
+        os.remove(partial_path)
+        print(f"[UPLOAD] Deleted partial upload: {partial_path}")
+
+        return web.json_response({
+            "success": True,
+            "message": f"Successfully deleted partial upload: {partial_filename}"
+        })
+
+    except Exception as e:
+        return web.json_response({
+            "success": False,
+            "error": f"Failed to delete partial upload: {str(e)}"
+        }, status=500)
+
+
+async def upload_model_file(request):
+    """Upload a model file to a specific folder in the models directory with resume support"""
+    uploading_file_path = None
+    temp_upload_file = None
+    try:
+        print(f"\n[UPLOAD] Starting model file upload...")
+        reader = await request.multipart()
+
+        has_file = False
+        filename = None
+        folder = None
+        subfolder = ''
+        overwrite = False
+        temp_bytes = 0
+        resume_offset = 0
+
+        # Get models path early
+        models_path = os.path.join(folder_paths.base_path, "models")
+
+        # Strategy: Save file to temp IMMEDIATELY when encountered (can't defer)
+        # Then validate AFTER streaming is done
+        file_streamed = False
+        temp_upload_file = None
+
+        async for field in reader:
+            if field.name == 'file' or field.name == 'model':
+                if not filename:
+                    filename = field.filename or 'untitled.safetensors'
+                print(f"[UPLOAD] File field found: {filename}")
+
+                # Stream to temp immediately (MUST do this now, can't defer)
+                temp_upload_file = os.path.join(models_path, f".uploading_{filename}")
+
+                # Check if resumable partial file exists
+                if os.path.exists(temp_upload_file):
+                    resume_offset = os.path.getsize(temp_upload_file)
+                    print(f"[UPLOAD] Resuming from offset: {resume_offset:,} bytes ({resume_offset / (1024 * 1024):.1f} MB)")
+                    mode = 'ab'
+                else:
+                    print(f"[UPLOAD] Streaming to temp: {temp_upload_file}")
+                    mode = 'wb'
+                    resume_offset = 0
+
+                chunk_size = 1048576
+                start_time = time.time()
+                last_log_time = start_time
+                temp_bytes = resume_offset
+
+                with open(temp_upload_file, mode) as f:
+                    while True:
+                        chunk = await field.read_chunk(chunk_size)
+                        if not chunk:
+                            break
+                        f.write(chunk)
+                        temp_bytes += len(chunk)
+
+                        current_time = time.time()
+                        if temp_bytes % (100 * 1024 * 1024) < chunk_size or (current_time - last_log_time) > 5:
+                            elapsed = current_time - start_time
+                            speed_mbps = ((temp_bytes - resume_offset) / (1024 * 1024)) / elapsed if elapsed > 0 else 0
+                            print(f"[UPLOAD] Progress: {temp_bytes / (1024 * 1024):.1f} MB ({speed_mbps:.1f} MB/s)")
+                            last_log_time = current_time
+
+                elapsed_total = time.time() - start_time
+                uploaded_mb = (temp_bytes - resume_offset) / (1024 * 1024)
+                avg_speed = uploaded_mb / elapsed_total if elapsed_total > 0 else 0
+                file_streamed = True
+                print(f"[UPLOAD] Streaming complete: {temp_bytes:,} bytes ({temp_bytes / (1024 * 1024):.1f} MB total) in {elapsed_total:.1f}s (avg {avg_speed:.1f} MB/s)")
+
+            elif field.name == 'filename':
+                filename = (await field.read()).decode('utf-8').strip()
+            elif field.name == 'folder':
+                folder = (await field.read()).decode('utf-8').strip()
+            elif field.name == 'subfolder':
+                subfolder = (await field.read()).decode('utf-8').strip()
+            elif field.name == 'overwrite':
+                overwrite_value = (await field.read()).decode('utf-8').strip().lower()
+                overwrite = overwrite_value in ('true', '1', 'yes')
+
+        # NOW validate after streaming (file is safely in temp)
+        if not file_streamed:
+            print("[UPLOAD] Error: No file provided")
+            return web.json_response({
+                "success": False,
+                "error": "No file provided"
+            }, status=400)
+
+        if not folder:
+            print("[UPLOAD] Error: No folder specified")
+            # Clean up temp file
+            if temp_upload_file and os.path.exists(temp_upload_file):
+                os.remove(temp_upload_file)
+            return web.json_response({
+                "success": False,
+                "error": "Folder parameter is required (e.g., 'checkpoints', 'loras', 'vae')"
+            }, status=400)
+
+        if not filename:
+            filename = "untitled.safetensors"
+
+        print(f"[UPLOAD] Validating - folder: {folder}, subfolder: {subfolder}, filename: {filename}, overwrite: {overwrite}")
+
+        # Security checks
+        if '..' in folder or '/' in folder or '\\' in folder:
+            print(f"[UPLOAD] Error: Invalid folder name: {folder}")
+            if temp_upload_file and os.path.exists(temp_upload_file):
+                os.remove(temp_upload_file)
+            return web.json_response({
+                "success": False,
+                "error": "Invalid folder name"
+            }, status=400)
+
+        if subfolder and ('..' in subfolder or subfolder.startswith('/') or subfolder.startswith('\\')):
+            print(f"[UPLOAD] Error: Invalid subfolder path: {subfolder}")
+            if temp_upload_file and os.path.exists(temp_upload_file):
+                os.remove(temp_upload_file)
+            return web.json_response({
+                "success": False,
+                "error": "Invalid subfolder path"
+            }, status=400)
+
+        if '..' in filename or '/' in filename or '\\' in filename:
+            print(f"[UPLOAD] Error: Invalid filename: {filename}")
+            if temp_upload_file and os.path.exists(temp_upload_file):
+                os.remove(temp_upload_file)
+            return web.json_response({
+                "success": False,
+                "error": "Invalid filename"
+            }, status=400)
+
+        # Build target path
+        target_folder_path = os.path.join(models_path, folder)
+        if subfolder:
+            target_folder_path = os.path.join(target_folder_path, subfolder)
+
+        print(f"[UPLOAD] Target path: {target_folder_path}")
+
+        # Create target folder if it doesn't exist
+        if not os.path.exists(target_folder_path):
+            try:
+                print(f"[UPLOAD] Creating target folder: {target_folder_path}")
+                os.makedirs(target_folder_path, exist_ok=True)
+            except Exception as e:
+                print(f"[UPLOAD] Error: Failed to create target folder: {e}")
+                if temp_upload_file and os.path.exists(temp_upload_file):
+                    os.remove(temp_upload_file)
+                return web.json_response({
+                    "success": False,
+                    "error": f"Failed to create target folder: {str(e)}"
+                }, status=500)
+
+        target_file_path = os.path.join(target_folder_path, filename)
+
+        # Check if file exists (after streaming, but before moving)
+        if os.path.exists(target_file_path) and not overwrite:
+            print(f"[UPLOAD] Error: File already exists: {target_file_path}")
+            # Keep temp file for potential resume
+            print(f"[UPLOAD] Temp file kept for resume: {temp_upload_file}")
+            return web.json_response({
+                "success": False,
+                "error": f"File '{filename}' already exists in {folder}{'/' + subfolder if subfolder else ''}. Enable overwrite or delete the existing file first.",
+                "existing_file": True
+            }, status=409)
+
+        # Verify temp file size before moving
+        temp_file_size = os.path.getsize(temp_upload_file)
+        print(f"[UPLOAD] Temp file size verification: {temp_file_size:,} bytes ({temp_file_size / (1024 * 1024):.2f} MB)")
+
+        # Move temp file to final location
+        try:
+            move_start = time.time()
+            print(f"[UPLOAD] Moving to final location: {target_file_path}")
+
+            # Use os.replace for atomic move (faster than shutil.move on same drive)
+            try:
+                os.replace(temp_upload_file, target_file_path)
+                move_time = time.time() - move_start
+                print(f"[UPLOAD] File moved in {move_time:.2f}s")
+            except OSError:
+                # Fallback to shutil.move if cross-device
+                print(f"[UPLOAD] Using shutil.move (cross-device)")
+                shutil.move(temp_upload_file, target_file_path)
+                move_time = time.time() - move_start
+                print(f"[UPLOAD] File moved in {move_time:.2f}s")
+
+            # Verify the final file exists
+            if not os.path.exists(target_file_path):
+                print(f"[UPLOAD] Error: File was not created after move")
+                return web.json_response({
+                    "success": False,
+                    "error": "File upload failed: file was not created after move"
+                }, status=500)
+
+            # Get file info for response
+            file_stats = os.stat(target_file_path)
+            actual_size = file_stats.st_size
+            modified_time = file_stats.st_mtime
+
+            # Verify file size matches
+            if actual_size != temp_file_size:
+                print(f"[UPLOAD] WARNING: File size mismatch! Temp: {temp_file_size:,}, Final: {actual_size:,}")
+
+            print(f"[UPLOAD] Success: File uploaded - {filename} ({actual_size:,} bytes = {actual_size / (1024 * 1024):.2f} MB = {actual_size / (1024 ** 3):.2f} GiB)")
+
+            return web.json_response({
+                "success": True,
+                "message": f"Successfully uploaded {filename} to {folder}" + (f"/{subfolder}" if subfolder else ""),
+                "file_info": {
+                    "filename": filename,
+                    "folder": folder,
+                    "subfolder": subfolder,
+                    "size": actual_size,
+                    "size_mb": round(actual_size / (1024 * 1024), 2),
+                    "modified": modified_time,
+                    "modified_iso": time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime(modified_time)),
+                    "path": target_file_path,
+                    "relative_path": os.path.join(folder, subfolder, filename) if subfolder else os.path.join(folder, filename)
+                }
+            })
+
+        except Exception as e:
+            print(f"[UPLOAD] Error: Failed to move file: {e}")
+            # Clean up temp file if it exists
+            if temp_upload_file and os.path.exists(temp_upload_file):
+                try:
+                    os.remove(temp_upload_file)
+                    print(f"[UPLOAD] Cleaned up temp file: {temp_upload_file}")
+                except:
+                    pass
+            return web.json_response({
+                "success": False,
+                "error": f"Failed to move file: {str(e)}"
+            }, status=500)
+
+    except Exception as e:
+        error_msg = str(e)
+        print(f"[UPLOAD] Error: Upload failed: {error_msg}")
+
+        # Check if this is a connection error (resumable)
+        is_connection_error = any(keyword in error_msg.lower() for keyword in
+                                  ['connection', 'timeout', 'closed', 'reset', 'broken pipe'])
+
+        if is_connection_error and temp_upload_file and os.path.exists(temp_upload_file):
+            # Keep partial file for resume
+            partial_size = os.path.getsize(temp_upload_file)
+            print(f"[UPLOAD] Connection error - keeping partial file for resume: {partial_size:,} bytes ({partial_size / (1024 * 1024):.1f} MB)")
+            print(f"[UPLOAD] Resume file location: {temp_upload_file}")
+            return web.json_response({
+                "success": False,
+                "error": f"Upload interrupted: {error_msg}",
+                "resumable": True,
+                "bytes_uploaded": partial_size
+            }, status=500)
+        else:
+            # Non-resumable error - clean up
+            if temp_upload_file and os.path.exists(temp_upload_file):
+                try:
+                    os.remove(temp_upload_file)
+                    print(f"[UPLOAD] Cleaned up temp file after non-resumable error: {temp_upload_file}")
+                except:
+                    pass
+            return web.json_response({
+                "success": False,
+                "error": f"Upload failed: {error_msg}"
+            }, status=500)

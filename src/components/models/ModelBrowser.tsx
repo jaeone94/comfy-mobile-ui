@@ -7,13 +7,13 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { useConnectionStore } from '@/ui/store/connectionStore';
-import { 
-  Search, 
-  FolderOpen, 
-  File, 
-  Copy, 
-  Move, 
-  Trash2, 
+import {
+  Search,
+  FolderOpen,
+  File,
+  Copy,
+  Move,
+  Trash2,
   Edit,
   Zap,
   AlertTriangle,
@@ -24,7 +24,9 @@ import {
   FileImage,
   FileCode,
   FileArchive,
-  Layers
+  Layers,
+  Upload,
+  Loader2
 } from 'lucide-react';
 
 interface ModelFile {
@@ -96,6 +98,24 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
   const [selectedLora, setSelectedLora] = useState<string>('');
   const [currentTriggerWords, setCurrentTriggerWords] = useState<string[]>([]);
   const [newTriggerWord, setNewTriggerWord] = useState<string>('');
+
+  // Upload state
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState<boolean>(false);
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadFolder, setUploadFolder] = useState<string>('');
+  const [uploadSubfolder, setUploadSubfolder] = useState<string>('');
+  const [uploadOverwrite, setUploadOverwrite] = useState<boolean>(true); // Always overwrite
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+
+  // Partial uploads state
+  const [partialUploads, setPartialUploads] = useState<Array<{
+    filename: string;
+    partial_filename: string;
+    bytes_uploaded: number;
+    size_mb: number;
+    modified_iso: string;
+  }>>([]);
 
   // Load folders
   const loadFolders = async () => {
@@ -261,10 +281,35 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
     }
   };
 
+  // Load partial uploads
+  const loadPartialUploads = async () => {
+    try {
+      const response = await ComfyUIService.listPartialUploads();
+      if (response.success && response.partial_uploads) {
+        setPartialUploads(response.partial_uploads);
+      }
+    } catch (error) {
+      console.warn('Failed to load partial uploads:', error);
+    }
+  };
+
+  // Delete partial upload
+  const deletePartial = async (partialFilename: string) => {
+    try {
+      const response = await ComfyUIService.deletePartialUpload(partialFilename);
+      if (response.success) {
+        loadPartialUploads();
+      }
+    } catch (error) {
+      console.error('Failed to delete partial upload:', error);
+    }
+  };
+
   // Effects
   useEffect(() => {
     loadFolders();
     loadTriggerWords();
+    loadPartialUploads();
   }, []);
 
   useEffect(() => {
@@ -323,6 +368,79 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
     const success = await saveTriggerWordsForLora(selectedLora, currentTriggerWords);
     if (success) {
       setIsTriggerWordsModalOpen(false);
+    }
+  };
+
+  // Open upload modal
+  const openUploadModal = () => {
+    setUploadFile(null);
+    setUploadFolder(selectedFolder !== 'all' ? selectedFolder : '');
+    setUploadSubfolder('');
+    setUploadProgress(0);
+    setIsUploadModalOpen(true);
+  };
+
+  // Handle file selection
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      setUploadFile(files[0]);
+    }
+  };
+
+  // Perform upload with retry logic
+  const performUpload = async (retryCount = 0) => {
+    if (!uploadFile || !uploadFolder) {
+      setError('Please select a file and folder');
+      return;
+    }
+
+    setIsUploading(true);
+    if (retryCount === 0) {
+      setUploadProgress(0);
+
+    }
+
+    try {
+      const response = await ComfyUIService.uploadModelFile({
+        file: uploadFile,
+        folder: uploadFolder,
+        subfolder: uploadSubfolder,
+        overwrite: uploadOverwrite,
+        onProgress: (progress) => {
+          setUploadProgress(progress);
+        }
+      });
+
+      if (response.success) {
+        setUploadProgress(100);
+        setIsUploadModalOpen(false);
+        setError('');
+        // Refresh models and partial uploads
+        loadModels(selectedFolder !== 'all' ? selectedFolder : undefined);
+        loadPartialUploads();
+      } else {
+        // Check if upload is resumable
+        if ((response as any).resumable && retryCount < 5) {
+          const bytesUploaded = (response as any).bytes_uploaded || 0;
+          console.log(`Upload interrupted at ${bytesUploaded} bytes, retrying (attempt ${retryCount + 1}/5)...`);
+          setError(`Connection lost at ${(bytesUploaded / (1024 * 1024)).toFixed(1)} MB. Retrying... (${retryCount + 1}/5)`);
+
+          // Wait 2 seconds before retry
+          await new Promise(resolve => setTimeout(resolve, 2000));
+
+          // Retry upload
+          return performUpload(retryCount + 1);
+        } else {
+          setError(response.error || 'Upload failed');
+        }
+      }
+    } catch (error: any) {
+      setError(error.message || 'Upload failed');
+    } finally {
+      setIsUploading(false);
+      // Reset progress after a delay to show completion
+      setTimeout(() => setUploadProgress(0), 500);
     }
   };
 
@@ -438,6 +556,15 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                 ))}
               </SelectContent>
             </Select>
+            <Button
+              onClick={openUploadModal}
+              variant="default"
+              size="sm"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-10 px-4"
+            >
+              <Upload className="h-4 w-4 mr-2" />
+              Upload
+            </Button>
           </div>
           
           {/* Status */}
@@ -451,6 +578,54 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
         
         {/* Content */}
         <div className="container mx-auto px-4 py-0 max-w-6xl">
+        {/* Partial Uploads Banner */}
+        {partialUploads.length > 0 && (
+          <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="flex items-start justify-between">
+              <div className="flex-1">
+                <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                  Incomplete Uploads ({partialUploads.length})
+                </h3>
+                <div className="space-y-2">
+                  {partialUploads.map((partial) => (
+                    <div key={partial.partial_filename} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium text-sm truncate">{partial.filename}</div>
+                        <div className="text-xs text-slate-500">
+                          {partial.size_mb} MB uploaded · {new Date(partial.modified_iso).toLocaleString()}
+                        </div>
+                      </div>
+                      <div className="flex space-x-2 ml-2">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="text-xs"
+                          onClick={() => {
+                            // Pre-fill upload form with this file's info
+                            setUploadFolder(selectedFolder !== 'all' ? selectedFolder : '');
+                            setIsUploadModalOpen(true);
+                            setError(`Ready to resume: ${partial.filename}`);
+                          }}
+                        >
+                          Resume
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="text-xs"
+                          onClick={() => deletePartial(partial.partial_filename)}
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Error Display */}
         {error && (
           <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
@@ -674,12 +849,12 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
               Manage Trigger Words
             </DialogTitle>
           </DialogHeader>
-          
+
           <div className="space-y-4">
             <div className="text-sm text-slate-600 dark:text-slate-400">
               Configure trigger words for: <strong>{selectedLora}</strong>
             </div>
-            
+
             {/* Add new trigger word */}
             <div className="flex space-x-2">
               <Input
@@ -725,6 +900,119 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
             <Button onClick={saveTriggerWordsModal}>
               <CheckCircle className="h-4 w-4 mr-2" />
               Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Upload Modal */}
+      <Dialog open={isUploadModalOpen} onOpenChange={setIsUploadModalOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center">
+              <Upload className="h-4 w-4 mr-2" />
+              Upload Model File
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="text-sm text-slate-600 dark:text-slate-400">
+              Upload a model file to your ComfyUI models directory
+            </div>
+
+            {/* File Selection */}
+            <div>
+              <label className="text-sm font-medium block mb-2">Select File</label>
+              <Input
+                type="file"
+                onChange={handleFileSelect}
+                disabled={isUploading}
+                accept="*/*"
+              />
+              {uploadFile && (
+                <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded text-sm">
+                  <div className="font-medium truncate">{uploadFile.name}</div>
+                  <div className="text-xs text-slate-500">
+                    {formatFileSize(uploadFile.size)}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Target Folder */}
+            <div>
+              <label className="text-sm font-medium block mb-2">Target Folder *</label>
+              <Select value={uploadFolder} onValueChange={setUploadFolder} disabled={isUploading}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select folder..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {folders.map((folder) => (
+                    <SelectItem key={folder.name} value={folder.name}>
+                      {folder.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Subfolder (Optional) */}
+            <div>
+              <label className="text-sm font-medium block mb-2">Subfolder (Optional)</label>
+              <Input
+                value={uploadSubfolder}
+                onChange={(e) => setUploadSubfolder(e.target.value)}
+                placeholder="e.g., character, style..."
+                disabled={isUploading}
+              />
+              <p className="text-xs text-slate-500 mt-1">
+                Will be created if it doesn't exist
+              </p>
+            </div>
+
+            {/* Overwrite Option - Hidden, always enabled */}
+
+            {/* Upload Progress */}
+            {isUploading && (
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm">
+                  <span>Uploading...</span>
+                  <span>{uploadProgress}%</span>
+                </div>
+                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                  <div
+                    className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsUploadModalOpen(false)}
+              disabled={isUploading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={performUpload}
+              disabled={!uploadFile || !uploadFolder || isUploading}
+              className="bg-indigo-600 hover:bg-indigo-700"
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  Upload
+                </>
+              )}
             </Button>
           </DialogFooter>
         </DialogContent>

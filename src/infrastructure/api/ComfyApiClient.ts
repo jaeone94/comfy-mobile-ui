@@ -1310,6 +1310,113 @@ const deleteModelFile = async (params: {
 };
 
 /**
+ * Upload a model file
+ */
+const uploadModelFile = async (params: {
+  file: File | Blob;
+  folder: string;
+  subfolder?: string;
+  filename?: string;
+  overwrite?: boolean;
+  onProgress?: (progress: number) => void;
+}): Promise<{
+  success: boolean;
+  message?: string;
+  file_info?: any;
+  error?: string;
+}> => {
+  initializeService();
+  try {
+    const formData = new FormData();
+    formData.append('file', params.file);
+    formData.append('folder', params.folder);
+
+    if (params.subfolder) {
+      formData.append('subfolder', params.subfolder);
+    }
+
+    if (params.filename) {
+      formData.append('filename', params.filename);
+    }
+
+    if (params.overwrite) {
+      formData.append('overwrite', 'true');
+    }
+
+    const response = await axios.post(`${serverUrl}/comfymobile/api/models/upload`, formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      },
+      timeout: 3600000, // 1 hour for large files
+      onUploadProgress: (progressEvent) => {
+        if (params.onProgress && progressEvent.total) {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          params.onProgress(percentCompleted);
+        }
+      }
+    });
+
+    return response.data;
+  } catch (error: any) {
+    console.error('Error uploading model file:', error);
+    return {
+      success: false,
+      error: error.response?.data?.error || (error instanceof Error ? error.message : 'Unknown error')
+    };
+  }
+};
+
+/**
+ * List partial/incomplete uploads
+ */
+const listPartialUploads = async (): Promise<{
+  success: boolean;
+  partial_uploads?: Array<{
+    filename: string;
+    partial_filename: string;
+    bytes_uploaded: number;
+    size_mb: number;
+    modified_iso: string;
+  }>;
+  error?: string;
+}> => {
+  initializeService();
+  try {
+    const response = await axios.get(`${serverUrl}/comfymobile/api/models/uploads/partial`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error listing partial uploads:', error);
+    return {
+      success: false,
+      error: error.response?.data?.error || (error instanceof Error ? error.message : 'Unknown error')
+    };
+  }
+};
+
+/**
+ * Delete a partial upload file
+ */
+const deletePartialUpload = async (partialFilename: string): Promise<{
+  success: boolean;
+  message?: string;
+  error?: string;
+}> => {
+  initializeService();
+  try {
+    const response = await axios.delete(`${serverUrl}/comfymobile/api/models/uploads/partial`, {
+      data: { partial_filename: partialFilename }
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error('Error deleting partial upload:', error);
+    return {
+      success: false,
+      error: error.response?.data?.error || (error instanceof Error ? error.message : 'Unknown error')
+    };
+  }
+};
+
+/**
  * Rename a model file
  */
 const renameModelFile = async (params: {
@@ -1332,7 +1439,7 @@ const renameModelFile = async (params: {
       },
       timeout: 30000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error renaming model file:', error);
@@ -1503,7 +1610,7 @@ const downloadVideo = async (params: {
       headers: {
         'Content-Type': 'application/json'
       },
-      timeout: 300000 // 5 minutes for video downloads
+      timeout: 3600000 // 1 hour for video downloads
     });
     return response.data;
   } catch (error: any) {
@@ -1685,6 +1792,9 @@ const ComfyUIService = {
   getAllModels,
   getModelsFromFolder,
   searchModels,
+  uploadModelFile,
+  listPartialUploads,
+  deletePartialUpload,
   copyModelFile,
   deleteModelFile,
   renameModelFile,
