@@ -20,7 +20,7 @@ export const VIRTUAL_NODES: ReadonlyArray<string> = [
     'PrimitiveNode',  // Primitive value nodes (often workflow-only)
     
     // rgthree extension nodes (workflow management)
-    'Fast Groups Bypasser (rgthree)',  // Group bypass control
+    'Fast Groups Bypasser (rgthree)',  // Group bypass control    
     'Fast Groups Muter (rgthree)',     // Group mute control
     'Display Any (rgthree)',           // Display/debug nodes
     'Bookmark (rgthree)',              // Workflow bookmarks
@@ -32,6 +32,8 @@ export const VIRTUAL_NODES: ReadonlyArray<string> = [
     'Constant (rgthree)',              // Constant values
     'Label (rgthree)',                 // Text labels and annotations
     'MarkdownNote',
+    'Fast Muter (rgthree)',     // Mute control
+    'Mute / Bypass Repeater (rgthree)',     // Mute / Bypass control
     
     // Common utility/debug nodes that are typically virtual
     // Note: Be careful with primitive types - some may be needed in API
@@ -53,7 +55,9 @@ export const API_VIRTUAL_NODES = new Set([
   'SetNode',
   'GetNode',
   'easy setNode',
-  'easy getNode'
+  'easy getNode',
+  'Fast Muter (rgthree)',     // Mute control
+  'Mute / Bypass Repeater (rgthree)',     // Mute / Bypass control
 ]);
 
 /**
