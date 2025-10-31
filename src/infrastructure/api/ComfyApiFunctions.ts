@@ -1756,7 +1756,9 @@ function isVirtualNode(node: any): boolean {
     'Image Comparer (rgthree)',
     'Pipe To/From (rgthree)',
     'Constant (rgthree)',
-    'Label (rgthree)'
+    'Label (rgthree)',
+    'Fast Muter (rgthree)',     // Mute control
+    'Mute / Bypass Repeater (rgthree)',     // Mute / Bypass control
   ]);
   
   return virtualNodeTypes.has(node.type);
