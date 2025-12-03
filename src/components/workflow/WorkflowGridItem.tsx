@@ -2,16 +2,20 @@ import React, { useState, useEffect } from 'react';
 import { FileText, AlertCircle } from 'lucide-react';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import { generateWorkflowThumbnail } from '@/shared/utils/rendering/CanvasRendererService';
+import { useLongPress } from '@/hooks/useLongPress';
+import { toast } from 'sonner';
 
 interface WorkflowGridItemProps {
   workflow: Workflow;
   onClick: () => void;
+  onLongPress: () => void;
   isSelected?: boolean;
 }
 
 const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
   workflow,
   onClick,
+  onLongPress,
   isSelected = false,
 }) => {
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(workflow.thumbnail);
@@ -38,14 +42,19 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
     generateMissingThumbnail();
   }, [workflow]);
 
+  const longPressProps = useLongPress(
+    onLongPress,
+    onClick,
+    { threshold: 500 }
+  );
+
   return (
     <div
-      className={`relative backdrop-blur-2xl rounded-2xl shadow-lg border transition-all duration-300 cursor-pointer overflow-hidden group ${
-        isSelected
-          ? 'bg-blue-500/20 dark:bg-blue-500/20 border-blue-400 dark:border-blue-500 shadow-xl ring-2 ring-blue-400/50'
-          : 'bg-white/5 dark:bg-slate-800/5 border-white/10 dark:border-slate-600/10 hover:shadow-xl hover:border-white/20 dark:hover:border-slate-500/20'
-      }`}
-      onClick={onClick}
+      className={`relative backdrop-blur-2xl rounded-2xl shadow-lg border transition-all duration-300 cursor-pointer overflow-hidden group ${isSelected
+        ? 'bg-blue-500/20 dark:bg-blue-500/20 border-blue-400 dark:border-blue-500 shadow-xl ring-2 ring-blue-400/50'
+        : 'bg-white/5 dark:bg-slate-800/5 border-white/10 dark:border-slate-600/10 hover:shadow-xl hover:border-white/20 dark:hover:border-slate-500/20'
+        }`}
+      {...longPressProps}
     >
       {/* Gradient Overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-slate-900/5 pointer-events-none rounded-2xl" />

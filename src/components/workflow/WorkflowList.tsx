@@ -23,6 +23,7 @@ import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import WorkflowGridItem from './WorkflowGridItem';
 import FolderGridItem from './FolderGridItem';
 import ParentFolderGridItem from './ParentFolderGridItem';
+import FolderDetailModal from './FolderDetailModal';
 import WorkflowDetailModal from './WorkflowDetailModal';
 import SideMenu from '@/components/controls/SideMenu';
 import WorkflowEditModal from './WorkflowEditModal';
@@ -34,7 +35,7 @@ import {
 import { WorkflowFileService } from '@/core/services/WorkflowFileService';
 import { toast } from 'sonner';
 import { useFolderManagement } from '@/hooks/useFolderManagement';
-import { SortOrder } from '@/types/folder';
+import { SortOrder, FolderItem } from '@/types/folder';
 import {
   extractWorkflowFromPng,
   convertPngDataToWorkflow,
@@ -170,6 +171,8 @@ const WorkflowList: React.FC = () => {
   const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
   const [detailWorkflow, setDetailWorkflow] = useState<Workflow | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
+  const [isFolderDetailModalOpen, setIsFolderDetailModalOpen] = useState(false);
+  const [detailFolder, setDetailFolder] = useState<FolderItem | null>(null);
   const [newFolderName, setNewFolderName] = useState('');
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [selectedSortOrder, setSelectedSortOrder] = useState<SortOrder>('date-desc');
@@ -373,9 +376,40 @@ const WorkflowList: React.FC = () => {
     setIsEditModalOpen(true);
   };
 
-  const handleWorkflowDetail = (workflow: Workflow) => {
-    setDetailWorkflow(workflow);
-    setIsDetailModalOpen(true);
+  const handleWorkflowClick = (workflow: Workflow) => {
+    if (isEditMode) {
+      handleItemTouchInMoveMode(workflow.id, 'workflow', currentFolderId);
+    } else {
+      handleWorkflowSelect(workflow);
+    }
+  };
+
+  const handleWorkflowLongPress = (workflow: Workflow) => {
+    if (!isEditMode) {
+      setDetailWorkflow(workflow);
+      setIsDetailModalOpen(true);
+    }
+  };
+
+  const handleFolderClick = (folderId: string) => {
+    if (isEditMode) {
+      handleItemTouchInMoveMode(folderId, 'folder', currentFolderId);
+    } else {
+      setCurrentFolderId(folderId);
+      setSearchQuery(''); // Clear search when navigating folders
+    }
+  };
+
+  const handleFolderLongPress = (folder: FolderItem) => {
+    if (!isEditMode) {
+      setDetailFolder(folder);
+      setIsFolderDetailModalOpen(true);
+    }
+  };
+
+  const handleDeleteFolder = (folderId: string) => {
+    deleteFolder(folderId);
+    toast.success('Folder deleted');
   };
 
   const handleWorkflowUpdated = (updatedWorkflow: Workflow) => {
@@ -573,25 +607,7 @@ const WorkflowList: React.FC = () => {
     }
   };
 
-  const handleFolderClick = (folderId: string) => {
-    if (isEditMode) {
-      // In move mode, handle touch selection
-      handleItemTouchInMoveMode(folderId, 'folder', currentFolderId);
-    } else {
-      // Normal navigation
-      setCurrentFolderId(folderId);
-    }
-  };
 
-  const handleWorkflowClick = (workflow: Workflow) => {
-    if (isEditMode) {
-      // In move mode, handle touch selection
-      handleItemTouchInMoveMode(workflow.id, 'workflow', currentFolderId);
-    } else {
-      // Normal detail view
-      handleWorkflowDetail(workflow);
-    }
-  };
 
   const handleBreadcrumbClick = (folderId: string | null) => {
     if (isEditMode) return; // Don't navigate in edit mode
@@ -1080,6 +1096,7 @@ const WorkflowList: React.FC = () => {
                     key={folder.id}
                     folder={folder}
                     onClick={() => handleFolderClick(folder.id)}
+                    onLongPress={() => handleFolderLongPress(folder)}
                     workflowCount={folder.workflows.length + folder.children.length}
                     isSelected={selectedItemForMove?.id === folder.id && selectedItemForMove?.type === 'folder'}
                   />
@@ -1091,6 +1108,7 @@ const WorkflowList: React.FC = () => {
                     key={workflow.id}
                     workflow={workflow}
                     onClick={() => handleWorkflowClick(workflow)}
+                    onLongPress={() => handleWorkflowLongPress(workflow)}
                     isSelected={selectedItemForMove?.id === workflow.id && selectedItemForMove?.type === 'workflow'}
                   />
                 ))}
@@ -1142,6 +1160,15 @@ const WorkflowList: React.FC = () => {
         onClose={() => setIsDetailModalOpen(false)}
         onEdit={handleWorkflowEdit}
         onSelect={handleWorkflowSelect}
+      />
+
+      <FolderDetailModal
+        isOpen={isFolderDetailModalOpen}
+        folder={detailFolder}
+        folderStructure={folderStructure}
+        allWorkflows={workflows}
+        onClose={() => setIsFolderDetailModalOpen(false)}
+        onDelete={handleDeleteFolder}
       />
     </div >
   );
