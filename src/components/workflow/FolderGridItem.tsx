@@ -1,8 +1,7 @@
 import React from 'react';
-import { Folder } from 'lucide-react';
+import { Folder, ChevronRight } from 'lucide-react';
 import { FolderItem } from '@/types/folder';
 import { useLongPress } from '@/hooks/useLongPress';
-import { toast } from 'sonner';
 
 interface FolderGridItemProps {
   folder: FolderItem;
@@ -19,54 +18,49 @@ const FolderGridItem: React.FC<FolderGridItemProps> = ({
   isSelected = false,
   workflowCount = 0,
 }) => {
-
-  const longPressProps = useLongPress(
-    onLongPress,
-    onClick,
-    { threshold: 500 }
-  );
+  const longPressProps = useLongPress(onLongPress, onClick, { threshold: 500 });
 
   return (
     <div
-      className={`relative backdrop-blur-2xl rounded-2xl shadow-lg border transition-all duration-300 cursor-pointer overflow-hidden group ${isSelected
-        ? 'bg-blue-500/20 dark:bg-blue-500/20 border-blue-400 dark:border-blue-500 shadow-xl ring-2 ring-blue-400/50'
-        : 'bg-white/5 dark:bg-slate-800/5 border-white/10 dark:border-slate-600/10 hover:shadow-xl hover:border-white/20 dark:hover:border-slate-500/20'
+      className={`relative group overflow-hidden rounded-xl transition-all duration-300 cursor-pointer border h-[72px] ${isSelected
+        ? 'bg-blue-500/20 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+        : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20'
         }`}
       {...longPressProps}
     >
-      {/* Gradient Overlay */}
-      <div className={`absolute inset-0 pointer-events-none rounded-2xl ${isSelected
-        ? 'bg-gradient-to-br from-blue-500/20 via-blue-400/10 to-blue-600/20'
-        : 'bg-gradient-to-br from-amber-500/10 via-yellow-500/5 to-orange-500/10'
-        }`} />
+      {/* Glass Effect Background */}
+      <div className="absolute inset-0 backdrop-blur-md" />
 
-      {/* Hover Glow Effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-amber-500/5 via-yellow-500/5 to-orange-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl" />
+      {/* Content Container */}
+      <div className="relative z-10 p-3 h-full flex items-center justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0 flex-1">
+          {/* Icon Container */}
+          <div
+            className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isSelected
+              ? 'bg-blue-500/20 text-blue-400'
+              : 'bg-amber-500/10 text-amber-500 group-hover:bg-amber-500/20 group-hover:text-amber-400'
+              }`}
+          >
+            <Folder className="w-5 h-5 fill-current opacity-80" />
+          </div>
 
-      {/* Selected Overlay */}
-      {isSelected && (
-        <div className="absolute inset-0 bg-blue-500/10 pointer-events-none rounded-2xl" />
-      )}
-
-      {/* Content */}
-      <div className="relative z-10 p-3 space-y-2">
-        {/* Folder Icon */}
-        <div className="w-full aspect-square rounded-xl overflow-hidden bg-gradient-to-br from-amber-500/20 via-yellow-500/15 to-orange-500/20 border border-amber-400/30 dark:border-yellow-500/30 flex flex-col items-center justify-center">
-          <Folder className="w-12 h-12 text-amber-600 dark:text-yellow-400 mb-1" />
-          {workflowCount > 0 && (
-            <span className="text-xs font-medium text-amber-700 dark:text-yellow-300">
+          {/* Text Info */}
+          <div className="flex flex-col min-w-0 flex-1 justify-center">
+            <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-white transition-colors w-full">
+              {folder.name}
+            </h3>
+            <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors truncate">
               {workflowCount} {workflowCount === 1 ? 'item' : 'items'}
             </span>
-          )}
+          </div>
         </div>
 
-        {/* Folder Name */}
-        <div className="text-center">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-            {folder.name}
-          </p>
-        </div>
+        {/* Arrow Icon */}
+        <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" />
       </div>
+
+      {/* Hover Gradient Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
     </div>
   );
 };

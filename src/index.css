@@ -125,8 +125,18 @@
   * {
     @apply border-border outline-ring/50;
   }
-  body {
+  html, body {
     @apply bg-background text-foreground;
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: touch;
+  }
+  #root {
+    height: 100%;
+    width: 100%;
+    overflow: hidden;
   }
 }
 

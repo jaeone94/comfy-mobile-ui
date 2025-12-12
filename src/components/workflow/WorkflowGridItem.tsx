@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, AlertCircle } from 'lucide-react';
+import { FileText, AlertCircle, Clock, MoreVertical } from 'lucide-react';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import { generateWorkflowThumbnail } from '@/shared/utils/rendering/CanvasRendererService';
 import { useLongPress } from '@/hooks/useLongPress';
-import { toast } from 'sonner';
 
 interface WorkflowGridItemProps {
   workflow: Workflow;
@@ -42,53 +41,66 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
     generateMissingThumbnail();
   }, [workflow]);
 
-  const longPressProps = useLongPress(
-    onLongPress,
-    onClick,
-    { threshold: 500 }
-  );
+  const longPressProps = useLongPress(onLongPress, onClick, { threshold: 500 });
+
+  // Format date relative or short
+  const formatDate = (date: Date | string) => {
+    const d = new Date(date);
+    return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  };
 
   return (
     <div
-      className={`relative backdrop-blur-2xl rounded-2xl shadow-lg border transition-all duration-300 cursor-pointer overflow-hidden group ${isSelected
-        ? 'bg-blue-500/20 dark:bg-blue-500/20 border-blue-400 dark:border-blue-500 shadow-xl ring-2 ring-blue-400/50'
-        : 'bg-white/5 dark:bg-slate-800/5 border-white/10 dark:border-slate-600/10 hover:shadow-xl hover:border-white/20 dark:hover:border-slate-500/20'
+      className={`relative group rounded-xl overflow-hidden cursor-pointer transition-all duration-300 border ${isSelected
+          ? 'ring-2 ring-blue-500 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+          : 'border-white/10 hover:border-white/20 hover:shadow-xl'
         }`}
       {...longPressProps}
     >
-      {/* Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/5 via-transparent to-slate-900/5 pointer-events-none rounded-2xl" />
+      {/* Thumbnail Container - Full Bleed */}
+      <div className="aspect-[4/3] w-full bg-slate-900 relative overflow-hidden">
+        {thumbnailUrl ? (
+          <img
+            src={thumbnailUrl}
+            alt={workflow.name}
+            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-slate-800/50 p-4">
+            {workflow.isValid ? (
+              <FileText className="w-12 h-12 text-slate-600 mb-2" />
+            ) : (
+              <AlertCircle className="w-12 h-12 text-red-500 mb-2" />
+            )}
+            <span className="text-xs text-slate-500 text-center">No Preview</span>
+          </div>
+        )}
 
-      {/* Hover Glow Effect */}
-      <div className="absolute inset-0 bg-gradient-to-r from-blue-500/5 via-purple-500/5 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-2xl" />
+        {/* Gradient Overlay for Text Readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/90 via-slate-950/40 to-transparent opacity-80" />
 
-      {/* Selected Overlay */}
-      {isSelected && (
-        <div className="absolute inset-0 bg-blue-500/10 pointer-events-none rounded-2xl" />
-      )}
+        {/* Selected Overlay */}
+        {isSelected && (
+          <div className="absolute inset-0 bg-blue-500/20 backdrop-blur-[1px]" />
+        )}
+      </div>
 
-      {/* Content */}
-      <div className="relative z-10 p-3 space-y-2">
-        {/* Thumbnail */}
-        <div className="w-full aspect-square rounded-xl overflow-hidden bg-slate-100/10 dark:bg-slate-700/15 border border-slate-200/20 dark:border-slate-600/25 flex items-center justify-center">
-          {thumbnailUrl ? (
-            <img
-              src={thumbnailUrl}
-              alt={workflow.name}
-              className="w-full h-full object-cover"
-            />
-          ) : workflow.isValid ? (
-            <FileText className="w-8 h-8 text-slate-600 dark:text-slate-300" />
-          ) : (
-            <AlertCircle className="w-8 h-8 text-red-500" />
-          )}
+      {/* Content Overlay */}
+      <div className="absolute inset-x-0 bottom-0 p-3 flex flex-col justify-end">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-sm font-semibold text-white leading-tight line-clamp-2 drop-shadow-md">
+            {workflow.name}
+          </h3>
         </div>
 
-        {/* Name */}
-        <div className="text-center">
-          <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-            {workflow.name}
-          </p>
+        <div className="flex items-center justify-between mt-2 text-[10px] text-slate-400">
+          <div className="flex items-center gap-1">
+            <Clock className="w-3 h-3" />
+            <span>{formatDate(workflow.modifiedAt || workflow.createdAt)}</span>
+          </div>
+          <div className="px-1.5 py-0.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/5">
+            {workflow.nodeCount} nodes
+          </div>
         </div>
       </div>
     </div>

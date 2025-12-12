@@ -8,6 +8,30 @@ import {
   FOLDER_VERSION,
 } from '../types/folder';
 
+// deduplicate helper
+const deduplicate = <T>(array: T[]): T[] => Array.from(new Set(array));
+
+const sanitizeFolderStructure = (structure: FolderStructure): FolderStructure => {
+  const sanitized = { ...structure };
+
+  // Sanitize root
+  sanitized.rootFolders = deduplicate(sanitized.rootFolders);
+  sanitized.rootWorkflows = deduplicate(sanitized.rootWorkflows);
+
+  // Sanitize all folders
+  const newFolders: Record<string, FolderItem> = {};
+  Object.entries(sanitized.folders).forEach(([id, folder]) => {
+    newFolders[id] = {
+      ...folder,
+      children: deduplicate(folder.children),
+      workflows: deduplicate(folder.workflows),
+    };
+  });
+  sanitized.folders = newFolders;
+
+  return sanitized;
+};
+
 const getDefaultFolderStructure = (): FolderStructure => ({
   folders: {},
   rootFolders: [],
@@ -29,7 +53,8 @@ const loadFolderStructure = (): FolderStructure => {
       return getDefaultFolderStructure();
     }
 
-    return parsed;
+    // Sanitize structure on load to fix any corruption
+    return sanitizeFolderStructure(parsed);
   } catch (error) {
     console.error('Failed to load folder structure:', error);
     return getDefaultFolderStructure();
@@ -66,7 +91,8 @@ export const useFolderManagement = () => {
 
       const updated = {
         ...prev,
-        rootWorkflows,
+        // Ensure rootWorkflows are unique
+        rootWorkflows: deduplicate(rootWorkflows),
       };
 
       saveFolderStructure(updated);
@@ -102,11 +128,11 @@ export const useFolderManagement = () => {
         if (parent) {
           updated.folders[parentId] = {
             ...parent,
-            children: [...parent.children, newFolderId],
+            children: deduplicate([...parent.children, newFolderId]),
           };
         }
       } else {
-        updated.rootFolders = [...updated.rootFolders, newFolderId];
+        updated.rootFolders = deduplicate([...updated.rootFolders, newFolderId]);
       }
 
       return updated;
@@ -171,14 +197,14 @@ export const useFolderManagement = () => {
         if (parent) {
           updated.folders[parentId] = {
             ...parent,
-            children: parent.children.filter(id => id !== folderId).concat(children),
-            workflows: [...parent.workflows, ...workflows],
+            children: deduplicate(parent.children.filter(id => id !== folderId).concat(children)),
+            workflows: deduplicate([...parent.workflows, ...workflows]),
           };
         }
       } else {
         // Move to root
-        updated.rootFolders = updated.rootFolders.filter(id => id !== folderId).concat(children);
-        updated.rootWorkflows = [...updated.rootWorkflows, ...workflows];
+        updated.rootFolders = deduplicate(updated.rootFolders.filter(id => id !== folderId).concat(children));
+        updated.rootWorkflows = deduplicate([...updated.rootWorkflows, ...workflows]);
       }
 
       return updated;
@@ -221,11 +247,11 @@ export const useFolderManagement = () => {
           if (targetFolder) {
             updated.folders[targetFolderId] = {
               ...targetFolder,
-              workflows: [...targetFolder.workflows, itemId],
+              workflows: deduplicate([...targetFolder.workflows, itemId]),
             };
           }
         } else {
-          updated.rootWorkflows = [...updated.rootWorkflows, itemId];
+          updated.rootWorkflows = deduplicate([...updated.rootWorkflows, itemId]);
         }
       } else {
         // Moving folder
@@ -270,25 +296,27 @@ export const useFolderManagement = () => {
           if (targetFolder) {
             updated.folders[targetFolderId] = {
               ...targetFolder,
-              children: [...targetFolder.children, itemId],
+              children: deduplicate([...targetFolder.children, itemId]),
             };
           }
         } else {
-          updated.rootFolders = [...updated.rootFolders, itemId];
+          updated.rootFolders = deduplicate([...updated.rootFolders, itemId]);
         }
       }
 
       return updated;
     };
 
+    // Always update persistent structure and save immediately
+    setFolderStructure(prev => {
+      const updated = updateStructure(prev);
+      saveFolderStructure(updated);
+      return updated;
+    });
+
+    // If in edit mode, also update pending structure to keep UI in sync
     if (isEditMode && pendingStructure) {
       setPendingStructure(updateStructure(pendingStructure));
-    } else {
-      setFolderStructure(prev => {
-        const updated = updateStructure(prev);
-        saveFolderStructure(updated);
-        return updated;
-      });
     }
   }, [isEditMode, pendingStructure]);
 
