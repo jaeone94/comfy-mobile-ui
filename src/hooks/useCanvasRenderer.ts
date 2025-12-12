@@ -102,16 +102,16 @@ export const useCanvasRenderer = ({
     // 🎯 Check current execution state from persistent buffer (works for navigation & refresh)
     setTimeout(() => {
       const currentState = globalWebSocketService.getCurrentExecutionState();
-      
+
       console.log(`🎨 [useCanvasRenderer] Current execution state from buffer:`, currentState);
-      
+
       if (currentState.isExecuting) {
         setExecutionState({
           executingNodeId: currentState.executingNodeId,
           errorNodeId: null,
           nodeExecutionProgress: currentState.nodeExecutionProgress
         });
-        
+
         console.log(`🎨 [useCanvasRenderer] Applied execution state from persistent buffer:`, {
           executingNodeId: currentState.executingNodeId,
           nodeExecutionProgress: currentState.nodeExecutionProgress
@@ -123,7 +123,7 @@ export const useCanvasRenderer = ({
     const handleExecuting = (event: any) => {
       console.log('🎨 [useCanvasRenderer] Raw executing event:', event);
       const { data } = event;
-      
+
       if (data.node === null) {
         // Execution completed
         console.log('🎨 [useCanvasRenderer] Execution completed - clearing highlights');
@@ -150,10 +150,10 @@ export const useCanvasRenderer = ({
         value: data.value,
         max: data.max
       });
-      
+
       if (data.node && data.value !== undefined && data.max !== undefined) {
         const percentage = Math.round((data.value / data.max) * 100);
-        
+
         setExecutionState(prev => ({
           ...prev,
           executingNodeId: data.node.toString(),
@@ -168,7 +168,7 @@ export const useCanvasRenderer = ({
     const handleExecuted = (event: any) => {
       const { data } = event;
       console.log('🎨 [useCanvasRenderer] Node executed:', data);
-      
+
       setExecutionState(prev => ({
         ...prev,
         executingNodeId: prev.executingNodeId === data.node?.toString() ? null : prev.executingNodeId,
@@ -199,12 +199,12 @@ export const useCanvasRenderer = ({
     const handleProgressState = (event: any) => {
       console.log('🎨 [useCanvasRenderer] Progress state event:', event);
       const { data } = event;
-      
+
       if (data.nodes) {
         const nodes = data.nodes;
         let currentRunningNodeId: string | null = null;
         let currentNodeProgress: { nodeId: string; progress: number } | null = null;
-        
+
         // Find the first running node for display
         Object.keys(nodes).forEach(nodeId => {
           const nodeData = nodes[nodeId];
@@ -217,7 +217,7 @@ export const useCanvasRenderer = ({
             };
           }
         });
-        
+
         // Update execution state for canvas highlighting
         setExecutionState(prev => ({
           ...prev,
@@ -225,7 +225,7 @@ export const useCanvasRenderer = ({
           nodeExecutionProgress: currentNodeProgress,
           errorNodeId: currentRunningNodeId ? null : prev.errorNodeId // Clear error if we have a running node
         }));
-        
+
         console.log('🎨 [useCanvasRenderer] Updated execution state from progress_state:', {
           currentRunningNodeId,
           currentNodeProgress
@@ -265,7 +265,7 @@ export const useCanvasRenderer = ({
     const resizeCanvas = () => {
       const container = containerRef.current;
       if (!container) return;
-      
+
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
       draw();
@@ -273,10 +273,10 @@ export const useCanvasRenderer = ({
 
     const draw = () => {
       // Clear canvas - use darker background color in repositioning mode
-      const backgroundColor = repositionMode?.isActive 
+      const backgroundColor = repositionMode?.isActive
         ? '#1e293b' // Darker slate background for repositioning mode
         : config.backgroundColor;
-      
+
       ctx.fillStyle = backgroundColor;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -299,11 +299,11 @@ export const useCanvasRenderer = ({
       }
 
       // Draw connections (middle layer)
-      const links = Object.values(graphData._links || {});      
-      
+      const links = Object.values(graphData._links || {});
+
       if (links.length > 0) {
         renderConnections(ctx, links, nodeBounds, config);
-      } 
+      }
 
       // Draw nodes (foreground layer) - use shared rendering
       const nodes = graphData._nodes || [];
@@ -313,7 +313,7 @@ export const useCanvasRenderer = ({
         //   nodeBoundsSize: nodeBounds.size,
         //   firstNode: workflow.parsedData.nodes[0]
         // });
-        
+
         // Calculate modified node IDs for visual indication
         const modifiedNodeIds = new Set<number>();
         if (modifiedWidgetValues) {
@@ -334,11 +334,17 @@ export const useCanvasRenderer = ({
           repositionMode: repositionMode || null, // Add repositioning mode info
           connectionMode: connectionMode || null, // Add connection mode info for highlighting
           missingNodeIds: missingNodeIds || new Set(), // Add missing node IDs for red outline
-          longPressState: longPressState || null // Add long press state for visual feedback
+          longPressState: longPressState || null, // Add long press state for visual feedback
+          visibleRect: {
+            minX: -viewport.x / viewport.scale,
+            minY: -viewport.y / viewport.scale,
+            maxX: (canvas.width - viewport.x) / viewport.scale,
+            maxY: (canvas.height - viewport.y) / viewport.scale
+          }
         };
-        
+
         renderNodes(ctx, nodes as ComfyGraphNode[], nodeBounds, config, renderingOptions);
-      } 
+      }
 
       ctx.restore();
     };

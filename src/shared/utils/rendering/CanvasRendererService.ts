@@ -159,7 +159,7 @@ export interface GroupBounds {
   x: number;
   y: number;
   width: number;
-  height: number;  
+  height: number;
   title?: string;
   color: string;
   id?: number; // Group ID for identification and selection
@@ -213,6 +213,12 @@ export interface RenderingOptions {
     compatibleNodeIds: Set<number>;
   } | null; // Connection mode information for node highlighting
   missingNodeIds?: Set<number>; // Nodes with missing types (not available on server)
+  visibleRect?: { // Visible area in world coordinates
+    minX: number;
+    maxX: number;
+    minY: number;
+    maxY: number;
+  } | null;
   longPressState?: LongPressState | null; // Long press visual feedback
 }
 
@@ -226,7 +232,7 @@ export function darkenColor(color: string, amount: number): string {
   if (color.startsWith('#')) {
     const hex = color.slice(1);
     let r = 0, g = 0, b = 0;
-    
+
     if (hex.length === 3) {
       r = parseInt(hex[0] + hex[0], 16);
       g = parseInt(hex[1] + hex[1], 16);
@@ -236,7 +242,7 @@ export function darkenColor(color: string, amount: number): string {
       g = parseInt(hex.substr(2, 2), 16);
       b = parseInt(hex.substr(4, 2), 16);
     }
-    
+
     if (amount >= 0) {
       // Darken by reducing RGB values
       r = Math.max(0, Math.round(r * (1 - amount)));
@@ -249,10 +255,10 @@ export function darkenColor(color: string, amount: number): string {
       g = Math.min(255, Math.round(g + (255 - g) * lightenAmount));
       b = Math.min(255, Math.round(b + (255 - b) * lightenAmount));
     }
-    
+
     return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
   }
-  
+
   // Return original color if unable to process
   return color;
 }
@@ -265,7 +271,7 @@ export function darkenColor(color: string, amount: number): string {
  * Calculate bounds for all workflow elements
  */
 export function calculateAllBounds(
-  nodes: IComfyGraphNode[], 
+  nodes: IComfyGraphNode[],
   groups?: IGroup[],
   config: CanvasConfig = DEFAULT_CANVAS_CONFIG,
   canvasWidth?: number,
@@ -286,7 +292,7 @@ export function calculateAllBounds(
     let x = 0, y = 0;
     let width = config.nodeWidth;
     let height = config.nodeHeight;
-    
+
     // Handle both Float32Array and regular arrays for position
     // Check all possible position properties
     const position = (node as any)._pos || node.pos || (node as any).position;
@@ -300,7 +306,7 @@ export function calculateAllBounds(
       const cols = Math.ceil(Math.sqrt(nodes.length));
       x = (index % cols) * 300;
       y = Math.floor(index / cols) * 200;
-      console.warn(`⚠️ Node ${node.id} has no position, using grid fallback:`, {x, y});
+      console.warn(`⚠️ Node ${node.id} has no position, using grid fallback:`, { x, y });
     }
 
     // Handle both Float32Array and regular arrays for size
@@ -327,7 +333,7 @@ export function calculateAllBounds(
       // LiteGraph runtime uses _bounding, serialized uses bounding
       const bounding = (group as any)._bounding || group.bounding;
       if (!bounding) continue;
-      
+
       const [gx, gy, gw, gh] = bounding;
       allElements.push({ x: gx, y: gy, width: gw, height: gh });
     }
@@ -339,7 +345,7 @@ export function calculateAllBounds(
 
   // Calculate content bounds
   const minX = Math.min(...allElements.map(el => el.x));
-  const minY = Math.min(...allElements.map(el => el.y));  
+  const minY = Math.min(...allElements.map(el => el.y));
   const maxX = Math.max(...allElements.map(el => el.x + el.width));
   const maxY = Math.max(...allElements.map(el => el.y + el.height));
 
@@ -361,7 +367,7 @@ export function calculateAllBounds(
     let x = 0, y = 0;
     let width = config.nodeWidth;
     let height = config.nodeHeight;
-    
+
     // Handle both Float32Array and regular arrays for position
     // Check all possible position properties
     const position = (node as any)._pos || node.pos || (node as any).position;
@@ -394,7 +400,7 @@ export function calculateAllBounds(
 
     const scaledX = canvasWidth ? (x - minX) * scale + config.padding : x;
     const scaledY = canvasHeight ? (y - minY) * scale + config.padding : y;
-    
+
     nodeBounds.set(node.id, {
       x: scaledX,
       y: scaledY,
@@ -410,15 +416,15 @@ export function calculateAllBounds(
       // LiteGraph runtime uses _bounding, serialized uses bounding
       const bounding = (group as any)._bounding || group.bounding;
       if (!bounding) continue;
-      
+
       const [gx, gy, gw, gh] = bounding;
-      
+
       // Use original group position and size without scaling
       const baseScaledX = gx;
       const baseScaledY = gy;
       const baseScaledWidth = gw;
       const baseScaledHeight = gh;
-      
+
       const scaledX = canvasWidth ? (baseScaledX - minX) * scale + config.padding : baseScaledX;
       const scaledY = canvasHeight ? (baseScaledY - minY) * scale + config.padding : baseScaledY;
       const scaledWidth = baseScaledWidth * scale;
@@ -477,16 +483,16 @@ export function renderGroups(
     // Draw group title (only if showText is enabled)
     if (showText && group.title) {
       ctx.fillStyle = config.groupTextColor;
-      
+
       // Calculate responsive font size for group title (same logic as node text)
       let groupFontSize = config.groupFontSize; // Default fallback
-      
+
       if (viewportScale !== undefined) {
         // Linear interpolation from 0% to 80% (same as node text)
         const maxScale = 0.8;   // 80%
         const minFontSize = 52; // Font size at 0% (slightly larger than node text)
         const maxFontSize = 12; // Font size at 80%+ (slightly larger than node text)
-        
+
         let fontSize: number;
         if (viewportScale >= maxScale) {
           fontSize = maxFontSize;
@@ -494,10 +500,10 @@ export function renderGroups(
           const progress = viewportScale / maxScale;
           fontSize = minFontSize - (progress * (minFontSize - maxFontSize));
         }
-        
+
         groupFontSize = Math.max(12, Math.min(60, fontSize));
       }
-      
+
       ctx.font = `bold ${groupFontSize}px system-ui, -apple-system, sans-serif`;
       ctx.textAlign = 'left';
       ctx.textBaseline = 'top';
@@ -506,7 +512,7 @@ export function renderGroups(
       const titleX = group.x + 8;
       const titleY = group.y + 8;
       const maxTextWidth = group.width - 16; // Account for padding on both sides
-      
+
       // Truncate text if too long (similar to node text logic)
       let truncatedTitle = group.title;
       const textMetrics = ctx.measureText(group.title);
@@ -515,20 +521,20 @@ export function renderGroups(
         const ellipsis = '...';
         const ellipsisWidth = ctx.measureText(ellipsis).width;
         const availableWidth = maxTextWidth - ellipsisWidth;
-        
+
         let truncated = group.title;
         while (ctx.measureText(truncated).width > availableWidth && truncated.length > 0) {
           truncated = truncated.slice(0, -1);
         }
         truncatedTitle = truncated + ellipsis;
       }
-      
+
       ctx.fillText(truncatedTitle, titleX, titleY);
     }
 
     // Draw resize grippers if this group is selected in repositioning mode
     if (repositionMode?.isActive && group.id !== undefined &&
-        repositionMode.selectedGroupId === group.id && !repositionMode?.resizeMode?.isActive) {
+      repositionMode.selectedGroupId === group.id && !repositionMode?.resizeMode?.isActive) {
       drawResizeGrippers(
         ctx,
         group.x,
@@ -585,7 +591,7 @@ export function renderConnections(
 
   for (const link of links) {
     let sourceNodeId: number, sourceSlot: number, targetNodeId: number, targetSlot: number;
-    
+
     // Handle both array and object formats
     if (Array.isArray(link) && link.length >= 5) {
       // Array format: [linkId, sourceNodeId, sourceSlot, targetNodeId, targetSlot, type]
@@ -597,7 +603,7 @@ export function renderConnections(
       sourceSlot = linkObj.origin_slot;
       targetNodeId = linkObj.target_id;
       targetSlot = linkObj.target_slot;
-      
+
     } else {
       console.warn('🔗 Skipping invalid link:', link);
       continue;
@@ -608,7 +614,7 @@ export function renderConnections(
     if (!sourceBounds || !targetBounds) {
       continue;
     }
-    
+
 
     // Get the actual nodes to access slot information
     const sourceNode = sourceBounds.node;
@@ -626,11 +632,11 @@ export function renderConnections(
     const targetMaxSlots = Math.max(targetConnectedInputs, targetConnectedOutputs);
     const targetSlotAreaHeight = targetMaxSlots * 20 + 35;
     const targetCollapsed = targetNode.flags?.collapsed === true || targetSlotAreaHeight > targetBounds.height;
-    
+
     // For expanded nodes, calculate the visual index among connected slots only
     let sourceVisualIndex = sourceSlot;
     let targetVisualIndex = targetSlot;
-    
+
     if (!sourceCollapsed && sourceNode.outputs) {
       // Count connected outputs before this slot
       let connectedCount = 0;
@@ -641,7 +647,7 @@ export function renderConnections(
       }
       sourceVisualIndex = connectedCount;
     }
-    
+
     if (!targetCollapsed && targetNode.inputs) {
       // Count connected inputs before this slot
       let connectedCount = 0;
@@ -652,7 +658,7 @@ export function renderConnections(
       }
       targetVisualIndex = connectedCount;
     }
-    
+
     // Calculate actual slot positions using visual indices
     const sourcePos = getSlotPosition(
       sourceBounds,
@@ -661,7 +667,7 @@ export function renderConnections(
       true, // is output
       sourceCollapsed
     );
-    
+
     const targetPos = getSlotPosition(
       targetBounds,
       targetVisualIndex,
@@ -673,13 +679,13 @@ export function renderConnections(
     // Draw bezier curve connection
     ctx.beginPath();
     ctx.moveTo(sourcePos.x, sourcePos.y);
-    
+
     const controlPointOffset = Math.abs(targetPos.x - sourcePos.x) * 0.5;
     const cp1X = sourcePos.x + controlPointOffset;
     const cp1Y = sourcePos.y;
     const cp2X = targetPos.x - controlPointOffset;
     const cp2Y = targetPos.y;
-    
+
     ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, targetPos.x, targetPos.y);
     ctx.stroke();
   }
@@ -695,44 +701,44 @@ export function renderNodes(
   config: CanvasConfig = DEFAULT_CANVAS_CONFIG,
   options: RenderingOptions = {}
 ): void {
-  const { selectedNode, executingNodeId, errorNodeId, nodeExecutionProgress, showText = true, viewportScale, modifiedNodeIds, modifiedWidgetValues, repositionMode, connectionMode, missingNodeIds, longPressState } = options;
+  const { selectedNode, executingNodeId, errorNodeId, nodeExecutionProgress, showText = true, viewportScale, modifiedNodeIds, modifiedWidgetValues, repositionMode, connectionMode, missingNodeIds, longPressState, visibleRect } = options;
 
   // Sort nodes by collapsed state first, then connection mode priority, then by order
   // Lower values are drawn first (behind), higher values are drawn last (in front)
   const sortedNodes = [...nodes].sort((a, b) => {
     const aCollapsed = a.flags?.collapsed === true;
     const bCollapsed = b.flags?.collapsed === true;
-    
+
     // If one is collapsed and the other isn't, collapsed goes first (behind)
     if (aCollapsed && !bCollapsed) return -1;
     if (!aCollapsed && bCollapsed) return 1;
-    
+
     // Connection mode z-order priority (higher priority = drawn later = on top)
     const getConnectionPriority = (node: any) => {
       if (!connectionMode?.isActive) return 0;
-      
+
       // Source and target nodes get highest priority
       if (connectionMode.sourceNodeId === node.id) return 1000;
       if (connectionMode.targetNodeId === node.id) return 1000;
-      
+
       // Compatible nodes get medium priority (above normal nodes, below source/target)
-      if (connectionMode.phase === 'TARGET_SELECTION' && 
-          connectionMode.compatibleNodeIds.has(node.id) &&
-          connectionMode.sourceNodeId !== node.id) {
+      if (connectionMode.phase === 'TARGET_SELECTION' &&
+        connectionMode.compatibleNodeIds.has(node.id) &&
+        connectionMode.sourceNodeId !== node.id) {
         return 500;
       }
-      
+
       return 0;
     };
-    
+
     const aPriority = getConnectionPriority(a);
     const bPriority = getConnectionPriority(b);
-    
+
     // If connection priorities are different, use them
     if (aPriority !== bPriority) {
       return aPriority - bPriority;
     }
-    
+
     // If both have same collapsed state and connection priority, sort by order (execution/drawing order)
     const aOrder = a.order || 0;
     const bOrder = b.order || 0;
@@ -745,12 +751,12 @@ export function renderNodes(
 
     const isSelected = selectedNode?.id === node.id;
     const isRepositionSelected = repositionMode?.isActive && repositionMode?.selectedNodeId === node.id;
-    
+
     // Connection mode highlighting logic
     const isConnectionSourceSelected = connectionMode?.isActive && connectionMode?.sourceNodeId === node.id;
     const isConnectionTargetSelected = connectionMode?.isActive && connectionMode?.targetNodeId === node.id;
-    const isConnectionCompatible = connectionMode?.isActive && 
-      connectionMode?.phase === 'TARGET_SELECTION' && 
+    const isConnectionCompatible = connectionMode?.isActive &&
+      connectionMode?.phase === 'TARGET_SELECTION' &&
       connectionMode?.compatibleNodeIds.has(node.id) &&
       connectionMode?.sourceNodeId !== node.id; // Don't highlight source as compatible target
     const isCollapsed = node.flags?.collapsed === true;
@@ -761,15 +767,28 @@ export function renderNodes(
     const isInactive = isMuted || isBypassed; // Both muted and bypassed are inactive
     const hasModifications = modifiedNodeIds?.has(node.id) || false;
     const isMissingNodeType = missingNodeIds?.has(node.id) || false;
-    
+
+    // Check visibility if visibleRect is provided
+    let isVisible = true;
+    if (visibleRect) {
+      // Add a small buffer (e.g. 50px) to prevent pop-in artifacts at edges
+      const buffer = 50;
+      isVisible = (
+        bounds.x < visibleRect.maxX + buffer &&
+        bounds.x + bounds.width > visibleRect.minX - buffer &&
+        bounds.y < visibleRect.maxY + buffer &&
+        bounds.y + bounds.height > visibleRect.minY - buffer
+      );
+    }
+
     // Save context state for opacity
     ctx.save();
-    
+
     // Apply 35% opacity for inactive nodes (muted or bypassed)
     if (isInactive) {
       ctx.globalAlpha = 0.35;
     }
-    
+
     // No shadows for better performance
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
@@ -778,7 +797,7 @@ export function renderNodes(
 
     // Use simple, solid colors for better performance
     let backgroundColor = config.defaultNodeColor;
-    
+
     // Inactive nodes get special colors
     if (isMuted) {
       backgroundColor = '#3b82f6'; // Blue color for muted nodes
@@ -793,7 +812,7 @@ export function renderNodes(
       } else {
         backgroundColor = '#2e2e2e';
       }
-      
+
       // Simple state modifications without complex color enhancement
       if (isSelected) {
         backgroundColor = config.selectedNodeColor;
@@ -810,20 +829,20 @@ export function renderNodes(
 
     // Simple rectangular nodes for maximum performance
     const cornerRadius = 4; // Minimal rounding to reduce GPU load
-    
+
     {
       // Check if node is executing and has progress for gradient background
       const hasProgress = isExecuting && nodeExecutionProgress?.nodeId === String(node.id);
-      
+
       if (hasProgress) {
         const currentProgress = nodeExecutionProgress.progress;
         const progressRatio = Math.max(0, Math.min(1, currentProgress / 100));
-        
+
         // Create horizontal gradient for progress
         const gradient = ctx.createLinearGradient(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y);
         const baseGreen = '#10b981';    // Base green for executing nodes
         const lighterGreen = darkenColor(baseGreen, -0.3); // Lighter version of same color (negative = brighter)
-        
+
         // Add gradient stops based on progress
         if (progressRatio > 0) {
           gradient.addColorStop(0, lighterGreen);
@@ -835,13 +854,13 @@ export function renderNodes(
         if (progressRatio < 1) {
           gradient.addColorStop(1, baseGreen);
         }
-        
+
         ctx.fillStyle = gradient;
       } else {
         // Draw simple solid background
         ctx.fillStyle = backgroundColor;
       }
-      
+
       ctx.beginPath();
       ctx.roundRect(bounds.x, bounds.y, bounds.width, bounds.height, cornerRadius);
       ctx.fill();
@@ -855,11 +874,11 @@ export function renderNodes(
     ctx.stroke();
 
     // Additional border for special states
-    if (isSelected || isError || hasModifications || isRepositionSelected || 
-        isConnectionSourceSelected || isConnectionTargetSelected || isConnectionCompatible || isMissingNodeType) {
+    if (isSelected || isError || hasModifications || isRepositionSelected ||
+      isConnectionSourceSelected || isConnectionTargetSelected || isConnectionCompatible || isMissingNodeType) {
       let strokeColor = '#ffffff'; // Simple white for selected
       let lineWidth = 2;
-      
+
       if (isMissingNodeType) {
         strokeColor = '#dc2626'; // Red border for missing node types
         lineWidth = 3;
@@ -894,7 +913,8 @@ export function renderNodes(
 
 
     // Draw node title and widgets with LOD rendering
-    if (showText) {
+    // Optimization: Only draw detailed content (text, widgets) if the node is visible
+    if (showText && isVisible) {
       // Use viewport scale if provided, otherwise fallback to transform matrix
       let currentScale = 1.0; // Default scale
 
@@ -1027,9 +1047,9 @@ export function renderNodes(
 
               // Check if it's an IMAGE or VIDEO widget
               if ((name.includes('image') || name.includes('img') || name.includes('video') ||
-                  name === 'filename' || name === 'file' || name === 'input') &&
-                  value && typeof value === 'string' &&
-                  (value.includes('.') || value.includes('/'))) {
+                name === 'filename' || name === 'file' || name === 'input') &&
+                value && typeof value === 'string' &&
+                (value.includes('.') || value.includes('/'))) {
                 imageWidgets.push({ widget, value });
 
                 // Track this image for the node
@@ -1125,7 +1145,12 @@ export function renderNodes(
                   const maxNameWidth = widgetWidth * 0.5;
 
                   let truncatedName = widgetName;
-                  if (ctx.measureText(widgetName).width > maxNameWidth) {
+                  // Optimization: Pre-truncate huge strings
+                  if (truncatedName.length > 50) {
+                    truncatedName = truncatedName.substring(0, 50) + '...';
+                  }
+
+                  if (ctx.measureText(truncatedName).width > maxNameWidth) {
                     while (ctx.measureText(truncatedName + '...').width > maxNameWidth && truncatedName.length > 0) {
                       truncatedName = truncatedName.slice(0, -1);
                     }
@@ -1172,6 +1197,11 @@ export function renderNodes(
 
                     // Truncate value if too long
                     const maxValueWidth = widgetWidth * 0.4;
+                    // Optimization: Pre-truncate huge strings
+                    if (valueText.length > 50) {
+                      valueText = valueText.substring(0, 50);
+                    }
+
                     if (ctx.measureText(valueText).width > maxValueWidth) {
                       while (ctx.measureText(valueText + '...').width > maxValueWidth && valueText.length > 0) {
                         valueText = valueText.slice(0, -1);
@@ -1194,7 +1224,12 @@ export function renderNodes(
                   const maxNameWidth = widgetWidth * 0.45;
 
                   let truncatedName = widgetName;
-                  if (ctx.measureText(widgetName).width > maxNameWidth) {
+                  // Optimization: Pre-truncate huge strings
+                  if (truncatedName.length > 50) {
+                    truncatedName = truncatedName.substring(0, 50) + '...';
+                  }
+
+                  if (ctx.measureText(truncatedName).width > maxNameWidth) {
                     while (ctx.measureText(truncatedName + '...').width > maxNameWidth && truncatedName.length > 0) {
                       truncatedName = truncatedName.slice(0, -1);
                     }
@@ -1217,39 +1252,44 @@ export function renderNodes(
                     const modifiedValues = modifiedWidgetValues?.get(node.id);
                     const value = modifiedValues?.[widget.name] !== undefined ? modifiedValues[widget.name] : widget.value;
 
-                  if (value === null || value === undefined) {
-                    valueText = 'null';
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
-                  } else if (typeof value === 'boolean') {
-                    valueText = value ? 'true' : 'false';
-                    ctx.fillStyle = '#ffffff';
-                  } else if (typeof value === 'number') {
-                    valueText = Number.isInteger(value) ? value.toString() : value.toFixed(2);
-                    ctx.fillStyle = '#ffffff';
-                  } else if (typeof value === 'string') {
-                    valueText = value;
-                    ctx.fillStyle = '#ffffff';
-                  } else if (Array.isArray(value)) {
-                    valueText = `[${value.length}]`;
-                    ctx.fillStyle = '#8b5cf6';
-                  } else if (typeof value === 'object') {
-                    valueText = '{...}';
-                    ctx.fillStyle = '#8b5cf6';
-                  } else {
-                    valueText = String(value);
-                    ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
-                  }
-
-                  // Truncate value if too long
-                  const maxValueWidth = widgetWidth * 0.45;
-                  if (ctx.measureText(valueText).width > maxValueWidth) {
-                    while (ctx.measureText(valueText + '...').width > maxValueWidth && valueText.length > 0) {
-                      valueText = valueText.slice(0, -1);
+                    if (value === null || value === undefined) {
+                      valueText = 'null';
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                    } else if (typeof value === 'boolean') {
+                      valueText = value ? 'true' : 'false';
+                      ctx.fillStyle = '#ffffff';
+                    } else if (typeof value === 'number') {
+                      valueText = Number.isInteger(value) ? value.toString() : value.toFixed(2);
+                      ctx.fillStyle = '#ffffff';
+                    } else if (typeof value === 'string') {
+                      valueText = value;
+                      ctx.fillStyle = '#ffffff';
+                    } else if (Array.isArray(value)) {
+                      valueText = `[${value.length}]`;
+                      ctx.fillStyle = '#8b5cf6';
+                    } else if (typeof value === 'object') {
+                      valueText = '{...}';
+                      ctx.fillStyle = '#8b5cf6';
+                    } else {
+                      valueText = String(value);
+                      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
                     }
-                    valueText += '...';
-                  }
 
-                  ctx.fillText(valueText, widgetX + widgetWidth - 8, widgetY + widgetHeight / 2);
+                    // Truncate value if too long
+                    const maxValueWidth = widgetWidth * 0.45;
+                    // Optimization: Pre-truncate huge strings
+                    if (valueText.length > 100) {
+                      valueText = valueText.substring(0, 100);
+                    }
+
+                    if (ctx.measureText(valueText).width > maxValueWidth) {
+                      while (ctx.measureText(valueText + '...').width > maxValueWidth && valueText.length > 0) {
+                        valueText = valueText.slice(0, -1);
+                      }
+                      valueText += '...';
+                    }
+
+                    ctx.fillText(valueText, widgetX + widgetWidth - 8, widgetY + widgetHeight / 2);
                   }
                 }
               });
@@ -1370,7 +1410,7 @@ export function renderNodes(
                     ctx.font = '12px system-ui';
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(`+${imageWidgets.length - 3}`, imageX - imageSpacing/2, previewY + previewHeight / 2);
+                    ctx.fillText(`+${imageWidgets.length - 3}`, imageX - imageSpacing / 2, previewY + previewHeight / 2);
                   }
                 }
               }
@@ -1381,7 +1421,8 @@ export function renderNodes(
     }
 
     // Draw input and output slots
-    if (showText) { // Only draw slots when text is shown (detail view)
+    // Optimization: Only draw slots if visible
+    if (showText && isVisible) { // Only draw slots when text is shown (detail view)
       const slotRadius = 4;
       const slotHeight = 20;
 
@@ -1402,23 +1443,23 @@ export function renderNodes(
         // For collapsed nodes, show single slot on each side if there are connections
         const hasInputConnections = node.inputs?.some((input: any) => input.link);
         const hasOutputConnections = node.outputs?.some((output: any) => output.links && output.links.length > 0);
-        
+
         // Draw single input slot if there are connections
         if (hasInputConnections) {
           const slotY = bounds.y + bounds.height / 2;
           const slotX = bounds.x;
-          
+
           ctx.fillStyle = '#10b981'; // Always green for collapsed connected slots
           ctx.beginPath();
           ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
           ctx.fill();
         }
-        
+
         // Draw single output slot if there are connections
         if (hasOutputConnections) {
           const slotY = bounds.y + bounds.height / 2;
           const slotX = bounds.x + bounds.width;
-          
+
           ctx.fillStyle = '#10b981';
           ctx.beginPath();
           ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
@@ -1432,17 +1473,17 @@ export function renderNodes(
           node.inputs.forEach((input: any, index: number) => {
             // Only draw if connected
             if (!input.link) return;
-            
+
             const slotY = bounds.y + topMargin + (connectedIndex * slotHeight) + (slotHeight / 2);
             const slotX = bounds.x;
             connectedIndex++; // Increment only for connected slots
-            
+
             // Draw slot circle (always green since it's connected)
             ctx.fillStyle = '#10b981';
             ctx.beginPath();
             ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Draw slot label (only if enough space)
             if (bounds.width > 100) {
               ctx.fillStyle = '#ffffff';
@@ -1451,7 +1492,7 @@ export function renderNodes(
               ctx.textBaseline = 'middle';
               const labelText = input.name || input.type || '';
               const maxLabelWidth = bounds.width * 0.3;
-              
+
               // Truncate if too long
               let truncatedLabel = labelText;
               if (ctx.measureText(labelText).width > maxLabelWidth) {
@@ -1460,29 +1501,29 @@ export function renderNodes(
                 }
                 truncatedLabel += '...';
               }
-              
+
               ctx.fillText(truncatedLabel, slotX + slotRadius + 4, slotY);
             }
           });
         }
-        
+
         // Draw connected output slots
         if (node.outputs && node.outputs.length > 0) {
           let connectedIndex = 0; // Track position for connected slots only
           node.outputs.forEach((output: any, index: number) => {
             // Only draw if connected
             if (!output.links || output.links.length === 0) return;
-            
+
             const slotY = bounds.y + topMargin + (connectedIndex * slotHeight) + (slotHeight / 2);
             const slotX = bounds.x + bounds.width;
             connectedIndex++; // Increment only for connected slots
-            
+
             // Draw slot circle (always green since it's connected)
             ctx.fillStyle = '#10b981';
             ctx.beginPath();
             ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
             ctx.fill();
-            
+
             // Draw slot label (only if enough space)
             if (bounds.width > 100) {
               ctx.fillStyle = '#ffffff';
@@ -1491,7 +1532,7 @@ export function renderNodes(
               ctx.textBaseline = 'middle';
               const labelText = output.name || output.type || '';
               const maxLabelWidth = bounds.width * 0.3;
-              
+
               // Truncate if too long
               let truncatedLabel = labelText;
               if (ctx.measureText(labelText).width > maxLabelWidth) {
@@ -1500,7 +1541,7 @@ export function renderNodes(
                 }
                 truncatedLabel += '...';
               }
-              
+
               ctx.fillText(truncatedLabel, slotX - slotRadius - 4, slotY);
             }
           });
@@ -1509,18 +1550,18 @@ export function renderNodes(
     }
 
     // Note: Progress is now shown as gradient background instead of separate progress bar
-    
+
     // Draw execution state indicator
     if (isExecuting || isError) {
       const indicatorSize = 12;
       const indicatorX = bounds.x + bounds.width - indicatorSize - 4;
       const indicatorY = bounds.y + 4;
-      
+
       ctx.fillStyle = isExecuting ? '#10b981' : '#ef4444';
       ctx.beginPath();
-      ctx.arc(indicatorX + indicatorSize/2, indicatorY + indicatorSize/2, indicatorSize/2, 0, Math.PI * 2);
+      ctx.arc(indicatorX + indicatorSize / 2, indicatorY + indicatorSize / 2, indicatorSize / 2, 0, Math.PI * 2);
       ctx.fill();
-      
+
       // Add icon inside indicator
       ctx.fillStyle = '#ffffff';
       ctx.font = `${indicatorSize - 4}px system-ui, -apple-system, sans-serif`;
@@ -1528,11 +1569,11 @@ export function renderNodes(
       ctx.textBaseline = 'middle';
       ctx.fillText(
         isExecuting ? '▶' : '✕',
-        indicatorX + indicatorSize/2,
-        indicatorY + indicatorSize/2
+        indicatorX + indicatorSize / 2,
+        indicatorY + indicatorSize / 2
       );
     }
-    
+
     // Restore context state (especially important for bypassed nodes with opacity)
     ctx.restore();
 
@@ -1564,17 +1605,17 @@ export function drawGridPattern(
 ): void {
   const gridSize = 20; // Base grid size in pixels
   const dotSize = 1.5; // Size of grid dots
-  
+
   // Calculate grid offset based on viewport position
   const offsetX = viewport.x % (gridSize * viewport.scale);
   const offsetY = viewport.y % (gridSize * viewport.scale);
-  
+
   // Grid color (subtle dots)
   ctx.fillStyle = 'rgba(100, 116, 139, 0.3)'; // Slightly visible dots
-  
+
   // Draw grid dots
   const scaledGridSize = gridSize * viewport.scale;
-  
+
   // Only draw if grid is not too small or too large
   if (scaledGridSize > 5 && scaledGridSize < 100) {
     for (let x = offsetX; x < canvasWidth + scaledGridSize; x += scaledGridSize) {
@@ -1597,37 +1638,37 @@ export function drawRepositioningGrid(
   viewport: ViewportTransform
 ): void {
   const gridSize = 20; // Base grid size in pixels
-  
+
   // Calculate grid offset based on viewport position
   const offsetX = viewport.x % (gridSize * viewport.scale);
   const offsetY = viewport.y % (gridSize * viewport.scale);
-  
+
   // Draw grid lines (more visible than dots)
   ctx.strokeStyle = 'rgba(59, 130, 246, 0.4)'; // Blue grid lines
   ctx.lineWidth = 1;
   ctx.setLineDash([2, 2]); // Dashed lines
-  
+
   const scaledGridSize = gridSize * viewport.scale;
-  
+
   // Only draw if grid is large enough to be visible
   if (scaledGridSize > 8) {
     ctx.beginPath();
-    
+
     // Draw vertical lines
     for (let x = offsetX; x < canvasWidth + scaledGridSize; x += scaledGridSize) {
       ctx.moveTo(x, 0);
       ctx.lineTo(x, canvasHeight);
     }
-    
+
     // Draw horizontal lines
     for (let y = offsetY; y < canvasHeight + scaledGridSize; y += scaledGridSize) {
       ctx.moveTo(0, y);
       ctx.lineTo(canvasWidth, y);
     }
-    
+
     ctx.stroke();
   }
-  
+
   // Reset line dash
   ctx.setLineDash([]);
 }
@@ -1766,7 +1807,7 @@ export function getGripperAtPoint(
   // Check each gripper
   for (const gripper of grippers) {
     if (x >= gripper.x && x <= gripper.x + gripper.width &&
-        y >= gripper.y && y <= gripper.y + gripper.height) {
+      y >= gripper.y && y <= gripper.y + gripper.height) {
       return { position: gripper.position, type: gripper.type };
     }
   }
@@ -1785,7 +1826,7 @@ export function generateWorkflowThumbnail(
 ): string {
   const canvas = document.createElement('canvas');
   const ctx = canvas.getContext('2d');
-  
+
   if (!ctx) {
     throw new Error('Could not get canvas context');
   }
@@ -1809,13 +1850,13 @@ export function generateWorkflowThumbnail(
 
   // Calculate bounds for all elements
   const { nodeBounds, groupBounds } = calculateAllBounds(
-    workflow.nodes, 
+    workflow.nodes,
     workflow.groups,
     config,
     canvasWidth,
     canvasHeight
   );
-  
+
   // Draw groups first (background layer) - no text for thumbnails
   if (groupBounds.length > 0) {
     renderGroups(ctx, groupBounds, config, false);
