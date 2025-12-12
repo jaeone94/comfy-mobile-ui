@@ -77,33 +77,33 @@ import { VIRTUAL_NODES } from '@/shared/constants/virtualNodes';
 const WorkflowEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  
+
   // Canvas refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   // ComfyGraph instance  
   const comfyGraphRef = useRef<any | null>(null);
-  
+
   // Global store (for current workflow tracking)
   const { setWorkflow: setGlobalWorkflow } = useGlobalStore();
-  
+
   // Workflow state
   const [workflow, setWorkflow] = useState<IComfyWorkflow | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   // Canvas state
   const [viewport, setViewport] = useState<ViewportTransform>({ x: 0, y: 0, scale: 1.0 });
   const [selectedNode, setSelectedNode] = useState<IComfyGraphNode | null>(null);
   const [nodeBounds, setNodeBounds] = useState<Map<number, NodeBounds>>(new Map());
   const [groupBounds, setGroupBounds] = useState<GroupBounds[]>([]);
   const [canvasUpdateTrigger, setCanvasUpdateTrigger] = useState(0); // Trigger for canvas-only updates
-  
+
   // Auto-fit tracking
   const [hasAutoFitted, setHasAutoFitted] = useState(false);
-  
+
   // Metadata
   const [nodeMetadata, setNodeMetadata] = useState<Map<number, INodeWithMetadata>>(new Map());
   const [metadataLoading, setMetadataLoading] = useState<boolean>(false);
@@ -115,7 +115,7 @@ const WorkflowEditor: React.FC = () => {
   const [installablePackageCount, setInstallablePackageCount] = useState<number>(0);
   const [missingModels, setMissingModels] = useState<ReturnType<typeof detectMissingModels>>([]);
   const [isMissingModelModalOpen, setIsMissingModelModalOpen] = useState(false);
-  
+
   // UI state
   const [isNodePanelVisible, setIsNodePanelVisible] = useState<boolean>(false);
   const [isGroupModeModalOpen, setIsGroupModeModalOpen] = useState<boolean>(false);
@@ -125,15 +125,15 @@ const WorkflowEditor: React.FC = () => {
   const [saveSucceeded, setSaveSucceeded] = useState(false);
   const [isJsonViewerOpen, setIsJsonViewerOpen] = useState<boolean>(false);
   const [jsonViewerData, setJsonViewerData] = useState<{ title: string; data: any } | null>(null);
-  
+
   // Queue refresh trigger
-  const [queueRefreshTrigger, setQueueRefreshTrigger] = useState<number>(0);  
+  const [queueRefreshTrigger, setQueueRefreshTrigger] = useState<number>(0);
   const [uploadState, setUploadState] = useState<any>({ isUploading: false });
   const [renderTrigger, setRenderTrigger] = useState(0);
-  
+
   // Connection state
   const { url: serverUrl, isConnected } = useConnectionStore();
-    
+
   // Get groups with mapped nodes
   const workflowGroups = useMemo((): Group[] => {
     if (!workflow?.graph?._groups || !workflow?.graph?._nodes) {
@@ -155,21 +155,21 @@ const WorkflowEditor: React.FC = () => {
   }, [workflow?.graph?._nodes]);
 
   // #region Hooks
-  
+
   // Workflow storage hook
   const workflowStorage = useWorkflowStorage();
-  
+
   // Current prompt tracking
   const currentPromptIdRef = useRef<string | null>(null);
-  
+
   // Widget value editor hook
   const widgetEditor = useWidgetValueEditor();
 
   // Handle create connection - add new link between nodes using ConnectionService
   const handleCreateConnection = useCallback(async (
-    sourceNodeId: number, 
-    targetNodeId: number, 
-    sourceSlot: number, 
+    sourceNodeId: number,
+    targetNodeId: number,
+    sourceSlot: number,
     targetSlot: number
   ) => {
     if (!id || !workflow) {
@@ -180,7 +180,7 @@ const WorkflowEditor: React.FC = () => {
       // Get current workflow_json and graph
       const currentWorkflowJson = workflow.workflow_json;
       const currentGraph = workflow.graph;
-      
+
       if (!currentWorkflowJson || !currentGraph) {
         return;
       }
@@ -217,9 +217,9 @@ const WorkflowEditor: React.FC = () => {
   }, [id, workflow]);
 
   // Connection mode hook
-  const connectionMode = useConnectionMode({ 
+  const connectionMode = useConnectionMode({
     workflow,
-    onCreateConnection: handleCreateConnection 
+    onCreateConnection: handleCreateConnection
   });
 
   // Canvas interaction hook
@@ -315,39 +315,39 @@ const WorkflowEditor: React.FC = () => {
   // Load workflow from storage
   const loadWorkflow = async () => {
     if (!id) return;
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       // Get workflow from storage
       const storedWorkflow = await getWorkflow(id);
       if (!storedWorkflow) {
         throw new Error('Workflow not found');
       }
-      
+
       const workflowData = (storedWorkflow as any).workflow_json;
-      
+
       if (!workflowData) {
         throw new Error('No workflow_json found in stored workflow');
-      }            
+      }
 
       // Fetch object info for accurate widget initialization
       const fetchedObjectInfo = await ComfyNodeMetadataService.fetchObjectInfo();
       setObjectInfo(fetchedObjectInfo);
       const graph = await WorkflowGraphService.createGraphFromWorkflow(workflowData, fetchedObjectInfo);
 
-      
+
       if (!graph) {
         throw new Error('Failed to load workflow into ComfyGraph');
       }
-      
+
       // ?뵩 GraphChangeLogger: Wrap all nodes for comprehensive value change tracking
       wrapGraphNodesForLogging(graph);
-      
+
       // Store ComfyGraph instance for serialize() method usage
       comfyGraphRef.current = graph;
-      
+
       // Use nodes directly from ComfyGraphProcessor - no conversion
       const nodes = graph._nodes || [];
 
@@ -400,7 +400,7 @@ const WorkflowEditor: React.FC = () => {
       }
       // Mock uses groups, real LiteGraph might use _groups
       const groups = (graph as any).groups || graph._groups || [];
-      
+
       // Convert LLink objects to array format for canvas renderer
       const links: any[] = [];
       if (graph._links) {
@@ -411,13 +411,13 @@ const WorkflowEditor: React.FC = () => {
             link.id,
             link.origin_id,
             link.origin_slot,
-            link.target_id, 
+            link.target_id,
             link.target_slot,
             link.type || null
           ] as any);
         }
       }
-            
+
       // Use ComfyGraphNode directly - canvas renderer supports pos: [x, y], size: [w, h] format
       const workflow: IComfyWorkflow = {
         ...storedWorkflow,
@@ -463,60 +463,60 @@ const WorkflowEditor: React.FC = () => {
         } as any,
         nodeCount: nodes.length
       };
-      
+
       setWorkflow(workflow);
-      
+
       // Update global store with current workflow for message filtering
       setGlobalWorkflow(workflow);
-      
+
       // Create NodeBounds from ComfyGraphNode structure
       const calculatedNodeBounds = new Map<number, NodeBounds>();
-      
+
       nodes.forEach((node: any) => {
         // ComfyGraphNode: pos: [x, y], size: [w, h]
         const x = node.pos?.[0] || 0;
         const y = node.pos?.[1] || 0;
         let width = node.size?.[0] || 200;
         let height = node.size?.[1] || 100;
-        
+
         // Check if node is collapsed and adjust size
         const isCollapsed = node.flags?.collapsed === true;
         if (isCollapsed) {
           width = 80;  // Fixed smaller width for collapsed nodes
           height = 30; // Fixed smaller height for collapsed nodes
         }
-        
+
         calculatedNodeBounds.set(node.id, {
           x,
-          y, 
+          y,
           width,
           height,
-          node: node as any 
+          node: node as any
         });
       });
-      
+
       // Create group bounds using existing convertLiteGraphGroups
       const calculatedGroupBounds = convertLiteGraphGroups(groups);
-      
+
       setNodeBounds(calculatedNodeBounds);
       setGroupBounds(calculatedGroupBounds);
-      
+
       // Load metadata if connected
       if (isConnected) {
         loadNodeMetadata(nodes);
       }
-      
+
       // Check for active execution and emit synthetic event to trigger component activation
       try {
         const isCurrentlyExecuting = globalWebSocketService.getIsProcessing();
         const currentPromptId = globalWebSocketService.getCurrentPromptId();
-        
+
         if (isCurrentlyExecuting && currentPromptId) {
           // Check if the current prompt belongs to this workflow using PromptTracker
           const runningPromptForThisWorkflow = PromptTracker.getRunningPromptForWorkflow(id);
-          
+
           if (runningPromptForThisWorkflow && runningPromptForThisWorkflow.promptId === currentPromptId) {
-            
+
             // Add small delay to ensure all components are mounted and their event listeners are set up
             setTimeout(() => {
               // Emit synthetic execution_started event to activate components
@@ -546,17 +546,17 @@ const WorkflowEditor: React.FC = () => {
   // Load node metadata
   const loadNodeMetadata = async (nodes: IComfyGraphNode[]) => {
     if (!nodes || nodes.length === 0) return;
-    
+
     setMetadataLoading(true);
     setMetadataError(null);
-    
+
     try {
       const metadataMap = new Map<number, INodeWithMetadata>();
-      
+
       // Fetch object info once for all nodes
       const fetchedObjectInfo = await ComfyNodeMetadataService.fetchObjectInfo();
       setObjectInfo(fetchedObjectInfo);
-      
+
       for (const node of nodes) {
         const metadata = fetchedObjectInfo[node.type] || null;
         if (metadata) {
@@ -571,13 +571,13 @@ const WorkflowEditor: React.FC = () => {
             parameters: [],
             outputs: []
           };
-          
+
           // Extract widgets from node if they exist (check both widgets and _widgets)
           const allWidgets = [
             ...(((node as any).widgets) || []),
             ...(((node as any)._widgets) || [])
           ];
-          
+
           if (allWidgets.length > 0) {
             nodeWithMetadata.widgetParameters = allWidgets.map((widget: any) => ({
               name: widget.name,
@@ -585,13 +585,13 @@ const WorkflowEditor: React.FC = () => {
               config: widget.options || {},
               required: false,
               value: widget.value
-            }));                        
+            }));
           }
-          
+
           metadataMap.set(Number(node.id), nodeWithMetadata);
         }
-      }      
-      
+      }
+
       setNodeMetadata(metadataMap);
     } catch (error) {
       console.error('Failed to load node metadata:', error);
@@ -600,31 +600,31 @@ const WorkflowEditor: React.FC = () => {
       setMetadataLoading(false);
     }
   };
-  
+
   // Apply changes to workflow
   const handleSaveChanges = useCallback(async () => {
     if (!workflow) {
       console.error('No workflow to save');
       return;
     }
-    
+
     setIsSaving(true);
     setSaveSucceeded(false);
-    
+
     try {
-      
+
       // Use ComfyGraph instance (serialize() method available)
       const currentGraph = comfyGraphRef.current;
       if (!currentGraph) {
         throw new Error('No ComfyGraph instance available');
       }
-      
+
       // Apply changes to Graph
       const modifiedValues = widgetEditor.modifiedWidgetValues;
-      
+
       // createModifiedGraph returns a copy, so we need to apply changes directly to the original Graph
       if (modifiedValues.size > 0) {
-        
+
         modifiedValues.forEach((nodeModifications, nodeId) => {
           const graphNode = currentGraph._nodes?.find((n: any) => Number(n.id) === nodeId);
           if (graphNode) {
@@ -636,7 +636,7 @@ const WorkflowEditor: React.FC = () => {
                 graphNode.mode = newValue;
                 return; // Skip widget processing for node mode
               }
-              
+
               console.log(`Node ${nodeId} current structure:`, {
                 hasWidgets: !!graphNode.widgets,
                 widgetNames: graphNode.widgets?.map((w: any) => w.name),
@@ -645,9 +645,9 @@ const WorkflowEditor: React.FC = () => {
                 widgets_values_type: Array.isArray(graphNode.widgets_values) ? 'array' : typeof graphNode.widgets_values,
                 widgets_values_content: graphNode.widgets_values
               });
-              
+
               let modified = false;
-              
+
               // Method 1: Update widgets array (for runtime display)
               if (graphNode.widgets) {
                 const widget = graphNode.widgets.find((w: any) => w.name === paramName);
@@ -657,7 +657,7 @@ const WorkflowEditor: React.FC = () => {
                   modified = true;
                 }
               }
-              
+
               // Method 2: Update _widgets array (alternative location)
               if (graphNode._widgets) {
                 const _widget = graphNode._widgets.find((w: any) => w.name === paramName);
@@ -667,7 +667,7 @@ const WorkflowEditor: React.FC = () => {
                   modified = true;
                 }
               }
-              
+
               // Method 3: Update widgets_values object (discovered structure)
               if (graphNode.widgets_values && typeof graphNode.widgets_values === 'object' && !Array.isArray(graphNode.widgets_values)) {
                 if (paramName in graphNode.widgets_values) {
@@ -676,7 +676,7 @@ const WorkflowEditor: React.FC = () => {
                   modified = true;
                 }
               }
-              
+
               // Method 4: Update widgets_values array (traditional structure)
               if (graphNode.widgets_values && Array.isArray(graphNode.widgets_values)) {
                 const widgetIndex = graphNode.widgets?.findIndex((w: any) => w.name === paramName);
@@ -686,7 +686,7 @@ const WorkflowEditor: React.FC = () => {
                   modified = true;
                 }
               }
-              
+
               if (!modified) {
                 console.warn(`Could not update widget "${paramName}" in any location for node ${nodeId}`);
               }
@@ -695,22 +695,22 @@ const WorkflowEditor: React.FC = () => {
             console.warn(`Graph node ${nodeId} not found`);
           }
         });
-        
+
       }
-      
+
       // serialize
       const serializedData = currentGraph.serialize();
 
       // Update workflow_json
       const updatedWorkflowJson = serializedData;
-      
+
       // Update entire workflow object
       const updatedWorkflow: IComfyWorkflow = {
         ...workflow,
         workflow_json: updatedWorkflowJson,
         modifiedAt: new Date()
       };
-      
+
       // Save to IndexedDB
       try {
         await updateWorkflow(updatedWorkflow);
@@ -719,10 +719,10 @@ const WorkflowEditor: React.FC = () => {
         setIsSaving(false);
         return;
       }
-      
+
       // Update local workflow state
       setWorkflow(updatedWorkflow);
-      
+
       // Clear modifications
       widgetEditor.clearModifications();
 
@@ -742,7 +742,7 @@ const WorkflowEditor: React.FC = () => {
       setTimeout(() => {
         setSaveSucceeded(false);
       }, 1500); // Reset 0.5s after WorkflowHeader hides the checkmark
-      
+
     } catch (error) {
       console.error('Failed to save workflow:', error);
       setIsSaving(false);
@@ -757,15 +757,15 @@ const WorkflowEditor: React.FC = () => {
       toast.error('Cannot execute: No workflow loaded or not connected');
       return;
     }
-    
+
     try {
       setIsExecuting(true);
-      
-      
+
+
       // Step 1: Get connection info and modified values
       const { url: serverUrl } = useConnectionStore.getState();
       const modifiedValues = widgetEditor.modifiedWidgetValues;
-      
+
       try {
         const seedChanges = await autoChangeSeed(workflow, nodeMetadata, {
           getWidgetValue: (nodeId: number, paramName: string, defaultValue: any) => {
@@ -776,11 +776,11 @@ const WorkflowEditor: React.FC = () => {
             widgetEditor.setWidgetValue(nodeId, paramName, value);
           }
         });
-        
+
         if (seedChanges.length > 0) {
           seedChanges.forEach(change => {
           });
-          
+
           // Verify changes are in widget editor state
         } else {
         }
@@ -788,32 +788,32 @@ const WorkflowEditor: React.FC = () => {
         console.error('Error during seed processing:', error);
         // Continue execution even if seed processing fails
       }
-      
+
       // Step 3: Create modified graph with current changes (including new seed values)
       const originalGraph = comfyGraphRef.current;
       const tempGraph = createModifiedGraph(originalGraph, widgetEditor.modifiedWidgetValues);
-      
+
       // Step 4: Convert modified graph to API format using our completed function      
       const { apiWorkflow, nodeCount } = convertGraphToAPI(tempGraph);
-     
+
       // Step 5: Submit to server with workflow tracking information
       const promptId = await ComfyUIService.executeWorkflow(apiWorkflow, {
         workflowId: id, // Use the workflow ID from URL params
         workflowName: workflow?.name || 'Unnamed Workflow'
       });
-      
-      currentPromptIdRef.current = promptId;    
+
+      currentPromptIdRef.current = promptId;
     } catch (error) {
       console.error('Workflow execution failed:', error);
       toast.error('Failed to submit workflow for execution');
     } finally {
       setIsExecuting(false);
     }
-  };  
-  
+  };
+
   // Create modified graph with current changes (including new seed values)
   const createModifiedGraph = useCallback((originalGraph: any, modifications: Map<number, Record<string, any>>) => {
-    
+
     // 1. Graph runtime copy (object structure preserved without serialization)
     const modifiedGraph = {
       _nodes: originalGraph._nodes.map((node: any) => ({
@@ -822,25 +822,25 @@ const WorkflowEditor: React.FC = () => {
         widgets: node.widgets ? [...node.widgets] : undefined,
         _widgets: node._widgets ? [...node._widgets] : undefined,
         // widgets_values array copy
-        widgets_values: Array.isArray(node.widgets_values) 
-          ? [...node.widgets_values] 
-          : node.widgets_values ? {...node.widgets_values} : undefined
+        widgets_values: Array.isArray(node.widgets_values)
+          ? [...node.widgets_values]
+          : node.widgets_values ? { ...node.widgets_values } : undefined
       })),
       _links: { ...originalGraph._links },
       _groups: originalGraph._groups ? [...originalGraph._groups] : [],
       last_node_id: originalGraph.last_node_id || 0,
       last_link_id: originalGraph.last_link_id || 0
     };
-    
+
     // 2. Apply modifications
     if (modifications.size > 0) {
-      
+
       modifications.forEach((nodeModifications, nodeId) => {
         const graphNode = modifiedGraph._nodes?.find((n: any) => Number(n.id) === nodeId);
         if (graphNode) {
-          Object.entries(nodeModifications).forEach(([paramName, newValue]) => {            
+          Object.entries(nodeModifications).forEach(([paramName, newValue]) => {
             let modified = false;
-            
+
             // Method 1: Update widgets array (for runtime display)
             if (graphNode.widgets) {
               const widget = graphNode.widgets.find((w: any) => w.name === paramName);
@@ -849,7 +849,7 @@ const WorkflowEditor: React.FC = () => {
                 modified = true;
               }
             }
-            
+
             // Method 2: Update _widgets array (alternative location)
             if (graphNode._widgets) {
               const _widget = graphNode._widgets.find((w: any) => w.name === paramName);
@@ -858,7 +858,7 @@ const WorkflowEditor: React.FC = () => {
                 modified = true;
               }
             }
-            
+
             // Method 3: Update widgets_values object (discovered structure)
             if (graphNode.widgets_values && typeof graphNode.widgets_values === 'object' && !Array.isArray(graphNode.widgets_values)) {
               if (paramName in graphNode.widgets_values) {
@@ -866,7 +866,7 @@ const WorkflowEditor: React.FC = () => {
                 modified = true;
               }
             }
-            
+
             // Method 4: Update widgets_values array (traditional structure)
             if (graphNode.widgets_values && Array.isArray(graphNode.widgets_values)) {
               const widgetIndex = graphNode.widgets?.findIndex((w: any) => w.name === paramName);
@@ -875,7 +875,7 @@ const WorkflowEditor: React.FC = () => {
                 modified = true;
               }
             }
-            
+
             if (!modified) {
               console.warn(`Could not update widget "${paramName}" in any location for node ${nodeId}`);
             }
@@ -884,18 +884,18 @@ const WorkflowEditor: React.FC = () => {
           console.warn(`Graph node ${nodeId} not found`);
         }
       });
-      
+
     }
-    
+
     return modifiedGraph;
   }, []);
 
   // Handle interrupt
   const handleInterrupt = useCallback(async () => {
-    
+
     if (!currentPromptIdRef.current) {
     }
-    
+
     try {
       await ComfyUIService.interruptExecution();
     } catch (error) {
@@ -922,7 +922,7 @@ const WorkflowEditor: React.FC = () => {
   const handleShowWorkflowSnapshots = useCallback(() => {
     setIsWorkflowSnapshotsOpen(true);
   }, []);
-  
+
   // Handle JSON data viewers
   const handleShowWorkflowJson = useCallback(() => {
     if (workflow?.workflow_json) {
@@ -953,11 +953,11 @@ const WorkflowEditor: React.FC = () => {
     if (!comfyGraphRef.current) {
       throw new Error('No graph available to save');
     }
-    
+
     try {
       // Serialize current graph to IComfyJson
-      const serializedWorkflow = serializeGraph(comfyGraphRef.current);            
-      
+      const serializedWorkflow = serializeGraph(comfyGraphRef.current);
+
       return serializedWorkflow;
     } catch (error) {
       console.error('Failed to serialize workflow for snapshot:', error);
@@ -974,38 +974,38 @@ const WorkflowEditor: React.FC = () => {
 
     try {
       setIsLoading(true);
-      
+
       // Count nodes for user feedback
       const nodeCount = Object.keys(snapshotData.nodes || {}).length;
-      
+
       // Update the workflow's workflow_json with snapshot data
       const updatedWorkflow = {
         ...workflow,
         workflow_json: snapshotData,
         modifiedAt: new Date()
       };
-      
+
       // Save updated workflow to IndexedDB
       await updateWorkflow(updatedWorkflow);
-      
+
       // Clear any existing modifications before reload
       widgetEditor.clearModifications();
-      
+
       // Update local workflow state
       setWorkflow(updatedWorkflow);
-      
+
       // Reload the workflow using the same logic as initial app entry
       await loadWorkflow();
-      
+
       toast.success(`Snapshot loaded: ${nodeCount} nodes updated`);
-      
+
     } catch (error) {
       console.error('Failed to load snapshot:', error);
       toast.error('Failed to load snapshot');
     } finally {
       setIsLoading(false);
     }
-  }, [id, workflow, widgetEditor, loadWorkflow]);  
+  }, [id, workflow, widgetEditor, loadWorkflow]);
 
   // Auto-fit on initial load only (defined after canvasInteraction)
   useEffect(() => {
@@ -1031,12 +1031,12 @@ const WorkflowEditor: React.FC = () => {
 
     // Use shared navigation function from useCanvasInteraction
     const success = canvasInteraction.handleNavigateToNode(numericNodeId);
-    
+
     if (!success) {
       toast.error(`Node ${numericNodeId} not found in the workflow.`);
       return;
     }
-    
+
     // Also select the node for better visual feedback
     const targetNode = comfyGraphRef.current.getNodeById(numericNodeId);
     if (targetNode) {
@@ -1054,53 +1054,53 @@ const WorkflowEditor: React.FC = () => {
       return;
     }
 
-    
+
     try {
       // Update the workflow metadata
       const updatedWorkflowJson = setControlAfterGenerate(workflow.workflow_json, nodeId, value);
-      
+
       // Also update the ComfyGraph instance's metadata for proper serialization
       (comfyGraphRef.current as any)._mobileUIMetadata = updatedWorkflowJson.mobile_ui_metadata;
-      
+
       // Update the workflow state
       const updatedWorkflow: IComfyWorkflow = {
         ...workflow,
         workflow_json: updatedWorkflowJson
       };
-      
+
       setWorkflow(updatedWorkflow);
       setGlobalWorkflow(updatedWorkflow);
-      
+
       // Also save to storage immediately to persist the change
       try {
         await updateWorkflow(updatedWorkflow);
       } catch (error) {
         console.error('Failed to save workflow to storage:', error);
       }
-      
+
     } catch (error) {
       console.error('Failed to update control_after_generate metadata:', error);
     }
   }, [workflow]);
-  
+
   // Mobile optimizations
   useMobileOptimizations(isNodePanelVisible, selectedNode);
-  
+
   // File operations
-  const fileOperations = useFileOperations({ 
+  const fileOperations = useFileOperations({
     onSetWidgetValue: widgetEditor.setWidgetValue
   });
-  
+
   // Convert LiteGraph groups to group bounds (only if needed for compatibility)
   const convertLiteGraphGroups = useCallback((groups: IComfyGraphGroup[]): GroupBounds[] => {
     if (!groups || !Array.isArray(groups)) return [];
-    
+
     return groups.map((group: IComfyGraphGroup) => {
       const bounding = group.bounding;
       if (!bounding) return null;
-      
-      const [x, y, width, height] = bounding;      
-      
+
+      const [x, y, width, height] = bounding;
+
       return {
         x: x,
         y: y,
@@ -1116,13 +1116,13 @@ const WorkflowEditor: React.FC = () => {
 
   // #region Node Actions
   // Handle add node - add new node to workflow_json and reload
-  const handleAddNode = useCallback(async (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }) => {
+  const handleAddNode = useCallback(async (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }, initialValues?: Record<string, any>, size?: number[]) => {
     if (!id || !workflow) {
       toast.error('Cannot add node: No workflow ID or workflow data');
       return;
     }
 
-    try {      
+    try {
       // Get current workflow_json
       const currentWorkflowJson = workflow.workflow_json;
       if (!currentWorkflowJson) {
@@ -1135,7 +1135,9 @@ const WorkflowEditor: React.FC = () => {
         currentWorkflowJson,
         nodeType,
         [position.worldX, position.worldY],
-        nodeMetadata
+        nodeMetadata,
+        initialValues,
+        size
       );
 
       // Update the workflow with new workflow_json
@@ -1145,18 +1147,18 @@ const WorkflowEditor: React.FC = () => {
         nodeCount: updatedWorkflowJson.nodes?.length || 0,
         modifiedAt: new Date()
       };
-      
+
       // Save updated workflow to IndexedDB
       await updateWorkflow(updatedWorkflow);
-      
+
       // Update local workflow state
       setWorkflow(updatedWorkflow);
-      
+
       // Reload the workflow using the same logic as initial app entry
       await loadWorkflow();
-      
+
       toast.success(`Node added: ${nodeMetadata.display_name || nodeType}`);
-      
+
     } catch (error) {
       console.error('Failed to add node:', error);
       toast.error('Failed to add node');
@@ -1172,26 +1174,26 @@ const WorkflowEditor: React.FC = () => {
 
   // Handle manual seed randomization
   const handleRandomizeSeeds = useCallback(async (isForceRandomize: boolean = true) => {
-    
+
     if (!workflow || !nodeMetadata) {
       console.warn('RANDOMIZE: Missing workflow or metadata');
       toast.error('Cannot randomize seeds: workflow not ready');
       return;
     }
-    
+
     try {
       // Use autoChangeSeed function with force randomization
       const seedChanges = await autoChangeSeed(workflow, nodeMetadata, {
         getWidgetValue: widgetEditor.getWidgetValue,
         setWidgetValue: widgetEditor.setWidgetValue
       }, isForceRandomize);
-      
+
       if (seedChanges.length > 0) {
         toast.success(`Randomized ${seedChanges.length} seed values`, {
           description: `Updated seeds in ${new Set(seedChanges.map(c => c.nodeId)).size} nodes`,
           duration: 3000,
         });
-        
+
         // Force re-render to show updated values
         forceRender();
       } else {
@@ -1207,7 +1209,7 @@ const WorkflowEditor: React.FC = () => {
         duration: 5000,
       });
     }
-  }, [workflow, nodeMetadata, widgetEditor.getWidgetValue, widgetEditor.setWidgetValue, forceRender]);  
+  }, [workflow, nodeMetadata, widgetEditor.getWidgetValue, widgetEditor.setWidgetValue, forceRender]);
 
 
   // Handle group mode change
@@ -1223,11 +1225,11 @@ const WorkflowEditor: React.FC = () => {
     const modeNames: Record<NodeMode, string> = {
       [NodeMode.ALWAYS]: 'Always',
       [NodeMode.ON_EVENT]: 'On Event',
-      [NodeMode.NEVER]: 'Mute', 
+      [NodeMode.NEVER]: 'Mute',
       [NodeMode.ON_TRIGGER]: 'On Trigger',
       [NodeMode.BYPASS]: 'Bypass'
     };
-    
+
     toast.success(`Applied ${modeNames[mode]} mode to ${group.nodeIds.length} nodes in "${group.title}"`);
     forceRender();
   }, [workflowGroups, widgetEditor, forceRender]);
@@ -1252,7 +1254,7 @@ const WorkflowEditor: React.FC = () => {
           nodeId,
           newBgcolor: bgcolor === '' ? 'cleared' : bgcolor
         });
-        
+
         // Update selectedNode state if it's the same node for UI refresh
         if (selectedNode && selectedNode.id === nodeId) {
           // Update the bgcolor property directly on the original instance
@@ -1262,7 +1264,7 @@ const WorkflowEditor: React.FC = () => {
           } else {
             (selectedNode as any).bgcolor = bgcolor;
           }
-          
+
           // The color change will be reflected through the ComfyGraph rendering
           // No need to trigger React re-render since NodeInspector should remain stable
         }
@@ -1270,7 +1272,7 @@ const WorkflowEditor: React.FC = () => {
 
       // 2. Update workflow_json for persistence
       const updatedWorkflowJson = JSON.parse(JSON.stringify(workflow.workflow_json));
-      
+
       // Update node bgcolor in workflow_json nodes array
       if (updatedWorkflowJson.nodes && Array.isArray(updatedWorkflowJson.nodes)) {
         const nodeIndex = updatedWorkflowJson.nodes.findIndex((node: any) => node.id === nodeId);
@@ -1308,11 +1310,11 @@ const WorkflowEditor: React.FC = () => {
 
       // Save updated workflow to IndexedDB
       await updateWorkflow(updatedWorkflow);
-      
+
       // Update local workflow state
       setWorkflow(updatedWorkflow);
-      
-      
+
+
     } catch (error) {
       console.error('Failed to update node color:', error);
     }
@@ -1332,16 +1334,16 @@ const WorkflowEditor: React.FC = () => {
         comfyGraphRef.current,
         nodeId
       );
-      
+
       // 2. Update the refs immediately for instant visual feedback
       comfyGraphRef.current = updatedComfyGraph;
-      
+
       // 3. Clear selected node if it's the deleted one
       if (selectedNode && (typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id) === nodeId) {
         setSelectedNode(null);
         setIsNodePanelVisible(false);
       }
-      
+
       // 4. Update and save the workflow
       const updatedWorkflow = {
         ...workflow,
@@ -1353,12 +1355,12 @@ const WorkflowEditor: React.FC = () => {
 
       // Update local workflow state
       setWorkflow(updatedWorkflow);
-      
+
       // Reload the workflow using the same logic as initial app entry
       await loadWorkflow();
-      
+
       toast.success(`Node ${nodeId} deleted successfully`);
-      
+
     } catch (error) {
       console.error('Failed to delete node:', error);
       toast.error('Failed to delete node');
@@ -2137,14 +2139,14 @@ const WorkflowEditor: React.FC = () => {
   const getCurrentNodeMode = useCallback((nodeId: number): NodeMode | null => {
     const node = workflow?.graph?._nodes?.find(n => n.id === nodeId);
     if (!node) return null;
-    
+
     // Get mode from widgetEditor, with original node mode as fallback
     const originalMode = node.mode !== undefined ? node.mode : NodeMode.ALWAYS;
     return widgetEditor.getNodeMode(nodeId, originalMode);
   }, [workflow?.graph?._nodes, widgetEditor]);
 
   // #endregion Node Actions
-  
+
   // #region UI
   // Render loading state
   if (isLoading) {
@@ -2157,7 +2159,7 @@ const WorkflowEditor: React.FC = () => {
       </div>
     );
   }
-  
+
   // Render error state
   if (error && !workflow) {
     return (
@@ -2180,7 +2182,7 @@ const WorkflowEditor: React.FC = () => {
       </div>
     );
   }
-  
+
   // Main render
   return (
     <div className="pwa-container relative w-full via-blue-50/30 to-cyan-50/30">
@@ -2213,7 +2215,7 @@ const WorkflowEditor: React.FC = () => {
         }}
         onSaveChanges={handleSaveChanges}
       />
-      
+
       {/* Canvas */}
       <WorkflowCanvas
         containerRef={containerRef}
@@ -2228,7 +2230,7 @@ const WorkflowEditor: React.FC = () => {
         onTouchMove={canvasInteraction.handleTouchMove}
         onTouchEnd={canvasInteraction.handleTouchEnd}
       />
-      
+
       {/* Floating Control Panel - Hidden during repositioning and connection mode */}
       {!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && (
         <QuickActionPanel
@@ -2239,7 +2241,7 @@ const WorkflowEditor: React.FC = () => {
           refreshQueueTrigger={queueRefreshTrigger}
         />
       )}
-      
+
       {/* Repositioning Action Bar (Bottom Left) */}
       <RepositionActionBar
         isActive={canvasInteraction.repositionMode.isActive}
@@ -2247,9 +2249,9 @@ const WorkflowEditor: React.FC = () => {
         onToggleGridSnap={canvasInteraction.toggleGridSnap}
         onCancel={canvasInteraction.cancelReposition}
         onApply={async () => {
-          const changes = canvasInteraction.applyReposition();                    
+          const changes = canvasInteraction.applyReposition();
           if (changes) { // Temporarily remove length check to debug
-            try {                            
+            try {
               // Get current workflow_json
               const currentWorkflowJson = workflow?.workflow_json;
               if (!currentWorkflowJson) {
@@ -2258,7 +2260,7 @@ const WorkflowEditor: React.FC = () => {
 
               // Create a deep copy of workflow_json to avoid mutation
               const updatedWorkflowJson = JSON.parse(JSON.stringify(currentWorkflowJson));
-              
+
               // Update node positions directly in workflow_json nodes array
               if (changes.nodeChanges && changes.nodeChanges.length > 0) {
                 if (updatedWorkflowJson.nodes && Array.isArray(updatedWorkflowJson.nodes)) {
@@ -2271,7 +2273,7 @@ const WorkflowEditor: React.FC = () => {
                       console.warn(`Node ${change.nodeId} not found in workflow_json.nodes array`);
                     }
                   });
-                } 
+                }
               }
 
               // Update group positions in workflow_json groups array
@@ -2412,25 +2414,25 @@ const WorkflowEditor: React.FC = () => {
                 workflow_json: updatedWorkflowJson,
                 modifiedAt: new Date()
               };
-              
+
               // Save updated workflow to IndexedDB
               await updateWorkflow(updatedWorkflow);
-              
+
               // Update local workflow state
-              setWorkflow(updatedWorkflow);              
-              
+              setWorkflow(updatedWorkflow);
+
               const totalChanges = (changes.nodeChanges?.length || 0) + (changes.groupChanges?.length || 0) + (changes.resizeChanges?.length || 0);
               console.log(`Repositioning applied successfully: ${changes.nodeChanges?.length || 0} nodes, ${changes.groupChanges?.length || 0} groups, and ${changes.resizeChanges?.length || 0} resize changes updated (${totalChanges} total)`);
 
               await loadWorkflow();
-              
+
             } catch (error) {
               console.error('Failed to apply repositioning:', error);
             }
           }
         }}
       />
-      
+
       {/* Connection Bar (Bottom) */}
       <ConnectionBar
         isVisible={connectionMode.connectionMode.isActive}
@@ -2441,7 +2443,7 @@ const WorkflowEditor: React.FC = () => {
         onClearTarget={connectionMode.clearTargetNode}
         onProceed={connectionMode.showConnectionModal}
       />
-      
+
       {/* Connection Modal */}
       <ConnectionModal
         isVisible={connectionMode.connectionMode.showModal}
@@ -2450,7 +2452,7 @@ const WorkflowEditor: React.FC = () => {
         onClose={connectionMode.clearNodesAndCloseModal}
         onCreateConnection={connectionMode.handleCreateConnection}
       />
-      
+
       {/* Workflow Controls Panel (Right Top) - Hidden during repositioning and connection mode */}
       {!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && (
         <FloatingControlsPanel
@@ -2492,7 +2494,7 @@ const WorkflowEditor: React.FC = () => {
         />
       )}
 
-      
+
       {/* Selected Node Panel */}
       {selectedNode && (
         <NodeInspector
@@ -2603,8 +2605,8 @@ const WorkflowEditor: React.FC = () => {
         getCurrentNodeMode={getCurrentNodeMode}
         title="Fast Group Mode Control"
       />
-      
-      
+
+
       {/* File Preview Modal */}
       <FilePreviewModal
         isOpen={fileOperations.previewModal.isOpen}
@@ -2633,7 +2635,7 @@ const WorkflowEditor: React.FC = () => {
         position={canvasInteraction.nodeAddPosition}
         onNodeAdd={handleAddNode}
       />
-      
+
       {/* Hidden File Input for Upload */}
       <input
         ref={fileInputRef}

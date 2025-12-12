@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Slider } from '@/components/ui/slider';
 import { Switch } from '@/components/ui/switch';
-import { Trash2, RefreshCw, Edit3, Check, X, ChevronLeft, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Settings } from 'lucide-react';
+import { Trash2, RefreshCw, Edit3, Check, X, ChevronLeft, ChevronRight, ArrowDownToLine, ArrowUpFromLine, Settings, Copy } from 'lucide-react';
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog';
 import { INodeWithMetadata } from '@/shared/types/comfy/IComfyObjectInfo';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
@@ -14,6 +14,8 @@ import { NodeSettingsEditor } from '@/components/canvas/NodeSettingsEditor';
 import { GroupInspector } from '@/components/canvas/GroupInspector';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
+import { NodeClipboardService } from '@/services/NodeClipboardService';
+import { toast } from 'sonner';
 
 interface NodeBounds {
   x: number;
@@ -152,7 +154,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
     return currentState.isExecuting;
   });
   const [hasInitialHeightSet, setHasInitialHeightSet] = useState(false);
-  
+
   // Get current node bgcolor from selectedNode
   const currentBgColor = selectedNode.bgcolor || undefined;
 
@@ -231,6 +233,47 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
     }
   };
 
+  const handleCopyNode = () => {
+    try {
+      // Collect current widget values
+      const currentWidgets: Record<string, any> = {};
+
+      // Get widgets from node structure
+      const widgets = (selectedNode as any).widgets || [];
+      const _widgets = (selectedNode as any)._widgets || [];
+      const allWidgets = [...widgets, ..._widgets];
+
+      allWidgets.forEach((w: any) => {
+        if (w.name) {
+          // Use getWidgetValue to account for any modified values not yet saved to graph
+          const val = getWidgetValue(nodeId, w.name, w.value);
+          currentWidgets[w.name] = val;
+        }
+      });
+
+      const success = NodeClipboardService.saveNode({
+        originalNodeId: nodeId,
+        type: selectedNode.type,
+        title: metadata?.displayName || selectedNode.title || selectedNode.type,
+        widgets: currentWidgets,
+        color: selectedNode.bgcolor,
+        size: selectedNode.size ? Array.from(selectedNode.size) : undefined
+      });
+
+      if (success) {
+        toast.success("Node copied to clipboard", {
+          description: "You can paste it from the Add Node menu",
+          duration: 2000
+        });
+      } else {
+        toast.error("Failed to copy node");
+      }
+    } catch (error) {
+      console.error("Copy failed:", error);
+      toast.error("An error occurred while copying");
+    }
+  };
+
   // Group node detection (WorkflowNode type's groupInfo property check)
   const isGroupNode = selectedNode.type === 'GROUP_NODE' && 'groupInfo' in selectedNode && selectedNode.groupInfo;
 
@@ -254,11 +297,11 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
   // Create color filter based on node bgcolor
   const getColorFilter = (bgcolor?: string) => {
     if (!bgcolor) return {};
-    
+
     // Convert hex to RGB and apply subtle overlay
     const hex = bgcolor.replace('#', '');
     let r, g, b;
-    
+
     if (hex.length === 3) {
       r = parseInt(hex[0] + hex[0], 16);
       g = parseInt(hex[1] + hex[1], 16);
@@ -270,7 +313,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
     } else {
       return {};
     }
-    
+
     return {
       backgroundImage: `linear-gradient(rgba(${r}, ${g}, ${b}, 0.12), rgba(${r}, ${g}, ${b}, 0.06))`,
       borderTopColor: `rgba(${r}, ${g}, ${b}, 0.3)`,
@@ -321,11 +364,11 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
       }}
       onTouchMove={(e) => {
         const target = e.target as HTMLElement;
-        
+
         // Allow slider interactions, but prevent other horizontal swipes
-        if (!target.closest('[role="slider"]') && 
-            !target.closest('[data-slider]') &&
-            !target.closest('[data-radix-slider-root]')) {
+        if (!target.closest('[role="slider"]') &&
+          !target.closest('[data-slider]') &&
+          !target.closest('[data-radix-slider-root]')) {
           e.stopPropagation();
         }
       }}
@@ -387,52 +430,61 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
 
               {!isEditingTitle && (
                 <div className="flex items-center space-x-2 flex-shrink-0">
-              {/* Refresh Button */}
-              {onNodeRefresh && (
-                <Button
-                  onClick={() => onNodeRefresh(nodeId)}
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 w-9 p-0 flex-shrink-0 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                  title="Refresh node input/output slots"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                </Button>
-              )}
-              {/* Settings Button - Now combines all settings */}
-              <Button
-                onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                variant="ghost"
-                size="sm"
-                className={`h-9 w-9 p-0 flex-shrink-0 rounded-lg transition-all ${
-                  isSettingsOpen
-                    ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-                    : 'hover:bg-orange-100 dark:hover:bg-orange-900/20 text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
-                }`}
-                title="Node settings"
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-              {/* Delete Button */}
-              {onNodeDelete && (
-                <Button
-                  onClick={() => setIsDeleteDialogOpen(true)}
-                  variant="ghost"
-                  size="sm"
-                  className="h-9 w-9 p-0 flex-shrink-0 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              )}
-              {/* Close Button */}
-              <Button
-                onClick={onClose}
-                variant="ghost"
-                size="sm"
-                className="h-9 w-9 p-0 flex-shrink-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
-              >
-                <span className="text-xl leading-none">×</span>
-              </Button>
+                  {/* Copy Button */}
+                  <Button
+                    onClick={handleCopyNode}
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 flex-shrink-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
+                    title="Copy node settings"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  {/* Refresh Button */}
+                  {onNodeRefresh && (
+                    <Button
+                      onClick={() => onNodeRefresh(nodeId)}
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 flex-shrink-0 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                      title="Refresh node input/output slots"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {/* Settings Button - Now combines all settings */}
+                  <Button
+                    onClick={() => setIsSettingsOpen(!isSettingsOpen)}
+                    variant="ghost"
+                    size="sm"
+                    className={`h-9 w-9 p-0 flex-shrink-0 rounded-lg transition-all ${isSettingsOpen
+                        ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
+                        : 'hover:bg-orange-100 dark:hover:bg-orange-900/20 text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
+                      }`}
+                    title="Node settings"
+                  >
+                    <Settings className="h-4 w-4" />
+                  </Button>
+                  {/* Delete Button */}
+                  {onNodeDelete && (
+                    <Button
+                      onClick={() => setIsDeleteDialogOpen(true)}
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 flex-shrink-0 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                  {/* Close Button */}
+                  <Button
+                    onClick={onClose}
+                    variant="ghost"
+                    size="sm"
+                    className="h-9 w-9 p-0 flex-shrink-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg"
+                  >
+                    <span className="text-xl leading-none">×</span>
+                  </Button>
                 </div>
               )}
             </div>
@@ -453,61 +505,58 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
         {/* Carousel Navigation - Hide when settings are open */}
         {!isSettingsOpen && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-slate-200/50 dark:border-slate-700/50 bg-slate-50 dark:bg-slate-800/50">
-          <Button
-            onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
-            disabled={currentSlide === 0}
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </Button>
+            <Button
+              onClick={() => setCurrentSlide(Math.max(0, currentSlide - 1))}
+              disabled={currentSlide === 0}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+            >
+              <ChevronLeft className="w-4 h-4" />
+            </Button>
 
-          <div className="flex items-center space-x-1">
-            <button
-              onClick={() => setCurrentSlide(0)}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                currentSlide === 0
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              <ArrowDownToLine className="w-4 h-4" />
-              <span>Input Slots</span>
-            </button>
-            <button
-              onClick={() => setCurrentSlide(1)}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                currentSlide === 1
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              <Edit3 className="w-4 h-4" />
-              <span>Node Controls</span>
-            </button>
-            <button
-              onClick={() => setCurrentSlide(2)}
-              className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
-                currentSlide === 2
-                  ? 'bg-blue-500 text-white shadow-sm'
-                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
-              }`}
-            >
-              <ArrowUpFromLine className="w-4 h-4" />
-              <span>Output Slots</span>
-            </button>
-          </div>
+            <div className="flex items-center space-x-1">
+              <button
+                onClick={() => setCurrentSlide(0)}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentSlide === 0
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+              >
+                <ArrowDownToLine className="w-4 h-4" />
+                <span>Input Slots</span>
+              </button>
+              <button
+                onClick={() => setCurrentSlide(1)}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentSlide === 1
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+              >
+                <Edit3 className="w-4 h-4" />
+                <span>Node Controls</span>
+              </button>
+              <button
+                onClick={() => setCurrentSlide(2)}
+                className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentSlide === 2
+                    ? 'bg-blue-500 text-white shadow-sm'
+                    : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  }`}
+              >
+                <ArrowUpFromLine className="w-4 h-4" />
+                <span>Output Slots</span>
+              </button>
+            </div>
 
-          <Button
-            onClick={() => setCurrentSlide(Math.min(2, currentSlide + 1))}
-            disabled={currentSlide === 2}
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0"
-          >
-            <ChevronRight className="w-4 h-4" />
-          </Button>
+            <Button
+              onClick={() => setCurrentSlide(Math.min(2, currentSlide + 1))}
+              disabled={currentSlide === 2}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+            >
+              <ChevronRight className="w-4 h-4" />
+            </Button>
           </div>
         )}
       </div>
@@ -541,8 +590,8 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
 
             // Allow slider interactions, but prevent other horizontal swipes
             if (!target.closest('[role="slider"]') &&
-                !target.closest('[data-slider]') &&
-                !target.closest('[data-radix-slider-root]')) {
+              !target.closest('[data-slider]') &&
+              !target.closest('[data-radix-slider-root]')) {
               e.stopPropagation();
             }
           }}
@@ -561,47 +610,47 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
 
               // Allow slider interactions only
               if (!target.closest('[role="slider"]') &&
-                  !target.closest('[data-slider]') &&
-                  !target.closest('[data-radix-slider-root]')) {
+                !target.closest('[data-slider]') &&
+                !target.closest('[data-radix-slider-root]')) {
                 e.stopPropagation();
               }
             }}
           >
             <NodeParameterEditor
-            selectedNode={selectedNode}
-            metadata={metadata || null}
-            metadataLoading={metadataLoading}
-            metadataError={metadataError}
-            editingParam={editingParam}
-            editingValue={editingValue}
-            uploadState={uploadState}
-            nodeBounds={nodeBounds}
-            getWidgetValue={getWidgetValue}
-            getNodeMode={getNodeMode}
-            modifiedWidgetValues={modifiedWidgetValues}
-            onStartEditing={onStartEditing}
-            onCancelEditing={onCancelEditing}
-            onSaveEditing={onSaveEditing}
-            onEditingValueChange={onEditingValueChange}
-            onControlAfterGenerateChange={onControlAfterGenerateChange}
-            onNodeModeChange={onNodeModeChange}
-            onFilePreview={onFilePreview}
-            onFileUpload={onFileUpload}
-            onFileUploadDirect={onFileUploadDirect}
-            onNavigateToNode={onNavigateToNode}
-            onSelectNode={onSelectNode}
-            setWidgetValue={setWidgetValue}
-            // Single execute props
-            isOutputNode={isOutputNode}
-            canSingleExecute={canSingleExecute}
-            isSingleExecuting={isSingleExecuting}
-            onSingleExecute={onSingleExecute}
-            // Carousel props
-            currentSlide={currentSlide}
-            // Link disconnection props
-            onDisconnectInput={onDisconnectInput}
-            onDisconnectOutput={onDisconnectOutput}
-          />
+              selectedNode={selectedNode}
+              metadata={metadata || null}
+              metadataLoading={metadataLoading}
+              metadataError={metadataError}
+              editingParam={editingParam}
+              editingValue={editingValue}
+              uploadState={uploadState}
+              nodeBounds={nodeBounds}
+              getWidgetValue={getWidgetValue}
+              getNodeMode={getNodeMode}
+              modifiedWidgetValues={modifiedWidgetValues}
+              onStartEditing={onStartEditing}
+              onCancelEditing={onCancelEditing}
+              onSaveEditing={onSaveEditing}
+              onEditingValueChange={onEditingValueChange}
+              onControlAfterGenerateChange={onControlAfterGenerateChange}
+              onNodeModeChange={onNodeModeChange}
+              onFilePreview={onFilePreview}
+              onFileUpload={onFileUpload}
+              onFileUploadDirect={onFileUploadDirect}
+              onNavigateToNode={onNavigateToNode}
+              onSelectNode={onSelectNode}
+              setWidgetValue={setWidgetValue}
+              // Single execute props
+              isOutputNode={isOutputNode}
+              canSingleExecute={canSingleExecute}
+              isSingleExecuting={isSingleExecuting}
+              onSingleExecute={onSingleExecute}
+              // Carousel props
+              currentSlide={currentSlide}
+              // Link disconnection props
+              onDisconnectInput={onDisconnectInput}
+              onDisconnectOutput={onDisconnectOutput}
+            />
           </div>
         </div>
       </div>
@@ -616,7 +665,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
           cancelText="Cancel"
           confirmVariant="destructive"
           onConfirm={() => onNodeDelete(nodeId)}
-          onCancel={() => {}}
+          onCancel={() => { }}
           onClose={() => setIsDeleteDialogOpen(false)}
         />
       )}

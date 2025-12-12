@@ -19,24 +19,24 @@ export async function loadWorkflow(
   clean: boolean = true,
   preprocess: boolean = true
 ): Promise<ComfyGraphState> {
-  const graphData = typeof workflowJson === 'string' 
-    ? JSON.parse(workflowJson) 
+  const graphData = typeof workflowJson === 'string'
+    ? JSON.parse(workflowJson)
     : workflowJson
-  
+
   // 🔧 Apply workflow JSON preprocessing before Graph conversion
   // This handles custom nodes like Power Lora Loader at the JSON level
   if (preprocess) {
     await preprocessWorkflowJson(graphData);
   }
-  
+
   let newGraph = graph
   if (clean) {
     newGraph = ComfyGraph.clearGraph(graph)
   }
-  
+
   // Configure the graph with preprocessed workflow data
   newGraph = await ComfyGraph.configureGraph(newGraph, graphData as IComfyJson)
-  
+
   return newGraph
 }
 
@@ -48,14 +48,14 @@ export async function createGraphFromWorkflow(
   objectInfo?: IObjectInfo
 ): Promise<ComfyGraphState> {
   let graph = ComfyGraph.createComfyGraph()
-  
+
   // Set metadata if available
   if (objectInfo) {
     graph = ComfyGraph.setMetadata(graph, objectInfo)
   }
-  
+
   graph = await loadWorkflow(graph, workflowJson, true, true)
-  
+
   return graph
 }
 
@@ -76,11 +76,11 @@ export async function loadWorkflowToGraph(
   preprocess: boolean = true // for node patching
 ): Promise<ComfyGraphState> {
   let graph = ComfyGraph.createComfyGraph()
-  
+
   if (objectInfo) {
     graph = ComfyGraph.setMetadata(graph, objectInfo)
   }
-  
+
   return await loadWorkflow(graph, workflowJson, clean, preprocess)
 }
 
@@ -103,17 +103,21 @@ export function addNodeToWorkflow(
   workflowJson: IComfyJson,
   nodeType: string,
   position: [number, number],
-  nodeMetadata: any
+  nodeMetadata: any,
+  initialValues?: Record<string, any>,
+  size?: number[]
 ): IComfyJson {
   // Generate new node ID (increment last_node_id)
   const newNodeId = workflowJson.last_node_id + 1;
-  
+
   // Create the new node instance
   const newNode: IComfyJsonNode = createNodeInstance(
     newNodeId,
     nodeType,
     position,
-    nodeMetadata
+    nodeMetadata,
+    initialValues,
+    size
   );
 
   // Create updated workflow JSON
@@ -138,22 +142,30 @@ function createNodeInstance(
   nodeId: number,
   nodeType: string,
   position: [number, number],
-  nodeMetadata: any
+  nodeMetadata: any,
+  initialValues?: Record<string, any>,
+  size?: number[]
 ): IComfyJsonNode {
-  // Calculate node size (basic implementation)
-  const nodeSize = calculateNodeSize(nodeMetadata);
-  
+  // Calculate node size (basic implementation), or use provided size
+  const nodeSize = size && size.length === 2
+    ? [size[0], size[1]] as [number, number]
+    : calculateNodeSize(nodeMetadata);
+
   // Create input slots (including widget slots, following input_order)
   const inputs = createInputSlots(nodeMetadata.input || {}, nodeMetadata.input_order);
-  
+
   // Create output slots
   const outputs = createOutputSlots(
     nodeMetadata.output || [],
     nodeMetadata.output_name || []
   );
 
-  // Get default widget values
-  const widgetValues = getDefaultWidgetValues(nodeMetadata.input || {}, nodeMetadata.input_order);
+  // Get default widget values (overridden by initialValues if provided)
+  const widgetValues = getDefaultWidgetValues(
+    nodeMetadata.input || {},
+    nodeMetadata.input_order,
+    initialValues
+  );
 
   return {
     id: nodeId,
@@ -180,7 +192,7 @@ function calculateNodeSize(nodeMetadata: any): [number, number] {
 
   // Count total inputs and outputs for height calculation
   const totalInputs = Object.keys(nodeMetadata.input?.required || {}).length +
-                     Object.keys(nodeMetadata.input?.optional || {}).length;
+    Object.keys(nodeMetadata.input?.optional || {}).length;
   const totalOutputs = (nodeMetadata.output || []).length;
 
   const maxSlots = Math.max(totalInputs, totalOutputs);
@@ -202,7 +214,7 @@ export function createInputSlots(inputSpec: any, inputOrder?: any): any[] {
   const slots: any[] = [];
 
   // Create ordered list of inputs based on input_order
-  const orderedInputs: Array<{name: string, spec: any, required: boolean}> = [];
+  const orderedInputs: Array<{ name: string, spec: any, required: boolean }> = [];
 
   // Get input order arrays
   const requiredOrder = inputOrder?.required || [];
@@ -254,10 +266,10 @@ export function createInputSlots(inputSpec: any, inputOrder?: any): any[] {
       // This is a COMBO type - the first element is an array of options
       const slot = {
         name: name,
-        type: "COMBO", 
+        type: "COMBO",
         link: null,
-        widget: { 
-          type: "combo", 
+        widget: {
+          type: "combo",
           name: name,
           options: dataType  // The array of combo options
         }
@@ -271,9 +283,9 @@ export function createInputSlots(inputSpec: any, inputOrder?: any): any[] {
           name: name,
           type: dataType,
           link: null,
-          widget: { 
-            type: getWidgetType(dataType, config), 
-            name: name 
+          widget: {
+            type: getWidgetType(dataType, config),
+            name: name
           }
         });
       } else {
@@ -312,7 +324,7 @@ function shouldCreateWidget(dataType: string | string[], config: any): boolean {
 
   // Basic data types are widgets
   const widgetTypes = ['INT', 'FLOAT', 'STRING', 'BOOLEAN'];
-  
+
   if (widgetTypes.includes(dataType)) {
     return true;
   }
@@ -333,11 +345,15 @@ function shouldCreateWidget(dataType: string | string[], config: any): boolean {
 /**
  * Get default values for widgets in the same order as input slots
  */
-function getDefaultWidgetValues(inputSpec: any, inputOrder?: any): any[] {
+function getDefaultWidgetValues(
+  inputSpec: any,
+  inputOrder?: any,
+  initialValues?: Record<string, any>
+): any[] {
   const values: any[] = [];
 
   // Create ordered list of inputs (same logic as createInputSlots)
-  const orderedInputs: Array<{name: string, spec: any, required: boolean}> = [];
+  const orderedInputs: Array<{ name: string, spec: any, required: boolean }> = [];
 
   // Get input order arrays
   const requiredOrder = inputOrder?.required || [];
@@ -386,13 +402,29 @@ function getDefaultWidgetValues(inputSpec: any, inputOrder?: any): any[] {
 
     if (shouldCreateWidget(dataType, config)) {
       if (Array.isArray(dataType)) {
-        // COMBO type - use first option as default
-        values.push(dataType[0] || null);
+        // COMBO type
+        let defaultValue = null;
+        if (initialValues && name in initialValues) {
+          defaultValue = initialValues[name];
+          console.log(`[WorkflowGraphService] Using initial value for COMBO ${name}:`, defaultValue);
+        } else {
+          // use first option as default
+          defaultValue = dataType[0] || null;
+        }
+        values.push(defaultValue);
       } else {
         // Regular widget type
-        const defaultValue = getDefaultValue(dataType, config);
+        // Use initial value if available and valid
+        let defaultValue = null;
+        if (initialValues && name in initialValues) {
+          defaultValue = initialValues[name];
+          console.log(`[WorkflowGraphService] Using initial value for ${name}:`, defaultValue);
+        } else {
+          defaultValue = getDefaultValue(dataType, config);
+        }
+
         values.push(defaultValue);
-        
+
         // Special case: if this is an INT widget named 'seed' or 'noise_seed', 
         // append an additional "Fixed" string value
         if (dataType === 'INT' && (name === 'seed' || name === 'noise_seed')) {
@@ -459,13 +491,13 @@ function getDefaultValue(dataType: string, config: any): any {
  */
 export function collectNodeLinkIds(workflowJson: IComfyJson, nodeId: number): number[] {
   const linkIds: Set<number> = new Set();
-  
+
   // Find the target node
   const targetNode = workflowJson.nodes?.find(node => node.id === nodeId);
   if (!targetNode) {
     return [];
   }
-  
+
   // Collect link IDs from node's inputs
   if (targetNode.inputs) {
     for (const input of targetNode.inputs) {
@@ -474,7 +506,7 @@ export function collectNodeLinkIds(workflowJson: IComfyJson, nodeId: number): nu
       }
     }
   }
-  
+
   // Collect link IDs from node's outputs
   if (targetNode.outputs) {
     for (const output of targetNode.outputs) {
@@ -490,7 +522,7 @@ export function collectNodeLinkIds(workflowJson: IComfyJson, nodeId: number): nu
       }
     }
   }
-  
+
   return Array.from(linkIds);
 }
 
@@ -502,17 +534,17 @@ export function collectNodeLinkIds(workflowJson: IComfyJson, nodeId: number): nu
  * @returns Object containing updated workflowJson and comfyGraph
  */
 export function removeNodeWithLinks(
-  workflowJson: IComfyJson, 
-  comfyGraph: ComfyGraph, 
+  workflowJson: IComfyJson,
+  comfyGraph: ComfyGraph,
   nodeId: number
 ): { workflowJson: IComfyJson; comfyGraph: ComfyGraph } {
-  
+
   // 1. Collect all link IDs associated with the node
   const linkIdsToRemove = collectNodeLinkIds(workflowJson, nodeId);
-  
+
   // 2. Create deep copy of workflow JSON for safe mutation
   const updatedWorkflowJson: IComfyJson = JSON.parse(JSON.stringify(workflowJson));
-  
+
   // 3. Remove links from workflow JSON links array
   if (updatedWorkflowJson.links && Array.isArray(updatedWorkflowJson.links)) {
     updatedWorkflowJson.links = updatedWorkflowJson.links.filter(link => {
@@ -521,12 +553,12 @@ export function removeNodeWithLinks(
       return !linkIdsToRemove.includes(linkId);
     });
   }
-  
+
   // 4. Remove the node from workflow JSON nodes array
   if (updatedWorkflowJson.nodes && Array.isArray(updatedWorkflowJson.nodes)) {
     updatedWorkflowJson.nodes = updatedWorkflowJson.nodes.filter(node => node.id !== nodeId);
   }
-  
+
   // 5. Remove links from other nodes that reference the deleted links
   if (updatedWorkflowJson.nodes) {
     updatedWorkflowJson.nodes.forEach(node => {
@@ -538,12 +570,12 @@ export function removeNodeWithLinks(
           }
         });
       }
-      
+
       // Clean up output links
       if (node.outputs) {
         node.outputs.forEach(output => {
           if (output.links && Array.isArray(output.links)) {
-            output.links = output.links.filter((linkId: number) => 
+            output.links = output.links.filter((linkId: number) =>
               linkId === null || linkId === undefined || !linkIdsToRemove.includes(linkId)
             );
             // Convert empty array to null if needed for consistency
@@ -555,24 +587,24 @@ export function removeNodeWithLinks(
       }
     });
   }
-  
+
   // 6. Update ComfyGraph - remove links first, then the node
   const updatedComfyGraph = new ComfyGraph();
   Object.assign(updatedComfyGraph, comfyGraph);
-  
+
   // Remove links from ComfyGraph._links
   linkIdsToRemove.forEach(linkId => {
     if (updatedComfyGraph._links[linkId]) {
       delete updatedComfyGraph._links[linkId];
     }
   });
-  
+
   // Remove the node from ComfyGraph._nodes
   updatedComfyGraph._nodes = updatedComfyGraph._nodes.filter(node => {
     const nodeIdNumber = typeof node.id === 'string' ? parseInt(node.id) : node.id;
     return nodeIdNumber !== nodeId;
   });
-  
+
   return {
     workflowJson: updatedWorkflowJson,
     comfyGraph: updatedComfyGraph
