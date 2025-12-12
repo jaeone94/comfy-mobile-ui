@@ -11,16 +11,16 @@ import { IComfyWidget } from '@/shared/types/app/IComfyGraphNode';
 export interface BaseWidgetProps {
   /** The parameter being edited */
   param: IProcessedParameter;
-  
+
   /** Current editing value */
   editingValue: any;
-  
+
   /** Callback when value changes */
   onValueChange: (value: any) => void;
-  
+
   /** Optional ComfyGraphNode context */
   node?: ComfyGraphNode;
-  
+
   /** Optional widget context */
   widget?: IComfyWidget;
 }
@@ -40,25 +40,25 @@ export interface StringWidgetProps extends BaseWidgetProps {
 
 export interface ComboWidgetProps extends BaseWidgetProps {
   /** Available options */
-  options: string[];
-  
+  options: (string | number)[];
+
   /** Current selected value */
-  editingValue: string;
+  editingValue: string | number;
 }
 
 export interface SeedWithControlWidgetProps extends BaseWidgetProps {
   /** Seed value */
   editingValue: number;
-  
+
   /** Control widget for control_after_generate */
   controlWidget?: IComfyWidget;
-  
+
   /** Callback for control_after_generate changes */
   onControlAfterGenerateChange?: (nodeId: number, value: string) => void;
-  
+
   /** Force render counter for UI updates */
   forceRender?: number;
-  
+
   /** Force render setter */
   setForceRender?: (fn: (prev: number) => number) => void;
 }

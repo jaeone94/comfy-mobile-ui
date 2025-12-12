@@ -5,6 +5,7 @@ import { X, Clock, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, Eye,
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { usePromptHistoryStore } from '@/ui/store/promptHistoryStore';
 import { FilePreviewModal } from '@/components/modals/FilePreviewModal';
+import { JsonViewerModal } from '@/components/modals/JsonViewerModal';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { PromptTracker } from '@/utils/promptTracker';
@@ -22,6 +23,7 @@ interface PromptHistoryItem {
   exception_type?: string;
   workflow?: any;
   outputs?: any;
+  rawData?: any;
 }
 
 interface LazyThumbnailProps {
@@ -62,8 +64,8 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick }) => {
           }
         });
       },
-      { 
-        threshold: 0.1, 
+      {
+        threshold: 0.1,
         rootMargin: '50px'
       }
     );
@@ -98,13 +100,13 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick }) => {
     }
   };
 
-  const thumbnailUrl = isInView && isImageFile(file.filename) 
+  const thumbnailUrl = isInView && isImageFile(file.filename)
     ? comfyFileService.createDownloadUrl({
-        filename: file.filename,
-        subfolder: file.subfolder,
-        type: file.type,
-        preview: true
-      })
+      filename: file.filename,
+      subfolder: file.subfolder,
+      type: file.type,
+      preview: true
+    })
     : undefined;
 
   const handleImageLoad = useCallback(() => {
@@ -123,7 +125,7 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick }) => {
       className="flex items-center space-x-3 p-3 bg-white/20 dark:bg-slate-800/20 backdrop-blur-sm border border-white/20 dark:border-slate-700/20 rounded-xl hover:bg-white/30 dark:hover:bg-slate-700/30 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
       onClick={() => onFileClick(file)}
     >
-      <div 
+      <div
         ref={thumbnailRef}
         className="flex-shrink-0 w-12 h-12 bg-white/10 dark:bg-slate-700/30 backdrop-blur-sm border border-white/10 dark:border-slate-600/30 rounded-lg overflow-hidden relative"
       >
@@ -141,9 +143,8 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick }) => {
           <img
             src={thumbnailUrl}
             alt={file.filename}
-            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${
-              isLoaded ? 'opacity-100' : 'opacity-0'
-            }`}
+            className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
+              }`}
             onLoad={handleImageLoad}
             onError={handleImageError}
             loading="lazy"
@@ -174,7 +175,7 @@ export const PromptHistory: React.FC = () => {
   const { isOpen, closePromptHistory } = usePromptHistoryStore();
   const { url: serverUrl } = useConnectionStore();
   const [activeTab, setActiveTab] = useState<'queues' | 'outputs'>('queues');
-  
+
   // Queue tab states
   const [historyData, setHistoryData] = useState<PromptHistoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -183,7 +184,9 @@ export const PromptHistory: React.FC = () => {
   const [previewFileIndex, setPreviewFileIndex] = useState(0);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isFilesModalOpen, setIsFilesModalOpen] = useState(false);
-  
+  const [selectedErrorItem, setSelectedErrorItem] = useState<PromptHistoryItem | null>(null);
+  const [isErrorDetailOpen, setIsErrorDetailOpen] = useState(false);
+
   // Outputs tab states
   const [outputFiles, setOutputFiles] = useState<IComfyFileInfo[]>([]);
   const [outputsLoading, setOutputsLoading] = useState(false);
@@ -192,7 +195,7 @@ export const PromptHistory: React.FC = () => {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  
+
   const comfyFileService = new ComfyFileService(serverUrl);
 
   useEffect(() => {
@@ -208,7 +211,7 @@ export const PromptHistory: React.FC = () => {
   const fetchHistory = async () => {
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const [rawHistory, queueStatus] = await Promise.all([
         ComfyUIService.getAllHistory(100),
@@ -217,14 +220,14 @@ export const PromptHistory: React.FC = () => {
 
       const allQueueData = [...queueStatus.queue_pending, ...queueStatus.queue_running];
       PromptTracker.syncWithQueueStatus(allQueueData);
-      
+
       const historyItems: PromptHistoryItem[] = Object.entries(rawHistory)
         .map(([promptId, data]: [string, any]) => {
           const timestamp = parseInt(promptId.split('-')[0]) || Date.now();
-          
+
           let exception_message = data.exception_message;
           let exception_type = data.exception_type;
-          
+
           if (data.status && data.status.messages) {
             const executionError = data.status.messages.find(
               (msg: any[]) => msg[0] === 'execution_error'
@@ -234,7 +237,7 @@ export const PromptHistory: React.FC = () => {
               exception_type = executionError[1].exception_type || exception_type;
             }
           }
-          
+
           return {
             promptId,
             timestamp,
@@ -242,14 +245,15 @@ export const PromptHistory: React.FC = () => {
             exception_message,
             exception_type,
             workflow: data.workflow,
-            outputs: data.outputs
+            outputs: data.outputs,
+            rawData: data
           };
         });
-      
+
       const runningItems: PromptHistoryItem[] = queueStatus.queue_running.map((queueItem: any) => {
         const promptId = queueItem[1];
         const timestamp = parseInt(promptId.split('-')[0]) || Date.now();
-        
+
         return {
           promptId,
           timestamp,
@@ -260,11 +264,11 @@ export const PromptHistory: React.FC = () => {
           outputs: undefined
         };
       });
-      
+
       const pendingItems: PromptHistoryItem[] = queueStatus.queue_pending.map((queueItem: any) => {
-        const promptId = queueItem[1]; 
+        const promptId = queueItem[1];
         const timestamp = parseInt(promptId.split('-')[0]) || Date.now();
-        
+
         return {
           promptId,
           timestamp,
@@ -275,7 +279,7 @@ export const PromptHistory: React.FC = () => {
           outputs: undefined
         };
       });
-      
+
       const transformedHistory = [...historyItems, ...runningItems, ...pendingItems]
         .sort((a, b) => {
           const getStatusPriority = (status: string) => {
@@ -283,17 +287,17 @@ export const PromptHistory: React.FC = () => {
             if (status === 'executing') return 2;
             return 1;
           };
-          
+
           const priorityA = getStatusPriority(a.status.status_str);
           const priorityB = getStatusPriority(b.status.status_str);
-          
+
           if (priorityA !== priorityB) {
             return priorityB - priorityA;
           }
-          
+
           return b.timestamp - a.timestamp;
         });
-      
+
       setHistoryData(transformedHistory);
     } catch (error) {
       console.error('Failed to fetch prompt history:', error);
@@ -306,23 +310,23 @@ export const PromptHistory: React.FC = () => {
   const loadOutputHistory = async () => {
     setOutputsLoading(true);
     setOutputsError(null);
-    
+
     try {
       const historyFiles = await comfyFileService.getFilesFromHistory(20);
-      
+
       const sortedFiles = historyFiles.sort((a, b) => {
         if (typeof a.executionOrder === 'number' && typeof b.executionOrder === 'number') {
           return a.executionOrder - b.executionOrder;
         }
-        
+
         if (a.lastModified && b.lastModified) {
           return b.lastModified.getTime() - a.lastModified.getTime();
         }
-        
+
         if (typeof a.executionTimestamp === 'number' && typeof b.executionTimestamp === 'number') {
           return b.executionTimestamp - a.executionTimestamp;
         }
-        
+
         const extractTimestamp = (filename: string): number => {
           const timestampMatch = filename.match(/(\d{8,10})/);
           if (timestampMatch) {
@@ -331,17 +335,17 @@ export const PromptHistory: React.FC = () => {
           }
           return 0;
         };
-        
+
         const timestampA = extractTimestamp(a.filename);
         const timestampB = extractTimestamp(b.filename);
-        
+
         if (timestampA && timestampB) {
           return timestampB - timestampA;
         }
-        
+
         return b.filename.localeCompare(a.filename);
       });
-      
+
       // Filter out temp files and reverse for newest first
       const filteredFiles = sortedFiles.filter(file => file.type !== 'temp');
       setOutputFiles(filteredFiles.reverse());
@@ -365,7 +369,7 @@ export const PromptHistory: React.FC = () => {
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return date.toLocaleDateString();
   };
 
@@ -373,15 +377,15 @@ export const PromptHistory: React.FC = () => {
     if (hasException || status.status_str === 'error') {
       return <XCircle className="h-4 w-4 text-red-400" />;
     }
-    
+
     if (status.completed) {
       return <CheckCircle className="h-4 w-4 text-green-400" />;
     }
-    
+
     if (status.status_str === 'executing') {
       return <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />;
     }
-    
+
     return <Clock className="h-4 w-4 text-yellow-400" />;
   };
 
@@ -389,15 +393,15 @@ export const PromptHistory: React.FC = () => {
     if (hasException || status.status_str === 'error') {
       return <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0 shadow-lg shadow-red-400/50" title="Error" />;
     }
-    
+
     if (status.completed) {
       return <div className="w-3 h-3 rounded-full bg-green-400 flex-shrink-0 shadow-lg shadow-green-400/50" title="Completed" />;
     }
-    
+
     if (status.status_str === 'executing') {
       return <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse flex-shrink-0 shadow-lg shadow-blue-400/50" title="Running" />;
     }
-    
+
     return <div className="w-3 h-3 rounded-full bg-slate-400 flex-shrink-0 shadow-lg shadow-slate-400/50" title="Pending" />;
   };
 
@@ -407,7 +411,7 @@ export const PromptHistory: React.FC = () => {
 
   const getOutputFiles = (outputs: any): any[] => {
     if (!outputs) return [];
-    
+
     const files: any[] = [];
     Object.values(outputs).forEach((output: any) => {
       if (output.images) {
@@ -433,7 +437,7 @@ export const PromptHistory: React.FC = () => {
         });
       }
     });
-    
+
     return files;
   };
 
@@ -488,6 +492,11 @@ export const PromptHistory: React.FC = () => {
     }
   };
 
+  const handleErrorClick = (item: PromptHistoryItem) => {
+    setSelectedErrorItem(item);
+    setIsErrorDetailOpen(true);
+  };
+
   const isVideoFile = (filename: string): boolean => {
     const videoExtensions = ['.mp4', '.avi', '.mov', '.wmv', '.flv', '.webm', '.mkv', '.gif'];
     return videoExtensions.some(ext => filename.toLowerCase().endsWith(ext));
@@ -503,7 +512,7 @@ export const PromptHistory: React.FC = () => {
   return (
     <AnimatePresence>
       {/* Enhanced Glassmorphism Backdrop */}
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -518,7 +527,7 @@ export const PromptHistory: React.FC = () => {
         }}
       >
         {/* Full Screen Enhanced Glassmorphism Modal */}
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -528,270 +537,282 @@ export const PromptHistory: React.FC = () => {
           <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 w-full h-full flex flex-col overflow-hidden">
             {/* Gradient Overlay for Enhanced Glass Effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-          {/* Glassmorphism Header with Tabs */}
-          <div className="relative flex flex-col bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
-            <div className="flex items-center justify-between p-6 pb-4">
-              <div className="flex items-center space-x-3">
-                <Layers className="h-6 w-6 text-violet-400 drop-shadow-sm" />
-                <h2 className="text-xl font-bold text-slate-900 dark:text-white drop-shadow-sm">
-                  Queue & Outputs
-                </h2>
+            {/* Glassmorphism Header with Tabs */}
+            <div className="relative flex flex-col bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
+              <div className="flex items-center justify-between p-6 pb-4">
+                <div className="flex items-center space-x-3">
+                  <Layers className="h-6 w-6 text-violet-400 drop-shadow-sm" />
+                  <h2 className="text-xl font-bold text-slate-900 dark:text-white drop-shadow-sm">
+                    Queue & Outputs
+                  </h2>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <Button
+                    onClick={activeTab === 'queues' ? fetchHistory : loadOutputHistory}
+                    disabled={isLoading || outputsLoading}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full disabled:opacity-50"
+                  >
+                    <RefreshCw className={`h-4 w-4 ${(isLoading || outputsLoading) ? 'animate-spin' : ''}`} />
+                  </Button>
+                  <Button
+                    onClick={closePromptHistory}
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-              <div className="flex items-center space-x-2">
-                <Button
-                  onClick={activeTab === 'queues' ? fetchHistory : loadOutputHistory}
-                  disabled={isLoading || outputsLoading}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full disabled:opacity-50"
-                >
-                  <RefreshCw className={`h-4 w-4 ${(isLoading || outputsLoading) ? 'animate-spin' : ''}`} />
-                </Button>
-                <Button
-                  onClick={closePromptHistory}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
-            
-            {/* Enhanced Glassmorphism Tabs */}
-            <div className="flex px-6 pb-2">
-              <div className="flex bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border border-white/20 dark:border-slate-600/20 rounded-2xl p-1 shadow-lg">
-                <button
-                  onClick={() => setActiveTab('queues')}
-                  className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 ${
-                    activeTab === 'queues'
+
+              {/* Enhanced Glassmorphism Tabs */}
+              <div className="flex px-6 pb-2">
+                <div className="flex bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border border-white/20 dark:border-slate-600/20 rounded-2xl p-1 shadow-lg">
+                  <button
+                    onClick={() => setActiveTab('queues')}
+                    className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 ${activeTab === 'queues'
                       ? 'bg-white/30 dark:bg-slate-600/30 text-slate-900 dark:text-white shadow-lg backdrop-blur-sm border border-white/20 dark:border-slate-500/20'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/10 dark:hover:bg-slate-700/10'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <Clock className="h-4 w-4" />
-                    <span>Queues</span>
-                    {historyData.length > 0 && activeTab === 'queues' && (
-                      <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
-                        {historyData.length}
-                      </Badge>
-                    )}
-                  </div>
-                </button>
-                <button
-                  onClick={() => setActiveTab('outputs')}
-                  className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 ${
-                    activeTab === 'outputs'
+                      }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <Clock className="h-4 w-4" />
+                      <span>Queues</span>
+                      {historyData.length > 0 && activeTab === 'queues' && (
+                        <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
+                          {historyData.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setActiveTab('outputs')}
+                    className={`px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 ${activeTab === 'outputs'
                       ? 'bg-white/30 dark:bg-slate-600/30 text-slate-900 dark:text-white shadow-lg backdrop-blur-sm border border-white/20 dark:border-slate-500/20'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/10 dark:hover:bg-slate-700/10'
-                  }`}
-                >
-                  <div className="flex items-center space-x-2">
-                    <ImageIcon className="h-4 w-4" />
-                    <span>Outputs</span>
-                    {outputFiles.length > 0 && activeTab === 'outputs' && (
-                      <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
-                        {outputFiles.length}
-                      </Badge>
-                    )}
-                  </div>
-                </button>
+                      }`}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <ImageIcon className="h-4 w-4" />
+                      <span>Outputs</span>
+                      {outputFiles.length > 0 && activeTab === 'outputs' && (
+                        <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
+                          {outputFiles.length}
+                        </Badge>
+                      )}
+                    </div>
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
 
-          {/* Tab Content */}
-          <div className="flex-1 overflow-hidden">
-            <AnimatePresence mode="wait">
-              {activeTab === 'queues' && (
-                <motion.div
-                  key="queues"
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.2 }}
-                  className="h-full overflow-y-auto"
-                >
-                  {isLoading && (
-                    <div className="flex-1 flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-4" />
-                        <p className="text-slate-600 dark:text-slate-400">Loading queue...</p>
+            {/* Tab Content */}
+            <div className="flex-1 overflow-hidden">
+              <AnimatePresence mode="wait">
+                {activeTab === 'queues' && (
+                  <motion.div
+                    key="queues"
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    transition={{ duration: 0.2 }}
+                    className="h-full overflow-y-auto"
+                  >
+                    {isLoading && (
+                      <div className="flex-1 flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-4" />
+                          <p className="text-slate-600 dark:text-slate-400">Loading queue...</p>
+                        </div>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {error && !isLoading && (
-                    <div className="flex-1 flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <AlertTriangle className="h-8 w-8 text-red-400 mx-auto mb-4" />
-                        <p className="text-red-400 mb-4">{error}</p>
-                        <Button 
-                          onClick={fetchHistory} 
-                          variant="outline" 
-                          size="sm"
-                          className="bg-white/10 dark:bg-slate-800/20 backdrop-blur-sm border-white/20 dark:border-slate-700/20 hover:bg-white/20 dark:hover:bg-slate-700/30"
-                        >
-                          <RefreshCw className="h-4 w-4 mr-2" />
-                          Retry
-                        </Button>
-                      </div>
-                    </div>
-                  )}
-
-                  {!isLoading && !error && historyData.length === 0 && (
-                    <div className="flex-1 flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <Clock className="h-8 w-8 text-slate-400 mx-auto mb-4" />
-                        <p className="text-slate-600 dark:text-slate-400">No queue items found</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {!isLoading && !error && historyData.length > 0 && (
-                    <div className="p-6 space-y-4">
-                      {historyData.map((item) => {
-                        const hasException = !!(item.exception_message || item.exception_type);
-                        
-                        return (
-                          <div
-                            key={item.promptId}
-                            className="p-4 bg-white/10 dark:bg-slate-800/10 backdrop-blur-sm border border-white/20 dark:border-slate-700/20 rounded-xl hover:bg-white/20 dark:hover:bg-slate-700/20 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+                    {error && !isLoading && (
+                      <div className="flex-1 flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <AlertTriangle className="h-8 w-8 text-red-400 mx-auto mb-4" />
+                          <p className="text-red-400 mb-4">{error}</p>
+                          <Button
+                            onClick={fetchHistory}
+                            variant="outline"
+                            size="sm"
+                            className="bg-white/10 dark:bg-slate-800/20 backdrop-blur-sm border-white/20 dark:border-slate-700/20 hover:bg-white/20 dark:hover:bg-slate-700/30"
                           >
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1 space-y-3">
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                    {getStatusIcon(item.status, hasException)}
-                                    <span className="font-mono text-sm text-slate-700 dark:text-slate-300 truncate flex-1">
-                                      {getShortPromptId(item.promptId)}
-                                    </span>
-                                    {getStatusIndicator(item.status, hasException)}
-                                  </div>
-                                  <span className="text-sm text-slate-500 dark:text-slate-400 ml-3 flex-shrink-0">
-                                    {formatTimestamp(item.timestamp)}
-                                  </span>
-                                </div>
+                            <RefreshCw className="h-4 w-4 mr-2" />
+                            Retry
+                          </Button>
+                        </div>
+                      </div>
+                    )}
 
-                                {hasException && (
-                                  <div className="p-3 bg-red-500/10 backdrop-blur-sm border border-red-400/20 rounded-lg space-y-3">
-                                    {item.exception_type && (
-                                      <div className="flex items-start space-x-2">
-                                        <XCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
-                                        <div className="flex-1">
-                                          <div className="font-medium text-red-300 mb-1">
-                                            Error Type
-                                          </div>
-                                          <div className="text-sm font-mono bg-red-500/20 px-2 py-1 rounded text-red-200">
-                                            {item.exception_type}
-                                          </div>
-                                        </div>
-                                      </div>
-                                    )}
-                                    {item.exception_message && (
-                                      <div className="space-y-2">
-                                        <div className="font-medium text-red-300 text-sm">
-                                          Error Message
-                                        </div>
-                                        <div className="text-sm text-red-200 font-mono bg-red-500/20 p-2 rounded border-l-2 border-red-400">
-                                          {item.exception_message}
-                                        </div>
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
+                    {!isLoading && !error && historyData.length === 0 && (
+                      <div className="flex-1 flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <Clock className="h-8 w-8 text-slate-400 mx-auto mb-4" />
+                          <p className="text-slate-600 dark:text-slate-400">No queue items found</p>
+                        </div>
+                      </div>
+                    )}
 
-                                {item.status.completed && !hasException && item.outputs && (
-                                  <Button
-                                    onClick={() => handleViewOutputs(item.outputs)}
-                                    variant="ghost"
-                                    className="w-full p-3 bg-green-500/10 backdrop-blur-sm border border-green-400/20 rounded-lg hover:bg-green-500/20 transition-colors"
-                                  >
-                                    <div className="flex items-center justify-between w-full">
-                                      <div className="flex items-center space-x-2">
-                                        <CheckCircle className="h-4 w-4 text-green-400" />
-                                        <span className="text-sm text-green-300">
-                                          Generated {getOutputFiles(item.outputs).length} file(s)
-                                        </span>
-                                      </div>
-                                      <Eye className="h-4 w-4 text-green-400" />
+                    {!isLoading && !error && historyData.length > 0 && (
+                      <div className="p-6 space-y-4">
+                        {historyData.map((item) => {
+                          const hasException = !!(item.exception_message || item.exception_type);
+
+                          return (
+                            <div
+                              key={item.promptId}
+                              className="p-4 bg-white/10 dark:bg-slate-800/10 backdrop-blur-sm border border-white/20 dark:border-slate-700/20 rounded-xl hover:bg-white/20 dark:hover:bg-slate-700/20 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 space-y-3">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                      {getStatusIcon(item.status, hasException)}
+                                      <span className="font-mono text-sm text-slate-700 dark:text-slate-300 truncate flex-1">
+                                        {getShortPromptId(item.promptId)}
+                                      </span>
+                                      {getStatusIndicator(item.status, hasException)}
                                     </div>
-                                  </Button>
-                                )}
+                                    <span className="text-sm text-slate-500 dark:text-slate-400 ml-3 flex-shrink-0">
+                                      {formatTimestamp(item.timestamp)}
+                                    </span>
+                                  </div>
+
+                                  {hasException && (
+                                    <div
+                                      className="p-3 bg-red-500/10 backdrop-blur-sm border border-red-400/20 rounded-lg space-y-3 cursor-pointer hover:bg-red-500/20 transition-colors"
+                                      onClick={() => handleErrorClick(item)}
+                                      title="Click to view full error details"
+                                    >
+                                      {item.exception_type && (
+                                        <div className="flex items-start space-x-2">
+                                          <XCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+                                          <div className="flex-1">
+                                            <div className="font-medium text-red-300 mb-1">
+                                              Error Type (Click for details)
+                                            </div>
+                                            <div className="text-sm font-mono bg-red-500/20 px-2 py-1 rounded text-red-200">
+                                              {item.exception_type}
+                                            </div>
+                                          </div>
+                                        </div>
+                                      )}
+                                      {item.exception_message && (
+                                        <div className="space-y-2">
+                                          <div className="font-medium text-red-300 text-sm">
+                                            Error Message
+                                          </div>
+                                          <div className="text-sm text-red-200 font-mono bg-red-500/20 p-2 rounded border-l-2 border-red-400">
+                                            {item.exception_message}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
+
+                                  {item.status.completed && !hasException && item.outputs && (
+                                    <Button
+                                      onClick={() => handleViewOutputs(item.outputs)}
+                                      variant="ghost"
+                                      className="w-full p-3 bg-green-500/10 backdrop-blur-sm border border-green-400/20 rounded-lg hover:bg-green-500/20 transition-colors"
+                                    >
+                                      <div className="flex items-center justify-between w-full">
+                                        <div className="flex items-center space-x-2">
+                                          <CheckCircle className="h-4 w-4 text-green-400" />
+                                          <span className="text-sm text-green-300">
+                                            Generated {getOutputFiles(item.outputs).length} file(s)
+                                          </span>
+                                        </div>
+                                        <Eye className="h-4 w-4 text-green-400" />
+                                      </div>
+                                    </Button>
+                                  )}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </motion.div>
-              )}
+                          );
+                        })}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
 
-              {activeTab === 'outputs' && (
-                <motion.div
-                  key="outputs"
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: 20 }}
-                  transition={{ duration: 0.2 }}
-                  className="h-full overflow-y-auto"
-                >
-                  {outputsLoading && (
-                    <div className="flex items-center justify-center py-12">
-                      <div className="text-center">
-                        <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-3" />
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          Loading output history...
+                {activeTab === 'outputs' && (
+                  <motion.div
+                    key="outputs"
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.2 }}
+                    className="h-full overflow-y-auto"
+                  >
+                    {outputsLoading && (
+                      <div className="flex items-center justify-center py-12">
+                        <div className="text-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-3" />
+                          <p className="text-sm text-slate-600 dark:text-slate-400">
+                            Loading output history...
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {outputsError && (
+                      <div className="p-4 m-4 bg-red-500/10 backdrop-blur-sm border border-red-400/20 rounded-xl">
+                        <p className="text-sm text-red-400">{outputsError}</p>
+                        <button
+                          onClick={loadOutputHistory}
+                          className="mt-2 text-xs text-red-300 hover:underline"
+                        >
+                          Try again
+                        </button>
+                      </div>
+                    )}
+
+                    {!outputsLoading && !outputsError && outputFiles.length === 0 && (
+                      <div className="text-center py-12 px-4">
+                        <ImageIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
+                        <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                          No Output History
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          No output files found in the current session
                         </p>
                       </div>
-                    </div>
-                  )}
+                    )}
 
-                  {outputsError && (
-                    <div className="p-4 m-4 bg-red-500/10 backdrop-blur-sm border border-red-400/20 rounded-xl">
-                      <p className="text-sm text-red-400">{outputsError}</p>
-                      <button
-                        onClick={loadOutputHistory}
-                        className="mt-2 text-xs text-red-300 hover:underline"
-                      >
-                        Try again
-                      </button>
-                    </div>
-                  )}
-
-                  {!outputsLoading && !outputsError && outputFiles.length === 0 && (
-                    <div className="text-center py-12 px-4">
-                      <ImageIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
-                        No Output History
-                      </h3>
-                      <p className="text-sm text-slate-500 dark:text-slate-400">
-                        No output files found in the current session
-                      </p>
-                    </div>
-                  )}
-
-                  {!outputsLoading && !outputsError && outputFiles.length > 0 && (
-                    <div className="p-6 space-y-3">
-                      {outputFiles.map((file, index) => (
-                        <LazyThumbnail
-                          key={`${file.filename}-${index}`}
-                          file={file}
-                          onFileClick={handleOutputFileClick}
-                        />
-                      ))}
-                    </div>
-                  )}
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
+                    {!outputsLoading && !outputsError && outputFiles.length > 0 && (
+                      <div className="p-6 space-y-3">
+                        {outputFiles.map((file, index) => (
+                          <LazyThumbnail
+                            key={`${file.filename}-${index}`}
+                            file={file}
+                            onFileClick={handleOutputFileClick}
+                          />
+                        ))}
+                      </div>
+                    )}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
         </motion.div>
       </motion.div>
-      
+
+      {/* Error Details Modal */}
+      {isErrorDetailOpen && selectedErrorItem && (
+        <JsonViewerModal
+          isOpen={isErrorDetailOpen}
+          onClose={() => setIsErrorDetailOpen(false)}
+          title={`Error Details: ${getShortPromptId(selectedErrorItem.promptId)}`}
+          data={selectedErrorItem.rawData || selectedErrorItem}
+        />
+      )}
+
       {/* Enhanced Glassmorphism Files List Modal */}
       {isFilesModalOpen && selectedFiles.length > 0 && (
         <motion.div
@@ -809,7 +830,7 @@ export const PromptHistory: React.FC = () => {
           >
             {/* Gradient Overlay for Enhanced Glass Effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-            
+
             <div className="relative flex items-center justify-between p-6 border-b border-white/10 dark:border-slate-700/10 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm">
               <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 drop-shadow-sm">
                 Generated Files ({selectedFiles.length})
@@ -869,14 +890,14 @@ export const PromptHistory: React.FC = () => {
       {previewFile && (
         <div style={{ zIndex: 10002 }}>
           <FilePreviewModal
-          isOpen={!!previewFile}
-          filename={previewFile.filename}
-          isImage={isImageFile(previewFile.filename)}
-          loading={previewLoading}
-          error={previewError || undefined}
-          url={previewUrl || undefined}
-          onClose={handlePreviewClose}
-          onRetry={handlePreviewRetry}
+            isOpen={!!previewFile}
+            filename={previewFile.filename}
+            isImage={isImageFile(previewFile.filename)}
+            loading={previewLoading}
+            error={previewError || undefined}
+            url={previewUrl || undefined}
+            onClose={handlePreviewClose}
+            onRetry={handlePreviewRetry}
           />
         </div>
       )}

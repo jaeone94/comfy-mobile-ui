@@ -1,11 +1,11 @@
 // ComfyUI Node Metadata Type Definitions
 
 // Parameter value types
-export type ParameterType = 
-  | 'INT' 
-  | 'FLOAT' 
-  | 'STRING' 
-  | 'BOOLEAN' 
+export type ParameterType =
+  | 'INT'
+  | 'FLOAT'
+  | 'STRING'
+  | 'BOOLEAN'
   | 'COMBO'
   | 'IMAGE'
   | 'LATENT'
@@ -52,11 +52,11 @@ export interface IImageConfig {
 }
 
 // Generic parameter configuration
-export type ParameterConfig = 
-  | INumberConfig 
-  | IStringConfig 
-  | IComboConfig 
-  | IBooleanConfig 
+export type ParameterConfig =
+  | INumberConfig
+  | IStringConfig
+  | IComboConfig
+  | IBooleanConfig
   | IImageConfig
   | Record<string, any>;
 
@@ -126,7 +126,7 @@ export interface IProcessedParameter {
   description?: string;
   required: boolean;
   value?: any;
-  possibleValues?: string[]; // For COMBO type
+  possibleValues?: (string | number)[]; // For COMBO type
   validation?: {
     min?: number;
     max?: number;

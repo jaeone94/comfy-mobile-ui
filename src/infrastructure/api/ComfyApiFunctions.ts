@@ -31,22 +31,22 @@ import type {
  */
 function routeBypassNode(bypassNode: any, outputSlot: number, graph: any): [string, number] | null {
   console.log(`🔍 routeBypassNode: node ${bypassNode.id}, outputSlot ${outputSlot}`);
-  
+
   // Get the output definition for the requested slot
   const outputDef = bypassNode.outputs?.[outputSlot];
   if (!outputDef) {
     console.log(`🔍 No output definition for slot ${outputSlot}`);
     return null;
   }
-  
+
   const requestedType = outputDef.type;
   console.log(`🔍 Requested type: ${requestedType}`);
-  
+
   // Create search order: [requested_slot, all_input_slots...]
-  const inputSlots = bypassNode.inputs ? Array.from({length: bypassNode.inputs.length}, (_, i) => i) : [];
+  const inputSlots = bypassNode.inputs ? Array.from({ length: bypassNode.inputs.length }, (_, i) => i) : [];
   const searchOrder = [outputSlot, ...inputSlots];
   console.log(`🔍 Search order: [${searchOrder.join(', ')}]`);
-  
+
   // Find matching input by type, prioritizing same position
   for (const inputIndex of searchOrder) {
     const input = bypassNode.inputs?.[inputIndex];
@@ -54,9 +54,9 @@ function routeBypassNode(bypassNode: any, outputSlot: number, graph: any): [stri
       console.log(`🔍 No input at index ${inputIndex}`);
       continue;
     }
-    
+
     console.log(`🔍 Input ${inputIndex}: type=${input.type}, link=${input.link}, name=${input.name}`);
-    
+
     // Check type match
     if (input.type === requestedType && input.link !== null && input.link !== undefined) {
       console.log(`🔍 Type match found! Looking for sourceLink for link ${input.link}`);
@@ -71,14 +71,14 @@ function routeBypassNode(bypassNode: any, outputSlot: number, graph: any): [stri
           // Source is also bypass, recursively route
           return routeBypassNode(sourceNode, sourceLink.outputIndex, graph);
         }
-        
+
         console.log(`🔍 Found final route: [${sourceLink.sourceNodeId}, ${sourceLink.outputIndex}]`);
         // Source is normal node, return connection
         return [String(sourceLink.sourceNodeId), sourceLink.outputIndex];
       }
     }
   }
-  
+
   console.log(`🔍 No route found for node ${bypassNode.id} output ${outputSlot}`);
   return null;
 }
@@ -91,21 +91,21 @@ function routeBypassNode(bypassNode: any, outputSlot: number, graph: any): [stri
  */
 function routeRerouteNode(rerouteNode: any, graph: any): [string, number] | null {
   console.log(`🔍 routeRerouteNode: node ${rerouteNode.id}`);
-  
+
   // Reroute nodes have exactly one input and one output
   if (!rerouteNode.inputs || rerouteNode.inputs.length === 0) {
     console.log(`🔍 Reroute node ${rerouteNode.id} has no inputs`);
     return null;
   }
-  
+
   const input = rerouteNode.inputs[0];
   if (input.link === null || input.link === undefined) {
     console.log(`🔍 Reroute node ${rerouteNode.id} input not connected`);
     return null;
   }
-  
+
   console.log(`🔍 Reroute node ${rerouteNode.id} input link: ${input.link}`);
-  
+
   // Find the source of this input link
   const sourceLink = findSourceForLink(graph, input.link);
   if (sourceLink) {
@@ -115,11 +115,11 @@ function routeRerouteNode(rerouteNode: any, graph: any): [string, number] | null
       console.log(`🔍 Source is also Reroute, recursing...`);
       return routeRerouteNode(sourceNode, graph);
     }
-    
+
     console.log(`🔍 Reroute node ${rerouteNode.id} routes to: [${sourceLink.sourceNodeId}, ${sourceLink.outputIndex}]`);
     return [String(sourceLink.sourceNodeId), sourceLink.outputIndex];
   }
-  
+
   console.log(`🔍 No route found for Reroute node ${rerouteNode.id}`);
   return null;
 }
@@ -137,13 +137,13 @@ function buildBypassRoutingMap(graph: any): Map<string, [string, number] | null>
     _linksKeys: graph._links ? Object.keys(graph._links) : 'none',
     topLevelKeys: Object.keys(graph)
   });
-  
+
   const routingMap = new Map<string, [string, number] | null>();
-  
+
   // Find all bypass nodes
   const bypassNodes = graph._nodes.filter((node: any) => node.mode === 4);
   console.log(`🔀 Building bypass routing map: found ${bypassNodes.length} bypass nodes`);
-  
+
   for (const bypassNode of bypassNodes) {
     console.log(`🔀 Processing bypass node ${bypassNode.id} (${bypassNode.type})`);
     // Map each output slot of this bypass node
@@ -156,7 +156,7 @@ function buildBypassRoutingMap(graph: any): Map<string, [string, number] | null>
       }
     }
   }
-  
+
   console.log(`🔀 Bypass routing map built with ${routingMap.size} routes`);
   return routingMap;
 }
@@ -168,20 +168,20 @@ function buildBypassRoutingMap(graph: any): Map<string, [string, number] | null>
  */
 function buildRerouteRoutingMap(graph: any): Map<string, [string, number] | null> {
   console.log(`🔄 Building Reroute routing map...`);
-  
+
   const routingMap = new Map<string, [string, number] | null>();
-  
+
   // Find all Reroute nodes
   const rerouteNodes = graph._nodes.filter((node: any) => node.type === 'Reroute');
   console.log(`🔄 Building Reroute routing map: found ${rerouteNodes.length} Reroute nodes`);
-  
+
   for (const rerouteNode of rerouteNodes) {
     console.log(`🔄 Processing Reroute node ${rerouteNode.id}`);
     const route = routeRerouteNode(rerouteNode, graph);
     console.log(`🔄 Route ${rerouteNode.id} -> ${route ? `[${route[0]}, ${route[1]}]` : 'null'}`);
     routingMap.set(String(rerouteNode.id), route);
   }
-  
+
   console.log(`🔄 Reroute routing map built with ${routingMap.size} routes`);
   return routingMap;
 }
@@ -193,55 +193,55 @@ function buildRerouteRoutingMap(graph: any): Map<string, [string, number] | null
  */
 function processPrimitiveNode(primitiveNode: any, graph: any): void {
   console.log(`🔍 processPrimitiveNode: node ${primitiveNode.id}`);
-  
+
   // PrimitiveNode should have a value in its widgets_values[0]
   if (!primitiveNode.widgets_values || primitiveNode.widgets_values.length === 0) {
     console.log(`🔍 PrimitiveNode ${primitiveNode.id} has no widgets_values`);
     return;
   }
-  
+
   const primitiveValue = primitiveNode.widgets_values[0];
   console.log(`🔍 PrimitiveNode ${primitiveNode.id} value: ${primitiveValue}`);
-  
+
   // Find all nodes that are connected to this PrimitiveNode's output
   if (!graph._links) {
     console.log(`🔍 No links in graph for PrimitiveNode ${primitiveNode.id}`);
     return;
   }
-  
+
   // Find links where this primitive node is the source (origin)
-  const outgoingLinks = Object.values(graph._links).filter((link: any) => 
+  const outgoingLinks = Object.values(graph._links).filter((link: any) =>
     String(link.origin_id) === String(primitiveNode.id)
   );
-  
+
   console.log(`🔍 PrimitiveNode ${primitiveNode.id} has ${outgoingLinks.length} outgoing links`);
-  
+
   for (const link of outgoingLinks) {
     const targetNodeId = String((link as any).target_id);
     const targetSlot = (link as any).target_slot;
-    
+
     console.log(`🔍 Processing link to node ${targetNodeId}, slot ${targetSlot}`);
-    
+
     // Find the target node
     const targetNode = graph._nodes.find((n: any) => String(n.id) === targetNodeId);
     if (!targetNode) {
       console.log(`🔍 Target node ${targetNodeId} not found`);
       continue;
     }
-    
+
     // Find the input slot that corresponds to this link
     if (!targetNode.inputs || targetSlot >= targetNode.inputs.length) {
       console.log(`🔍 Target node ${targetNodeId} invalid input slot ${targetSlot}`);
       continue;
     }
-    
+
     const inputSlot = targetNode.inputs[targetSlot];
     console.log(`🔍 Target input: ${inputSlot.name} on node ${targetNodeId}`);
-    
+
     // Update the target node's widget_values for this parameter
     // We need to find the widget index for this input parameter BEFORE unlinking
     updateNodeWidgetValue(targetNode, inputSlot.name, primitiveValue, graph);
-    
+
     // Set the input link to null since we're replacing it with the actual value
     inputSlot.link = null;
     console.log(`🔍 Unlinked input ${inputSlot.name} on node ${targetNodeId} and set value to ${primitiveValue}`);
@@ -257,28 +257,28 @@ function processPrimitiveNode(primitiveNode: any, graph: any): void {
  */
 function updateNodeWidgetValue(node: any, paramName: string, value: any, graph: any): void {
   console.log(`🔍 updateNodeWidgetValue: node ${node.id}, param ${paramName}, value ${value}`);
-  
+
   // Initialize widgets_values if it doesn't exist
   if (!node.widgets_values) {
     node.widgets_values = [];
     console.log(`🔍 Initialized widgets_values for node ${node.id}`);
   }
-  
+
   // For array format widgets_values, we need to find the correct index
   if (Array.isArray(node.widgets_values)) {
     // We need to determine the parameter order for this node
     // This is a simplified approach - in a real implementation, 
     // you might need to use metadata service to get the correct index
-    
+
     // Try to find the parameter index by examining inputs
     let paramIndex = -1;
     if (node.inputs) {
       // For PrimitiveNode processing, we need to find the index among all widget parameters
       // This includes both currently unlinked inputs AND the one we're about to unlink
-      
+
       // First, find the input we're trying to set
       const targetInputIndex = node.inputs.findIndex((input: any) => input.name === paramName);
-      
+
       if (targetInputIndex !== -1) {
         // Count how many inputs before this one would be widgets (not linked or about to be unlinked)
         paramIndex = 0;
@@ -289,12 +289,12 @@ function updateNodeWidgetValue(node: any, paramName: string, value: any, graph: 
             paramIndex++;
           }
         }
-        
+
         // Ensure the array is large enough
         while (node.widgets_values.length <= paramIndex) {
           node.widgets_values.push(null);
         }
-        
+
         node.widgets_values[paramIndex] = value;
         console.log(`🔍 Updated widgets_values[${paramIndex}] = ${value} for node ${node.id} (input: ${paramName})`);
         return;
@@ -302,7 +302,7 @@ function updateNodeWidgetValue(node: any, paramName: string, value: any, graph: 
         console.log(`🔍 Input ${paramName} not found in node ${node.id} inputs`);
       }
     }
-    
+
     console.log(`🔍 Could not determine parameter index for ${paramName} on node ${node.id}`);
   } else if (typeof node.widgets_values === 'object') {
     // Object format
@@ -318,16 +318,16 @@ function updateNodeWidgetValue(node: any, paramName: string, value: any, graph: 
  */
 function processPrimitiveNodes(graph: any): void {
   console.log(`🔄 Processing PrimitiveNodes...`);
-  
+
   // Find all PrimitiveNode nodes
   const primitiveNodes = graph._nodes.filter((node: any) => node.type === 'PrimitiveNode');
   console.log(`🔄 Found ${primitiveNodes.length} PrimitiveNode nodes`);
-  
+
   for (const primitiveNode of primitiveNodes) {
     console.log(`🔄 Processing PrimitiveNode ${primitiveNode.id}`);
     processPrimitiveNode(primitiveNode, graph);
   }
-  
+
   console.log(`🔄 PrimitiveNode processing complete`);
 }
 
@@ -341,33 +341,33 @@ function processPrimitiveNodes(graph: any): void {
  * @returns Final resolved connection [nodeId, outputIndex] or original if not bypass/reroute
  */
 function resolveConnection(
-  nodeId: string, 
-  outputIndex: number, 
-  graph: any, 
+  nodeId: string,
+  outputIndex: number,
+  graph: any,
   bypassRoutes: Map<string, [string, number] | null>,
   rerouteRoutes: Map<string, [string, number] | null>
 ): [string, number] {
   console.log(`🔄 resolveConnection: ${nodeId}-${outputIndex}`);
-  
+
   // Check for bypass node routing first
   const bypassRouteKey = `${nodeId}-${outputIndex}`;
   const bypassRoute = bypassRoutes.get(bypassRouteKey);
-  
+
   if (bypassRoute) {
     console.log(`🔄 Found bypass route: ${nodeId}-${outputIndex} -> ${bypassRoute[0]}-${bypassRoute[1]}`);
     // Recursively resolve in case the bypass target is also a virtual node
     return resolveConnection(bypassRoute[0], bypassRoute[1], graph, bypassRoutes, rerouteRoutes);
   }
-  
+
   // Check for Reroute node routing  
   const rerouteRoute = rerouteRoutes.get(nodeId);
-  
+
   if (rerouteRoute) {
     console.log(`🔄 Found reroute route: ${nodeId} -> ${rerouteRoute[0]}-${rerouteRoute[1]}`);
     // Recursively resolve in case the reroute target is also a virtual node
     return resolveConnection(rerouteRoute[0], rerouteRoute[1], graph, bypassRoutes, rerouteRoutes);
   }
-  
+
   console.log(`🔄 Final resolution: ${nodeId}-${outputIndex}`);
   // Not a bypass or reroute connection, return as-is
   return [nodeId, outputIndex];
@@ -384,7 +384,7 @@ function resolveConnection(
 function processDateFormatString(input: string): string {
   const datePattern = /%date:([^%]+)%/g;
   const currentDate = new Date();
-  
+
   return input.replace(datePattern, (match, format) => {
     try {
       return formatDate(currentDate, format);
@@ -403,7 +403,7 @@ function formatDate(date: Date, pattern: string): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
-  
+
   return pattern
     .replace(/yyyy/g, String(year))
     .replace(/MM/g, month)
@@ -414,14 +414,14 @@ function formatDate(date: Date, pattern: string): string {
  * Preprocess Graph widget values - filter control_after_generate values and process date formats
  */
 function preprocessGraphWidgets(graph: any): void {
-  
+
   const controlValues = ["fixed", "increment", "decrement", "randomize"];
-  
+
   if (!graph._nodes) return;
-  
+
   for (const node of graph._nodes) {
     // Filter control_after_generate values from sampler nodes
-    if (node.type.toLowerCase().includes('sampler')) {            
+    if (node.type.toLowerCase().includes('sampler')) {
       // For array widgets_values, filter out control values
       if (Array.isArray(node.widgets_values)) {
         const originalValues = [...node.widgets_values];
@@ -439,7 +439,7 @@ function preprocessGraphWidgets(graph: any): void {
           );
         }
       }
-      
+
       // For object widgets_values, remove control properties
       if (node.widgets_values && typeof node.widgets_values === 'object' && !Array.isArray(node.widgets_values)) {
         for (const [key, value] of Object.entries(node.widgets_values)) {
@@ -451,7 +451,7 @@ function preprocessGraphWidgets(graph: any): void {
         }
       }
     }
-    
+
     // Process date format strings for filename_prefix in widgets_values
     if (Array.isArray(node.widgets_values)) {
       for (let i = 0; i < node.widgets_values.length; i++) {
@@ -464,7 +464,7 @@ function preprocessGraphWidgets(graph: any): void {
         }
       }
     }
-    
+
     if (node.widgets_values && typeof node.widgets_values === 'object' && !Array.isArray(node.widgets_values)) {
       for (const [key, value] of Object.entries(node.widgets_values)) {
         if (typeof value === 'string' && value.includes('%date:')) {
@@ -525,14 +525,14 @@ const generatePromptId = (): string => {
  * Get server information and available node types
  */
 export const getServerInfo = async (
-  serverUrl: string, 
+  serverUrl: string,
   config: ComfyAPIConfig = {}
 ): Promise<ServerInfo> => {
   const { timeout = 5000 } = config;
-  
+
   try {
     const response = await axios.get(`${serverUrl}/object_info`, { timeout });
-    
+
     return {
       version: response.data?.version || 'unknown',
       nodeTypes: Object.keys(response.data || {}),
@@ -552,13 +552,13 @@ export const clearCache = async (
   config: ComfyAPIConfig = {}
 ): Promise<boolean> => {
   const { timeout = 10000 } = config;
-  
+
   try {
     const response = await axios.post(`${serverUrl}/free`, {
       unload_models: true,
       free_memory: true
     }, { timeout });
-    
+
     return response.status === 200;
   } catch (error) {
     console.error('Failed to clear cache:', error);
@@ -574,13 +574,13 @@ export const clearVRAM = async (
   config: ComfyAPIConfig = {}
 ): Promise<boolean> => {
   const { timeout = 10000 } = config;
-  
+
   try {
     const response = await axios.post(`${serverUrl}/free`, {
       unload_models: true,
       free_memory: true
     }, { timeout });
-    
+
     return response.status === 200;
   } catch (error) {
     console.error('Failed to clear VRAM:', error);
@@ -631,8 +631,8 @@ export const convertJsonToAPI = async (
  * Convert Graph to API format (Enhanced with legacy logic for better accuracy)
  */
 export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: number } => {
-  console.log('🚀 Starting convertGraphToAPI with step-by-step processing...');
-  
+
+
   if (!graph._nodes || !Array.isArray(graph._nodes)) {
     throw new Error('Invalid graph structure: missing or invalid _nodes');
   }
@@ -673,7 +673,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Links object is duplicated to prevent reference sharing
    */
   let workingGraph = deepCopyGraph(graph);
-  
+
   /* =========================================================================
    * STEP 2-4: Preprocess Variables and SetNode Registration
    * =========================================================================
@@ -727,7 +727,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    */
   const { workingGraph: processedGraph, variableStore } = preprocessVariablesAndSetNodes(workingGraph);
   workingGraph = processedGraph;
-  
+
   /* =========================================================================
    * STEP 5: Resolve GetNode Connections
    * =========================================================================
@@ -762,7 +762,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Original GetNode links remain but are effectively unused
    */
   workingGraph = resolveGetNodeConnections(workingGraph, variableStore);
-  
+
   /* =========================================================================
    * STEP 5.5: Build Bypass and Reroute Routing Maps (Critical Timing!)
    * =========================================================================
@@ -814,7 +814,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    */
   const bypassRoutingMap = buildBypassRoutingMap(workingGraph);
   const rerouteRoutingMap = buildRerouteRoutingMap(workingGraph);
-  
+
   /* =========================================================================
    * STEP 5.7: Process PrimitiveNode Virtual Nodes
    * =========================================================================
@@ -836,7 +836,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Connection is removed: CLIPTextEncode(10).inputs["text"].link = null
    */
   processPrimitiveNodes(workingGraph);
-  
+
   /* =========================================================================
    * STEP 6: Filter Out Virtual Nodes  
    * =========================================================================
@@ -878,7 +878,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Any node with mode === 4 (bypassed nodes)
    */
   workingGraph = filterOutVirtualNodes(workingGraph);
-  
+
   /* =========================================================================
    * STEP 7: Transform Graph Nodes to ComfyUI API Format
    * =========================================================================
@@ -930,7 +930,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    */
   console.log(`🚀 Step 7: Starting API conversion with ${workingGraph._nodes.length} nodes`);
   let { apiWorkflow, nodeCount } = transformGraphNodesToApiFormat(workingGraph, bypassRoutingMap, rerouteRoutingMap);
-  
+
   /* =========================================================================
    * STEP 8: Remove Orphaned Connections 
    * =========================================================================
@@ -973,7 +973,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    */
   console.log('🚀 Step 8: Cleaning up broken connections...');
   apiWorkflow = removeOrphanedConnections(apiWorkflow);
-  
+
   /* =========================================================================
    * STEP 9: Apply Custom Node Processing (API Stage)
    * =========================================================================
@@ -989,7 +989,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
   console.log('🚀 Step 9: Applying API-stage custom node processing...');
   // Currently no custom node processing needed at API stage
   // processCustomNodes(apiWorkflow); // Reserved for future API-specific transformations
-  
+
   return { apiWorkflow, nodeCount };
 };
 
@@ -1003,9 +1003,9 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
       ...node,
       // Deep copy inputs and outputs arrays to prevent original graph modification
       inputs: node.inputs ? node.inputs.map((input: any) => ({ ...input })) : undefined,
-      outputs: node.outputs ? node.outputs.map((output: any) => ({ 
-        ...output, 
-        links: output.links ? [...output.links] : [] 
+      outputs: node.outputs ? node.outputs.map((output: any) => ({
+        ...output,
+        links: output.links ? [...output.links] : []
       })) : undefined,
       // Deep copy widgets_values if it's an array
       widgets_values: Array.isArray(node.widgets_values) ? [...node.widgets_values] : node.widgets_values
@@ -1023,16 +1023,16 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
   for (const node of workingGraph._nodes as any[]) {
     const nodeId = String(node.id);
     const nodeType = node.type;
-    
+
     if (nodeType === 'SetNode' || nodeType === 'easy setNode') {
       // Extract variable name from widgets_values[0]
       const variableName = node.widgets_values && node.widgets_values[0] ? String(node.widgets_values[0]) : '';
-      
+
       if (variableName) {
         // Get the input connection for the data value
         let dataValue: any = null;
         let dataType = 'UNKNOWN';
-        
+
         // Check if SetNode has input connections
         if (node.inputs && node.inputs.length > 0) {
           const dataInput = node.inputs[0]; // Usually the first input is the data
@@ -1045,14 +1045,14 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
             }
           }
         }
-        
+
         // Store the variable information
         variableStore[variableName] = {
           sourceNodeId: nodeId,
           dataType,
           value: dataValue
         };
-        
+
       }
     }
   }
@@ -1067,9 +1067,9 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
       // Get variable name from GetNode
       const variableName = node.widgets_values && node.widgets_values[0] ? String(node.widgets_values[0]) : '';
       const variable = variableStore[variableName];
-      
+
       if (variable && variable.value) {
-        
+
         // Find all nodes that reference this GetNode
         for (const targetNode of workingGraph._nodes) {
           if (targetNode.inputs) {
@@ -1077,7 +1077,7 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
               if (input.link !== null) {
                 const link = workingGraph._links[input.link];
                 if (link && link.origin_id === node.id) { // This input connects to our GetNode
-                  
+
                   // Create new direct connection from variable source to target
                   const [sourceNodeId, sourceSlot] = variable.value;
                   const newLink = {
@@ -1089,10 +1089,10 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
                     type: variable.dataType
                   };
                   newLinks[nextLinkId] = newLink;
-                  
+
                   // Update the input to point to the new link
                   input.link = nextLinkId;
-                  
+
                   nextLinkId++;
                 }
               }
@@ -1118,13 +1118,13 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
   for (const node of workingGraph._nodes as any[]) {
     const nodeId = String(node.id);
     const nodeType = node.type;
-    
+
     // Validate essential node properties
     if (!nodeType) {
       console.error(`❌ Node ${nodeId} is missing type property:`, node);
       throw new Error(`Node ${nodeId} is missing type property`);
     }
-    
+
     // Skip muted/bypassed/never nodes
     if (node.mode === 2 || node.mode === 4) {
       continue;
@@ -1150,16 +1150,16 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
 
       // Build mapping: which widgets_values index corresponds to which input
       let widgetIndex = 0;
-      
+
       if (node.inputs) {
         for (const input of node.inputs as any[]) {
           // Check if this input has a widget (can be controlled by widgets_values)
           if (input.widget) {
-            
+
             // If this input is connected (has link), skip the widget value
             if (input.link !== null && input.link !== undefined) {
               widgetIndex++; // Skip this widget value
-              
+
               // Special handling for control_after_generate - skip additional value
               if ((input.name === 'seed' || input.name === 'noise_seed') && widgetIndex < node.widgets_values.length) {
                 const nextValue = node.widgets_values[widgetIndex];
@@ -1172,12 +1172,12 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
               // Input is not connected, use widget value
               if (widgetIndex < node.widgets_values.length) {
                 let widgetValue = node.widgets_values[widgetIndex];
-                
+
                 // Skip control_after_generate values
                 const CONTROL_VALUES = ['fixed', 'increment', 'decrement', 'randomize'];
                 if (CONTROL_VALUES.includes(widgetValue)) {
                   widgetIndex++;
-                  
+
                   // Get next value if available
                   if (widgetIndex < node.widgets_values.length) {
                     widgetValue = node.widgets_values[widgetIndex];
@@ -1185,7 +1185,7 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
                     continue;
                   }
                 }
-                
+
                 inputs[input.name] = widgetValue;
                 widgetIndex++;
               } else {
@@ -1220,7 +1220,7 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
         title: node.title || nodeType
       }
     };
-    
+
     nodeCount++;
   }
 
@@ -1230,7 +1230,7 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
       // Handle [nodeId, slotIndex] connections
       if (Array.isArray(input) && input.length === 2) {
         const [connectedNodeId] = input;
-        
+
         // If connected node was removed, delete this connection
         if (!apiWorkflow[connectedNodeId]) {
           delete nodeData.inputs[inputName];
@@ -1248,18 +1248,18 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
  */
 function removeOrphanedConnections(apiWorkflow: any): any {
   console.log('🧹 Cleaning up broken input connections...');
-  
+
   for (const [nodeId, nodeData] of Object.entries(apiWorkflow)) {
     const node = nodeData as any;
     if (!node.inputs) continue;
-    
+
     const inputsToRemove: string[] = [];
-    
+
     for (const [inputName, inputValue] of Object.entries(node.inputs)) {
       // Handle [nodeId, slotIndex] connections
       if (Array.isArray(inputValue) && inputValue.length === 2) {
         const [connectedNodeId] = inputValue;
-        
+
         // If connected node doesn't exist in API workflow, mark for removal
         if (!apiWorkflow[connectedNodeId]) {
           console.log(`🧹 Removing broken connection: ${nodeId}.${inputName} -> ${connectedNodeId} (node not found)`);
@@ -1267,13 +1267,13 @@ function removeOrphanedConnections(apiWorkflow: any): any {
         }
       }
     }
-    
+
     // Remove broken connections
     for (const inputName of inputsToRemove) {
       delete node.inputs[inputName];
     }
   }
-  
+
   return apiWorkflow;
 }
 
@@ -1291,16 +1291,16 @@ function deepCopyGraph(graph: any) {
       ...node,
       // Deep copy inputs and outputs arrays to prevent original graph modification
       inputs: node.inputs ? node.inputs.map((input: any) => ({ ...input })) : undefined,
-      outputs: node.outputs ? node.outputs.map((output: any) => ({ 
-        ...output, 
-        links: output.links ? [...output.links] : [] 
+      outputs: node.outputs ? node.outputs.map((output: any) => ({
+        ...output,
+        links: output.links ? [...output.links] : []
       })) : undefined,
       // Deep copy widgets_values if it's an array
       widgets_values: Array.isArray(node.widgets_values) ? [...node.widgets_values] : node.widgets_values
     }))],
     _links: { ...graph._links }
   };
-  
+
   console.log(`✅ Deep copy created: ${workingGraph._nodes.length} nodes, ${Object.keys(workingGraph._links).length} links`);
   return workingGraph;
 }
@@ -1310,27 +1310,27 @@ function deepCopyGraph(graph: any) {
  */
 function preprocessVariablesAndSetNodes(workingGraph: any) {
   console.log('🔄 Step 2-4: Processing variables...');
-  
+
   // Step 2: Preprocess working graph widget values (not original graph!)
   preprocessGraphWidgets(workingGraph);
 
   // Step 3: Initialize variable store for SetNode/GetNode processing (from legacy)
   const variableStore: Record<string, { sourceNodeId: string; dataType: string; value: any }> = {};
-  
+
   // Step 4: Process all SetNode for variable registration (legacy logic)
   for (const node of workingGraph._nodes as any[]) {
     const nodeId = String(node.id);
     const nodeType = node.type;
-    
+
     if (nodeType === 'SetNode' || nodeType === 'easy setNode') {
       // Extract variable name from widgets_values[0]
       const variableName = node.widgets_values && node.widgets_values[0] ? String(node.widgets_values[0]) : '';
-      
+
       if (variableName) {
         // Get the input connection for the data value
         let dataValue: any = null;
         let dataType = 'UNKNOWN';
-        
+
         // Check if SetNode has input connections
         if (node.inputs && node.inputs.length > 0) {
           const dataInput = node.inputs[0]; // Usually the first input is the data
@@ -1343,7 +1343,7 @@ function preprocessVariablesAndSetNodes(workingGraph: any) {
             }
           }
         }
-        
+
         // Store the variable information
         variableStore[variableName] = {
           sourceNodeId: nodeId,
@@ -1471,20 +1471,20 @@ function resolveGetNodeConnections(workingGraph: any, variableStore: Record<stri
  */
 function filterOutVirtualNodes(workingGraph: any) {
   console.log('🔄 Step 6: Removing virtual nodes...');
-  
+
   const originalCount = workingGraph._nodes.length;
   const beforeNodes = workingGraph._nodes.map((n: any) => `${n.id}(${n.type})`);
-  
+
   workingGraph._nodes = workingGraph._nodes.filter((node: any) => !isVirtualNode(node));
-  
+
   const afterNodes = workingGraph._nodes.map((n: any) => `${n.id}(${n.type})`);
   const removedCount = originalCount - workingGraph._nodes.length;
-  
+
   console.log(`✅ Virtual nodes removed: ${removedCount} removed, ${workingGraph._nodes.length} remaining`);
   console.log(`   Before: [${beforeNodes.join(', ')}]`);
   console.log(`   After:  [${afterNodes.join(', ')}]`);
   console.log(`   Graph shape: { _nodes: [${afterNodes.join(', ')}], _links: ${Object.keys(workingGraph._links).length} links }`);
-  
+
   return workingGraph;
 }
 
@@ -1638,12 +1638,12 @@ function processNodeWidgetObject(node: any, apiNodeInputs: Record<string, any>):
  * Step 7: Convert nodes to API format with bypass and Reroute routing
  */
 function transformGraphNodesToApiFormat(
-  workingGraph: any, 
+  workingGraph: any,
   bypassRoutingMap: Map<string, [string, number] | null>,
   rerouteRoutingMap: Map<string, [string, number] | null>
 ) {
   console.log('🔄 Step 7: Converting nodes to API format...');
-  
+
   const apiWorkflow: Record<string, any> = {};
   let nodeCount = 0;
 
@@ -1724,9 +1724,9 @@ function findSourceForLink(graph: any, linkId: number): { sourceNodeId: number; 
     console.log(`🔍 findSourceForLink: No link found for ID ${linkId} in graph._links`);
     return null;
   }
-  
+
   console.log(`🔍 findSourceForLink: Found link {id: ${link.id}, origin: ${link.origin_id}-${link.origin_slot}, target: ${link.target_id}-${link.target_slot}}`);
-  return { 
+  return {
     sourceNodeId: link.origin_id,
     outputIndex: link.origin_slot
   };
@@ -1738,7 +1738,7 @@ function findSourceForLink(graph: any, linkId: number): { sourceNodeId: number; 
 function isVirtualNode(node: any): boolean {
   const virtualNodeTypes = new Set([
     'Note',
-    'MarkdownNote', 
+    'MarkdownNote',
     'Reroute',
     'PrimitiveNode',
     'SetNode',
@@ -1760,7 +1760,7 @@ function isVirtualNode(node: any): boolean {
     'Fast Muter (rgthree)',     // Mute control
     'Mute / Bypass Repeater (rgthree)',     // Mute / Bypass control
   ]);
-  
+
   return virtualNodeTypes.has(node.type);
 }
 
@@ -1769,14 +1769,14 @@ function isVirtualNode(node: any): boolean {
  */
 function findAlternativeSource(graph: any, inputName: string, inputType: string): { sourceNodeId: number; outputIndex: number } | null {
   if (!graph._nodes) return null;
-  
-  
+
+
   // Look for nodes that output the required type
   for (const node of graph._nodes) {
     if (node.outputs && Array.isArray(node.outputs)) {
       for (let outputIndex = 0; outputIndex < node.outputs.length; outputIndex++) {
         const output = node.outputs[outputIndex];
-        
+
         // Check if this output matches the required type and has links
         if (output.type === inputType && output.links && output.links.length > 0) {
           // For positive/negative CONDITIONING, prioritize certain node types
@@ -1788,7 +1788,7 @@ function findAlternativeSource(graph: any, inputName: string, inputType: string)
               return { sourceNodeId: node.id, outputIndex };
             }
           }
-          
+
           // For LATENT type
           if (inputType === 'LATENT' && inputName === 'latent_image') {
             return { sourceNodeId: node.id, outputIndex };
@@ -1797,7 +1797,7 @@ function findAlternativeSource(graph: any, inputName: string, inputType: string)
       }
     }
   }
-  
+
   return null;
 }
 
@@ -1810,7 +1810,7 @@ function convertSpecialWidgetValue(paramName: string, value: any, nodeType: stri
   if (paramName === 'filename_prefix' && typeof value === 'string') {
     return processDateFormatString(value);
   }
-  
+
   return value; // Return unchanged if no conversion needed
 }
 
@@ -1825,9 +1825,9 @@ async function monitorExecution(
   keepWebSocketOpen?: boolean,
   additionalMonitoringTime?: number
 ): Promise<{ success: boolean; outputs?: IComfyNodeOutput[]; error?: string }> {
-  
+
   try {
-    
+
     // Create WebSocket service
     const promptWS = new PromptWebSocketService({
       serverUrl,
@@ -1837,29 +1837,29 @@ async function monitorExecution(
       keepConnectionOpen: keepWebSocketOpen,
       additionalMonitoringTime: additionalMonitoringTime
     });
-    
+
     // Start monitoring and wait for completion
     const result = await promptWS.startMonitoring();
-    
-    
+
+
     // Additional monitoring period if requested
     if (keepWebSocketOpen && additionalMonitoringTime && result.success) {
-      
+
       // Setup additional error listener
       let additionalErrors: any[] = [];
       const errorListener = (data: any) => {
         additionalErrors.push(data);
       };
-      
+
       promptWS.on('execution_error', errorListener);
-      
+
       // Wait for additional monitoring period
       await new Promise(resolve => setTimeout(resolve, additionalMonitoringTime));
-      
+
       promptWS.off('execution_error', errorListener);
       promptWS.close();
-      
-      
+
+
       // If we found additional errors, update the result
       if (additionalErrors.length > 0) {
         return {
@@ -1868,13 +1868,13 @@ async function monitorExecution(
         };
       }
     }
-    
+
     return {
       success: result.success,
       outputs: result.finalOutputs,
       error: result.success ? undefined : (result.error?.message || `Execution failed: ${result.completionReason}`)
     };
-    
+
   } catch (error) {
     console.error(`❌ Failed to monitor execution:`, error);
     return {
@@ -1893,7 +1893,7 @@ export const getPromptHistory = async (
   config: ComfyAPIConfig = {}
 ): Promise<IComfyHistoryResponse> => {
   const { timeout = 10000 } = config;
-  
+
   try {
     const response = await axios.get(`${serverUrl}/history/${maxItems}`, { timeout });
     return response.data;
@@ -1911,7 +1911,7 @@ export const getQueueStatus = async (
   config: ComfyAPIConfig = {}
 ): Promise<any> => {
   const { timeout = 5000 } = config;
-  
+
   try {
     const response = await axios.get(`${serverUrl}/queue`, { timeout });
     return response.data;
@@ -1929,7 +1929,7 @@ export const interruptExecution = async (
   config: ComfyAPIConfig = {}
 ): Promise<boolean> => {
   const { timeout = 5000 } = config;
-  
+
   try {
     const response = await axios.post(`${serverUrl}/interrupt`, {}, { timeout });
     return response.status === 200;
@@ -1947,7 +1947,7 @@ export const rebootServer = async (
   config: ComfyAPIConfig = {}
 ): Promise<boolean> => {
   const { timeout = 10000 } = config;
-  
+
   try {
     const response = await axios.post(`${serverUrl}/comfymobile/api/reboot`, {
       confirm: true
@@ -1957,7 +1957,7 @@ export const rebootServer = async (
       },
       timeout
     });
-    
+
     if (response.status === 200) {
       return true;
     } else {
@@ -1987,12 +1987,12 @@ export const fetchModelFolders = async (
   error?: string;
 }> => {
   const { timeout = 10000 } = config;
-  
+
   try {
     const response = await axios.get(`${serverUrl}/comfymobile/api/models/folders`, {
       timeout
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching model folders:', error);
@@ -2024,7 +2024,7 @@ export const startModelDownload = async (
   error?: string;
 }> => {
   const { timeout = 15000 } = config;
-  
+
   try {
     const response = await axios.post(`${serverUrl}/comfymobile/api/models/download`, params, {
       headers: {
@@ -2032,7 +2032,7 @@ export const startModelDownload = async (
       },
       timeout
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error starting model download:', error);
@@ -2057,12 +2057,12 @@ export const cancelDownload = async (
   error?: string;
 }> => {
   const { timeout = 10000 } = config;
-  
+
   try {
     const response = await axios.delete(`${serverUrl}/comfymobile/api/models/downloads/${taskId}`, {
       timeout
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error canceling download:', error);
@@ -2104,17 +2104,17 @@ export const fetchDownloads = async (
   error?: string;
 }> => {
   const { timeout = 10000 } = config;
-  
+
   try {
     const params = new URLSearchParams();
     if (options?.status) params.append('status', options.status);
     if (options?.limit) params.append('limit', options.limit.toString());
-    
+
     const url = `${serverUrl}/comfymobile/api/models/downloads${params.toString() ? '?' + params.toString() : ''}`;
     const response = await axios.get(url, {
       timeout
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching downloads:', error);
@@ -2145,7 +2145,7 @@ export const moveModelFile = async (
   error?: string;
 }> => {
   const { timeout = 30000 } = config;
-  
+
   try {
     const response = await axios.post(`${serverUrl}/comfymobile/api/models/move`, params, {
       headers: {
@@ -2153,7 +2153,7 @@ export const moveModelFile = async (
       },
       timeout
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error moving model file:', error);

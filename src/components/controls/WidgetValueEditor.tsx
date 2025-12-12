@@ -15,11 +15,11 @@ import { getGalleryPermissions } from '@/shared/utils/GalleryPermissionUtils';
 import { InlineImagePreview } from '@/components/media/InlineImagePreview';
 import { InlineVideoPreview } from '@/components/media/InlineVideoPreview';
 import { OutputsGallery } from '@/components/media/OutputsGallery';
-import { 
-  NumberWidget, 
-  BooleanWidget, 
-  StringWidget, 
-  ComboWidget, 
+import {
+  NumberWidget,
+  BooleanWidget,
+  StringWidget,
+  ComboWidget,
   SeedWithControlWidget,
   CustomDynamicWidget,
   getEditableTypes,
@@ -105,7 +105,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
   onControlAfterGenerateChange
 }) => {
   const [showAlbumModal, setShowAlbumModal] = useState(false);
-  
+
   // Debug logging for modal state changes
   React.useEffect(() => {
     console.log('🔍 showAlbumModal state changed:', showAlbumModal);
@@ -114,11 +114,11 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   // Handle control_after_generate special case
   const isControlAfterGenerate = param.name === 'control_after_generate';
-  const isSeedWithControl = (param.name === 'seed' || param.name === 'noise_seed') && widget && node?.getWidgets && 
+  const isSeedWithControl = (param.name === 'seed' || param.name === 'noise_seed') && widget && node?.getWidgets &&
     node.getWidgets()[((param as any).widgetIndex || 0) + 1]?.name === 'control_after_generate';
-  
+
   // Get control widget if this is a seed with control_after_generate
-  const controlWidget = isSeedWithControl ? 
+  const controlWidget = isSeedWithControl ?
     node?.getWidgets?.()?.[((param as any).widgetIndex || 0) + 1] : null;
 
   // Handle widget callback execution
@@ -137,30 +137,30 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
     onEditingValueChange(newValue);
     executeWidgetCallback(newValue);
   };
-  
+
   // Infer actual type for IMAGE/VIDEO parameters that come as COMBO from server
-  const isImageParam = param.name.toLowerCase().includes('image') || 
-                     (param.possibleValues && param.possibleValues.some(v => 
-                       typeof v === 'string' && (v.includes('.png') || v.includes('.jpg') || v.includes('.jpeg') || v.includes('.gif') || v.includes('.webp'))
-                     ));
-  const isVideoParam = param.name.toLowerCase().includes('video') || 
-                     (param.possibleValues && param.possibleValues.some(v => 
-                       typeof v === 'string' && (v.includes('.mp4') || v.includes('.avi') || v.includes('.mov') || v.includes('.mkv') || v.includes('.webm'))
-                     ));
+  const isImageParam = param.name.toLowerCase().includes('image') ||
+    (param.possibleValues && param.possibleValues.some(v =>
+      typeof v === 'string' && (v.includes('.png') || v.includes('.jpg') || v.includes('.jpeg') || v.includes('.gif') || v.includes('.webp'))
+    ));
+  const isVideoParam = param.name.toLowerCase().includes('video') ||
+    (param.possibleValues && param.possibleValues.some(v =>
+      typeof v === 'string' && (v.includes('.mp4') || v.includes('.avi') || v.includes('.mov') || v.includes('.mkv') || v.includes('.webm'))
+    ));
 
   // Check if this widget has custom field definitions
-  const hasCustomWidgetDefinition = widget?.customWidgetDefinition?.fields && 
-                                   Object.keys(widget.customWidgetDefinition.fields).length > 0;
+  const hasCustomWidgetDefinition = widget?.customWidgetDefinition?.fields &&
+    Object.keys(widget.customWidgetDefinition.fields).length > 0;
 
   // Check if parameter type is editable using widget registry
-  const isEditable = isParameterTypeEditable(param.type) || 
-                     // Special case: custom widgets with field definitions are always editable
-                     hasCustomWidgetDefinition ||
-                     // Special case: seed with control_after_generate is always editable
-                     isSeedWithControl ||
-                     // Special case: IMAGE and VIDEO types (explicit or inferred) are editable with custom UI
-                     param.type === 'IMAGE' || param.type === 'VIDEO' || isImageParam || isVideoParam;
-  
+  const isEditable = isParameterTypeEditable(param.type) ||
+    // Special case: custom widgets with field definitions are always editable
+    hasCustomWidgetDefinition ||
+    // Special case: seed with control_after_generate is always editable
+    isSeedWithControl ||
+    // Special case: IMAGE and VIDEO types (explicit or inferred) are editable with custom UI
+    param.type === 'IMAGE' || param.type === 'VIDEO' || isImageParam || isVideoParam;
+
   if (isEditing) {
     return (
       <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 transition-all duration-200">
@@ -184,7 +184,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 />
               );
             }
-            
+
             // Check for custom widget fields first (overrides standard types)
             const customWidgetFields = widget?.customWidgetDefinition?.fields;
             if (customWidgetFields && Object.keys(customWidgetFields).length > 0) {
@@ -216,7 +216,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                     node={node}
                   />
                 );
-                
+
               case 'BOOLEAN':
                 return (
                   <BooleanWidget
@@ -227,7 +227,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                     node={node}
                   />
                 );
-                
+
               case 'STRING':
                 return (
                   <StringWidget
@@ -238,7 +238,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                     node={node}
                   />
                 );
-                
+
               case 'COMBO':
               default:
                 // Check for IMAGE/VIDEO types (either explicit type or inferred from name/values)
@@ -253,7 +253,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                           setShowAlbumModal(true);
                         }}
                         // Prevent actual selection since we're using the modal
-                        onChange={() => {}}
+                        onChange={() => { }}
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-lg cursor-pointer"
                       >
                         <option value="">
@@ -315,7 +315,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             }
           })()}
         </div>
-        
+
         {/* Action Buttons */}
         <div className="flex justify-end space-x-2 mt-4">
           <Button
@@ -362,8 +362,8 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             </Badge>
           )}
         </div>
-        <Badge 
-          variant={hasCustomWidgetDefinition ? "secondary" : "outline"} 
+        <Badge
+          variant={hasCustomWidgetDefinition ? "secondary" : "outline"}
           className={`text-xs ${hasCustomWidgetDefinition ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700' : ''}`}
         >
           {param.type}
@@ -372,7 +372,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
           )}
         </Badge>
       </div>
-      
+
       <div className="mb-2">
         <span className="text-sm text-slate-600 dark:text-slate-400">Value: </span>
         <div className="inline-flex items-center space-x-2">
@@ -383,31 +383,29 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 e.preventDefault();
                 onStartEditing(nodeId, param.name, currentValue);
               }}
-              className={`text-sm px-2 py-1 rounded inline-flex items-center max-w-[250px] md:max-w-[350px] align-bottom transition-all duration-200 hover:shadow-sm active:scale-95 cursor-pointer border ${
-                isModified 
-                  ? 'bg-[#10b981] dark:bg-[#10b981] text-white dark:text-white border-[#10b981] dark:border-[#10b981] hover:bg-[#059669] dark:hover:bg-[#059669]' 
-                  : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600'
-              } ${modifiedHighlightClasses}`}
+              className={`text-sm px-2 py-1 rounded inline-flex items-center max-w-[250px] md:max-w-[350px] align-bottom transition-all duration-200 hover:shadow-sm active:scale-95 cursor-pointer border ${isModified
+                ? 'bg-[#10b981] dark:bg-[#10b981] text-white dark:text-white border-[#10b981] dark:border-[#10b981] hover:bg-[#059669] dark:hover:bg-[#059669]'
+                : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600'
+                } ${modifiedHighlightClasses}`}
             >
               {param.type === 'BOOLEAN' ? (
                 <div className="flex items-center mr-2">
-                  <div className={`w-3 h-3 rounded-full mr-2 ${
-                    Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
-                  }`} />
+                  <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
+                    }`} />
                   <span className="font-mono">{Boolean(currentValue) ? 'True' : 'False'}</span>
                 </div>
               ) : (
                 <span className="font-mono mr-2 truncate flex-1 min-w-0">
                   {(() => {
-                    const displayValue = currentValue !== undefined 
-                      ? (typeof currentValue === 'object' 
-                          ? JSON.stringify(currentValue) 
-                          : String(currentValue))
+                    const displayValue = currentValue !== undefined
+                      ? (typeof currentValue === 'object'
+                        ? JSON.stringify(currentValue)
+                        : String(currentValue))
                       : 'undefined';
-                    
+
                     // Truncate very long values to ensure edit icon is always visible
                     const maxLength = 40;
-                    return displayValue.length > maxLength 
+                    return displayValue.length > maxLength
                       ? displayValue.substring(0, maxLength) + '...'
                       : displayValue;
                   })()}
@@ -419,23 +417,22 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             <div className="text-sm px-2 py-1 rounded inline-block max-w-[250px] md:max-w-[350px] truncate align-bottom bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
               {param.type === 'BOOLEAN' ? (
                 <div className="flex items-center">
-                  <div className={`w-3 h-3 rounded-full mr-2 ${
-                    Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
-                  }`} />
+                  <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
+                    }`} />
                   <span className="font-mono">{Boolean(currentValue) ? 'True' : 'False'}</span>
                 </div>
               ) : (
                 <span className="font-mono">
                   {(() => {
-                    const displayValue = currentValue !== undefined 
-                      ? (typeof currentValue === 'object' 
-                          ? JSON.stringify(currentValue) 
-                          : String(currentValue))
+                    const displayValue = currentValue !== undefined
+                      ? (typeof currentValue === 'object'
+                        ? JSON.stringify(currentValue)
+                        : String(currentValue))
                       : 'undefined';
-                    
+
                     // Truncate very long values
                     const maxLength = 40;
-                    return displayValue.length > maxLength 
+                    return displayValue.length > maxLength
                       ? displayValue.substring(0, maxLength) + '...'
                       : displayValue;
                   })()}
@@ -443,7 +440,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               )}
             </div>
           )}
-          
+
           {/* Upload Icons for Image/Video Files */}
           {currentValue != null && typeof currentValue === 'string' && (isImageFile(currentValue) || isVideoFile(currentValue)) && (
             <>
@@ -454,11 +451,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                   onFileUpload(nodeId, param.name);
                 }}
                 disabled={uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name}
-                className={`p-1.5 rounded-md transition-all duration-200 hover:shadow-sm active:scale-95 border ${
-                  uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name
-                    ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
-                    : 'bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/50 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700'
-                }`}
+                className={`p-1.5 rounded-md transition-all duration-200 hover:shadow-sm active:scale-95 border ${uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name
+                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
+                  : 'bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/50 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700'
+                  }`}
                 title={`Upload new ${isImageFile(currentValue) ? 'image' : 'video'} file`}
               >
                 {uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name ? (
@@ -470,17 +466,16 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             </>
           )}
         </div>
-        
+
         {/* Upload Status Message */}
         {uploadState.message && uploadState.nodeId === nodeId && uploadState.paramName === param.name && (
           <div className="mt-2 text-xs text-center">
-            <span className={`px-2 py-1 rounded-md ${
-              uploadState.message.includes('✅') 
-                ? 'bg-[#10b981] dark:bg-[#10b981] text-white dark:text-white' 
-                : uploadState.message.includes('❌')
+            <span className={`px-2 py-1 rounded-md ${uploadState.message.includes('✅')
+              ? 'bg-[#10b981] dark:bg-[#10b981] text-white dark:text-white'
+              : uploadState.message.includes('❌')
                 ? 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
                 : 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-            }`}>
+              }`}>
               {uploadState.message}
             </span>
           </div>
@@ -525,18 +520,18 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 return option.length > maxLength ? option.substring(0, maxLength) + '...' : option;
               };
 
-              const displayOptions = param.possibleValues!.slice(0, 3).map(option => 
+              const displayOptions = param.possibleValues!.slice(0, 3).map(option =>
                 truncateOption(String(option))
               );
-              
+
               const optionsText = displayOptions.join(', ');
-              
+
               // If the combined text is still too long, further truncate
               const maxTotalLength = 60;
               if (optionsText.length > maxTotalLength) {
                 return optionsText.substring(0, maxTotalLength) + '...';
               }
-              
+
               const remainingCount = param.possibleValues!.length - displayOptions.length;
               return optionsText + (remainingCount > 0 ? ` + ${remainingCount} more` : '');
             })()}
@@ -558,12 +553,12 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
           )}
         </div>
       )}
-      
+
       {/* File Selection Gallery - Rendered via Portal */}
       {showAlbumModal && createPortal(
-        <div 
+        <div
           className="fixed inset-0 z-[9999] bg-white dark:bg-slate-900 overflow-auto overscroll-contain"
-          style={{ 
+          style={{
             position: 'fixed',
             top: 0,
             left: 0,

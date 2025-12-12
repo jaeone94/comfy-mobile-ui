@@ -41,7 +41,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
   };
 
   // Handle value change with widget callback
-  const handleValueChange = (newValue: string) => {
+  const handleValueChange = (newValue: string | number) => {
     onValueChange(newValue);
     executeWidgetCallback(newValue);
   };
@@ -53,7 +53,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
-          inputContainerRef.current && !inputContainerRef.current.contains(event.target as Node)) {
+        inputContainerRef.current && !inputContainerRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
         setSearchQuery('');
       }
@@ -88,39 +88,39 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
     if (!query.trim()) {
       return options.map((option, index) => ({ option, score: 0, originalIndex: index }));
     }
-    
+
     const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
-    
+
     const scoredOptions = options.map((option, originalIndex) => {
       const optionText = String(option).toLowerCase();
       let totalScore = 0;
-      
+
       // 1. Exact match (highest score)
       if (optionText === query.toLowerCase()) {
         totalScore += 1000;
       }
-      
+
       // 2. Starts with query (high score)
       if (optionText.startsWith(query.toLowerCase())) {
         totalScore += 500;
       }
-      
+
       // 3. Contains exact query (medium-high score)
       if (optionText.includes(query.toLowerCase())) {
         totalScore += 300;
       }
-      
+
       // 4. All search terms found (flexible matching)
       const foundTerms = searchTerms.filter(term => optionText.includes(term));
       if (foundTerms.length > 0) {
         // Base score for having matches
         totalScore += foundTerms.length * 50;
-        
+
         // Bonus for finding all terms
         if (foundTerms.length === searchTerms.length) {
           totalScore += 200;
         }
-        
+
         // Bonus for term proximity (terms close together)
         if (searchTerms.length > 1) {
           let proximityBonus = 0;
@@ -135,7 +135,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
           }
           totalScore += proximityBonus;
         }
-        
+
         // Bonus for word boundary matches (more natural)
         searchTerms.forEach(term => {
           const wordBoundaryRegex = new RegExp(`\\b${term}`, 'i');
@@ -143,12 +143,12 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
             totalScore += 25;
           }
         });
-        
+
         // Penalty for length difference (shorter options preferred when scores are similar)
         const lengthPenalty = Math.max(0, optionText.length - query.length) * 0.5;
         totalScore -= lengthPenalty;
       }
-      
+
       return {
         option,
         score: totalScore,
@@ -157,7 +157,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
         totalTerms: searchTerms.length
       };
     });
-    
+
     // Filter out non-matches and sort by score (descending)
     return scoredOptions
       .filter(item => item.score > 0)
@@ -174,20 +174,20 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
         return a.originalIndex - b.originalIndex;
       });
   };
-  
+
   const searchResults = getSearchMatches(selectOptions, searchQuery);
   const filteredOptions = searchResults.map(result => result.option);
-  
+
   // Highlight matching text in options
   const highlightMatches = (text: string, query: string): React.ReactNode => {
     if (!query.trim()) return text;
-    
+
     const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
     let highlightedText = text;
-    
+
     // Create a map to track all matches
     const matches: { start: number; end: number; }[] = [];
-    
+
     searchTerms.forEach(term => {
       const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
       let match;
@@ -196,13 +196,13 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
         regex.lastIndex = match.index + 1; // Prevent infinite loops
       }
     });
-    
+
     if (matches.length === 0) return text;
-    
+
     // Sort matches by start position and merge overlapping
     matches.sort((a, b) => a.start - b.start);
     const mergedMatches: { start: number; end: number; }[] = [];
-    
+
     matches.forEach(match => {
       if (mergedMatches.length === 0 || mergedMatches[mergedMatches.length - 1].end < match.start) {
         mergedMatches.push(match);
@@ -211,39 +211,39 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
         mergedMatches[mergedMatches.length - 1].end = Math.max(mergedMatches[mergedMatches.length - 1].end, match.end);
       }
     });
-    
+
     // Build highlighted JSX
     const parts: React.ReactNode[] = [];
     let lastEnd = 0;
-    
+
     mergedMatches.forEach((match, index) => {
       // Add text before match
       if (match.start > lastEnd) {
         parts.push(text.slice(lastEnd, match.start));
       }
-      
+
       // Add highlighted match
       parts.push(
-        <mark 
-          key={index} 
+        <mark
+          key={index}
           className="bg-yellow-200 dark:bg-yellow-600/30 text-slate-900 dark:text-slate-100 font-semibold rounded px-0.5"
         >
           {text.slice(match.start, match.end)}
         </mark>
       );
-      
+
       lastEnd = match.end;
     });
-    
+
     // Add remaining text
     if (lastEnd < text.length) {
       parts.push(text.slice(lastEnd));
     }
-    
+
     return <>{parts}</>;
   };
 
-  const handleOptionSelection = (optionValue: string) => {
+  const handleOptionSelection = (optionValue: string | number) => {
     handleValueChange(optionValue);
     setIsDropdownOpen(false);
     setSearchQuery('');
@@ -291,7 +291,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
             </Button>
           </div>
         </div>
-        
+
         {/* Dropdown Portal */}
         {isDropdownOpen && ReactDOM.createPortal(
           <div
@@ -322,14 +322,14 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
                 </div>
               )}
             </div>
-            
+
             {/* Options list */}
             <div className="overflow-y-auto max-h-48">
               {filteredOptions.length > 0 ? (
                 filteredOptions.map((option) => (
                   <button
                     key={String(option)}
-                    onClick={() => handleOptionSelection(String(option))}
+                    onClick={() => handleOptionSelection(option)}
                     className="w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 border-none outline-none text-sm transition-colors"
                   >
                     <div className="font-medium text-slate-700 dark:text-slate-300">
