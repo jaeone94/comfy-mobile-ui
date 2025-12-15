@@ -44,6 +44,8 @@ import {
   getPngWorkflowPreview,
 } from '@/utils/pngMetadataExtractor';
 
+const STORAGE_KEY_FOLDER_PATH = 'comfy_mobile_folder_path';
+
 const WorkflowList: React.FC = () => {
   // State
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -53,7 +55,17 @@ const WorkflowList: React.FC = () => {
   const [editingWorkflow, setEditingWorkflow] = useState<Workflow | null>(null);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
+
+  // Initialize from localStorage
+  const [currentFolderId, setCurrentFolderId] = useState<string | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_FOLDER_PATH);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+
   const [detailWorkflow, setDetailWorkflow] = useState<Workflow | null>(null);
   const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
   const [isFolderDetailModalOpen, setIsFolderDetailModalOpen] = useState(false);
@@ -83,6 +95,15 @@ const WorkflowList: React.FC = () => {
     cancelEditMode,
     removeWorkflow: removeWorkflowFromStructure,
   } = useFolderManagement();
+
+  // Persist current folder path
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY_FOLDER_PATH, JSON.stringify(currentFolderId));
+    } catch (e) {
+      console.error('Failed to save folder path:', e);
+    }
+  }, [currentFolderId]);
 
   // Load workflows
   useEffect(() => {
