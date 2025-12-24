@@ -346,14 +346,6 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
 
 
-  // Load files when server requirements are met
-  useEffect(() => {
-    if (isConnected && hasExtension) {
-      loadFiles();
-    }
-  }, [isConnected, hasExtension]);
-
-
   const loadFiles = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -403,6 +395,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       setLoading(false);
     }
   }, [comfyFileService, activeFolder]);
+
+
+  // Load files when server requirements are met or folder changes
+  useEffect(() => {
+    if (isConnected && hasExtension) {
+      loadFiles();
+    }
+  }, [isConnected, hasExtension, loadFiles]);
 
 
   const handleRetryConnection = () => {
@@ -824,12 +824,6 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                     onClick={() => {
                       setActiveFolder(folderType);
                       window.scrollTo(0, 0);
-                      setTimeout(() => {
-                        const refreshButton = document.querySelector('[title="Refresh files"]') as HTMLButtonElement;
-                        if (refreshButton) {
-                          refreshButton.click();
-                        }
-                      }, 300);
                     }}
                     className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeFolder === folderType
                       ? 'bg-white/30 dark:bg-slate-700/30 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-sm border border-white/20 dark:border-slate-600/20'
