@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { CornerLeftUp } from 'lucide-react';
 
 interface ParentFolderGridItemProps {
@@ -12,6 +13,7 @@ const ParentFolderGridItem: React.FC<ParentFolderGridItemProps> = ({
   isTarget = false,
   isMoveMode = false,
 }) => {
+  const { t } = useTranslation();
   return (
     <div
       className={`relative group overflow-hidden rounded-xl transition-all duration-300 cursor-pointer border h-[72px] ${isTarget
@@ -38,10 +40,10 @@ const ParentFolderGridItem: React.FC<ParentFolderGridItemProps> = ({
         {/* Text Info */}
         <div className="flex flex-col pr-2">
           <h3 className="text-sm font-semibold text-slate-200 group-hover:text-white transition-colors whitespace-nowrap">
-            {isMoveMode ? 'Move to Parent' : 'Back to Parent'}
+            {isMoveMode ? t('folder.moveToParent') : t('folder.backToParent')}
           </h3>
           <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors whitespace-nowrap">
-            {isMoveMode ? 'Move selected items here' : 'Go up one level'}
+            {isMoveMode ? t('folder.moveHere') : t('folder.goUp')}
           </span>
         </div>
       </div>

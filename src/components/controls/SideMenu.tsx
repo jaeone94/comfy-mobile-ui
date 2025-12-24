@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import ReactDOM from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, Settings, Wifi, WifiOff, Server, Download, Upload, RotateCcw, Package, Trash2, HardDrive, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image } from 'lucide-react';
+import { X, Settings, Wifi, WifiOff, Server, Download, Upload, RotateCcw, Package, Trash2, HardDrive, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image, Globe } from 'lucide-react';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { CacheService, CacheClearResult, BrowserCapabilities } from '@/services/cacheService';
 
@@ -42,6 +43,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
   const [isClearing, setIsClearing] = useState<boolean>(false);
   const [clearResult, setClearResult] = useState<CacheClearResult | null>(null);
   const [browserCapabilities, setBrowserCapabilities] = useState<BrowserCapabilities | null>(null);
+  const { t, i18n } = useTranslation();
 
   useEffect(() => {
     if (isOpen) {
@@ -77,9 +79,9 @@ const SideMenu: React.FC<SideMenuProps> = ({
       setClearResult({
         success: false,
         clearedCaches: [],
-        errors: [error instanceof Error ? error.message : 'Unknown error'],
+        errors: [error instanceof Error ? error.message : t('common.unknown')],
         totalSize: 0,
-        method: 'Error'
+        method: t('common.unknown')
       });
     } finally {
       setIsClearing(false);
@@ -87,7 +89,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
   };
 
   const formatUrl = (url: string) => {
-    if (!url) return 'Not configured';
+    if (!url) return t('common.notConfigured');
     try {
       const urlObj = new URL(url);
       return `${urlObj.hostname}:${urlObj.port}`;
@@ -104,7 +106,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
         {/* Header */}
         <div className="flex-none flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-800/50">
           <h2 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
-            Settings & Tools
+            {t('menu.title')}
           </h2>
           <Button
             onClick={onClose}
@@ -124,28 +126,28 @@ const SideMenu: React.FC<SideMenuProps> = ({
               <div className="flex items-center space-x-3 text-blue-600 dark:text-blue-400">
                 <Server className="h-6 w-6" />
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Server Connection
+                  {t('menu.serverConnection')}
                 </h3>
               </div>
 
               <div className="p-5 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-700 dark:text-slate-300">
-                    Status
+                    {t('common.status')}
                   </span>
                   <div className="flex items-center space-x-2">
                     {isConnected ? (
                       <>
                         <Wifi className="h-4 w-4 text-green-600 dark:text-green-400" />
                         <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100 px-3 py-1">
-                          Connected
+                          {t('common.connected')}
                         </Badge>
                       </>
                     ) : (
                       <>
                         <WifiOff className="h-4 w-4 text-red-600 dark:text-red-400" />
                         <Badge variant="destructive" className="px-3 py-1">
-                          Disconnected
+                          {t('common.disconnected')}
                         </Badge>
                       </>
                     )}
@@ -154,7 +156,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
 
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-700 dark:text-slate-300">
-                    Server URL
+                    {t('workflow.server')} URL
                   </span>
                   <span className="text-sm text-slate-500 dark:text-slate-400 font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">
                     {formatUrl(url)}
@@ -174,7 +176,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
               {/* Navigation */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
-                  Navigation
+                  {t('menu.navigation')}
                 </h4>
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <button
@@ -185,8 +187,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <LinkIcon className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Chains</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Workflow chains</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.chains')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.chainsSub')}</div>
                     </div>
                   </button>
                   <button
@@ -197,8 +199,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Image className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Gallery</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">View outputs</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.gallery')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.gallerySub')}</div>
                     </div>
                   </button>
                 </div>
@@ -207,7 +209,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
               {/* Server Management */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
-                  Server Management
+                  {t('menu.serverMgmt')}
                 </h4>
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <button
@@ -218,8 +220,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Settings className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Server Settings</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Configure connection</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.settings')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.settingsSub')}</div>
                     </div>
                   </button>
                   <button
@@ -230,8 +232,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <RotateCcw className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Reboot Server</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Restart ComfyUI</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.reboot')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.rebootSub')}</div>
                     </div>
                   </button>
                 </div>
@@ -240,7 +242,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
               {/* Workflow Sync */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
-                  Workflow Sync
+                  {t('menu.workflowSync')}
                 </h4>
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <button
@@ -251,8 +253,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Download className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Import</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">From ComfyUI</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.import')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.importSub')}</div>
                     </div>
                   </button>
                   <button
@@ -263,8 +265,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Upload className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Upload</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">To ComfyUI</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.upload')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.uploadSub')}</div>
                     </div>
                   </button>
                 </div>
@@ -273,7 +275,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
               {/* Model Management */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
-                  Models
+                  {t('menu.models')}
                 </h4>
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <button
@@ -284,8 +286,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Package className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Download Models</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Get new models</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.modelDownload')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.modelDownloadSub')}</div>
                     </div>
                   </button>
                   <button
@@ -296,8 +298,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <FolderOpen className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Model Browser</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Manage files</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.modelBrowser')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.modelBrowserSub')}</div>
                     </div>
                   </button>
                 </div>
@@ -306,7 +308,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
               {/* Tools */}
               <div className="space-y-3">
                 <h4 className="text-sm font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider ml-1">
-                  Tools
+                  {t('menu.tools')}
                 </h4>
                 <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden">
                   <button
@@ -317,8 +319,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Video className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Video Downloader</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Save generations</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.videoDownloader')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.videoDownloaderSub')}</div>
                     </div>
                   </button>
                   <button
@@ -329,8 +331,8 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Layers className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Node Patches</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Widget settings</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.nodePatches')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.nodePatchesSub')}</div>
                     </div>
                   </button>
                   <button
@@ -341,27 +343,56 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <Database className="h-5 w-5" />
                     </div>
                     <div>
-                      <div className="font-medium text-slate-900 dark:text-slate-100">Backup Data</div>
-                      <div className="text-xs text-slate-500 dark:text-slate-400">Browser storage</div>
+                      <div className="font-medium text-slate-900 dark:text-slate-100">{t('menu.backup')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.backupSub')}</div>
                     </div>
                   </button>
                 </div>
               </div>
             </div>
 
+            {/* Language Selection */}
+            <section className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-3 text-slate-600 dark:text-slate-400">
+                <Globe className="h-6 w-6" />
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {t('menu.language')}
+                </h3>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { code: 'en', label: 'English', flag: '🇺🇸' },
+                  { code: 'ko', label: '한국어', flag: '🇰🇷' },
+                  { code: 'zh', label: '简体中文', flag: '🇨🇳' },
+                  { code: 'ja', label: '日本語', flag: '🇯🇵' }
+                ].map((lang) => (
+                  <Button
+                    key={lang.code}
+                    variant={i18n.language === lang.code ? "default" : "outline"}
+                    className={`justify-start ${i18n.language === lang.code ? 'bg-primary text-primary-foreground' : 'bg-white dark:bg-slate-900'}`}
+                    onClick={() => i18n.changeLanguage(lang.code)}
+                  >
+                    <span className="mr-2 text-base">{lang.flag}</span>
+                    {lang.label}
+                  </Button>
+                ))}
+              </div>
+            </section>
+
             {/* App Cache Section */}
             <section className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
               <div className="flex items-center space-x-3 text-slate-600 dark:text-slate-400">
                 <HardDrive className="h-6 w-6" />
                 <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  App Cache
+                  {t('menu.cache')}
                 </h3>
               </div>
 
               <div className="p-5 bg-slate-100 dark:bg-slate-900/50 rounded-2xl space-y-4">
                 <div className="flex items-center justify-between">
                   <span className="font-medium text-slate-700 dark:text-slate-300">
-                    Used Space
+                    {t('menu.cacheUsed')}
                   </span>
                   <span className="text-slate-600 dark:text-slate-400 font-mono">
                     {CacheService.formatCacheSize(cacheSize)}
@@ -377,19 +408,19 @@ const SideMenu: React.FC<SideMenuProps> = ({
                   {isClearing ? (
                     <>
                       <div className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      Clearing...
+                      {t('menu.cacheClearing')}
                     </>
                   ) : (
                     <>
                       <Trash2 className="h-4 w-4 mr-2" />
-                      Clear Cache
+                      {t('menu.cacheClear')}
                     </>
                   )}
                 </Button>
 
                 {clearResult && (
                   <div className={`text-xs p-2 rounded ${clearResult.success ? 'text-green-600 bg-green-50 dark:bg-green-900/20' : 'text-red-600 bg-red-50 dark:bg-red-900/20'}`}>
-                    {clearResult.success ? 'Cache cleared successfully' : 'Failed to clear cache'}
+                    {clearResult.success ? t('menu.cacheSuccess') : t('menu.cacheFailed')}
                   </div>
                 )}
               </div>
@@ -398,10 +429,10 @@ const SideMenu: React.FC<SideMenuProps> = ({
             {/* Footer */}
             <div className="pt-8 text-center space-y-2">
               <h3 className="font-bold text-slate-900 dark:text-slate-100">
-                ComfyUI Mobile
+                {t('menu.appTitle')}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Version 1.0.0
+                {t('menu.version', { version: '1.0.0' })}
               </p>
             </div>
           </div>

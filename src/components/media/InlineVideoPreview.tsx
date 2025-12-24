@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Video, AlertCircle, Play } from 'lucide-react';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { useConnectionStore } from '@/ui/store/connectionStore';
+import { useTranslation } from 'react-i18next';
 
 interface VideoPreviewData {
   filename?: string;
@@ -20,6 +21,7 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
   onClick,
   isFromExecution = false
 }) => {
+  const { t } = useTranslation();
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -135,7 +137,7 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
       >
         <div className="text-center">
           <div className="w-8 h-8 border-2 border-purple-500 border-t-transparent rounded-full animate-spin mx-auto mb-2"></div>
-          <p className="text-sm text-purple-700 dark:text-purple-300">Loading video...</p>
+          <p className="text-sm text-purple-700 dark:text-purple-300">{t('media.loadingVideo')}</p>
         </div>
       </div>
     );
@@ -149,8 +151,8 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
       >
         <div className="text-center">
           <AlertCircle className="w-8 h-8 text-red-600 dark:text-red-400 mx-auto mb-2" />
-          <p className="text-sm text-red-700 dark:text-red-300">Failed to load video</p>
-          <p className="text-xs text-red-600 dark:text-red-400">Click to retry</p>
+          <p className="text-sm text-red-700 dark:text-red-300">{t('media.failedToLoadVideo')}</p>
+          <p className="text-xs text-red-600 dark:text-red-400">{t('media.clickToRetry')}</p>
         </div>
       </div>
     );
@@ -170,7 +172,7 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
           playsInline
           controls={false}
           poster=""
-          onError={() => setError('Failed to display video')}
+          onError={() => setError(t('media.failedToDisplayVideo'))}
           onLoadedMetadata={(e) => {
             const video = e.target as HTMLVideoElement;
             // Set to first frame after metadata loads
@@ -198,15 +200,15 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
         {/* Video duration overlay */}
         <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
           <Video className="w-3 h-3 inline mr-1" />
-          Video
+          {t('media.video')}
         </div>
       </div>
       <div className="p-3">
         <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
-          {typeof videoPreview === 'string' ? videoPreview : (videoPreview.filename || 'Video Preview')}
+          {typeof videoPreview === 'string' ? videoPreview : (videoPreview.filename || t('media.videoPreview'))}
         </p>
         <p className="text-xs text-purple-600 dark:text-purple-400 mt-1">
-          Click to view full video
+          {t('media.clickToViewFullVideo')}
         </p>
       </div>
     </div>

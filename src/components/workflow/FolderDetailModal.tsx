@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Folder, FileText, Trash2, AlertTriangle } from 'lucide-react';
 import { FolderItem, FolderStructure } from '@/types/folder';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +24,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
     onClose,
     onDelete,
 }) => {
+    const { t } = useTranslation();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
     if (!folder) return null;
@@ -87,12 +89,12 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                         <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
                                     </div>
                                     <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                                        Delete Folder?
+                                        {t('folder.deleteConfirm')}
                                     </h3>
                                     <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
-                                        Deleting this folder will permanently remove all its contents, including {workflowCount} workflows and {subfolderCount} subfolders. This action cannot be undone.
+                                        {t('folder.deleteMessage', { workflowCount, subfolderCount })}
                                         <br /><br />
-                                        Are you sure you want to proceed?
+                                        {t('folder.deleteConfirmQuery')}
                                     </p>
                                 </div>
 
@@ -102,13 +104,13 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                         variant="outline"
                                         className="flex-1 py-3 rounded-xl border-slate-200 dark:border-slate-700"
                                     >
-                                        Cancel
+                                        {t('common.cancel')}
                                     </Button>
                                     <Button
                                         onClick={handleConfirmDelete}
                                         className="flex-1 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white border-none"
                                     >
-                                        Yes, Delete
+                                        {t('folder.confirmDelete')}
                                     </Button>
                                 </div>
                             </div>
@@ -126,14 +128,14 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                                 {folder.name}
                                             </h2>
                                             <p className="text-xs text-slate-600 dark:text-slate-400">
-                                                Folder Details
+                                                {t('folder.details')}
                                             </p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={onClose}
                                         className="flex-shrink-0 ml-3 p-2 bg-white/30 dark:bg-slate-700/30 backdrop-blur-sm border border-white/20 dark:border-slate-600/20 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all duration-200 rounded-xl"
-                                        aria-label="Close"
+                                        aria-label={t('common.close')}
                                     >
                                         <X className="w-5 h-5 text-slate-700 dark:text-slate-300" />
                                     </button>
@@ -148,7 +150,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                                 {workflowCount}
                                             </span>
                                             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                                Workflows
+                                                {t('workflow.listTitle')}
                                             </span>
                                         </div>
                                         <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl p-4 border border-white/20 dark:border-slate-600/20 flex flex-col items-center justify-center text-center">
@@ -156,7 +158,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                                 {subfolderCount}
                                             </span>
                                             <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
-                                                Subfolders
+                                                {t('folder.subfolders')}
                                             </span>
                                         </div>
                                     </div>
@@ -165,7 +167,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                     {previewWorkflows.length > 0 && (
                                         <div className="space-y-3">
                                             <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                                                Preview
+                                                {t('common.preview')}
                                             </p>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {previewWorkflows.map((wf) => (
@@ -192,7 +194,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
 
                                     {/* Created Date */}
                                     <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl p-4 border border-white/20 dark:border-slate-600/20 flex items-center justify-between">
-                                        <span className="text-sm text-slate-600 dark:text-slate-400">Created</span>
+                                        <span className="text-sm text-slate-600 dark:text-slate-400">{t('workflow.created')}</span>
                                         <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
                                             {new Date(folder.createdAt).toLocaleDateString()}
                                         </span>
@@ -207,7 +209,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                         className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 flex items-center justify-center gap-2"
                                     >
                                         <Trash2 className="w-5 h-5" />
-                                        Delete Folder
+                                        {t('folder.deleteFolder')}
                                     </Button>
                                 </div>
                             </>

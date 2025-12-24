@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Calendar, User, Tag, FileText, AlertCircle, Server, Play, Copy, Trash2, Plus, Check } from 'lucide-react';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
   onWorkflowDeleted,
   onWorkflowCopied,
 }) => {
+  const { t } = useTranslation();
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(workflow?.thumbnail);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -98,7 +100,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
       }
     } catch (error) {
       console.error('Failed to update workflow:', error);
-      toast.error('Failed to save changes');
+      toast.error(t('workflow.updateError'));
     }
   }, [workflow, onWorkflowUpdated]);
 
@@ -171,7 +173,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
       };
 
       await addWorkflow(copiedWorkflow);
-      toast.success(`Workflow copied as "${newName}"`);
+      toast.success(t('workflow.copySuccess', { name: newName }));
 
       onClose();
 
@@ -182,7 +184,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
       }, 0);
     } catch (error) {
       console.error('Failed to copy workflow:', error);
-      toast.error('Failed to copy workflow');
+      toast.error(t('workflow.copyError'));
     } finally {
       setIsLoading(false);
     }
@@ -202,7 +204,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
       onClose();
     } catch (error) {
       console.error('Failed to delete workflow:', error);
-      toast.error('Failed to delete workflow');
+      toast.error(t('workflow.deleteError'));
     } finally {
       setIsLoading(false);
     }
@@ -249,10 +251,10 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                     onChange={(e) => setName(e.target.value)}
                     onBlur={handleNameBlur}
                     className="text-lg font-bold text-slate-900 dark:text-slate-100 bg-transparent border-none p-0 h-auto focus-visible:ring-0 focus-visible:ring-offset-0 placeholder:text-slate-400"
-                    placeholder="Workflow Name"
+                    placeholder={t('workflow.namePlaceholder')}
                   />
                   <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
-                    Workflow Details
+                    {t('workflow.details')}
                   </p>
                 </div>
               </div>
@@ -292,14 +294,14 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                     variant="outline"
                     className="px-3 py-1.5 text-xs font-medium backdrop-blur-md bg-blue-500/10 dark:bg-blue-500/15 border-blue-400/30 dark:border-blue-500/30 text-blue-700 dark:text-blue-300"
                   >
-                    {workflow.nodeCount} {workflow.nodeCount === 1 ? 'node' : 'nodes'}
+                    {workflow.nodeCount} {workflow.nodeCount === 1 ? t('workflow.node') : t('workflow.nodes')}
                   </Badge>
                   {!workflow.isValid && (
                     <Badge
                       variant="destructive"
                       className="px-3 py-1.5 text-xs bg-red-500/15 border-red-400/30 text-red-700 dark:text-red-400"
                     >
-                      Invalid Workflow
+                      {t('workflow.invalid')}
                     </Badge>
                   )}
                   {(workflow as any).isServerWorkflow && (
@@ -308,7 +310,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                       className="px-3 py-1.5 text-xs bg-purple-500/10 border-purple-400/30 text-purple-700 dark:text-purple-300 flex items-center gap-1.5"
                     >
                       <Server className="w-3 h-3" />
-                      Server
+                      {t('workflow.server')}
                     </Badge>
                   )}
                 </div>
@@ -317,13 +319,13 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                     <FileText className="w-4 h-4 text-slate-400" />
-                    <span>Description</span>
+                    <span>{t('workflow.description')}</span>
                   </div>
                   <Textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     onBlur={handleDescriptionBlur}
-                    placeholder="Add a description..."
+                    placeholder={t('workflow.descriptionPlaceholder')}
                     className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl border-white/20 dark:border-slate-600/20 resize-none min-h-[80px]"
                   />
                 </div>
@@ -332,7 +334,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-300">
                     <Tag className="w-4 h-4 text-slate-400" />
-                    <span>Tags</span>
+                    <span>{t('workflow.tags')}</span>
                   </div>
                   <div className="flex flex-wrap gap-2 mb-2">
                     {tags.map((tag, index) => (
@@ -356,7 +358,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                       value={newTag}
                       onChange={(e) => setNewTag(e.target.value)}
                       onKeyDown={handleKeyDown}
-                      placeholder="Add a tag..."
+                      placeholder={t('workflow.tagPlaceholder')}
                       className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md border-white/20 dark:border-slate-600/20 h-9"
                     />
                     <Button
@@ -379,9 +381,9 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                       <Calendar className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Created</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{t('workflow.created')}</p>
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                        {new Date(workflow.createdAt).toLocaleDateString('en-US', {
+                        {new Date(workflow.createdAt).toLocaleDateString(undefined, {
                           year: 'numeric',
                           month: 'short',
                           day: 'numeric'
@@ -396,9 +398,9 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                       <User className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Author</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">{t('workflow.author')}</p>
                       <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
-                        {workflow.author || 'Unknown'}
+                        {workflow.author || t('common.unknown')}
                       </p>
                     </div>
                   </div>
@@ -410,9 +412,9 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                         <Calendar className="w-4 h-4 text-slate-600 dark:text-slate-400" />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Modified</p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">{t('workflow.modified')}</p>
                         <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                          {new Date(workflow.modifiedAt).toLocaleDateString('en-US', {
+                          {new Date(workflow.modifiedAt).toLocaleDateString(undefined, {
                             year: 'numeric',
                             month: 'short',
                             day: 'numeric'
@@ -435,12 +437,13 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                   className="flex-[2] bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white font-medium py-6 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-200 flex items-center justify-center gap-2"
                 >
                   <Play className="w-5 h-5" />
-                  Open
+                  {t('common.open')}
                 </Button>
                 <Button
                   onClick={handleCopyWorkflow}
                   variant="outline"
                   className="flex-1 py-6 rounded-2xl bg-white/50 dark:bg-slate-700/50 backdrop-blur-md border border-slate-200/50 dark:border-slate-600/50 hover:bg-white/70 dark:hover:bg-slate-700/70 transition-all duration-200 flex items-center justify-center gap-2"
+                  title={t('workflow.copyWorkflow')}
                   disabled={isLoading}
                 >
                   <Copy className="w-5 h-5" />
@@ -449,6 +452,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                   onClick={() => setShowDeleteConfirm(true)}
                   variant="outline"
                   className="flex-1 py-6 rounded-2xl bg-white/50 dark:bg-slate-700/50 backdrop-blur-md border border-slate-200/50 dark:border-slate-600/50 hover:bg-red-500/10 hover:text-red-600 hover:border-red-500/30 transition-all duration-200 flex items-center justify-center gap-2"
+                  title={t('workflow.deleteWorkflow')}
                   disabled={isLoading}
                 >
                   <Trash2 className="w-5 h-5" />
@@ -475,9 +479,9 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                       <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center mb-2">
                         <AlertCircle className="w-6 h-6 text-red-600 dark:text-red-400" />
                       </div>
-                      <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">Delete Workflow?</h3>
+                      <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t('workflow.deleteConfirmTitle')}</h3>
                       <p className="text-slate-500 dark:text-slate-400">
-                        This action cannot be undone. Are you sure you want to delete this workflow?
+                        {t('workflow.deleteConfirmMessage')}
                       </p>
                     </div>
 
@@ -487,7 +491,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                         variant="outline"
                         className="flex-1 h-12 rounded-xl border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
                       >
-                        Cancel
+                        {t('common.cancel')}
                       </Button>
                       <Button
                         onClick={handleDelete}
@@ -495,7 +499,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                         className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white shadow-lg shadow-red-500/20"
                         disabled={isLoading}
                       >
-                        {isLoading ? 'Deleting...' : 'Delete'}
+                        {isLoading ? t('common.loading') : t('common.delete')}
                       </Button>
                     </div>
                   </motion.div>

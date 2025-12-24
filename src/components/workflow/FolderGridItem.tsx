@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Folder, ChevronRight } from 'lucide-react';
 import { FolderItem } from '@/types/folder';
 import { useLongPress } from '@/hooks/useLongPress';
@@ -18,6 +19,7 @@ const FolderGridItem: React.FC<FolderGridItemProps> = ({
   isSelected = false,
   workflowCount = 0,
 }) => {
+  const { t } = useTranslation();
   const longPressProps = useLongPress(onLongPress, onClick, { threshold: 500 });
 
   return (
@@ -50,7 +52,7 @@ const FolderGridItem: React.FC<FolderGridItemProps> = ({
               {folder.name}
             </h3>
             <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors truncate">
-              {workflowCount} {workflowCount === 1 ? 'item' : 'items'}
+              {workflowCount} {workflowCount === 1 ? t('common.item') : t('common.items')}
             </span>
           </div>
         </div>

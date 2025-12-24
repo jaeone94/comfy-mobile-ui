@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -7,10 +8,10 @@ import { IComfyWorkflow, WorkflowNode } from '@/shared/types/app/IComfyWorkflow'
 import { WorkflowHeaderProgressBar } from '@/components/execution/ExecutionProgressBar';
 
 // Custom morphing icon component
-const SaveToCheckIcon: React.FC<{ 
-  isSaving: boolean; 
-  isSuccess: boolean; 
-  size?: number 
+const SaveToCheckIcon: React.FC<{
+  isSaving: boolean;
+  isSuccess: boolean;
+  size?: number
 }> = ({ isSaving, isSuccess, size = 16 }) => {
   return (
     <div className="relative flex items-center justify-center" style={{ width: size, height: size }}>
@@ -94,6 +95,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   onSaveChanges,
   saveSucceeded = false,
 }) => {
+  const { t } = useTranslation();
   const [showCheckmark, setShowCheckmark] = useState(false);
 
   // Handle save success animation
@@ -119,14 +121,14 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           >
             <ArrowLeft className="w-4 h-4" />
           </Button>
-          
+
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 truncate">
-              {workflow?.name || 'Untitled Workflow'}
+              {workflow?.name || t('workflow.newWorkflowName')}
             </h1>
             <div className="flex items-center space-x-2 mt-1 flex-wrap">
               <Badge variant="outline" className="text-xs bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 flex-shrink-0">
-                {workflow?.nodeCount || 0} nodes
+                {workflow?.nodeCount || 0} {t('workflow.nodes')}
               </Badge>
               {selectedNode && (
                 <Badge className="text-xs bg-gradient-to-r from-blue-500/80 to-cyan-500/80 backdrop-blur-sm flex-shrink-0 border border-white/20">
@@ -135,7 +137,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
               )}
             </div>
           </div>
-          
+
           {/* Save Button - Fixed right position */}
           <AnimatePresence>
             {(hasUnsavedChanges || showCheckmark) && (
@@ -149,19 +151,18 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                   onClick={onSaveChanges}
                   disabled={isSaving || showCheckmark}
                   size="sm"
-                  className={`text-white border border-white/20 backdrop-blur-sm shadow-lg transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg ${
-                    showCheckmark
+                  className={`text-white border border-white/20 backdrop-blur-sm shadow-lg transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg ${showCheckmark
                       ? 'bg-emerald-500/80'
-                      : isSaving 
+                      : isSaving
                         ? 'bg-gray-500/80 cursor-not-allowed'
                         : 'bg-green-500/80 hover:bg-green-600/90 hover:shadow-xl'
-                  }`}
-                  title={showCheckmark ? "Saved!" : isSaving ? "Saving..." : "Save changes"}
+                    }`}
+                  title={showCheckmark ? t('common.saved') : isSaving ? t('common.saving') : t('workflow.saveChanges')}
                 >
-                  <SaveToCheckIcon 
-                    isSaving={isSaving} 
-                    isSuccess={showCheckmark} 
-                    size={24} 
+                  <SaveToCheckIcon
+                    isSaving={isSaving}
+                    isSuccess={showCheckmark}
+                    size={24}
                   />
                 </Button>
               </motion.div>

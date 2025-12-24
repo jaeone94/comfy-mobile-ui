@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
@@ -80,6 +81,7 @@ const WorkflowList: React.FC = () => {
     sourceFolderId: string | null;
   } | null>(null);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const { t } = useTranslation();
 
   const navigate = useNavigate();
 
@@ -114,7 +116,7 @@ const WorkflowList: React.FC = () => {
         initializeRootWorkflows(stored.map((w) => w.id));
       } catch (error) {
         console.error('Failed to load workflows:', error);
-        setError('Failed to load saved workflows');
+        setError(t('workflow.updateError'));
       }
     };
     loadWorkflows();
@@ -129,19 +131,19 @@ const WorkflowList: React.FC = () => {
   const handlePngWorkflowUpload = async (file: File) => {
     let loadingToastId: string | number | undefined;
     try {
-      loadingToastId = toast.loading('Analyzing PNG file...');
+      loadingToastId = toast.loading(t('workflow.analyzing'));
       const preview = await getPngWorkflowPreview(file);
 
       if (preview.error || (!preview.hasWorkflow && !preview.hasPrompt)) {
         if (loadingToastId) toast.dismiss(loadingToastId);
-        return { success: false, error: preview.error || 'No metadata found' };
+        return { success: false, error: preview.error || t('workflow.invalidFile') };
       }
 
       if (loadingToastId) toast.dismiss(loadingToastId);
       const extraction = await extractWorkflowFromPng(file);
 
       if (!extraction.success || !extraction.data) {
-        return { success: false, error: extraction.error || 'Extraction failed' };
+        return { success: false, error: extraction.error || t('workflow.extractionFailed') };
       }
 
       const workflowData = convertPngDataToWorkflow(extraction.data);
@@ -178,14 +180,14 @@ const WorkflowList: React.FC = () => {
         setWorkflows((prev) => [result.workflow!, ...prev]);
         await addWorkflow(result.workflow);
         initializeRootWorkflows(workflows.map((w) => w.id).concat(result.workflow!.id));
-        toast.success(`Uploaded "${result.workflow.name}"`);
+        toast.success(t('workflow.uploadSuccess', { name: result.workflow.name }));
         setIsUploadModalOpen(false);
       } else {
-        toast.error(result.error || 'Upload failed');
+        toast.error(result.error || t('workflow.uploadFailed'));
       }
     } catch (error) {
       console.error('Upload error:', error);
-      toast.error('Upload failed');
+      toast.error(t('workflow.uploadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -201,7 +203,7 @@ const WorkflowList: React.FC = () => {
     try {
       setIsLoading(true);
       const newId = crypto.randomUUID();
-      const baseName = 'New Workflow';
+      const baseName = t('workflow.newWorkflowName');
       const newName = `${baseName} ${new Date().toLocaleTimeString()}`;
 
       const emptyWorkflow: Workflow = {
@@ -220,11 +222,11 @@ const WorkflowList: React.FC = () => {
       await addWorkflow(emptyWorkflow);
       setWorkflows((prev) => [emptyWorkflow, ...prev]);
       initializeRootWorkflows(workflows.map((w) => w.id).concat(newId));
-      toast.success('New workflow created');
+      toast.success(t('workflow.createSuccess'));
       navigate(`/workflow/${newId}`);
     } catch (error) {
       console.error('Failed to create workflow:', error);
-      toast.error('Failed to create workflow. Please try again.');
+      toast.error(t('workflow.createError'));
     } finally {
       setIsLoading(false);
     }
@@ -235,7 +237,7 @@ const WorkflowList: React.FC = () => {
     createFolder(newFolderName.trim(), currentFolderId);
     setNewFolderName('');
     setIsCreatingFolder(false);
-    toast.success('Folder created');
+    toast.success(t('folder.createSuccess'));
   };
 
   // Content Filtering & Sorting
@@ -304,8 +306,8 @@ const WorkflowList: React.FC = () => {
       path.unshift({ id: curr, name: f.name });
       curr = f.parentId;
     }
-    return [{ id: null, name: 'Home' }, ...path];
-  }, [currentFolderId, folderStructure]);
+    return [{ id: null, name: t('folder.home') }, ...path];
+  }, [currentFolderId, folderStructure, t]);
 
   // Handlers for Items
   const handleWorkflowClick = (workflow: Workflow) => {
@@ -323,7 +325,7 @@ const WorkflowList: React.FC = () => {
       if (selectedItemForMove) {
         moveItem({ itemId: selectedItemForMove.id, itemType: selectedItemForMove.type, targetFolderId: folderId, sourceFolderId: selectedItemForMove.sourceFolderId });
         setSelectedItemForMove(null);
-        toast.success('Item moved');
+        toast.success(t('folder.moveSuccess'));
       }
     } else {
       setCurrentFolderId(folderId);
@@ -395,7 +397,7 @@ const WorkflowList: React.FC = () => {
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
+                  placeholder={t('workflow.searchPlaceholder')}
                   className="w-40 lg:w-80 pl-10 h-12 bg-slate-100/50 dark:bg-slate-900/50 border-transparent focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500/50 transition-all duration-200 rounded-xl text-base"
                 />
               </div>
@@ -423,11 +425,11 @@ const WorkflowList: React.FC = () => {
                 setSortOrder(nextSort);
               }}
               className="h-12 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 font-medium text-slate-600 dark:text-slate-400 gap-2 min-w-[100px]"
-              title="Sort"
+              title={t('workflow.sorting.title', 'Sort')}
             >
               <ArrowUpDown className="w-5 h-5" />
               <span>
-                {selectedSortOrder.includes('date') ? 'Newest' : 'Name'}
+                {selectedSortOrder.includes('date') ? t('workflow.sorting.newest') : t('workflow.sorting.name')}
               </span>
             </Button>
 
@@ -440,7 +442,7 @@ const WorkflowList: React.FC = () => {
                 sessionStorage.setItem('app-navigation', 'true');
                 navigate('/chains');
               }}
-              title="Workflow Chains"
+              title={t('workflow.list.chainsTitle')}
             >
               <LinkIcon className="w-6 h-6 text-slate-600 dark:text-slate-400" />
             </Button>
@@ -454,7 +456,7 @@ const WorkflowList: React.FC = () => {
                 sessionStorage.setItem('app-navigation', 'true');
                 navigate('/outputs');
               }}
-              title="Gallery"
+              title={t('common.gallery')}
             >
               <Image className="w-6 h-6 text-slate-600 dark:text-slate-400" />
             </Button>
@@ -478,7 +480,7 @@ const WorkflowList: React.FC = () => {
                 <Input
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search workflows..."
+                  placeholder={t('workflow.searchPlaceholder')}
                   className="w-full pl-10 h-12 bg-slate-100 dark:bg-slate-900 border-transparent focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500/50 rounded-xl text-base"
                   autoFocus
                 />
@@ -503,7 +505,7 @@ const WorkflowList: React.FC = () => {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <FolderIcon className="w-6 h-6" />
-              Folders
+              {t('folder.title')}
             </h2>
             {/* New Folder Button */}
             <Button
@@ -511,7 +513,7 @@ const WorkflowList: React.FC = () => {
               variant="ghost"
               size="icon"
               className="h-10 w-10 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800"
-              title="New Folder"
+              title={t('folder.newFolder')}
             >
               <Plus className="w-6 h-6 text-slate-600 dark:text-slate-400" />
             </Button>
@@ -532,7 +534,7 @@ const WorkflowList: React.FC = () => {
                         sourceFolderId: currentFolderId
                       });
                       setSelectedItemForMove(null);
-                      toast.success('Item moved to parent');
+                      toast.success(t('folder.moveToParentSuccess'));
                     } else {
                       const parentId = folderStructure.folders[currentFolderId]?.parentId;
                       setCurrentFolderId(parentId);
@@ -557,7 +559,7 @@ const WorkflowList: React.FC = () => {
                       setNewFolderName('');
                     }
                   }}
-                  placeholder="Name"
+                  placeholder={t('folder.namePlaceholder')}
                   className="h-10 text-base border-none shadow-none focus-visible:ring-0 px-0 min-w-0"
                   autoFocus
                 />
@@ -569,7 +571,7 @@ const WorkflowList: React.FC = () => {
 
             {/* Folder Items */}
             {filteredContents.folders.length === 0 && !isCreatingFolder && !currentFolderId && (
-              <div className="text-sm text-slate-400 italic py-3 px-2">No folders</div>
+              <div className="text-sm text-slate-400 italic py-3 px-2">{t('folder.noFolders')}</div>
             )}
 
             {filteredContents.folders.map((folder) => (
@@ -603,7 +605,7 @@ const WorkflowList: React.FC = () => {
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <FileText className="w-6 h-6" />
-              Workflows ({filteredContents.workflows.length})
+              {t('workflow.listTitle')} ({filteredContents.workflows.length})
             </h2>
 
             {/* Workflow Actions - Moved here */}
@@ -614,7 +616,7 @@ const WorkflowList: React.FC = () => {
                 variant="ghost"
                 size="icon"
                 className="h-10 w-10 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800"
-                title="New Workflow"
+                title={t('workflow.uploadButton')}
               >
                 <Plus className="w-6 h-6 text-slate-600 dark:text-slate-400" />
               </Button>
@@ -632,7 +634,7 @@ const WorkflowList: React.FC = () => {
                     enterEditMode();
                   }
                 }}
-                title={isEditMode ? "Cancel Selection" : "Select Items"}
+                title={isEditMode ? t('workflow.cancelSelection') : t('workflow.selectItems')}
               >
                 {isEditMode ? <X className="w-6 h-6" /> : <ArrowRightLeft className="w-6 h-6 text-slate-600 dark:text-slate-400" />}
               </Button>
@@ -645,12 +647,12 @@ const WorkflowList: React.FC = () => {
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
                 <FileText className="w-8 h-8 text-slate-400" />
               </div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">No workflows found</h3>
+              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">{t('workflow.noWorkflows')}</h3>
               <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
-                Upload a workflow or create a new one to get started.
+                {t('workflow.noWorkflowsSub')}
               </p>
               <Button onClick={() => setIsUploadModalOpen(true)} variant="outline" className="mt-6">
-                Upload Workflow
+                {t('workflow.uploadButton')}
               </Button>
             </div>
           ) : (
@@ -717,13 +719,13 @@ const WorkflowList: React.FC = () => {
           setWorkflows((prev) => prev.filter((w) => w.id !== workflowId));
           removeWorkflowFromStructure(workflowId);
           initializeRootWorkflows(workflows.filter((w) => w.id !== workflowId).map((w) => w.id));
-          toast.success('Workflow deleted');
+          toast.success(t('folder.deleteSuccess'));
           setIsDetailModalOpen(false);
         }}
         onWorkflowCopied={(newWorkflow) => {
           setWorkflows((prev) => [newWorkflow, ...prev]);
           initializeRootWorkflows([newWorkflow.id, ...workflows.map((w) => w.id)]);
-          toast.success('Workflow copied');
+          toast.success(t('workflow.copySuccess', { name: newWorkflow.name }));
         }}
       />
 
@@ -738,7 +740,7 @@ const WorkflowList: React.FC = () => {
           setWorkflows((prev) =>
             prev.map((w) => (w.id === updatedWorkflow.id ? updatedWorkflow : w))
           );
-          toast.success('Workflow updated');
+          toast.success(t('common.save'));
           setIsEditModalOpen(false);
           setEditingWorkflow(null);
         }}
@@ -759,10 +761,10 @@ const WorkflowList: React.FC = () => {
               await deleteFolder(detailFolder.id);
               setIsFolderDetailModalOpen(false);
               setDetailFolder(null);
-              toast.success('Folder deleted');
+              toast.success(t('folder.deleteSuccess'));
             } catch (error) {
               console.error('Failed to delete folder:', error);
-              toast.error('Failed to delete folder');
+              toast.error(t('folder.deleteError'));
             }
           }}
         />

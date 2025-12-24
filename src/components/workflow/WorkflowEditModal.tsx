@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -28,6 +29,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
   onWorkflowDeleted,
   onWorkflowCopied
 }) => {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
@@ -107,10 +109,10 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
 
       // Update in storage
       await updateWorkflow(updatedWorkflow);
-      
+
       // Notify parent component
       onWorkflowUpdated(updatedWorkflow);
-      
+
       // Close modal
       onClose();
     } catch (error) {
@@ -127,12 +129,12 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
     try {
       // Remove from storage
       await removeWorkflow(workflow.id);
-      
+
       // Notify parent component
       if (onWorkflowDeleted) {
         onWorkflowDeleted(workflow.id);
       }
-      
+
       // Close modal
       onClose();
     } catch (error) {
@@ -163,14 +165,14 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
 
       // Update in storage
       await updateWorkflow(updatedWorkflow);
-      
+
       // Notify parent component
       onWorkflowUpdated(updatedWorkflow);
-      
-      toast.success('Thumbnail regenerated successfully');
+
+      toast.success(t('workflow.thumbnailSuccess'));
     } catch (error) {
       console.error('Failed to regenerate thumbnail:', error);
-      toast.error('Failed to regenerate thumbnail');
+      toast.error(t('workflow.thumbnailError'));
     } finally {
       setIsRegeneratingThumbnail(false);
     }
@@ -222,7 +224,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
       // Add to storage
       await addWorkflow(copiedWorkflow);
 
-      toast.success(`Workflow copied as "${newName}"`);
+      toast.success(t('workflow.copySuccess', { name: newName }));
 
       // Close modal first
       onClose();
@@ -236,7 +238,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
       }, 0);
     } catch (error) {
       console.error('Failed to copy workflow:', error);
-      toast.error('Failed to copy workflow');
+      toast.error(t('workflow.copyError'));
     } finally {
       setIsLoading(false);
     }
@@ -272,10 +274,10 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                 </Button>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                    Edit Workflow
+                    {t('workflow.editTitle')}
                   </h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Update workflow name, description, and tags
+                    {t('workflow.editSubtitle')}
                   </p>
                 </div>
               </div>
@@ -290,13 +292,13 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   {/* Workflow Name */}
                   <div className="space-y-2">
                     <Label htmlFor="name" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Workflow Name
+                      {t('workflow.name')}
                     </Label>
                     <Input
                       id="name"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
-                      placeholder="Enter workflow name"
+                      placeholder={t('workflow.namePlaceholder')}
                       className="w-full"
                       autoFocus={false}
                     />
@@ -305,13 +307,13 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   {/* Description */}
                   <div className="space-y-2">
                     <Label htmlFor="description" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Description
+                      {t('workflow.description')}
                     </Label>
                     <Textarea
                       id="description"
                       value={description}
                       onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setDescription(e.target.value)}
-                      placeholder="Enter workflow description (optional)"
+                      placeholder={t('workflow.descriptionPlaceholder')}
                       rows={3}
                       className="w-full resize-none"
                     />
@@ -320,9 +322,9 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   {/* Tags */}
                   <div className="space-y-3">
                     <Label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Tags
+                      {t('workflow.tags')}
                     </Label>
-                    
+
                     {/* Existing Tags */}
                     {tags.length > 0 && (
                       <div className="flex flex-wrap gap-2">
@@ -354,7 +356,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                         value={newTag}
                         onChange={(e) => setNewTag(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        placeholder="Add a tag"
+                        placeholder={t('workflow.tagPlaceholder')}
                         className="flex-1"
                       />
                       <Button
@@ -375,20 +377,20 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   {/* Thumbnail Section */}
                   <div className="pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
                     <Label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3 block">
-                      Workflow Thumbnail
+                      {t('workflow.thumbnail')}
                     </Label>
                     <div className="flex items-center gap-4">
                       {workflow.thumbnail ? (
                         <div className="flex-shrink-0">
-                          <img 
-                            src={workflow.thumbnail} 
-                            alt="Workflow thumbnail"
+                          <img
+                            src={workflow.thumbnail}
+                            alt={t('workflow.thumbnail')}
                             className="w-20 h-16 object-cover rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800"
                           />
                         </div>
                       ) : (
                         <div className="flex-shrink-0 w-20 h-16 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 flex items-center justify-center">
-                          <span className="text-xs text-slate-400">No thumbnail</span>
+                          <span className="text-xs text-slate-400">{t('workflow.noThumbnail')}</span>
                         </div>
                       )}
                       <Button
@@ -409,7 +411,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                         size="sm"
                       >
                         <RefreshCw className={`h-4 w-4 mr-2 ${isRegeneratingThumbnail ? 'animate-spin' : ''}`} />
-                        {isRegeneratingThumbnail ? 'Regenerating...' : 'Regenerate'}
+                        {isRegeneratingThumbnail ? t('workflow.regeneratingThumbnail') : t('workflow.regenerateThumbnail')}
                       </Button>
                     </div>
                   </div>
@@ -418,16 +420,24 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   <div className="pt-4 border-t border-slate-200/50 dark:border-slate-700/50">
                     <div className="grid grid-cols-2 gap-4 text-sm text-slate-600 dark:text-slate-400 mb-4">
                       <div>
-                        <span className="font-medium">Nodes:</span> {workflow.nodeCount}
+                        <span className="font-medium">{t('workflow.nodesLabel')}:</span> {workflow.nodeCount}
                       </div>
                       <div>
-                        <span className="font-medium">Author:</span> {workflow.author || 'Unknown'}
+                        <span className="font-medium">{t('workflow.author')}:</span> {workflow.author || t('common.unknown')}
                       </div>
                       <div>
-                        <span className="font-medium">Created:</span> {workflow.createdAt ? workflow.createdAt.toLocaleDateString() : 'Unknown'}
+                        <span className="font-medium">{t('workflow.created')}:</span> {workflow.createdAt ? workflow.createdAt.toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        }) : t('common.unknown')}
                       </div>
                       <div>
-                        <span className="font-medium">Modified:</span> {workflow.modifiedAt?.toLocaleDateString() || 'Never'}
+                        <span className="font-medium">{t('workflow.modified')}:</span> {workflow.modifiedAt?.toLocaleDateString(undefined, {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        }) || t('common.never')}
                       </div>
                     </div>
 
@@ -452,7 +462,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                           className="flex-1 h-12 text-blue-600 border-blue-200 hover:bg-blue-50 dark:text-blue-400 dark:border-blue-800 dark:hover:bg-blue-900/20"
                         >
                           <Copy className="h-4 w-4 mr-2" />
-                          Copy Workflow
+                          {t('workflow.copyWorkflow')}
                         </Button>
                         <Button
                           onClick={(e) => {
@@ -469,7 +479,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                           className="flex-1 h-12 text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-900/20"
                         >
                           <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
+                          {t('common.delete')}
                         </Button>
                       </div>
                     </div>
@@ -481,16 +491,16 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   <div className="mb-8">
                     <Trash2 className="h-16 w-16 text-red-500 mx-auto mb-4" />
                     <h3 className="text-2xl font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                      Delete Workflow
+                      {t('workflow.deleteWorkflow')}
                     </h3>
                     <p className="text-slate-600 dark:text-slate-400 text-lg">
-                      Are you sure you want to delete
+                      {t('workflow.deleteSpecificConfirm')}
                     </p>
                     <p className="text-slate-900 dark:text-slate-100 font-medium text-xl mt-3 mb-3 break-words">
                       "{workflow.name}"
                     </p>
                     <p className="text-slate-600 dark:text-slate-400 text-lg">
-                      This action cannot be undone.
+                      {t('workflow.deleteConfirmMessage')}
                     </p>
                   </div>
                 </div>
@@ -519,7 +529,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                   className="w-full h-12"
                 >
                   <Save className="h-4 w-4 mr-2" />
-                  {isLoading ? 'Saving...' : 'Save Changes'}
+                  {isLoading ? t('common.saving') : t('workflow.saveChanges')}
                 </Button>
               ) : (
                 <div className="flex gap-4 w-full">
@@ -540,7 +550,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                     disabled={isLoading}
                     className="flex-1 h-12 min-w-[120px]"
                   >
-                    Cancel
+                    {t('common.cancel')}
                   </Button>
                   <Button
                     onClick={(e) => {
@@ -559,7 +569,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
                     variant="destructive"
                     className="flex-1 h-12 min-w-[120px]"
                   >
-                    {isLoading ? 'Deleting...' : 'Delete Workflow'}
+                    {isLoading ? t('common.deleting') : t('workflow.deleteWorkflow')}
                   </Button>
                 </div>
               )}

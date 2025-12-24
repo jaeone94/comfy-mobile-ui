@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { useConnectionStore } from '@/ui/store/connectionStore';
+import { useTranslation } from 'react-i18next';
 
 interface VideoPreviewInfo {
   filename: string;
@@ -24,6 +25,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
   nodeId,
   nodeTitle,
 }) => {
+  const { t } = useTranslation();
   const { url: serverUrl } = useConnectionStore();
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
@@ -47,18 +49,18 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
 
   const loadVideo = async () => {
     if (!videoPreview.filename) return;
-    
+
     setLoading(true);
     setError(null);
 
     try {
       const fileService = new ComfyFileService(serverUrl || 'http://localhost:8188');
-      
-      
+
+
       // Parse filename and subfolder
       let actualFilename: string;
       let subfolder: string = videoPreview.subfolder || '';
-      
+
       if (videoPreview.filename.includes('/')) {
         const lastSlashIndex = videoPreview.filename.lastIndexOf('/');
         subfolder = videoPreview.filename.substring(0, lastSlashIndex);
@@ -90,7 +92,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
 
   const handlePlayPause = () => {
     if (!videoRef.current) return;
-    
+
     if (isPlaying) {
       videoRef.current.pause();
     } else {
@@ -126,7 +128,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
 
   const toggleMute = () => {
     if (!videoRef.current) return;
-    
+
     if (isMuted) {
       videoRef.current.volume = volume > 0 ? volume : 0.5;
       setIsMuted(false);
@@ -148,7 +150,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
 
   const toggleFullscreen = () => {
     if (!videoRef.current) return;
-    
+
     if (videoRef.current.requestFullscreen) {
       videoRef.current.requestFullscreen();
     }
@@ -165,7 +167,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
       <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
         <div className="flex items-center space-x-3">
           <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-          <span className="text-slate-600 dark:text-slate-400">Loading video preview...</span>
+          <span className="text-slate-600 dark:text-slate-400">{t('media.loading')} preview...</span>
         </div>
       </div>
     );
@@ -177,7 +179,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
         <div className="flex items-start space-x-3">
           <div className="text-red-500 text-sm">❌</div>
           <div>
-            <p className="text-red-700 dark:text-red-300 font-medium">Failed to load video</p>
+            <p className="text-red-700 dark:text-red-300 font-medium">{t('media.failedToLoadVideo')}</p>
             <p className="text-red-600 dark:text-red-400 text-sm mt-1">{error}</p>
             <Button
               variant="outline"
@@ -185,7 +187,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               onClick={loadVideo}
               className="mt-2 text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950/10"
             >
-              Retry
+              {t('media.retry')}
             </Button>
           </div>
         </div>
@@ -201,12 +203,12 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
     <div className="space-y-3">
       <h4 className="text-md font-medium text-slate-700 dark:text-slate-300 flex items-center space-x-2">
         <span>🎥</span>
-        <span>Video Preview</span>
+        <span>{t('media.videoPreview')}</span>
         {nodeTitle && (
           <span className="text-sm text-slate-500 dark:text-slate-400">({nodeTitle})</span>
         )}
       </h4>
-      
+
       <div className="bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
         {/* Video Player */}
         <div className="relative bg-black">
@@ -219,7 +221,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
             onEnded={() => setIsPlaying(false)}
             preload="metadata"
           />
-          
+
           {/* Play button overlay when paused */}
           {!isPlaying && (
             <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-30">
@@ -250,7 +252,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               <span>{formatTime(duration)}</span>
             </div>
           </div>
-          
+
           {/* Control Buttons */}
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-2">
@@ -262,7 +264,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               >
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               </Button>
-              
+
               <Button
                 variant="ghost"
                 size="sm"
@@ -271,7 +273,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
-              
+
               <div className="flex items-center space-x-2">
                 <Button
                   variant="ghost"
@@ -281,7 +283,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
                 >
                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </Button>
-                
+
                 <div className="w-16">
                   <Slider
                     value={[isMuted ? 0 : volume]}
@@ -293,7 +295,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
                 </div>
               </div>
             </div>
-            
+
             <Button
               variant="ghost"
               size="sm"
@@ -303,17 +305,17 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               <Maximize2 className="w-4 h-4" />
             </Button>
           </div>
-          
+
           {/* Video Info */}
           <div className="text-xs text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200 dark:border-slate-600">
             <div className="flex justify-between items-center">
               <span className="truncate max-w-[200px] md:max-w-[300px]" title={videoPreview.filename}>
-                File: {videoPreview.filename}
+                {t('media.file')}: {videoPreview.filename}
               </span>
-              <span className="flex-shrink-0 ml-2">Type: {videoPreview.type}</span>
+              <span className="flex-shrink-0 ml-2">{t('media.type')}: {videoPreview.type}</span>
             </div>
             {videoPreview.format && (
-              <div className="mt-1">Format: {videoPreview.format}</div>
+              <div className="mt-1">{t('media.format')}: {videoPreview.format}</div>
             )}
           </div>
         </div>

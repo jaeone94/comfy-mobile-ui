@@ -6,14 +6,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  storeApiKey, 
-  getAllApiKeys, 
-  deleteApiKey, 
-  validateApiKey, 
-  getApiKey 
+import {
+  storeApiKey,
+  getAllApiKeys,
+  deleteApiKey,
+  validateApiKey,
+  getApiKey
 } from '@/infrastructure/storage/ApiKeyStorageService';
 import { toast } from 'sonner';
+import { useTranslation, Trans } from 'react-i18next';
 
 interface ApiKeyInfo {
   id: string;
@@ -26,16 +27,16 @@ interface ApiKeyInfo {
 }
 
 const SUPPORTED_PROVIDERS = [
-  { 
-    id: 'civitai', 
-    name: 'Civitai', 
+  {
+    id: 'civitai',
+    name: 'Civitai',
     description: 'For downloading models from Civitai',
     helpUrl: 'https://civitai.com/user/account',
     placeholder: 'Enter your Civitai API key (32+ hex characters)'
   },
-  { 
-    id: 'huggingface', 
-    name: 'HuggingFace', 
+  {
+    id: 'huggingface',
+    name: 'HuggingFace',
     description: 'For downloading models from HuggingFace Hub',
     helpUrl: 'https://huggingface.co/settings/tokens',
     placeholder: 'Enter your HuggingFace token (starts with hf_)'
@@ -43,6 +44,7 @@ const SUPPORTED_PROVIDERS = [
 ];
 
 export const ApiKeyManagement: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,7 +67,7 @@ export const ApiKeyManagement: React.FC = () => {
       setApiKeys(keys as ApiKeyInfo[]);
     } catch (error) {
       console.error('Failed to load API keys:', error);
-      toast.error('Failed to load API keys');
+      toast.error(t('apiKeyManagement.messages.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -73,12 +75,12 @@ export const ApiKeyManagement: React.FC = () => {
 
   const handleAddKey = async () => {
     if (!newKeyValue.trim()) {
-      toast.error('Please enter an API key');
+      toast.error(t('apiKeyManagement.messages.enterKey'));
       return;
     }
 
     if (!validateApiKey(newKeyProvider, newKeyValue)) {
-      toast.error(`Invalid ${SUPPORTED_PROVIDERS.find(p => p.id === newKeyProvider)?.name} API key format`);
+      toast.error(t('apiKeyManagement.messages.invalidFormat', { provider: SUPPORTED_PROVIDERS.find(p => p.id === newKeyProvider)?.name }));
       return;
     }
 
@@ -91,17 +93,17 @@ export const ApiKeyManagement: React.FC = () => {
       );
 
       if (success) {
-        toast.success(`${SUPPORTED_PROVIDERS.find(p => p.id === newKeyProvider)?.name} API key added successfully`);
+        toast.success(t('apiKeyManagement.messages.added', { provider: SUPPORTED_PROVIDERS.find(p => p.id === newKeyProvider)?.name }));
         setNewKeyValue('');
         setNewKeyName('');
         setShowAddForm(false);
         loadApiKeys();
       } else {
-        toast.error('Failed to store API key');
+        toast.error(t('apiKeyManagement.messages.storeFailed'));
       }
     } catch (error) {
       console.error('Error adding API key:', error);
-      toast.error('Failed to add API key');
+      toast.error(t('apiKeyManagement.messages.addFailed'));
     } finally {
       setIsAdding(false);
     }
@@ -129,16 +131,16 @@ export const ApiKeyManagement: React.FC = () => {
         // For now, just validate the format. Later we can add actual API testing
         const isValid = validateApiKey(provider, key);
         setTestResults(prev => ({ ...prev, [provider]: isValid }));
-        
+
         if (isValid) {
-          toast.success(`${provider} API key format is valid`);
+          toast.success(t('apiKeyManagement.messages.valid', { provider }));
         } else {
-          toast.error(`${provider} API key format is invalid`);
+          toast.error(t('apiKeyManagement.messages.invalid', { provider }));
         }
       }
     } catch (error) {
       console.error('Error testing API key:', error);
-      toast.error('Failed to test API key');
+      toast.error(t('apiKeyManagement.messages.testFailed'));
     }
   };
 
@@ -175,7 +177,7 @@ export const ApiKeyManagement: React.FC = () => {
             <div className="flex items-center space-x-2">
               <Key className="h-6 w-6 text-blue-600 dark:text-blue-400" />
               <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                API Key Management
+                {t('apiKeyManagement.title')}
               </h1>
             </div>
           </div>
@@ -184,7 +186,7 @@ export const ApiKeyManagement: React.FC = () => {
             className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Add API Key
+            {t('apiKeyManagement.addKey')}
           </Button>
         </div>
       </header>
@@ -195,27 +197,25 @@ export const ApiKeyManagement: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2 text-green-800 dark:text-green-200">
               <Shield className="h-5 w-5" />
-              <span>Privacy & Security</span>
+              <span>{t('apiKeyManagement.privacy.title')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-green-700 dark:text-green-300">
             <div className="flex items-start space-x-3">
               <Lock className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium">Your API keys are stored locally only</p>
+                <p className="font-medium">{t('apiKeyManagement.privacy.localOnly')}</p>
                 <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                  All API keys are stored exclusively in your browser's local database (IndexedDB) 
-                  and are never transmitted to any external servers or third parties.
+                  {t('apiKeyManagement.privacy.localOnlyDesc')}
                 </p>
               </div>
             </div>
             <div className="flex items-start space-x-3">
               <AlertTriangle className="h-5 w-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="font-medium">Keep your API keys secure</p>
+                <p className="font-medium">{t('apiKeyManagement.privacy.secure')}</p>
                 <p className="text-sm text-green-600 dark:text-green-400 mt-1">
-                  Only enter API keys from trusted sources. You can revoke access at any time 
-                  from the respective provider's website.
+                  {t('apiKeyManagement.privacy.secureDesc')}
                 </p>
               </div>
             </div>
@@ -228,12 +228,12 @@ export const ApiKeyManagement: React.FC = () => {
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Plus className="h-5 w-5 text-blue-500" />
-                <span>Add New API Key</span>
+                <span>{t('apiKeyManagement.addForm.title')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="provider">Provider</Label>
+                <Label htmlFor="provider">{t('apiKeyManagement.addForm.provider')}</Label>
                 <select
                   id="provider"
                   value={newKeyProvider}
@@ -249,10 +249,10 @@ export const ApiKeyManagement: React.FC = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name (Optional)</Label>
+                <Label htmlFor="displayName">{t('apiKeyManagement.addForm.displayName')}</Label>
                 <Input
                   id="displayName"
-                  placeholder="My API Key"
+                  placeholder={t('apiKeyManagement.addForm.displayNamePlaceholder')}
                   value={newKeyName}
                   onChange={(e) => setNewKeyName(e.target.value)}
                   className="bg-white dark:bg-slate-800"
@@ -261,7 +261,7 @@ export const ApiKeyManagement: React.FC = () => {
 
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <Label htmlFor="apiKey">API Key</Label>
+                  <Label htmlFor="apiKey">{t('apiKeyManagement.addForm.apiKey')}</Label>
                   <div className="flex items-center space-x-2">
                     <Button
                       type="button"
@@ -297,7 +297,7 @@ export const ApiKeyManagement: React.FC = () => {
                   className="bg-white dark:bg-slate-800 font-mono"
                 />
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Get your API key from: {' '}
+                  {t('apiKeyManagement.addForm.getKey')} {' '}
                   <button
                     type="button"
                     onClick={() => {
@@ -308,7 +308,7 @@ export const ApiKeyManagement: React.FC = () => {
                     }}
                     className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-200 underline"
                   >
-                    {getProviderInfo(newKeyProvider)?.name} Settings
+                    {t('apiKeyManagement.addForm.settings', { name: getProviderInfo(newKeyProvider)?.name })}
                   </button>
                 </p>
               </div>
@@ -323,14 +323,14 @@ export const ApiKeyManagement: React.FC = () => {
                     setNewKeyName('');
                   }}
                 >
-                  Cancel
+                  {t('apiKeyManagement.addForm.cancel')}
                 </Button>
                 <Button
                   onClick={handleAddKey}
                   disabled={isAdding || !newKeyValue.trim()}
                   className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
                 >
-                  {isAdding ? 'Adding...' : 'Add API Key'}
+                  {isAdding ? t('apiKeyManagement.addForm.adding') : t('apiKeyManagement.addForm.add')}
                 </Button>
               </div>
             </CardContent>
@@ -343,7 +343,7 @@ export const ApiKeyManagement: React.FC = () => {
             <CardTitle className="flex items-center justify-between">
               <div className="flex items-center space-x-2">
                 <Key className="h-5 w-5 text-purple-500" />
-                <span>Stored API Keys</span>
+                <span>{t('apiKeyManagement.storedKeys.title')}</span>
               </div>
               <Badge variant="secondary">
                 {apiKeys.length} {apiKeys.length === 1 ? 'key' : 'keys'}
@@ -354,14 +354,14 @@ export const ApiKeyManagement: React.FC = () => {
             {isLoading ? (
               <div className="text-center py-8">
                 <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full mx-auto"></div>
-                <p className="text-slate-500 mt-2">Loading API keys...</p>
+                <p className="text-slate-500 mt-2">{t('apiKeyManagement.storedKeys.loading')}</p>
               </div>
             ) : apiKeys.length === 0 ? (
               <div className="text-center py-8">
                 <Key className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-                <p className="text-slate-600 dark:text-slate-400">No API keys stored</p>
+                <p className="text-slate-600 dark:text-slate-400">{t('apiKeyManagement.storedKeys.noKeys')}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
-                  Add your first API key to start downloading models
+                  {t('apiKeyManagement.storedKeys.noKeysDesc')}
                 </p>
               </div>
             ) : (
@@ -369,7 +369,7 @@ export const ApiKeyManagement: React.FC = () => {
                 {apiKeys.map((apiKey) => {
                   const provider = getProviderInfo(apiKey.provider);
                   const testResult = testResults[apiKey.provider];
-                  
+
                   return (
                     <div
                       key={apiKey.id}
@@ -384,7 +384,7 @@ export const ApiKeyManagement: React.FC = () => {
                             {apiKey.isActive && (
                               <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
                                 <CheckCircle className="w-3 h-3 mr-1" />
-                                Active
+                                {t('apiKeyManagement.storedKeys.active')}
                               </Badge>
                             )}
                             {testResult !== undefined && (
@@ -400,10 +400,10 @@ export const ApiKeyManagement: React.FC = () => {
                             {apiKey.maskedKey}
                           </p>
                           <div className="text-xs text-slate-400 dark:text-slate-500 mt-1">
-                            Created: {formatDate(apiKey.createdAt)}
+                            {t('apiKeyManagement.storedKeys.created', { date: formatDate(apiKey.createdAt) })}
                             {apiKey.lastUsed && (
                               <span className="ml-4">
-                                Last used: {formatDate(apiKey.lastUsed)}
+                                {t('apiKeyManagement.storedKeys.lastUsed', { date: formatDate(apiKey.lastUsed) })}
                               </span>
                             )}
                           </div>
@@ -442,7 +442,7 @@ export const ApiKeyManagement: React.FC = () => {
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <AlertTriangle className="h-5 w-5 text-amber-500" />
-              <span>How to get API Keys</span>
+              <span>{t('apiKeyManagement.help.title')}</span>
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -464,7 +464,7 @@ export const ApiKeyManagement: React.FC = () => {
                     className="h-auto p-0 mt-1 text-blue-600 hover:text-blue-800 dark:text-blue-400"
                   >
                     <ExternalLink className="h-3 w-3 mr-1" />
-                    Get {provider.name} API Key
+                    {t('apiKeyManagement.help.getBtn', { name: provider.name })}
                   </Button>
                 </div>
               </div>

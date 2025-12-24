@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -141,6 +142,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
   onDisconnectInput,
   onDisconnectOutput,
 }) => {
+  const { t } = useTranslation();
   const nodeId = typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id;
   const metadata = nodeMetadata.get(nodeId);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
@@ -261,16 +263,16 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
       });
 
       if (success) {
-        toast.success("Node copied to clipboard", {
-          description: "You can paste it from the Add Node menu",
+        toast.success(t('node.copySuccess'), {
+          description: t('node.copySuccessDesc'),
           duration: 2000
         });
       } else {
-        toast.error("Failed to copy node");
+        toast.error(t('node.copyError'));
       }
     } catch (error) {
       console.error("Copy failed:", error);
-      toast.error("An error occurred while copying");
+      toast.error(t('node.copyErrorDesc'));
     }
   };
 
@@ -388,7 +390,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
                       onChange={(e) => setEditingTitleValue(e.target.value)}
                       onKeyDown={handleTitleKeyDown}
                       className="flex-1 px-2 py-1 text-lg font-semibold bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      placeholder="Enter node title..."
+                      placeholder={t('node.enterTitle')}
                       autoFocus
                     />
                     <Button
@@ -419,7 +421,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
                         variant="ghost"
                         size="sm"
                         className="h-8 w-8 p-0 text-slate-500 hover:text-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800"
-                        title="Edit node title"
+                        title={t('node.editTitle')}
                       >
                         <Edit3 className="h-4 w-4" />
                       </Button>
@@ -436,7 +438,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
                     variant="ghost"
                     size="sm"
                     className="h-9 w-9 p-0 flex-shrink-0 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300"
-                    title="Copy node settings"
+                    title={t('node.copySettings')}
                   >
                     <Copy className="h-4 w-4" />
                   </Button>
@@ -447,7 +449,7 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
                       variant="ghost"
                       size="sm"
                       className="h-9 w-9 p-0 flex-shrink-0 hover:bg-blue-100 dark:hover:bg-blue-900/20 rounded-lg text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                      title="Refresh node input/output slots"
+                      title={t('node.refreshSlots')}
                     >
                       <RefreshCw className="h-4 w-4" />
                     </Button>
@@ -458,10 +460,10 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
                     variant="ghost"
                     size="sm"
                     className={`h-9 w-9 p-0 flex-shrink-0 rounded-lg transition-all ${isSettingsOpen
-                        ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
-                        : 'hover:bg-orange-100 dark:hover:bg-orange-900/20 text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
+                      ? 'bg-orange-100 dark:bg-orange-900/20 text-orange-600 dark:text-orange-400'
+                      : 'hover:bg-orange-100 dark:hover:bg-orange-900/20 text-orange-600 hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300'
                       }`}
-                    title="Node settings"
+                    title={t('node.settings')}
                   >
                     <Settings className="h-4 w-4" />
                   </Button>
@@ -519,32 +521,32 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
               <button
                 onClick={() => setCurrentSlide(0)}
                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentSlide === 0
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
               >
                 <ArrowDownToLine className="w-4 h-4" />
-                <span>Input Slots</span>
+                <span>{t('node.inputSlots')}</span>
               </button>
               <button
                 onClick={() => setCurrentSlide(1)}
                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentSlide === 1
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
               >
                 <Edit3 className="w-4 h-4" />
-                <span>Node Controls</span>
+                <span>{t('node.controls')}</span>
               </button>
               <button
                 onClick={() => setCurrentSlide(2)}
                 className={`flex items-center space-x-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${currentSlide === 2
-                    ? 'bg-blue-500 text-white shadow-sm'
-                    : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
+                  ? 'bg-blue-500 text-white shadow-sm'
+                  : 'bg-transparent text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700'
                   }`}
               >
                 <ArrowUpFromLine className="w-4 h-4" />
-                <span>Output Slots</span>
+                <span>{t('node.outputSlots')}</span>
               </button>
             </div>
 
@@ -659,10 +661,10 @@ export const NodeInspector: React.FC<NodeInspectorProps> = ({
       {onNodeDelete && (
         <ConfirmDialog
           isOpen={isDeleteDialogOpen}
-          title="Delete Node"
-          message={`Are you sure you want to delete node ${nodeId} (${metadata?.displayName || selectedNode.title || selectedNode.type})? All connected links will also be removed.`}
-          confirmText="Delete"
-          cancelText="Cancel"
+          title={t('node.deleteTitle')}
+          message={t('node.deleteConfirm', { id: nodeId, title: metadata?.displayName || selectedNode.title || selectedNode.type })}
+          confirmText={t('common.delete')}
+          cancelText={t('common.cancel')}
           confirmVariant="destructive"
           onConfirm={() => onNodeDelete(nodeId)}
           onCancel={() => { }}

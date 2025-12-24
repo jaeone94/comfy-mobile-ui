@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Plus, Trash2, Save, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,12 +11,12 @@ import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { toast } from 'sonner';
-import { 
-  WidgetTypeDefinition, 
-  WidgetTypeFormData, 
-  FieldConfig, 
+import {
+  WidgetTypeDefinition,
+  WidgetTypeFormData,
+  FieldConfig,
   FIELD_TYPE_OPTIONS,
-  FieldType 
+  FieldType
 } from '@/shared/types/app/WidgetFieldTypes';
 
 interface WidgetTypeDefinitionModalProps {
@@ -37,6 +38,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
     tooltip: '',
     fields: []
   });
+  const { t } = useTranslation();
   const [isSaving, setIsSaving] = useState(false);
 
   // Initialize form data when modal opens or editing widget changes
@@ -99,8 +101,8 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
   const updateField = (fieldId: string, updates: Partial<{ name: string; config: FieldConfig }>) => {
     setFormData(prev => ({
       ...prev,
-      fields: prev.fields.map(field => 
-        field.id === fieldId 
+      fields: prev.fields.map(field =>
+        field.id === fieldId
           ? { ...field, ...updates }
           : field
       )
@@ -110,8 +112,8 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
   const updateFieldConfig = (fieldId: string, configUpdates: Partial<FieldConfig>) => {
     setFormData(prev => ({
       ...prev,
-      fields: prev.fields.map(field => 
-        field.id === fieldId 
+      fields: prev.fields.map(field =>
+        field.id === fieldId
           ? { ...field, config: { ...field.config, ...configUpdates } }
           : field
       )
@@ -122,17 +124,17 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
     // For single field widgets, return the value directly (not as an object)
     if (formData.fields.length === 1 && formData.fields[0].name) {
       const field = formData.fields[0];
-      return field.config.default !== undefined 
-        ? field.config.default 
+      return field.config.default !== undefined
+        ? field.config.default
         : getDefaultValueForType(field.config.type);
     }
-    
+
     // For multi-field widgets, use object structure
     const defaultValue: Record<string, any> = {};
     formData.fields.forEach(field => {
       if (field.name) {
-        defaultValue[field.name] = field.config.default !== undefined 
-          ? field.config.default 
+        defaultValue[field.name] = field.config.default !== undefined
+          ? field.config.default
           : getDefaultValueForType(field.config.type);
       }
     });
@@ -151,22 +153,22 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
 
   const validateForm = (): boolean => {
     if (!formData.id.trim()) {
-      toast.error('Widget type ID is required');
+      toast.error(t('widgetType.validation.idRequired'));
       return false;
     }
 
     if (formData.fields.length === 0) {
-      toast.error('At least one field is required');
+      toast.error(t('widgetType.validation.fieldsRequired'));
       return false;
     }
 
     for (const field of formData.fields) {
       if (!field.name.trim()) {
-        toast.error('All fields must have a name');
+        toast.error(t('widgetType.validation.nameRequired'));
         return false;
       }
       if (!field.config.label.trim()) {
-        toast.error('All fields must have a label');
+        toast.error(t('widgetType.validation.labelRequired'));
         return false;
       }
     }
@@ -175,7 +177,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
     const fieldNames = formData.fields.map(f => f.name);
     const duplicates = fieldNames.filter((name, index) => fieldNames.indexOf(name) !== index);
     if (duplicates.length > 0) {
-      toast.error(`Duplicate field names: ${duplicates.join(', ')}`);
+      toast.error(t('widgetType.validation.duplicateNames', { names: duplicates.join(', ') }));
       return false;
     }
 
@@ -208,10 +210,13 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
       }
 
       await onSave(widgetType);
-      toast.success(`Widget type "${formData.id}" ${editingWidgetType ? 'updated' : 'created'} successfully`);
+      toast.success(t('widgetType.success', {
+        id: formData.id,
+        action: editingWidgetType ? t('common.updated') : t('widgetType.create')
+      }));
       onClose();
     } catch (error) {
-      toast.error(`Failed to save widget type: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(t('widgetType.error', { error: error instanceof Error ? error.message : t('common.unknown') }));
     } finally {
       setIsSaving(false);
     }
@@ -244,10 +249,10 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
             <div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50 flex items-center justify-between backdrop-blur-sm">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                  {editingWidgetType ? 'Edit Widget Type' : 'Create Widget Type'}
+                  {editingWidgetType ? t('widgetType.editTitle') : t('widgetType.createTitle')}
                 </h2>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                  Define custom field configurations for dynamic widgets
+                  {t('widgetType.subtitle')}
                 </p>
               </div>
               <Button
@@ -265,48 +270,48 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
               {/* Basic Information */}
               <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white/30 dark:border-slate-700/40 rounded-xl shadow-lg">
                 <div className="p-6 border-b border-slate-200/30 dark:border-slate-700/30">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Basic Information</h3>
+                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('widgetType.basicInfo')}</h3>
                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                    General information about this widget type
+                    {t('widgetType.basicInfoDesc')}
                   </p>
                 </div>
                 <div className="p-6 space-y-4">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="widget-id">ID *</Label>
+                      <Label htmlFor="widget-id">{t('widgetType.id')} *</Label>
                       <Input
                         id="widget-id"
                         value={formData.id}
                         onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
-                        placeholder="e.g., LORA_CONFIG"
+                        placeholder={t('widgetType.idPlaceholder')}
                         className="font-mono bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/30 dark:border-slate-700/30"
                         readOnly={!!editingWidgetType}
                         disabled={!!editingWidgetType}
                       />
                       {editingWidgetType && (
                         <p className="text-xs text-slate-500 dark:text-slate-400">
-                          ID cannot be changed when editing an existing widget type
+                          {t('widgetType.idImmutable')}
                         </p>
                       )}
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="widget-tooltip">Default Tooltip</Label>
+                      <Label htmlFor="widget-tooltip">{t('widgetType.tooltip')}</Label>
                       <Input
                         id="widget-tooltip"
                         value={formData.tooltip}
                         onChange={(e) => setFormData(prev => ({ ...prev, tooltip: e.target.value }))}
-                        placeholder="e.g., LoRA configuration"
+                        placeholder={t('widgetType.tooltipPlaceholder')}
                         className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/30 dark:border-slate-700/30"
                       />
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="widget-description">Description</Label>
+                    <Label htmlFor="widget-description">{t('widgetType.description')}</Label>
                     <Textarea
                       id="widget-description"
                       value={formData.description}
                       onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                      placeholder="Describe what this widget type is used for..."
+                      placeholder={t('widgetType.descriptionPlaceholder')}
                       rows={3}
                       className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/30 dark:border-slate-700/30"
                     />
@@ -319,25 +324,25 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                 <div className="p-6 border-b border-slate-200/30 dark:border-slate-700/30">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Field Definitions</h3>
+                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('widgetType.fieldDefinitions')}</h3>
                       <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                        Define the fields that will be available in widgets of this type
+                        {t('widgetType.fieldDefinitionsDesc')}
                       </p>
                     </div>
-                    <Button 
-                      onClick={addField} 
-                      size="sm" 
+                    <Button
+                      onClick={addField}
+                      size="sm"
                       className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white backdrop-blur-sm"
                     >
                       <Plus className="h-4 w-4" />
-                      Add Field
+                      {t('widgetType.addField')}
                     </Button>
                   </div>
                 </div>
                 <div className="p-6 space-y-4">
                   {formData.fields.length === 0 ? (
                     <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                      No fields defined yet. Click "Add Field" to get started.
+                      {t('widgetType.noFields')}
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -345,7 +350,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                         <div key={field.id} className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-dashed border-slate-300/60 dark:border-slate-600/60 rounded-lg shadow-sm">
                           <div className="p-4 pb-3 border-b border-slate-200/30 dark:border-slate-700/30">
                             <div className="flex items-center justify-between">
-                              <h4 className="text-base font-medium text-slate-900 dark:text-slate-100">Field #{index + 1}</h4>
+                              <h4 className="text-base font-medium text-slate-900 dark:text-slate-100">{t('widgetType.field', { index: index + 1 })}</h4>
                               <Button
                                 onClick={() => removeField(field.id)}
                                 variant="ghost"
@@ -360,20 +365,20 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                             {/* Field Name and Label */}
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
-                                <Label>Field Name *</Label>
+                                <Label>{t('widgetType.fieldName')} *</Label>
                                 <Input
                                   value={field.name}
                                   onChange={(e) => updateField(field.id, { name: e.target.value })}
-                                  placeholder="e.g., strength"
+                                  placeholder={t('widgetType.fieldNamePlaceholder')}
                                   className="font-mono bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
                                 />
                               </div>
                               <div className="space-y-2">
-                                <Label>Display Label *</Label>
+                                <Label>{t('widgetType.displayLabel')} *</Label>
                                 <Input
                                   value={field.config.label}
                                   onChange={(e) => updateFieldConfig(field.id, { label: e.target.value })}
-                                  placeholder="e.g., Strength"
+                                  placeholder={t('widgetType.displayLabelPlaceholder')}
                                   className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
                                 />
                               </div>
@@ -381,9 +386,9 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
 
                             {/* Field Type */}
                             <div className="space-y-2">
-                              <Label>Field Type</Label>
-                              <Select 
-                                value={field.config.type} 
+                              <Label>{t('widgetType.fieldType')}</Label>
+                              <Select
+                                value={field.config.type}
                                 onValueChange={(value: FieldType) => updateFieldConfig(field.id, { type: value })}
                               >
                                 <SelectTrigger>
@@ -402,18 +407,18 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                               </Select>
                               {(field.config.type === 'int' || field.config.type === 'float') && (
                                 <p className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 px-2 py-1 rounded">
-                                  💡 Numeric fields will render as sliders when Min and Max values are defined, otherwise as input fields.
+                                  {t('widgetType.numericTip')}
                                 </p>
                               )}
                             </div>
 
                             {/* Field Description */}
                             <div className="space-y-2">
-                              <Label>Description</Label>
+                              <Label>{t('widgetType.fieldDesc')}</Label>
                               <Textarea
                                 value={field.config.description || ''}
                                 onChange={(e) => updateFieldConfig(field.id, { description: e.target.value })}
-                                placeholder="Optional description for this field..."
+                                placeholder={t('widgetType.fieldDescPlaceholder')}
                                 rows={2}
                                 className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
                               />
@@ -422,58 +427,58 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                             {/* Type-specific configuration */}
                             {(() => {
                               const typeOption = getFieldTypeOption(field.config.type);
-                              
+
                               return (
                                 <div className="space-y-4">
                                   {/* Validation constraints for numeric types */}
                                   {typeOption?.supportsValidation && (
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                       <div className="space-y-2">
-                                        <Label>Min Value</Label>
+                                        <Label>{t('widgetType.minValue')}</Label>
                                         <Input
                                           type="number"
                                           step={field.config.type === 'int' ? "1" : "any"}
                                           value={field.config.min ?? ''}
-                                          onChange={(e) => updateFieldConfig(field.id, { 
+                                          onChange={(e) => updateFieldConfig(field.id, {
                                             min: e.target.value ? (
-                                              field.config.type === 'int' 
-                                                ? parseInt(e.target.value) 
+                                              field.config.type === 'int'
+                                                ? parseInt(e.target.value)
                                                 : parseFloat(e.target.value)
-                                            ) : undefined 
+                                            ) : undefined
                                           })}
-                                          placeholder="No limit"
+                                          placeholder={t('node.min')}
                                           className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
                                         />
                                       </div>
                                       <div className="space-y-2">
-                                        <Label>Max Value</Label>
+                                        <Label>{t('widgetType.maxValue')}</Label>
                                         <Input
                                           type="number"
                                           step={field.config.type === 'int' ? "1" : "any"}
                                           value={field.config.max ?? ''}
-                                          onChange={(e) => updateFieldConfig(field.id, { 
+                                          onChange={(e) => updateFieldConfig(field.id, {
                                             max: e.target.value ? (
-                                              field.config.type === 'int' 
-                                                ? parseInt(e.target.value) 
+                                              field.config.type === 'int'
+                                                ? parseInt(e.target.value)
                                                 : parseFloat(e.target.value)
-                                            ) : undefined 
+                                            ) : undefined
                                           })}
                                           placeholder="No limit"
                                           className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
                                         />
                                       </div>
                                       <div className="space-y-2">
-                                        <Label>Step</Label>
+                                        <Label>{t('widgetType.step')}</Label>
                                         <Input
                                           type="number"
                                           step={field.config.type === 'int' ? "1" : "any"}
                                           value={field.config.step ?? ''}
-                                          onChange={(e) => updateFieldConfig(field.id, { 
+                                          onChange={(e) => updateFieldConfig(field.id, {
                                             step: e.target.value ? (
-                                              field.config.type === 'int' 
-                                                ? parseInt(e.target.value) 
+                                              field.config.type === 'int'
+                                                ? parseInt(e.target.value)
                                                 : parseFloat(e.target.value)
-                                            ) : undefined 
+                                            ) : undefined
                                           })}
                                           placeholder={field.config.type === 'int' ? "1" : "0.1"}
                                           className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
@@ -485,7 +490,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                   {/* Options for combo type */}
                                   {typeOption?.supportsOptions && (
                                     <div className="space-y-2">
-                                      <Label>Options</Label>
+                                      <Label>{t('widgetType.options')}</Label>
                                       <div className="space-y-3">
                                         {/* Options List */}
                                         <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-white/40 dark:border-slate-700/40 rounded-md">
@@ -508,11 +513,11 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             </div>
                                           ))}
                                         </div>
-                                        
+
                                         {/* Add New Option Input */}
                                         <div className="flex gap-2">
                                           <Input
-                                            placeholder="Add new option..."
+                                            placeholder={t('widgetType.addOption')}
                                             className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
                                             onKeyDown={(e) => {
                                               if (e.key === 'Enter') {
@@ -546,22 +551,22 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             <Plus className="h-4 w-4" />
                                           </Button>
                                         </div>
-                                        
+
                                         {/* Fallback Textarea for Advanced Users */}
                                         <details className="text-sm">
                                           <summary className="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
-                                            Advanced: Bulk Edit (one per line)
+                                            {t('widgetType.advancedBulk')}
                                           </summary>
                                           <div className="mt-2">
                                             <Textarea
                                               value={(field.config.options || []).join('\n')}
-                                              onChange={(e) => updateFieldConfig(field.id, { 
-                                                options: e.target.value.split('\n').filter(opt => opt.trim()) 
+                                              onChange={(e) => updateFieldConfig(field.id, {
+                                                options: e.target.value.split('\n').filter(opt => opt.trim())
                                               })}
                                               placeholder="option1&#10;option2&#10;option3"
                                               rows={4}
                                               className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
-                                              style={{ 
+                                              style={{
                                                 resize: 'vertical',
                                                 minHeight: '80px'
                                               }}
@@ -578,7 +583,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                   {/* Default value - only for basic types */}
                                   {typeOption?.supportsDefault && (
                                     <div className="space-y-2">
-                                      <Label>Default Value</Label>
+                                      <Label>{t('widgetType.defaultValue')}</Label>
                                       {field.config.type === 'boolean' ? (
                                         <Select
                                           value={field.config.default !== undefined ? String(field.config.default) : 'false'}
@@ -593,13 +598,13 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             <SelectItem value="false">
                                               <div className="flex items-center gap-2">
                                                 <span className="text-red-600 dark:text-red-400">✗</span>
-                                                <span>False</span>
+                                                <span>{t('common.false')}</span>
                                               </div>
                                             </SelectItem>
                                             <SelectItem value="true">
                                               <div className="flex items-center gap-2">
                                                 <span className="text-green-600 dark:text-green-400">✓</span>
-                                                <span>True</span>
+                                                <span>{t('common.true')}</span>
                                               </div>
                                             </SelectItem>
                                           </SelectContent>
@@ -609,14 +614,14 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                           value={field.config.default ?? ''}
                                           onChange={(e) => {
                                             let defaultValue: any = e.target.value;
-                                            
+
                                             // Type conversion based on field type
                                             if (field.config.type === 'int') {
                                               defaultValue = e.target.value ? parseInt(e.target.value) : undefined;
                                             } else if (field.config.type === 'float') {
                                               defaultValue = e.target.value ? parseFloat(e.target.value) : undefined;
                                             }
-                                            
+
                                             updateFieldConfig(field.id, { default: defaultValue });
                                           }}
                                           placeholder={`Default ${field.config.type} value`}
@@ -639,23 +644,23 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
 
             {/* Footer */}
             <div className="p-6 border-t border-slate-200/50 dark:border-slate-700/50 flex items-center justify-end gap-3 backdrop-blur-sm">
-              <Button 
-                onClick={onClose} 
+              <Button
+                onClick={onClose}
                 disabled={isSaving}
                 className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
               >
-                Cancel
+                {t('widgetType.cancel')}
               </Button>
               <Button onClick={handleSave} disabled={isSaving} className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white backdrop-blur-sm">
                 {isSaving ? (
                   <>
                     <Upload className="h-4 w-4 animate-spin" />
-                    Saving...
+                    {t('widgetType.saving')}
                   </>
                 ) : (
                   <>
                     <Save className="h-4 w-4" />
-                    {editingWidgetType ? 'Update' : 'Create'}
+                    {editingWidgetType ? t('widgetType.update') : t('widgetType.create')}
                   </>
                 )}
               </Button>

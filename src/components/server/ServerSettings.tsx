@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Wifi, WifiOff, Loader2, Server, TestTube, CheckCircle, XCircle } from 'lucide-react';
@@ -11,16 +12,17 @@ interface ServerSettingsProps {
 }
 
 const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
-  const { 
-    url, 
-    isConnected, 
-    isConnecting, 
-    error, 
-    setUrl, 
-    connect, 
+  const {
+    url,
+    isConnected,
+    isConnecting,
+    error,
+    setUrl,
+    connect,
     disconnect,
-    setError 
+    setError
   } = useConnectionStore();
 
   const [inputUrl, setInputUrl] = useState(url);
@@ -33,17 +35,17 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
 
   const validateUrl = (url: string): { isValid: boolean; message?: string } => {
     if (!url.trim()) {
-      return { isValid: false, message: 'URL is required' };
+      return { isValid: false, message: t('serverSettings.validation.required') };
     }
 
     try {
       const urlObj = new URL(url);
       if (!['http:', 'https:'].includes(urlObj.protocol)) {
-        return { isValid: false, message: 'URL must use HTTP or HTTPS protocol' };
+        return { isValid: false, message: t('serverSettings.validation.protocol') };
       }
       return { isValid: true };
     } catch {
-      return { isValid: false, message: 'Invalid URL format' };
+      return { isValid: false, message: t('serverSettings.validation.format') };
     }
   };
 
@@ -56,28 +58,28 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
   const handleTestConnection = async () => {
     const validation = validateUrl(inputUrl);
     if (!validation.isValid) {
-      setTestResult({ success: false, message: validation.message || 'Invalid URL' });
+      setTestResult({ success: false, message: validation.message || t('serverSettings.validation.format') });
       return;
     }
 
     setIsTesting(true);
     setTestResult(null);
-    
+
     try {
       // Temporarily set URL for testing
       setUrl(inputUrl);
-      
+
       // Test connection
       await connect();
-      
-      setTestResult({ 
-        success: true, 
-        message: 'Connection successful! ComfyUI server is reachable.' 
+
+      setTestResult({
+        success: true,
+        message: t('serverSettings.messages.success')
       });
     } catch (error) {
-      setTestResult({ 
-        success: false, 
-        message: error instanceof Error ? error.message : 'Connection failed' 
+      setTestResult({
+        success: false,
+        message: error instanceof Error ? error.message : t('serverSettings.messages.failed')
       });
     } finally {
       setIsTesting(false);
@@ -92,9 +94,9 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
     }
 
     setUrl(inputUrl);
-    setTestResult({ 
-      success: true, 
-      message: 'Server URL saved successfully!' 
+    setTestResult({
+      success: true,
+      message: t('serverSettings.messages.saved')
     });
   };
 
@@ -102,7 +104,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
     if (inputUrl !== url) {
       handleSave();
     }
-    
+
     try {
       await connect();
     } catch (error) {
@@ -139,10 +141,10 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
           </Button>
           <div>
             <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-              Server Settings
+              {t('serverSettings.title')}
             </h1>
             <p className="text-slate-600 dark:text-slate-400">
-              Configure your ComfyUI server connection
+              {t('serverSettings.subtitle')}
             </p>
           </div>
         </div>
@@ -156,7 +158,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
             <div className="flex items-center space-x-2">
               <Server className="h-5 w-5 text-slate-600 dark:text-slate-400" />
               <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                Connection Status
+                {t('serverSettings.statusTitle')}
               </h2>
             </div>
             <div className="flex items-center space-x-2">
@@ -164,20 +166,20 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 <>
                   <Wifi className="h-4 w-4 text-green-500" />
                   <Badge className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-100">
-                    Connected
+                    {t('common.connected')}
                   </Badge>
                 </>
               ) : (
                 <>
                   <WifiOff className="h-4 w-4 text-red-500" />
                   <Badge variant="destructive">
-                    Disconnected
+                    {t('common.disconnected')}
                   </Badge>
                 </>
               )}
             </div>
           </div>
-          
+
           {error && (
             <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
               {error}
@@ -189,13 +191,13 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
         <div className="space-y-6">
           <div className="p-6 bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-lg shadow-sm dark:bg-slate-900/70 dark:border-slate-700/50">
             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-              Server Configuration
+              {t('serverSettings.configTitle')}
             </h2>
-            
+
             {/* URL Input */}
             <div className="space-y-3">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                ComfyUI Server URL
+                {t('serverSettings.urlLabel')}
               </label>
               <Input
                 type="url"
@@ -205,14 +207,14 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 className="text-base"
               />
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Enter the full URL of your ComfyUI server including protocol and port
+                {t('serverSettings.urlDesc')}
               </p>
             </div>
 
             {/* Quick URL Options */}
             <div className="mt-4">
               <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2 block">
-                Quick Options
+                {t('serverSettings.quickOptions')}
               </label>
               <div className="flex flex-wrap gap-2">
                 {getDefaultUrls().map((defaultUrl) => (
@@ -231,11 +233,10 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
 
             {/* Test Result */}
             {testResult && (
-              <div className={`mt-4 p-3 rounded border ${
-                testResult.success
-                  ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
-                  : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
-              }`}>
+              <div className={`mt-4 p-3 rounded border ${testResult.success
+                ? 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800 text-green-700 dark:text-green-300'
+                : 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
+                }`}>
                 <div className="flex items-center space-x-2">
                   {testResult.success ? (
                     <CheckCircle className="h-4 w-4" />
@@ -260,16 +261,16 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 ) : (
                   <TestTube className="h-4 w-4 mr-2" />
                 )}
-                {isTesting ? 'Testing...' : 'Test Connection'}
+                {isTesting ? t('serverSettings.testing') : t('serverSettings.testConnection')}
               </Button>
-              
+
               <Button
                 onClick={handleSave}
                 disabled={inputUrl === url}
                 variant="outline"
                 className="flex-1"
               >
-                Save URL
+                {t('serverSettings.saveUrl')}
               </Button>
             </div>
 
@@ -282,7 +283,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                   className="w-full"
                 >
                   <WifiOff className="h-4 w-4 mr-2" />
-                  Disconnect
+                  {t('serverSettings.disconnect')}
                 </Button>
               ) : (
                 <Button
@@ -295,7 +296,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                   ) : (
                     <Wifi className="h-4 w-4 mr-2" />
                   )}
-                  {isConnecting ? 'Connecting...' : 'Connect'}
+                  {isConnecting ? t('serverSettings.connecting') : t('serverSettings.connect')}
                 </Button>
               )}
             </div>
@@ -305,14 +306,14 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
           {/* Connection Help */}
           <div className="p-6 bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-lg shadow-sm dark:bg-slate-900/70 dark:border-slate-700/50">
             <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">
-              Connection Help
+              {t('serverSettings.helpTitle')}
             </h3>
             <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-              <p>• Make sure ComfyUI is running on your server</p>
-              <p>• Default ComfyUI port is usually 8188</p>
-              <p>• For local connections, try http://127.0.0.1:8188</p>
-              <p>• For network connections, use your server's IP address</p>
-              <p>• Ensure CORS is enabled if connecting from a different domain</p>
+              <p>• {t('serverSettings.helpList.1')}</p>
+              <p>• {t('serverSettings.helpList.2')}</p>
+              <p>• {t('serverSettings.helpList.3')}</p>
+              <p>• {t('serverSettings.helpList.4')}</p>
+              <p>• {t('serverSettings.helpList.5')}</p>
             </div>
           </div>
         </div>

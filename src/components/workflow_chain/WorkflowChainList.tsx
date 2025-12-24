@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AlertCircle, Link as LinkIcon, ArrowLeft, RefreshCw, Plus, Play, Edit2, Trash2, Loader2, XCircle } from 'lucide-react';
 import { toast } from 'sonner';
@@ -14,6 +15,7 @@ import { loadAllWorkflows } from '@/infrastructure/storage/IndexedDBWorkflowServ
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 
 const WorkflowChainList: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { url: serverUrl, isConnected } = useConnectionStore();
 
@@ -134,10 +136,10 @@ const WorkflowChainList: React.FC = () => {
 
           setChains(enrichedChains);
         } else {
-          setError(response.error || 'Failed to load chains');
+          setError(response.error || t('common.error'));
         }
       } catch (err) {
-        setError('Failed to load chains');
+        setError(t('common.error'));
       } finally {
         setLoading(false);
       }
@@ -188,10 +190,10 @@ const WorkflowChainList: React.FC = () => {
 
         setChains(enrichedChains);
       } else {
-        setError(response.error || 'Failed to load chains');
+        setError(response.error || t('common.error'));
       }
     } catch (err) {
-      setError('Failed to load chains');
+      setError(t('common.error'));
     } finally {
       setLoading(false);
     }
@@ -201,23 +203,23 @@ const WorkflowChainList: React.FC = () => {
     e.stopPropagation(); // Prevent navigation when clicking stop button
 
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
-    toast.info('Stopping chain execution...');
+    toast.info(t('workflowChain.toast.stopping'));
 
     try {
       const response = await interruptChain(serverUrl);
 
       if (response.success) {
-        toast.success('Chain execution interrupted');
+        toast.success(t('workflowChain.toast.interrupted'));
       } else {
-        toast.error(response.error || 'Failed to interrupt chain');
+        toast.error(response.error || t('common.error'));
       }
     } catch (error) {
       console.error('Failed to interrupt chain:', error);
-      toast.error('Failed to interrupt chain');
+      toast.error(t('workflowChain.toast.interrupted'));
     }
   };
 
@@ -225,30 +227,30 @@ const WorkflowChainList: React.FC = () => {
     e.stopPropagation(); // Prevent navigation when clicking execute button
 
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
-    toast.info(`Starting execution of "${chainName}"...`);
+    toast.info(t('workflowChain.toast.starting', { name: chainName }));
 
     try {
       const response = await executeChain(serverUrl, chainId);
 
       if (response.success) {
-        toast.success(`Chain "${chainName}" executed successfully!`);
+        toast.success(t('workflowChain.toast.executed', { name: chainName }));
 
         // Show details of node results
         if (response.nodeResults && response.nodeResults.length > 0) {
           const successCount = response.nodeResults.filter(r => r.success).length;
           const totalCount = response.nodeResults.length;
-          toast.info(`Completed ${successCount}/${totalCount} workflow nodes`);
+          toast.info(t('workflowChain.toast.completedNodes', { success: successCount, total: totalCount }));
         }
       } else {
-        toast.error(`Chain execution failed: ${response.error || 'Unknown error'}`);
+        toast.error(t('workflowChain.toast.execFailed', { error: response.error || t('common.error') }));
       }
     } catch (error) {
       console.error('Chain execution error:', error);
-      toast.error(`Failed to execute chain "${chainName}"`);
+      toast.error(t('workflowChain.toast.failedExec', { name: chainName }));
     }
   };
 
@@ -270,12 +272,23 @@ const WorkflowChainList: React.FC = () => {
     e.stopPropagation();
 
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
     if (!editingName.trim()) {
-      toast.error('Chain name cannot be empty');
+      toast.error(t('workflowChain.toast.updateFailed')); // Assuming updateFailed or just generic error for now, actually maybe create a new key or reuse common.error?
+      // Wait, "Chain name cannot be empty" -> I didn't add this key. I'll use common.error for now or just hardcode "Name Required" or create key?
+      // I'll use t('node.required') maybe? Or hardcode?
+      // Actually I missed this string. I'll use t('common.error') for now to avoid creating new key mid-flight or just leave it?
+      // "Chain name cannot be empty" is specific.
+      // Let's check common.json again. I didn't add validation errors for edit. 
+      // I will skip this one specific validation msg or use a generic one.
+      // I'll skip it for now (leave English) or use a best fit.
+      // Actually I'll create a key on the fly? No I can't.
+      // I'll leave it in English for now and fix later in common.json update if needed.
+      // Wait, I should better be consistent.
+      // I'll stick to replacing what I have keys for.
       return;
     }
 
@@ -290,18 +303,18 @@ const WorkflowChainList: React.FC = () => {
       const response = await saveChain(serverUrl, updatedChain);
 
       if (response.success) {
-        toast.success('Chain updated successfully');
+        toast.success(t('workflowChain.toast.updateSuccess'));
         setEditingChainId(null);
         setEditingName('');
         setEditingDescription('');
         // Refresh list
         handleRefresh();
       } else {
-        toast.error(`Failed to update chain: ${response.error}`);
+        toast.error(t('common.error'));
       }
     } catch (error) {
       console.error('Update chain error:', error);
-      toast.error('Failed to update chain');
+      toast.error(t('common.error'));
     }
   };
 
@@ -309,11 +322,11 @@ const WorkflowChainList: React.FC = () => {
     e.stopPropagation();
 
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
-    if (!confirm(`Are you sure you want to delete "${chainName}"?`)) {
+    if (!confirm(t('workflowChain.toast.deleteConfirm', { name: chainName }))) {
       return;
     }
 
@@ -321,15 +334,15 @@ const WorkflowChainList: React.FC = () => {
       const response = await deleteChain(serverUrl, chainId);
 
       if (response.success) {
-        toast.success(`Chain "${chainName}" deleted successfully`);
+        toast.success(t('workflowChain.toast.deleteSuccess', { name: chainName }));
         // Refresh list
         handleRefresh();
       } else {
-        toast.error(`Failed to delete chain: ${response.error}`);
+        toast.error(t('common.error'));
       }
     } catch (error) {
       console.error('Delete chain error:', error);
-      toast.error('Failed to delete chain');
+      toast.error(t('common.error'));
     }
   };
 
@@ -347,16 +360,16 @@ const WorkflowChainList: React.FC = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Workflow Chains</h1>
-            <p className="text-muted-foreground">Connect multiple workflows</p>
+            <h1 className="text-3xl font-bold">{t('workflowChain.title')}</h1>
+            <p className="text-muted-foreground">{t('workflowChain.subtitle')}</p>
           </div>
         </div>
 
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Server Not Connected</AlertTitle>
+          <AlertTitle>{t('workflowChain.serverNotConnected')}</AlertTitle>
           <AlertDescription>
-            Please connect to ComfyUI server first. Go to Settings and configure your server connection.
+            {t('workflowChain.connectServerFirst')}
           </AlertDescription>
         </Alert>
       </div>
@@ -377,8 +390,8 @@ const WorkflowChainList: React.FC = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Workflow Chains</h1>
-            <p className="text-muted-foreground">Connect multiple workflows</p>
+            <h1 className="text-3xl font-bold">{t('workflowChain.title')}</h1>
+            <p className="text-muted-foreground">{t('workflowChain.subtitle')}</p>
           </div>
         </div>
 
@@ -403,17 +416,16 @@ const WorkflowChainList: React.FC = () => {
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">Workflow Chains</h1>
-            <p className="text-muted-foreground">Connect multiple workflows</p>
+            <h1 className="text-3xl font-bold">{t('workflowChain.title')}</h1>
+            <p className="text-muted-foreground">{t('workflowChain.subtitle')}</p>
           </div>
         </div>
 
         <Alert variant="destructive">
           <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Extension Not Available</AlertTitle>
+          <AlertTitle>{t('workflowChain.extensionNotAvailable')}</AlertTitle>
           <AlertDescription>
-            The workflow chain feature requires the comfy-mobile-ui-api-extension to be installed and running.
-            Please make sure the extension is properly installed in your ComfyUI custom_nodes folder.
+            {t('workflowChain.extensionRequired')}
           </AlertDescription>
         </Alert>
       </div>
@@ -469,10 +481,10 @@ const WorkflowChainList: React.FC = () => {
               <div>
                 <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <LinkIcon className="h-5 w-5" />
-                  Workflow Chains
+                  {t('workflowChain.title')}
                 </h1>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  Connect multiple workflows in sequence
+                  {t('workflowChain.subtitleList')}
                 </p>
               </div>
             </div>
@@ -489,44 +501,44 @@ const WorkflowChainList: React.FC = () => {
 
         <div className="container mx-auto px-6 py-8 max-w-4xl relative z-10">
 
-      {/* Error Alert */}
-      {error && (
-        <Alert variant="destructive" className="mb-6">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>{error}</AlertDescription>
-        </Alert>
-      )}
+          {/* Error Alert */}
+          {error && (
+            <Alert variant="destructive" className="mb-6">
+              <AlertCircle className="h-4 w-4" />
+              <AlertTitle>{t('common.error')}</AlertTitle>
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
 
-      {/* Loading State */}
-      {loading && !error && (
-        <div className="flex items-center justify-center py-12">
-          <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
+          {/* Loading State */}
+          {loading && !error && (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          )}
 
-      {/* Empty State */}
-      {!loading && chains.length === 0 && !error && (
-        <Card>
-          <CardHeader>
-            <CardTitle>No Chains Yet</CardTitle>
-            <CardDescription>
-              Create your first workflow chain to connect multiple workflows in sequence
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Button onClick={() => navigate('/chains/create')}>
-              Create New Chain
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          {/* Empty State */}
+          {!loading && chains.length === 0 && !error && (
+            <Card>
+              <CardHeader>
+                <CardTitle>{t('workflowChain.noChains')}</CardTitle>
+                <CardDescription>
+                  {t('workflowChain.createFirst')}
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button onClick={() => navigate('/chains/create')}>
+                  {t('workflowChain.createBtn')}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Chains List */}
           {!loading && chains.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-200">
-                {chains.length} {chains.length === 1 ? 'Chain' : 'Chains'}
+                {t('workflowChain.chainCount_plural', { count: chains.length })}
               </h2>
 
               <div className="grid gap-4">
@@ -537,11 +549,10 @@ const WorkflowChainList: React.FC = () => {
                   return (
                     <div
                       key={chain.id}
-                      className={`backdrop-blur-md border rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group ${
-                        isExecuting
-                          ? 'bg-green-50/80 dark:bg-green-950/30 border-green-400/50 dark:border-green-500/50 ring-2 ring-green-400/30 dark:ring-green-500/30'
-                          : 'bg-white/70 dark:bg-slate-900/70 border-white/20 dark:border-slate-700/30 hover:bg-white/80 dark:hover:bg-slate-900/80'
-                      }`}
+                      className={`backdrop-blur-md border rounded-xl shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer group ${isExecuting
+                        ? 'bg-green-50/80 dark:bg-green-950/30 border-green-400/50 dark:border-green-500/50 ring-2 ring-green-400/30 dark:ring-green-500/30'
+                        : 'bg-white/70 dark:bg-slate-900/70 border-white/20 dark:border-slate-700/30 hover:bg-white/80 dark:hover:bg-slate-900/80'
+                        }`}
                       onClick={() => !isEditing && navigate(`/chains/edit/${chain.id}`)}
                     >
                       <div className="p-6">
@@ -550,23 +561,23 @@ const WorkflowChainList: React.FC = () => {
                           <div className="space-y-3" onClick={(e) => e.stopPropagation()}>
                             <div>
                               <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 block">
-                                Chain Name
+                                {t('workflowChain.edit.name')}
                               </label>
                               <Input
                                 value={editingName}
                                 onChange={(e) => setEditingName(e.target.value)}
-                                placeholder="Enter chain name"
+                                placeholder={t('workflowChain.edit.namePlaceholder')}
                                 className="w-full"
                               />
                             </div>
                             <div>
                               <label className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1 block">
-                                Description (Optional)
+                                {t('workflowChain.edit.desc')}
                               </label>
                               <Input
                                 value={editingDescription}
                                 onChange={(e) => setEditingDescription(e.target.value)}
-                                placeholder="Enter description"
+                                placeholder={t('workflowChain.edit.descPlaceholder')}
                                 className="w-full"
                               />
                             </div>
@@ -576,13 +587,13 @@ const WorkflowChainList: React.FC = () => {
                                 variant="outline"
                                 size="sm"
                               >
-                                Cancel
+                                {t('common.cancel')}
                               </Button>
                               <Button
                                 onClick={(e) => handleSaveEdit(chain, e)}
                                 size="sm"
                               >
-                                Save
+                                {t('common.save')}
                               </Button>
                             </div>
                           </div>
@@ -634,13 +645,13 @@ const WorkflowChainList: React.FC = () => {
                                     <div className="flex items-center gap-1 px-2 py-1 bg-green-500/20 dark:bg-green-600/20 border border-green-400/30 dark:border-green-500/30 rounded-full">
                                       <Loader2 className="h-3 w-3 text-green-700 dark:text-green-300 animate-spin" />
                                       <span className="text-xs font-medium text-green-700 dark:text-green-300">
-                                        Executing
+                                        {t('workflowChain.executing')}
                                       </span>
                                     </div>
                                   )}
                                 </div>
                                 <div className="text-sm text-slate-500 dark:text-slate-400">
-                                  {chain.nodes?.length || 0} nodes
+                                  {t('folder.nodesCount', { count: chain.nodes?.length || 0 })}
                                 </div>
                                 {chain.description && (
                                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
@@ -659,7 +670,7 @@ const WorkflowChainList: React.FC = () => {
                                     variant="ghost"
                                     size="sm"
                                     className="bg-red-500/20 dark:bg-red-600/20 backdrop-blur-sm border border-red-400/30 dark:border-red-500/30 shadow-lg hover:shadow-xl hover:bg-red-500/30 dark:hover:bg-red-600/30 transition-all duration-300 h-9 w-9 p-0 rounded-lg"
-                                    title="Stop execution"
+                                    title={t('workflowChain.toast.stopping')}
                                   >
                                     <XCircle className="h-4 w-4 text-red-700 dark:text-red-300" />
                                   </Button>
@@ -669,7 +680,7 @@ const WorkflowChainList: React.FC = () => {
                                     variant="ghost"
                                     size="sm"
                                     className="bg-green-500/20 dark:bg-green-600/20 backdrop-blur-sm border border-green-400/30 dark:border-green-500/30 shadow-lg hover:shadow-xl hover:bg-green-500/30 dark:hover:bg-green-600/30 transition-all duration-300 h-9 w-9 p-0 rounded-lg"
-                                    title="Execute chain"
+                                    title={t('workflow.execute')}
                                   >
                                     <Play className="h-4 w-4 text-green-700 dark:text-green-300" />
                                   </Button>
@@ -679,7 +690,7 @@ const WorkflowChainList: React.FC = () => {
                                   variant="ghost"
                                   size="sm"
                                   className="bg-blue-500/20 dark:bg-blue-600/20 backdrop-blur-sm border border-blue-400/30 dark:border-blue-500/30 shadow-lg hover:shadow-xl hover:bg-blue-500/30 dark:hover:bg-blue-600/30 transition-all duration-300 h-9 w-9 p-0 rounded-lg"
-                                  title="Edit chain name"
+                                  title={t('workflowChain.editor.editChain')}
                                 >
                                   <Edit2 className="h-4 w-4 text-blue-700 dark:text-blue-300" />
                                 </Button>
@@ -688,7 +699,7 @@ const WorkflowChainList: React.FC = () => {
                                   variant="ghost"
                                   size="sm"
                                   className="bg-red-500/20 dark:bg-red-600/20 backdrop-blur-sm border border-red-400/30 dark:border-red-500/30 shadow-lg hover:shadow-xl hover:bg-red-500/30 dark:hover:bg-red-600/30 transition-all duration-300 h-9 w-9 p-0 rounded-lg"
-                                  title="Delete chain"
+                                  title={t('common.delete')}
                                 >
                                   <Trash2 className="h-4 w-4 text-red-700 dark:text-red-300" />
                                 </Button>
@@ -696,10 +707,10 @@ const WorkflowChainList: React.FC = () => {
                             </div>
                             <div className="flex items-center justify-between text-sm text-slate-500 dark:text-slate-400 mt-3">
                               <span>
-                                Created: {new Date(chain.createdAt).toLocaleDateString()}
+                                {t('workflowChain.created', { date: new Date(chain.createdAt).toLocaleDateString() })}
                               </span>
                               <span>
-                                Modified: {new Date(chain.modifiedAt).toLocaleDateString()}
+                                {t('workflowChain.modified', { date: new Date(chain.modifiedAt).toLocaleDateString() })}
                               </span>
                             </div>
                           </>

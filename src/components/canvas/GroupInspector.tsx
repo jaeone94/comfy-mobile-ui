@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,6 +18,7 @@ const GroupSizeControl: React.FC<GroupSizeControlProps> = ({
   selectedNode,
   onSizeChange,
 }) => {
+  const { t } = useTranslation();
   // Extract group size from bounding array [x, y, width, height]
   const groupInfo = selectedNode.groupInfo;
   const bounding = groupInfo?.bounding || [0, 0, 300, 400]; // fallback values
@@ -91,24 +93,23 @@ const GroupSizeControl: React.FC<GroupSizeControlProps> = ({
 
   return (
     <div className="space-y-4">
-      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Group Size:</span>
+      <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('node.groupSize')}:</span>
 
       {/* Size Controls */}
       <div className="space-y-6">
         {/* Width Slider */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="text-base font-medium text-slate-600 dark:text-slate-400">Width</label>
+            <label className="text-base font-medium text-slate-600 dark:text-slate-400">{t('node.width')}</label>
             <div className="flex items-center space-x-3">
               <span className="text-sm font-mono text-slate-700 dark:text-slate-300 min-w-[80px] text-right">
                 {Math.round(previewWidth)}px
               </span>
               {Math.abs(Number(widthChange)) > 0 && (
-                <span className={`text-sm font-medium min-w-[50px] text-right ${
-                  Number(widthChange) > 0
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400'
-                }`}>
+                <span className={`text-sm font-medium min-w-[50px] text-right ${Number(widthChange) > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+                  }`}>
                   {Number(widthChange) > 0 ? '+' : ''}{widthChange}%
                 </span>
               )}
@@ -129,17 +130,16 @@ const GroupSizeControl: React.FC<GroupSizeControlProps> = ({
         {/* Height Slider */}
         <div className="space-y-4">
           <div className="flex items-center justify-between">
-            <label className="text-base font-medium text-slate-600 dark:text-slate-400">Height</label>
+            <label className="text-base font-medium text-slate-600 dark:text-slate-400">{t('node.height')}</label>
             <div className="flex items-center space-x-3">
               <span className="text-sm font-mono text-slate-700 dark:text-slate-300 min-w-[80px] text-right">
                 {Math.round(previewHeight)}px
               </span>
               {Math.abs(Number(heightChange)) > 0 && (
-                <span className={`text-sm font-medium min-w-[50px] text-right ${
-                  Number(heightChange) > 0
-                    ? 'text-green-600 dark:text-green-400'
-                    : 'text-red-600 dark:text-red-400'
-                }`}>
+                <span className={`text-sm font-medium min-w-[50px] text-right ${Number(heightChange) > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : 'text-red-600 dark:text-red-400'
+                  }`}>
                   {Number(heightChange) > 0 ? '+' : ''}{heightChange}%
                 </span>
               )}
@@ -160,7 +160,7 @@ const GroupSizeControl: React.FC<GroupSizeControlProps> = ({
 
       {/* Size Preview */}
       <div className="space-y-4 mt-8">
-        <span className="text-base font-medium text-slate-600 dark:text-slate-400">Preview:</span>
+        <span className="text-base font-medium text-slate-600 dark:text-slate-400">{t('node.preview')}:</span>
         <div className="flex flex-col items-center p-6 bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700">
           {/* Overlapping boxes container */}
           <div
@@ -183,7 +183,7 @@ const GroupSizeControl: React.FC<GroupSizeControlProps> = ({
                 transform: 'translate(-50%, -50%)',
                 zIndex: previewWidth <= originalWidth && previewHeight <= originalHeight ? 2 : 1
               }}
-              title={`Original: ${Math.round(originalWidth)}×${Math.round(originalHeight)}`}
+              title={`${t('node.original')}: ${Math.round(originalWidth)}×${Math.round(originalHeight)}`}
             />
 
             {/* New size box (rendered on top when larger, behind when smaller) */}
@@ -197,7 +197,7 @@ const GroupSizeControl: React.FC<GroupSizeControlProps> = ({
                 transform: 'translate(-50%, -50%)',
                 zIndex: previewWidth > originalWidth || previewHeight > originalHeight ? 2 : 1
               }}
-              title={`New: ${Math.round(previewWidth)}×${Math.round(previewHeight)}`}
+              title={`${t('node.new')}: ${Math.round(previewWidth)}×${Math.round(previewHeight)}`}
             />
           </div>
 
@@ -206,13 +206,13 @@ const GroupSizeControl: React.FC<GroupSizeControlProps> = ({
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 rounded-sm border bg-blue-200 dark:bg-blue-800 border-blue-400 dark:border-blue-600" />
               <span className="text-slate-600 dark:text-slate-400 font-medium">
-                Original: {Math.round(originalWidth)}×{Math.round(originalHeight)}
+                {t('node.original')}: {Math.round(originalWidth)}×{Math.round(originalHeight)}
               </span>
             </div>
             <div className="flex items-center space-x-2">
               <div className="w-4 h-4 rounded-sm border bg-green-200 dark:bg-green-800 border-green-400 dark:border-green-600" />
               <span className="text-slate-600 dark:text-slate-300 font-medium">
-                New: {Math.round(previewWidth)}×{Math.round(previewHeight)}
+                {t('node.new')}: {Math.round(previewWidth)}×{Math.round(previewHeight)}
               </span>
             </div>
           </div>
@@ -246,6 +246,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
   onGroupDelete,
   onGroupSizeChange,
 }) => {
+  const { t } = useTranslation();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isPromptExecuting, setIsPromptExecuting] = useState(() => {
@@ -410,8 +411,8 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
 
         // Allow slider interactions, but prevent other horizontal swipes
         if (!target.closest('[role="slider"]') &&
-            !target.closest('[data-slider]') &&
-            !target.closest('[data-radix-slider-root]')) {
+          !target.closest('[data-slider]') &&
+          !target.closest('[data-radix-slider-root]')) {
           e.stopPropagation();
         }
       }}
@@ -428,7 +429,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
               </div>
               <div className="flex items-center space-x-4 text-sm text-slate-600 dark:text-slate-400">
                 <span>Group ID: {groupInfo.groupId}</span>
-                <span>{groupInfo.nodeIds.length} nodes</span>
+                <span>{t('node.nodesCount', { count: groupInfo.nodeIds.length })}</span>
                 <Badge variant="outline" className="text-xs">
                   GROUP
                 </Badge>
@@ -441,12 +442,11 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
                   onClick={() => setIsSettingsOpen(!isSettingsOpen)}
                   variant="ghost"
                   size="sm"
-                  className={`h-9 w-9 p-0 flex-shrink-0 rounded-lg transition-colors ${
-                    isSettingsOpen
-                      ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                      : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
-                  }`}
-                  title="Group Settings"
+                  className={`h-9 w-9 p-0 flex-shrink-0 rounded-lg transition-colors ${isSettingsOpen
+                    ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
+                    : 'hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400'
+                    }`}
+                  title={t('node.groupSettings')}
                 >
                   <Settings className="h-4 w-4" />
                 </Button>
@@ -458,7 +458,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
                   variant="ghost"
                   size="sm"
                   className="h-9 w-9 p-0 flex-shrink-0 hover:bg-red-100 dark:hover:bg-red-900/20 rounded-lg text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                  title="Delete Group"
+                  title={t('node.deleteGroup')}
                 >
                   <Trash2 className="h-4 w-4" />
                 </Button>
@@ -483,7 +483,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
               className="bg-green-500/20 hover:bg-green-500/30 text-green-700 dark:text-green-300 border-green-400/30 dark:border-green-500/30 backdrop-blur-sm shadow-lg hover:shadow-xl font-medium"
             >
               <Play className="w-4 h-4 mr-1" />
-              All Always
+              {t('node.allAlways')}
             </Button>
             <Button
               onClick={() => setAllNodesMode(NodeMode.NEVER)}
@@ -491,7 +491,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
               className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 border-blue-400/30 dark:border-blue-500/30 backdrop-blur-sm shadow-lg hover:shadow-xl font-medium"
             >
               <Square className="w-4 h-4 mr-1" />
-              All Mute
+              {t('node.allMute')}
             </Button>
             <Button
               onClick={() => setAllNodesMode(NodeMode.BYPASS)}
@@ -499,7 +499,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
               className="bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 border-purple-400/30 dark:border-purple-500/30 backdrop-blur-sm shadow-lg hover:shadow-xl font-medium"
             >
               <EyeOff className="w-4 h-4 mr-1" />
-              All Bypass
+              {t('node.allBypass')}
             </Button>
           </div>
 
@@ -528,7 +528,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
       </div>
 
       {/* Scrollable Content */}
-      <div 
+      <div
         className="flex-1 overflow-y-auto p-4"
         style={{
           touchAction: 'pan-y pinch-zoom',
@@ -540,16 +540,16 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
         }}
         onTouchMove={(e) => {
           const target = e.target as HTMLElement;
-          
+
           // Allow slider interactions, but prevent other horizontal swipes
-          if (!target.closest('[role="slider"]') && 
-              !target.closest('[data-slider]') &&
-              !target.closest('[data-radix-slider-root]')) {
+          if (!target.closest('[role="slider"]') &&
+            !target.closest('[data-slider]') &&
+            !target.closest('[data-radix-slider-root]')) {
             e.stopPropagation();
           }
         }}
       >
-        <div 
+        <div
           className="max-w-4xl mx-auto"
           style={{
             touchAction: 'pan-y pinch-zoom',
@@ -560,11 +560,11 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
           }}
           onTouchMove={(e) => {
             const target = e.target as HTMLElement;
-            
+
             // Allow slider interactions only
-            if (!target.closest('[role="slider"]') && 
-                !target.closest('[data-slider]') &&
-                !target.closest('[data-radix-slider-root]')) {
+            if (!target.closest('[role="slider"]') &&
+              !target.closest('[data-slider]') &&
+              !target.closest('[data-radix-slider-root]')) {
               e.stopPropagation();
             }
           }}
@@ -575,8 +575,8 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
               const modeConfig = getModeConfig(nodeMode);
 
               return (
-                <div 
-                  key={node.id} 
+                <div
+                  key={node.id}
                   className="p-3 rounded-lg border border-slate-200/60 bg-white/40 dark:bg-slate-800/40 dark:border-slate-700/60 hover:bg-slate-50/60 dark:hover:bg-slate-800/60 transition-colors"
                 >
                   <div className="flex items-center justify-between">
@@ -595,26 +595,25 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
                         <span>Type: {node.type}</span>
                       </div>
                     </div>
-                    
+
                     <div className="flex items-center space-x-2">
                       {/* Node mode toggle button (Always → Mute → Bypass → Always) */}
                       <Button
                         onClick={() => toggleNodeMode(node.id, nodeMode)}
                         size="sm"
                         variant="ghost"
-                        className={`h-8 px-2 ${
-                          nodeMode === NodeMode.ALWAYS 
-                            ? 'text-blue-700 dark:text-blue-400 hover:bg-blue-500/10' 
-                            : nodeMode === NodeMode.NEVER
+                        className={`h-8 px-2 ${nodeMode === NodeMode.ALWAYS
+                          ? 'text-blue-700 dark:text-blue-400 hover:bg-blue-500/10'
+                          : nodeMode === NodeMode.NEVER
                             ? 'text-purple-700 dark:text-purple-400 hover:bg-purple-500/10'
                             : 'text-green-700 dark:text-green-400 hover:bg-green-500/10'
-                        }`}
+                          }`}
                         title={
-                          nodeMode === NodeMode.ALWAYS 
-                            ? 'Click to Mute' 
-                            : nodeMode === NodeMode.NEVER 
-                            ? 'Click to Bypass'
-                            : 'Click to Always'
+                          nodeMode === NodeMode.ALWAYS
+                            ? t('node.clickToMute')
+                            : nodeMode === NodeMode.NEVER
+                              ? t('node.clickToBypass')
+                              : t('node.clickToAlways')
                         }
                       >
                         {nodeMode === NodeMode.ALWAYS ? (
@@ -643,7 +642,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
                         variant="ghost"
                         className="h-8 px-2 text-slate-600 dark:text-slate-400"
                       >
-                        Edit
+                        {t('common.edit')}
                       </Button>
                     </div>
                   </div>
@@ -653,7 +652,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
 
             {groupInfo.nodes.length === 0 && (
               <div className="text-center py-8 text-slate-500 dark:text-slate-400">
-                <p>No nodes found in this group</p>
+                <p>{t('node.noNodesInGroup')}</p>
               </div>
             )}
           </div>
@@ -664,13 +663,13 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
       {onGroupDelete && (
         <ConfirmDialog
           isOpen={isDeleteDialogOpen}
-          title="Delete Group"
-          message={`Are you sure you want to delete group "${groupInfo.title}" (ID: ${groupInfo.groupId})? This action cannot be undone.`}
-          confirmText="Delete"
-          cancelText="Cancel"
+          title={t('node.deleteGroup')}
+          message={t('node.deleteGroupConfirm', { title: groupInfo.title, id: groupInfo.groupId })}
+          confirmText={t('common.delete')}
+          cancelText={t('common.cancel')}
           confirmVariant="destructive"
           onConfirm={() => onGroupDelete(groupInfo.groupId)}
-          onCancel={() => {}}
+          onCancel={() => { }}
           onClose={() => setIsDeleteDialogOpen(false)}
         />
       )}

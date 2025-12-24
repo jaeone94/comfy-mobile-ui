@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
+import { useTranslation } from 'react-i18next';
 
 interface ExecutionProgressState {
   isExecuting: boolean;
@@ -12,6 +13,7 @@ interface ExecutionProgressState {
 }
 
 export const WorkflowHeaderProgressBar: React.FC = () => {
+  const { t } = useTranslation();
   // Local execution progress state
   const [state, setState] = useState<ExecutionProgressState>({
     isExecuting: false,
@@ -29,9 +31,9 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
     // 🎯 Check current execution state from persistent buffer (works for navigation & refresh)
     setTimeout(() => {
       const currentState = service.getCurrentExecutionState();
-      
+
       console.log(`🎯 [ExecutionProgressBar] Current execution state from buffer:`, currentState);
-      
+
       if (currentState.isExecuting) {
         setState(prev => ({
           ...prev,
@@ -42,7 +44,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
           nodeExecutionProgress: currentState.nodeExecutionProgress,
           runningNodes: {} // Will be updated by subsequent events
         }));
-        
+
         console.log(`🎯 [ExecutionProgressBar] Applied execution state from persistent buffer:`, {
           isExecuting: currentState.isExecuting,
           promptId: currentState.currentPromptId?.substring(0, 8),
@@ -58,7 +60,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
     const handleExecuting = (event: any) => {
       console.log('🚀 [ExecutionProgressBar] Raw executing event:', event);
       const { data } = event;
-      
+
       if (data.node === null) {
         // Execution completed (ComfyUI sends executing with node=null on completion)
         console.log('🏁 [ExecutionProgressBar] Execution completed');
@@ -71,7 +73,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
           currentPromptId: null,
           runningNodes: {}
         }));
-        
+
         // Reset to idle after delay
         setTimeout(() => {
           setState(prev => ({
@@ -101,10 +103,10 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
         value: data.value,
         max: data.max
       });
-      
+
       if (data.node && data.value !== undefined && data.max !== undefined) {
         const percentage = Math.round((data.value / data.max) * 100);
-        
+
         setState(prev => ({
           ...prev,
           executingNodeId: data.node.toString(),
@@ -119,7 +121,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
     const handleExecuted = (event: any) => {
       const { data } = event;
       console.log('✅ [ExecutionProgressBar] Node executed:', data);
-      
+
       setState(prev => ({
         ...prev,
         executingNodeId: prev.executingNodeId === data.node?.toString() ? null : prev.executingNodeId,
@@ -129,7 +131,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
 
     const handleExecutionSuccess = (event: any) => {
       console.log('🏁 [ExecutionProgressBar] Execution success');
-      
+
       setState(prev => ({
         ...prev,
         isExecuting: false,
@@ -139,7 +141,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
         currentPromptId: null,
         runningNodes: {}
       }));
-      
+
       // Reset to idle after delay
       setTimeout(() => {
         setState(prev => ({
@@ -151,7 +153,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
 
     const handleExecutionError = (event: any) => {
       console.log('❌ [ExecutionProgressBar] Execution error');
-      
+
       setState(prev => ({
         ...prev,
         isExecuting: false,
@@ -165,7 +167,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
 
     const handleExecutionInterrupted = (event: any) => {
       console.log('⚠️ [ExecutionProgressBar] Execution interrupted');
-      
+
       setState(prev => ({
         ...prev,
         isExecuting: false,
@@ -181,14 +183,14 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
     const handleProgressState = (event: any) => {
       console.log('📊 [ExecutionProgressBar] Progress state event:', event);
       const { data } = event;
-      
+
       if (data.nodes && data.prompt_id) {
         const nodes = data.nodes;
         const runningNodes: { [nodeId: string]: { value: number; max: number; state: string } } = {};
         let hasRunningNodes = false;
         let currentRunningNodeId: string | null = null;
         let currentNodeProgress: { nodeId: string; progress: number } | null = null;
-        
+
         // Process all nodes to find running ones
         Object.keys(nodes).forEach(nodeId => {
           const nodeData = nodes[nodeId];
@@ -199,7 +201,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
               max: nodeData.max || 1,
               state: nodeData.state
             };
-            
+
             // Set the first running node as the current one for display
             if (!currentRunningNodeId) {
               currentRunningNodeId = nodeId;
@@ -211,7 +213,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
             }
           }
         });
-        
+
         // Update state based on running nodes
         setState(prev => ({
           ...prev,
@@ -222,7 +224,7 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
           nodeExecutionProgress: currentNodeProgress,
           runningNodes
         }));
-        
+
         console.log('📊 [ExecutionProgressBar] Updated state:', {
           hasRunningNodes,
           runningNodeCount: Object.keys(runningNodes).length,
@@ -268,34 +270,34 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
         <div className="flex items-center space-x-2">
           <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Executing Workflow
+            {t('execution.title')}
           </span>
         </div>
         <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
           {state.currentPromptId && (
-            <span>ID: {state.currentPromptId.substring(0, 8)}</span>
+            <span>{t('execution.id', { id: state.currentPromptId.substring(0, 8) })}</span>
           )}
           {state.executingNodeId && (
-            <span>Node: {state.executingNodeId}</span>
+            <span>{t('execution.node', { nodeId: state.executingNodeId })}</span>
           )}
         </div>
       </div>
-      
+
       {/* Overall Progress */}
       <div className="space-y-1 relative z-10">
-        <Progress 
-          value={state.nodeExecutionProgress?.progress || 0} 
+        <Progress
+          value={state.nodeExecutionProgress?.progress || 0}
           className="h-2"
         />
         <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
           <span>
-            {state.nodeExecutionProgress ? 
-              `Current node: ${Math.round(state.nodeExecutionProgress.progress)}%` : 
-              'Starting...'
+            {state.nodeExecutionProgress ?
+              `${t('execution.node', { nodeId: '' })} ${Math.round(state.nodeExecutionProgress.progress)}%` :
+              t('execution.starting')
             }
           </span>
           <span className="animate-pulse">
-            Running...
+            {t('execution.running')}
           </span>
         </div>
       </div>

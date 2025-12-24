@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Copy, ClipboardPaste } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -21,6 +22,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
   widget,
   node
 }) => {
+  const { t } = useTranslation();
   // Clipboard helper function with fallback
   const copyToClipboard = async (text: string): Promise<boolean> => {
     try {
@@ -57,12 +59,12 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
         return text;
       } else {
         // HTTP fallback
-        toast.info('Please use Ctrl+V (Cmd+V on Mac) to paste text');
+        toast.info(t('node.pasteShortcutTip'));
         return null;
       }
     } catch (error) {
       console.error('Failed to read from clipboard:', error);
-      toast.info('Please use Ctrl+V (Cmd+V on Mac) to paste text');
+      toast.info(t('node.pasteShortcutTip'));
       return null;
     }
   };
@@ -71,21 +73,21 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
   const handleCopy = async () => {
     const textToCopy = String(editingValue || '');
     const success = await copyToClipboard(textToCopy);
-    
+
     if (success) {
-      toast.success('Text copied to clipboard!');
+      toast.success(t('node.textCopied'));
     } else {
-      toast.error('Failed to copy text to clipboard');
+      toast.error(t('node.failedToCopy'));
     }
   };
 
   // Handle clipboard paste
   const handlePaste = async () => {
     const pastedText = await pasteFromClipboard();
-    
+
     if (pastedText !== null) {
       handleValueChange(pastedText);
-      toast.success('Text pasted from clipboard!');
+      toast.success(t('node.textPasted'));
     }
   };
 
@@ -122,10 +124,10 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
             size="sm"
             onClick={handleCopy}
             className="h-8 px-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-950/50"
-            title="Copy to clipboard"
+            title={t('node.copyToClipboard')}
           >
             <Copy className="h-3 w-3 mr-1" />
-            Copy
+            {t('common.copy')}
           </Button>
           {isSecureContext && (
             <Button
@@ -134,10 +136,10 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
               size="sm"
               onClick={handlePaste}
               className="h-8 px-2 text-xs hover:bg-green-50 dark:hover:bg-green-950/50"
-              title="Paste from clipboard"
+              title={t('node.pasteFromClipboard')}
             >
               <ClipboardPaste className="h-3 w-3 mr-1" />
-              Paste
+              {t('common.paste')}
             </Button>
           )}
         </div>
@@ -147,7 +149,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
         onChange={(e) => handleValueChange(e.target.value)}
         className="text-lg resize-y"
         rows={6}
-        placeholder="Enter text..."
+        placeholder={t('node.enterText')}
       />
     </div>
   );

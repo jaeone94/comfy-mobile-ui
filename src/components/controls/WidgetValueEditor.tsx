@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { X, Check, Edit, Image as ImageIcon, Video, Upload, Images, Copy } from 'lucide-react';
 import { toast } from 'sonner';
@@ -104,6 +105,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
   widget,
   onControlAfterGenerateChange
 }) => {
+  const { t } = useTranslation();
   const [showAlbumModal, setShowAlbumModal] = useState(false);
 
   // Debug logging for modal state changes
@@ -257,7 +259,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                         className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-lg cursor-pointer"
                       >
                         <option value="">
-                          {currentValue && currentValue !== '' ? currentValue : `Select ${(param.type === 'IMAGE' || isImageParam) ? 'image' : 'video'} file...`}
+                          {currentValue && currentValue !== '' ? currentValue : t('node.selectFileTyped', { type: (param.type === 'IMAGE' || isImageParam) ? t('node.image') : t('node.video') })}
                         </option>
                         {options.slice(0, 5).map((option) => (
                           <option key={String(option)} value={String(option)} disabled>
@@ -265,7 +267,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                           </option>
                         ))}
                         {options.length > 5 && (
-                          <option disabled>... and {options.length - 5} more files</option>
+                          <option disabled>{t('node.moreFiles', { count: options.length - 5 })}</option>
                         )}
                       </select>
                       {/* Visual indicator for IMAGE/VIDEO type */}
@@ -329,7 +331,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/20"
           >
             <X className="w-4 h-4 mr-1" />
-            Cancel
+            {t('common.cancel')}
           </Button>
           <Button
             size="sm"
@@ -341,7 +343,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Check className="w-4 h-4 mr-1" />
-            Save
+            {t('common.save')}
           </Button>
         </div>
       </div>
@@ -358,7 +360,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
           </span>
           {param.required && (
             <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
-              Required
+              {t('node.required')}
             </Badge>
           )}
         </div>
@@ -374,7 +376,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       </div>
 
       <div className="mb-2">
-        <span className="text-sm text-slate-600 dark:text-slate-400">Value: </span>
+        <span className="text-sm text-slate-600 dark:text-slate-400">{t('node.value')}: </span>
         <div className="inline-flex items-center space-x-2">
           {isEditable ? (
             <button
@@ -392,7 +394,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 <div className="flex items-center mr-2">
                   <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
                     }`} />
-                  <span className="font-mono">{Boolean(currentValue) ? 'True' : 'False'}</span>
+                  <span className="font-mono">{Boolean(currentValue) ? t('node.true') : t('node.false')}</span>
                 </div>
               ) : (
                 <span className="font-mono mr-2 truncate flex-1 min-w-0">
@@ -401,7 +403,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                       ? (typeof currentValue === 'object'
                         ? JSON.stringify(currentValue)
                         : String(currentValue))
-                      : 'undefined';
+                      : t('node.undefined');
 
                     // Truncate very long values to ensure edit icon is always visible
                     const maxLength = 40;
@@ -419,7 +421,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 <div className="flex items-center">
                   <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
                     }`} />
-                  <span className="font-mono">{Boolean(currentValue) ? 'True' : 'False'}</span>
+                  <span className="font-mono">{Boolean(currentValue) ? t('node.true') : t('node.false')}</span>
                 </div>
               ) : (
                 <span className="font-mono">
@@ -428,7 +430,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                       ? (typeof currentValue === 'object'
                         ? JSON.stringify(currentValue)
                         : String(currentValue))
-                      : 'undefined';
+                      : t('node.undefined');
 
                     // Truncate very long values
                     const maxLength = 40;
@@ -455,7 +457,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                   ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
                   : 'bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/50 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700'
                   }`}
-                title={`Upload new ${isImageFile(currentValue) ? 'image' : 'video'} file`}
+                title={t('node.uploadNewFile', { type: isImageFile(currentValue) ? t('node.image') : t('node.video') })}
               >
                 {uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name ? (
                   <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
@@ -512,7 +514,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       {/* Possible Values for COMBO type */}
       {param.possibleValues && param.possibleValues.length > 0 && (
         <div className="text-xs text-slate-500 dark:text-slate-400">
-          <span className="font-medium">Options: </span>
+          <span className="font-medium">{t('node.options')}: </span>
           <span>
             {(() => {
               // Truncate long option values
@@ -533,7 +535,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               }
 
               const remainingCount = param.possibleValues!.length - displayOptions.length;
-              return optionsText + (remainingCount > 0 ? ` + ${remainingCount} more` : '');
+              return optionsText + (remainingCount > 0 ? ` + ${t('node.more', { count: remainingCount })}` : '');
             })()}
           </span>
         </div>
@@ -543,13 +545,13 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       {param.validation && (
         <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
           {param.validation.min !== undefined && (
-            <span>Min: {param.validation.min} </span>
+            <span>{t('node.min')}: {param.validation.min} </span>
           )}
           {param.validation.max !== undefined && (
-            <span>Max: {param.validation.max} </span>
+            <span>{t('node.max')}: {param.validation.max} </span>
           )}
           {param.validation.step !== undefined && (
-            <span>Step: {param.validation.step}</span>
+            <span>{t('node.step')}: {param.validation.step}</span>
           )}
         </div>
       )}
@@ -588,7 +590,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               setShowAlbumModal(false);
             }}
             onBackClick={() => setShowAlbumModal(false)}
-            selectionTitle={`Select ${(param.type === 'IMAGE' || isImageParam) ? 'Image' : (param.type === 'VIDEO' || isVideoParam) ? 'Video' : 'File'} for ${param.name}`}
+            selectionTitle={t('node.selectionTitle', { type: (param.type === 'IMAGE' || isImageParam) ? t('node.image') : (param.type === 'VIDEO' || isVideoParam) ? t('node.video') : t('node.file'), name: param.name })}
           />
         </div>,
         document.body

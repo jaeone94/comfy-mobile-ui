@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { FileText, AlertCircle, Clock, MoreVertical } from 'lucide-react';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import { generateWorkflowThumbnail } from '@/shared/utils/rendering/CanvasRendererService';
@@ -17,6 +18,7 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
   onLongPress,
   isSelected = false,
 }) => {
+  const { t } = useTranslation();
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(workflow.thumbnail);
 
   useEffect(() => {
@@ -52,8 +54,8 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
   return (
     <div
       className={`relative group rounded-xl overflow-hidden cursor-pointer transition-all duration-300 border ${isSelected
-          ? 'ring-2 ring-blue-500 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
-          : 'border-white/10 hover:border-white/20 hover:shadow-xl'
+        ? 'ring-2 ring-blue-500 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
+        : 'border-white/10 hover:border-white/20 hover:shadow-xl'
         }`}
       {...longPressProps}
     >
@@ -72,7 +74,7 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
             ) : (
               <AlertCircle className="w-12 h-12 text-red-500 mb-2" />
             )}
-            <span className="text-xs text-slate-500 text-center">No Preview</span>
+            <span className="text-xs text-slate-500 text-center">{t('workflow.noThumbnail')}</span>
           </div>
         )}
 
@@ -99,7 +101,7 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
             <span>{formatDate(workflow.modifiedAt || workflow.createdAt)}</span>
           </div>
           <div className="px-1.5 py-0.5 rounded-full bg-white/10 backdrop-blur-sm border border-white/5">
-            {workflow.nodeCount} nodes
+            {workflow.nodeCount} {t('workflow.nodes')}
           </div>
         </div>
       </div>

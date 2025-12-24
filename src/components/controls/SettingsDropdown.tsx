@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ui/badge';
 import React, { forwardRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Loader2, Dices, Users, FileJson, Database, Hash, Camera, Brush, Move, Link, AlertTriangle, Package } from 'lucide-react';
 import type { MissingModelInfo } from '@/services/MissingModelsService';
 
@@ -31,7 +32,7 @@ interface SettingsDropdownProps {
   onOpenMissingModelDetector?: () => void;
 }
 
-export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps>(({ 
+export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps>(({
   isOpen,
   isClearingVRAM,
   isExecuting,
@@ -52,12 +53,13 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
   missingModels = [],
   onOpenMissingModelDetector,
 }, ref) => {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   return (
-    <div 
-      ref={ref} 
-      className="fixed right-4 w-60 z-50 pwa-header" 
+    <div
+      ref={ref}
+      className="fixed right-4 w-60 z-50 pwa-header"
       style={{
         top: isExecuting ? '254px' : '168px'
       }}
@@ -66,7 +68,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
       <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 border border-white/20 dark:border-slate-600/20 p-2 relative overflow-hidden">
         {/* Gradient Overlay for Enhanced Glass Effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-        
+
         {/* Content container - EXACTLY like QuickActionPanel */}
         <div className="relative z-10">
           {/* Group 1: Workflow Tools */}
@@ -79,7 +81,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
                 >
                   <AlertTriangle className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-red-700 dark:text-red-300 text-left flex-1">
-                    Install Missing Nodes
+                    {t('menu.installMissingNodes')}
                   </span>
                   {installablePackageCount > 0 && (
                     <Badge variant="destructive" className="ml-auto text-xs">{installablePackageCount}</Badge>
@@ -93,7 +95,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
                 >
                   <Package className="h-4 w-4 text-yellow-600 dark:text-yellow-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-yellow-700 dark:text-yellow-300 text-left flex-1">
-                    Missing Model Detector
+                    {t('menu.missingModelDetector')}
                   </span>
                   <Badge variant="outline" className="ml-auto text-xs border-yellow-600 text-yellow-700 dark:border-yellow-400 dark:text-yellow-300">
                     {missingModels.length}
@@ -103,10 +105,10 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
               {/* Group Title */}
               <div className="px-4 py-2 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10 rounded-t-xl">
                 <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                  Workflow Tools
+                  {t('menu.workflowTools')}
                 </h3>
               </div>
-              
+
               {/* Fast Group Moder Button */}
               {onShowGroupModer && (
                 <button
@@ -115,7 +117,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
                 >
                   <Users className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                    Fast Group Moder
+                    {t('menu.fastGroupModer')}
                   </span>
                 </button>
               )}
@@ -127,7 +129,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
               >
                 <Hash className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                  Trigger Words
+                  {t('menu.triggerWords')}
                 </span>
               </button>
 
@@ -139,7 +141,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
                 >
                   <Dices className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                    Randomize Seeds
+                    {t('menu.randomizeSeeds')}
                   </span>
                 </button>
               )}
@@ -148,15 +150,14 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
               {onToggleRepositionMode && (
                 <button
                   onClick={onToggleRepositionMode}
-                  className={`w-full px-4 py-3 flex items-center space-x-3 hover:bg-white/20 dark:hover:bg-slate-700/30 transition-colors ${
-                    repositionMode?.isActive 
-                      ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400' 
-                      : ''
-                  }`}
+                  className={`w-full px-4 py-3 flex items-center space-x-3 hover:bg-white/20 dark:hover:bg-slate-700/30 transition-colors ${repositionMode?.isActive
+                    ? 'bg-blue-500/20 text-blue-600 dark:text-blue-400'
+                    : ''
+                    }`}
                 >
                   <Move className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                    Node Repositioning
+                    {t('menu.nodeRepositioning')}
                   </span>
                 </button>
               )}
@@ -165,28 +166,27 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
               {onToggleConnectionMode && (
                 <button
                   onClick={onToggleConnectionMode}
-                  className={`w-full px-4 py-3 flex items-center space-x-3 hover:bg-white/20 dark:hover:bg-slate-700/30 transition-colors ${
-                    connectionMode?.isActive 
-                      ? 'bg-green-500/20 text-green-600 dark:text-green-400' 
-                      : ''
-                  }`}
+                  className={`w-full px-4 py-3 flex items-center space-x-3 hover:bg-white/20 dark:hover:bg-slate-700/30 transition-colors ${connectionMode?.isActive
+                    ? 'bg-green-500/20 text-green-600 dark:text-green-400'
+                    : ''
+                    }`}
                 >
                   <Link className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                    Node Connection
+                    {t('menu.nodeConnection')}
                   </span>
                 </button>
               )}
             </>
           )}
-          
+
           {/* Group 2: Workflow Information */}
           {(onShowWorkflowJson || onShowObjectInfo) && (
             <>
               {/* Group Title */}
               <div className="px-4 py-2 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
                 <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                  Workflow Info
+                  {t('menu.workflowInfo')}
                 </h3>
               </div>
 
@@ -198,7 +198,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
                 >
                   <FileJson className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                    View Workflow JSON
+                    {t('menu.viewWorkflowJson')}
                   </span>
                 </button>
               )}
@@ -211,22 +211,22 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
                 >
                   <Database className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                   <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                    View Object Info
+                    {t('menu.viewObjectInfo')}
                   </span>
                 </button>
               )}
             </>
           )}
-          
+
           {/* Group 3: System Controls */}
           <>
             {/* Group Title */}
             <div className="px-4 py-2 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
               <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-400 uppercase tracking-wider">
-                System
+                {t('menu.system')}
               </h3>
             </div>
-            
+
             {/* Workflow Snapshots Option */}
             {onShowWorkflowSnapshots && (
               <button
@@ -235,11 +235,11 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
               >
                 <Camera className="h-4 w-4 text-slate-600 dark:text-slate-400 flex-shrink-0" />
                 <span className="text-sm font-medium text-slate-700 dark:text-slate-300 text-left flex-1">
-                  Workflow Snapshots
+                  {t('menu.workflowSnapshots')}
                 </span>
               </button>
             )}
-            
+
             <button
               onClick={onClearVRAM}
               disabled={isClearingVRAM}
@@ -251,7 +251,7 @@ export const SettingsDropdown = forwardRef<HTMLDivElement, SettingsDropdownProps
                 <Brush className="h-4 w-4 text-red-600 dark:text-red-400 flex-shrink-0" />
               )}
               <span className="text-sm font-medium text-red-700 dark:text-red-300 text-left flex-1">
-                {isClearingVRAM ? 'Clearing...' : 'Clear VRAM'}
+                {isClearingVRAM ? t('menu.clearing') : t('menu.clearVram')}
               </span>
             </button>
           </>

@@ -1,4 +1,5 @@
 import React, { useState, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Upload, X, FileText, Loader2, AlertCircle, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,6 +21,7 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
     onCreateEmpty,
     isLoading = false,
 }) => {
+    const { t } = useTranslation();
     const [isDragging, setIsDragging] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,8 +49,8 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
         if (targetFile) {
             onUpload(targetFile);
         } else {
-            toast.error('Unsupported file type', {
-                description: 'Please drop a JSON workflow or PNG image with workflow metadata.',
+            toast.error(t('workflow.import.unsupportedType'), {
+                description: t('workflow.import.unsupportedDesc'),
             });
         }
     };
@@ -62,8 +64,8 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
             if (isJson || isPng) {
                 onUpload(file);
             } else {
-                toast.error('Unsupported file type', {
-                    description: 'Please select a JSON workflow or PNG image with workflow metadata.',
+                toast.error(t('workflow.import.unsupportedType'), {
+                    description: t('workflow.import.unsupportedDesc'),
                 });
             }
         }
@@ -95,7 +97,7 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                         {/* Header */}
                         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
                             <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                                Upload Workflow
+                                {t('workflow.uploadModal.title')}
                             </h2>
                             <button
                                 onClick={onClose}
@@ -127,10 +129,10 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
 
                                 <div className="text-center space-y-1">
                                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                        {isLoading ? 'Processing...' : 'Click or drag file to upload'}
+                                        {isLoading ? t('common.processing') : t('workflow.uploadModal.dragDrop')}
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400">
-                                        Supports .json and .png (with metadata)
+                                        {t('workflow.uploadModal.supportedExt')}
                                     </p>
                                 </div>
 
@@ -149,7 +151,7 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                                     variant="outline"
                                     className="mt-2"
                                 >
-                                    Select File
+                                    {t('common.selectFile')}
                                 </Button>
                             </div>
 
@@ -158,10 +160,10 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                                 <AlertCircle className="w-5 h-5 text-slate-400 flex-shrink-0" />
                                 <div className="space-y-1">
                                     <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
-                                        Supported Formats
+                                        {t('workflow.uploadModal.formatsTitle')}
                                     </p>
                                     <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
-                                        You can upload standard ComfyUI workflow JSON files or PNG images that contain embedded workflow metadata.
+                                        {t('workflow.uploadModal.formatsDesc')}
                                     </p>
                                 </div>
                             </div>
@@ -175,7 +177,7 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                                 </div>
                                 <div className="relative flex justify-center text-xs uppercase">
                                     <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400">
-                                        Or
+                                        {t('common.or')}
                                     </span>
                                 </div>
                             </div>
@@ -190,7 +192,7 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                                 className="w-full mt-4 h-12 border-dashed border-2 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 dark:hover:border-blue-500/50 transition-all"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
-                                Create New Empty Workflow
+                                {t('workflow.uploadModal.createNew')}
                             </Button>
                         </div>
                     </motion.div>

@@ -6,6 +6,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { IComfyJson } from '@/shared/types/app/IComfyJson';
 import type { NodeWidgetModifications } from '@/shared/types/widgets/widgetModifications';
@@ -77,6 +78,7 @@ import { VIRTUAL_NODES } from '@/shared/constants/virtualNodes';
 const WorkflowEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { t } = useTranslation();
 
   // Canvas refs
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -323,13 +325,13 @@ const WorkflowEditor: React.FC = () => {
       // Get workflow from storage
       const storedWorkflow = await getWorkflow(id);
       if (!storedWorkflow) {
-        throw new Error('Workflow not found');
+        throw new Error(t('workflow.loadFailed'));
       }
 
       const workflowData = (storedWorkflow as any).workflow_json;
 
       if (!workflowData) {
-        throw new Error('No workflow_json found in stored workflow');
+        throw new Error(t('workflow.noJson'));
       }
 
       // Fetch object info for accurate widget initialization
@@ -339,7 +341,7 @@ const WorkflowEditor: React.FC = () => {
 
 
       if (!graph) {
-        throw new Error('Failed to load workflow into ComfyGraph');
+        throw new Error(t('workflow.loadFailed'));
       }
 
       // ?뵩 GraphChangeLogger: Wrap all nodes for comprehensive value change tracking
@@ -360,7 +362,7 @@ const WorkflowEditor: React.FC = () => {
         const formattedMessage = formatMissingModelsMessage(detectedMissingModels);
 
         toast.error(`Missing models detected`, {
-          description: `The following models are not available on the server:\n${formattedMessage}`,
+          description: `${t('workflow.missingModelsDesc')}\n${formattedMessage}`,
           duration: 10000,
         });
 
@@ -379,7 +381,7 @@ const WorkflowEditor: React.FC = () => {
       if (detectedMissingNodes.length > 0) {
         const nodeTypeList = Array.from(new Set(detectedMissingNodes.map((node) => node.type))).join(', ');
         toast.error(`Missing node types detected`, {
-          description: `The following node types are not available on the server: ${nodeTypeList}`,
+          description: `${t('workflow.missingNodesDesc', { nodeTypeList })}`,
           duration: 8000,
         });
       } else {
@@ -537,7 +539,7 @@ const WorkflowEditor: React.FC = () => {
     } catch (error) {
       console.error('Failed to load workflow:', error);
       setError(error instanceof Error ? error.message : 'Failed to load workflow');
-      toast.error('Failed to load workflow');
+      toast.error(t('workflow.loadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -754,7 +756,7 @@ const WorkflowEditor: React.FC = () => {
   // Execute workflow using our completed Graph to API conversion
   const handleExecute = async () => {
     if (!comfyGraphRef.current || !isConnected || !workflow) {
-      toast.error('Cannot execute: No workflow loaded or not connected');
+      toast.error(t('workflow.submitFailed'));
       return;
     }
 
@@ -799,13 +801,13 @@ const WorkflowEditor: React.FC = () => {
       // Step 5: Submit to server with workflow tracking information
       const promptId = await ComfyUIService.executeWorkflow(apiWorkflow, {
         workflowId: id, // Use the workflow ID from URL params
-        workflowName: workflow?.name || 'Unnamed Workflow'
+        workflowName: workflow?.name || t('workflow.newWorkflowName')
       });
 
       currentPromptIdRef.current = promptId;
     } catch (error) {
       console.error('Workflow execution failed:', error);
-      toast.error('Failed to submit workflow for execution');
+      toast.error(t('workflow.submitFailed'));
     } finally {
       setIsExecuting(false);
     }
@@ -900,7 +902,7 @@ const WorkflowEditor: React.FC = () => {
       await ComfyUIService.interruptExecution();
     } catch (error) {
       console.error('INTERRUPT: Failed to interrupt:', error);
-      toast.error('Failed to interrupt execution');
+      toast.error(t('workflow.interruptFailed'));
     }
   }, []);
 
@@ -908,10 +910,10 @@ const WorkflowEditor: React.FC = () => {
   const handleClearQueue = useCallback(async () => {
     try {
       await ComfyUIService.clearQueue();
-      toast.success('Queue cleared');
+      toast.success(t('workflow.queueCleared'));
     } catch (error) {
       console.error('Failed to clear queue:', error);
-      toast.error('Failed to clear queue');
+      toast.error(t('workflow.clearQueueFailed'));
     }
   }, []);
 
@@ -927,31 +929,31 @@ const WorkflowEditor: React.FC = () => {
   const handleShowWorkflowJson = useCallback(() => {
     if (workflow?.workflow_json) {
       setJsonViewerData({
-        title: 'Workflow JSON',
+        title: t('workflow.jsonTitle'),
         data: workflow.workflow_json
       });
       setIsJsonViewerOpen(true);
     } else {
-      toast.error('No workflow JSON available');
+      toast.error(t('workflow.noJson'));
     }
   }, [workflow]);
 
   const handleShowObjectInfo = useCallback(() => {
     if (objectInfo) {
       setJsonViewerData({
-        title: 'ComfyUI Object Info',
+        title: t('workflow.objectInfoTitle'),
         data: objectInfo
       });
       setIsJsonViewerOpen(true);
     } else {
-      toast.error('Object info not available');
+      toast.error(t('workflow.noObjectInfo'));
     }
   }, [objectInfo]);
 
   // Handle save snapshot - serialize current graph
   const handleSaveSnapshot = useCallback(async (workflowId: string, title: string): Promise<IComfyJson> => {
     if (!comfyGraphRef.current) {
-      throw new Error('No graph available to save');
+      throw new Error(t('workflow.noGraph'));
     }
 
     try {
@@ -961,14 +963,14 @@ const WorkflowEditor: React.FC = () => {
       return serializedWorkflow;
     } catch (error) {
       console.error('Failed to serialize workflow for snapshot:', error);
-      throw new Error('Failed to serialize workflow');
+      throw new Error(t('workflow.serializeFailed'));
     }
   }, []);
 
   // Handle load snapshot - update workflow_json and reload using initial entry logic
   const handleLoadSnapshot = useCallback(async (snapshotData: IComfyJson) => {
     if (!id || !workflow) {
-      toast.error('Cannot load snapshot: No workflow ID or workflow data');
+      toast.error(t('workflow.snapshotLoadFailed'));
       return;
     }
 
@@ -997,11 +999,11 @@ const WorkflowEditor: React.FC = () => {
       // Reload the workflow using the same logic as initial app entry
       await loadWorkflow();
 
-      toast.success(`Snapshot loaded: ${nodeCount} nodes updated`);
+      toast.success(t('workflow.snapshotLoaded', { count: nodeCount }));
 
     } catch (error) {
       console.error('Failed to load snapshot:', error);
-      toast.error('Failed to load snapshot');
+      toast.error(t('workflow.snapshotLoadFailed'));
     } finally {
       setIsLoading(false);
     }
@@ -1025,7 +1027,7 @@ const WorkflowEditor: React.FC = () => {
 
     const numericNodeId = parseInt(nodeId, 10);
     if (isNaN(numericNodeId)) {
-      toast.error('Invalid node ID. Please enter a number.');
+      toast.error(t('workflow.invalidNodeId'));
       return;
     }
 
@@ -1033,7 +1035,7 @@ const WorkflowEditor: React.FC = () => {
     const success = canvasInteraction.handleNavigateToNode(numericNodeId);
 
     if (!success) {
-      toast.error(`Node ${numericNodeId} not found in the workflow.`);
+      toast.error(t('workflow.nodeNotFound', { id: numericNodeId }));
       return;
     }
 
@@ -1044,7 +1046,7 @@ const WorkflowEditor: React.FC = () => {
       setIsNodePanelVisible(true);
     }
 
-    toast.success(`Focused on node ${numericNodeId}`);
+    toast.success(t('workflow.focusedOnNode', { id: numericNodeId }));
   }, [canvasInteraction]);
 
   // Handle control_after_generate changes - update workflow metadata
@@ -1118,7 +1120,7 @@ const WorkflowEditor: React.FC = () => {
   // Handle add node - add new node to workflow_json and reload
   const handleAddNode = useCallback(async (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }, initialValues?: Record<string, any>, size?: number[]) => {
     if (!id || !workflow) {
-      toast.error('Cannot add node: No workflow ID or workflow data');
+      toast.error(t('workflow.snapshotLoadFailed'));
       return;
     }
 
@@ -1126,7 +1128,7 @@ const WorkflowEditor: React.FC = () => {
       // Get current workflow_json
       const currentWorkflowJson = workflow.workflow_json;
       if (!currentWorkflowJson) {
-        toast.error('No workflow JSON data available');
+        toast.error(t('workflow.noJson'));
         return;
       }
 
@@ -1157,11 +1159,11 @@ const WorkflowEditor: React.FC = () => {
       // Reload the workflow using the same logic as initial app entry
       await loadWorkflow();
 
-      toast.success(`Node added: ${nodeMetadata.display_name || nodeType}`);
+      toast.success(t('workflow.nodeAdded', { type: nodeMetadata.display_name || nodeType }));
 
     } catch (error) {
       console.error('Failed to add node:', error);
-      toast.error('Failed to add node');
+      toast.error(t('workflow.nodeAddFailed'));
     }
   }, [id, workflow, loadWorkflow]);
 
@@ -1177,7 +1179,7 @@ const WorkflowEditor: React.FC = () => {
 
     if (!workflow || !nodeMetadata) {
       console.warn('RANDOMIZE: Missing workflow or metadata');
-      toast.error('Cannot randomize seeds: workflow not ready');
+      toast.error(t('workflow.loadFailed'));
       return;
     }
 
@@ -1189,22 +1191,22 @@ const WorkflowEditor: React.FC = () => {
       }, isForceRandomize);
 
       if (seedChanges.length > 0) {
-        toast.success(`Randomized ${seedChanges.length} seed values`, {
-          description: `Updated seeds in ${new Set(seedChanges.map(c => c.nodeId)).size} nodes`,
+        toast.success(t('workflow.randomizedSeeds', { count: seedChanges.length }), {
+          description: t('workflow.updatedSeedsInNodes', { count: new Set(seedChanges.map(c => c.nodeId)).size }),
           duration: 3000,
         });
 
         // Force re-render to show updated values
         forceRender();
       } else {
-        toast.info('No seed values found to randomize', {
-          description: 'Make sure your workflow contains nodes with seed parameters',
+        toast.info(t('workflow.noSeedsFound'), {
+          description: t('workflow.noSeedsFoundDesc'),
           duration: 4000,
         });
       }
     } catch (error) {
       console.error('RANDOMIZE: Failed to randomize seeds:', error);
-      toast.error('Failed to randomize seeds', {
+      toast.error(t('workflow.randomizeFailed'), {
         description: error instanceof Error ? error.message : 'Unknown error occurred',
         duration: 5000,
       });
@@ -1230,7 +1232,11 @@ const WorkflowEditor: React.FC = () => {
       [NodeMode.BYPASS]: 'Bypass'
     };
 
-    toast.success(`Applied ${modeNames[mode]} mode to ${group.nodeIds.length} nodes in "${group.title}"`);
+    toast.success(t('workflow.appliedGroupMode', {
+      mode: modeNames[mode],
+      count: group.nodeIds.length,
+      title: group.title
+    }));
     forceRender();
   }, [workflowGroups, widgetEditor, forceRender]);
 
@@ -1359,11 +1365,11 @@ const WorkflowEditor: React.FC = () => {
       // Reload the workflow using the same logic as initial app entry
       await loadWorkflow();
 
-      toast.success(`Node ${nodeId} deleted successfully`);
+      toast.success(t('workflow.nodeDeleted', { id: nodeId }));
 
     } catch (error) {
       console.error('Failed to delete node:', error);
-      toast.error('Failed to delete node');
+      toast.error(t('workflow.nodeDeleteFailed'));
     }
   }
 
@@ -1404,11 +1410,11 @@ const WorkflowEditor: React.FC = () => {
         setSelectedNode(null);
       }
 
-      toast.success(`Group ${groupId} deleted successfully`);
+      toast.success(t('workflow.groupDeleted', { id: groupId }));
 
     } catch (error) {
       console.error('Failed to delete group:', error);
-      toast.error('Failed to delete group');
+      toast.error(t('workflow.groupDeleteFailed'));
     }
   }
 
@@ -1516,7 +1522,7 @@ const WorkflowEditor: React.FC = () => {
       // Save to backend asynchronously without updating React state
       updateWorkflow(updatedWorkflow).catch(error => {
         console.error('Failed to save workflow:', error);
-        toast.error('Failed to save workflow changes');
+        toast.error(t('workflow.updateError'));
       });
 
       // Trigger canvas redraw with imperceptible viewport change
@@ -1525,11 +1531,11 @@ const WorkflowEditor: React.FC = () => {
         setViewport(prev => ({ ...prev, scale: prev.scale - 0.00001 }));
       }, 10);
 
-      toast.success('Connection disconnected successfully');
+      toast.success(t('workflow.disconnected'));
 
     } catch (error) {
       console.error('Failed to disconnect input:', error);
-      toast.error('Failed to disconnect connection');
+      toast.error(t('workflow.disconnectFailed'));
     }
   };
 
@@ -1632,7 +1638,7 @@ const WorkflowEditor: React.FC = () => {
       // Save to backend asynchronously without updating React state
       updateWorkflow(updatedWorkflow).catch(error => {
         console.error('Failed to save workflow:', error);
-        toast.error('Failed to save workflow changes');
+        toast.error(t('workflow.updateError'));
       });
 
       // Trigger canvas redraw with imperceptible viewport change
@@ -1641,11 +1647,11 @@ const WorkflowEditor: React.FC = () => {
         setViewport(prev => ({ ...prev, scale: prev.scale - 0.00001 }));
       }, 10);
 
-      toast.success('Connection disconnected successfully');
+      toast.success(t('workflow.disconnected'));
 
     } catch (error) {
       console.error('Failed to disconnect output:', error);
-      toast.error('Failed to disconnect connection');
+      toast.error(t('workflow.disconnectFailed'));
     }
   };
 
@@ -1653,7 +1659,7 @@ const WorkflowEditor: React.FC = () => {
   const refreshNodeSlots = async (nodeIds?: number[]) => {
     if (!workflow?.workflow_json || !comfyGraphRef.current || !objectInfo) {
       console.warn('No workflow, ComfyGraph, or objectInfo available');
-      toast.error('Cannot refresh nodes: missing required data');
+      toast.error(t('workflow.refreshFailed'));
       return;
     }
 
@@ -1668,7 +1674,7 @@ const WorkflowEditor: React.FC = () => {
       }
 
       if (targetNodeIds.length === 0) {
-        toast.info('No nodes to refresh');
+        toast.info(t('workflow.noNodesToRefresh'));
         return;
       }
 
@@ -1786,15 +1792,15 @@ const WorkflowEditor: React.FC = () => {
 
       // Show appropriate success message
       if (nodeIds && nodeIds.length === 1) {
-        toast.success(`Node ${nodeIds[0]} slots refreshed successfully`);
+        toast.success(t('workflow.nodeRefreshed', { id: nodeIds[0] }));
       } else {
-        toast.success(`Workflow refreshed: ${refreshedCount} nodes updated` +
-          (skippedCount > 0 ? `, ${skippedCount} nodes skipped` : ''));
+        toast.success(t('workflow.workflowRefreshed', { refreshedCount }) +
+          (skippedCount > 0 ? t('workflow.nodesSkipped', { count: skippedCount }) : ''));
       }
 
     } catch (error) {
       console.error('Failed to refresh node slots:', error);
-      toast.error('Failed to refresh node slots');
+      toast.error(t('workflow.refreshFailed'));
     }
   };
 
@@ -1882,10 +1888,10 @@ const WorkflowEditor: React.FC = () => {
         }
       }
 
-      toast.success('Node title updated successfully');
+      toast.success(t('workflow.titleUpdated'));
     } catch (error) {
       console.error('Failed to update node title:', error);
-      toast.error('Failed to update node title');
+      toast.error(t('workflow.titleUpdateFailed'));
     }
   };
 
@@ -1963,7 +1969,7 @@ const WorkflowEditor: React.FC = () => {
       console.log('Node size updated successfully');
     } catch (error) {
       console.error('Failed to update node size:', error);
-      toast.error('Failed to update node size');
+      toast.error(t('workflow.sizeUpdateFailed'));
     }
   };
 
@@ -2048,7 +2054,7 @@ const WorkflowEditor: React.FC = () => {
       console.log('Node collapse updated successfully');
     } catch (error) {
       console.error('Failed to update node collapse:', error);
-      toast.error('Failed to update node collapse');
+      toast.error(t('workflow.collapseUpdateFailed'));
     }
   };
 
@@ -2131,7 +2137,7 @@ const WorkflowEditor: React.FC = () => {
       console.log('Group size updated successfully');
     } catch (error) {
       console.error('Failed to update group size:', error);
-      toast.error('Failed to update group size');
+      toast.error(t('workflow.groupSizeUpdateFailed'));
     }
   };
 
@@ -2154,7 +2160,7 @@ const WorkflowEditor: React.FC = () => {
       <div className="flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" style={{ height: '100dvh' }}>
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">Loading workflow...</p>
+          <p className="text-muted-foreground">{t('workflow.loading')}</p>
         </div>
       </div>
     );
@@ -2170,13 +2176,13 @@ const WorkflowEditor: React.FC = () => {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold mb-2">Failed to Load Workflow</h2>
+          <h2 className="text-xl font-semibold mb-2">{t('workflow.loadFailed')}</h2>
           <p className="text-muted-foreground mb-4">{error}</p>
           <button
             onClick={() => navigate('/')}
             className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
           >
-            Back to Workflows
+            {t('workflow.backToList')}
           </button>
         </div>
       </div>
@@ -2603,7 +2609,7 @@ const WorkflowEditor: React.FC = () => {
         groups={workflowGroups}
         onGroupModeChange={handleGroupModeChange}
         getCurrentNodeMode={getCurrentNodeMode}
-        title="Fast Group Mode Control"
+        title={t('workflow.groupModeControl')}
       />
 
 

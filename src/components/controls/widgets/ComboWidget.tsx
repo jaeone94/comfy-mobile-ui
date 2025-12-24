@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, Search, X } from 'lucide-react';
@@ -23,6 +24,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
   widget,
   node
 }) => {
+  const { t } = useTranslation();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
@@ -264,7 +266,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
             type="text"
             value={String(editingValue || '')}
             readOnly
-            placeholder="Click dropdown to select option..."
+            placeholder={t('node.clickDropdownToSelect')}
             className="text-lg pr-16 cursor-pointer"
             onClick={() => setIsDropdownOpen(true)}
           />
@@ -275,7 +277,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
                 size="sm"
                 className="h-8 w-8 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
                 onClick={clearSelection}
-                title="Clear selection"
+                title={t('node.clearSelection')}
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -285,7 +287,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
               size="sm"
               className="h-8 w-8 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              title="Browse options"
+              title={t('node.browseOptions')}
             >
               <ChevronDown className={`h-4 w-4 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </Button>
@@ -312,13 +314,13 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search options..."
+                  placeholder={t('node.searchOptionsPlaceholder')}
                   className="w-full pl-7 pr-2 py-1 text-sm bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 placeholder-slate-400"
                 />
               </div>
               {searchQuery && (
                 <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-                  {filteredOptions.length} match{filteredOptions.length !== 1 ? 'es' : ''} found
+                  {t('node.matchesFound', { count: filteredOptions.length })}
                 </div>
               )}
             </div>
@@ -339,7 +341,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
                 ))
               ) : (
                 <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
-                  {searchQuery ? `No options match "${searchQuery}"` : 'No options available'}
+                  {searchQuery ? t('node.noOptionsMatch', { query: searchQuery }) : t('node.noOptionsAvailable')}
                 </div>
               )}
             </div>

@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { X, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { NodeMode } from '@/shared/types/app/base';
@@ -29,6 +30,7 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
   title,
   getCurrentNodeMode
 }) => {
+  const { t } = useTranslation();
   // Analyze group's current state
   const getGroupCurrentMode = (group: Group): NodeMode | null => {
     if (!getCurrentNodeMode || group.nodeIds.length === 0) {
@@ -53,17 +55,17 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
   const modeButtons = [
     {
       mode: NodeMode.ALWAYS,
-      label: 'Always',
+      label: t('node.mode.always'),
       className: 'bg-green-500/20 hover:bg-green-500/30 text-green-700 dark:text-green-300 border-green-400/30 dark:border-green-500/30 backdrop-blur-sm shadow-lg hover:shadow-xl font-medium'
     },
     {
       mode: NodeMode.NEVER,
-      label: 'Mute',
+      label: t('node.mode.mute'),
       className: 'bg-blue-500/20 hover:bg-blue-500/30 text-blue-700 dark:text-blue-300 border-blue-400/30 dark:border-blue-500/30 backdrop-blur-sm shadow-lg hover:shadow-xl font-medium'
     },
     {
       mode: NodeMode.BYPASS,
-      label: 'Bypass',
+      label: t('node.mode.bypass'),
       className: 'bg-purple-500/20 hover:bg-purple-500/30 text-purple-700 dark:text-purple-300 border-purple-400/30 dark:border-purple-500/30 backdrop-blur-sm shadow-lg hover:shadow-xl font-medium'
     }
   ];
@@ -80,7 +82,7 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
             className="fixed inset-0 bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-purple-900/40 backdrop-blur-md z-[100] pwa-modal"
             onClick={onClose}
           />
-          
+
           {/* Full Screen Enhanced Glassmorphism Modal */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -115,7 +117,7 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
               <div className="relative flex-1 overflow-y-auto px-6 pb-6">
                 {groups.length === 0 ? (
                   <div className="text-center py-8 text-slate-600 dark:text-slate-300 drop-shadow-sm">
-                    No groups found in this workflow
+                    {t('node.group.noGroups')}
                   </div>
                 ) : (
                   <div className="space-y-4 mt-4">
@@ -156,7 +158,7 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
                                 })()}
                               </div>
                               <p className="text-sm text-slate-700 dark:text-slate-300 drop-shadow-sm">
-                                {group.nodeIds.length} nodes
+                                {group.nodeIds.length} {t('workflow.nodes')}
                               </p>
                             </div>
                           </div>
@@ -167,18 +169,17 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
                           {modeButtons.map((button) => {
                             const currentMode = getGroupCurrentMode(group);
                             const isActive = currentMode === button.mode;
-                            
+
                             return (
                               <Button
                                 key={button.mode}
                                 onClick={() => onGroupModeChange(group.id, button.mode)}
                                 variant="outline"
                                 size="sm"
-                                className={`flex-1 h-9 text-xs font-medium transition-all duration-200 relative ${
-                                  isActive 
-                                    ? `${button.className} ring-2 ring-white/50 dark:ring-slate-300/50 shadow-xl scale-105` 
-                                    : `${button.className} opacity-70 hover:opacity-100`
-                                }`}
+                                className={`flex-1 h-9 text-xs font-medium transition-all duration-200 relative ${isActive
+                                  ? `${button.className} ring-2 ring-white/50 dark:ring-slate-300/50 shadow-xl scale-105`
+                                  : `${button.className} opacity-70 hover:opacity-100`
+                                  }`}
                               >
                                 {button.label}
                                 {isActive && (

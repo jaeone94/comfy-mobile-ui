@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { ExternalLink, Play, Target, Edit, ArrowDownToLine, ArrowUpFromLine, X, Image as ImageIcon, SlidersHorizontal, CheckCircle2 } from 'lucide-react';
 import { OutputsGallery } from '@/components/media/OutputsGallery';
@@ -104,6 +105,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
   onDisconnectInput,
   onDisconnectOutput,
 }) => {
+  const { t } = useTranslation();
 
   // State for IMAGE/VIDEO file selection modal
   const [fileSelectionState, setFileSelectionState] = useState<{
@@ -144,20 +146,20 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
     // Close file selection modal
     setFileSelectionState({ isOpen: false, paramName: null, paramType: null });
   };
-  
+
   // Helper function to check if a widget has been modified
   const isWidgetModified = (paramName: string): boolean => {
     const nodeValues = modifiedWidgetValues.get(nodeId);
     return !!(nodeValues && paramName in nodeValues);
   };
-  
+
   // Helper function to get modified highlight classes
   const getModifiedClasses = (paramName: string): string => {
-    return isWidgetModified(paramName) 
-      ? 'bg-[#10b981] dark:bg-[#10b981] border-[#10b981] dark:border-[#10b981] ring-1 ring-[#10b981]/50 dark:ring-[#10b981]/50 text-white dark:text-white' 
+    return isWidgetModified(paramName)
+      ? 'bg-[#10b981] dark:bg-[#10b981] border-[#10b981] dark:border-[#10b981] ring-1 ring-[#10b981]/50 dark:ring-[#10b981]/50 text-white dark:text-white'
       : '';
   };
-  
+
   // Helper function to extract videopreview information from ComfyGraphNode
   const extractVideoPreview = () => {
     const nodeId = typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id;
@@ -167,7 +169,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
     // if (videoPreviewValue?.params) {
     //   return videoPreviewValue.params;
     // }
-    
+
     // // Check ComfyGraphNode widgets for videopreview
     // if (selectedNode.getWidgets) {
     //   const widgets = selectedNode.getWidgets();
@@ -176,7 +178,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
     //     return videoWidget.value.params;
     //   }
     // }
-    
+
     // // Fallback to original node widgets_values
     // if (!selectedNode?.widgets_values || typeof selectedNode.widgets_values !== 'object') {
     //   return null;
@@ -184,11 +186,11 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
 
     // // Look for videopreview in widgets_values
     // let videoPreview = null;
-    
+
     // // Handle object format widgets_values
     // if (!Array.isArray(selectedNode.widgets_values)) {
     //   const widgetsValues = selectedNode.widgets_values as Record<string, any>;
-      
+
     //   // Check for videopreview.params structure
     //   if (widgetsValues.videopreview && widgetsValues.videopreview.params) {
     //     videoPreview = widgetsValues.videopreview.params;
@@ -201,13 +203,13 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
   // Helper function to extract image preview information from ComfyGraphNode
   const extractImagePreview = () => {
     const nodeId = typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id;
-    
+
     // Check if there's a modified imagepreview value using getWidgetValue
     const imagePreviewValue = getWidgetValue(nodeId, 'imagepreview', undefined);
     if (imagePreviewValue?.params) {
       return imagePreviewValue.params;
     }
-    
+
     // Check ComfyGraphNode widgets for imagepreview
     if (selectedNode.getWidgets) {
       const widgets = selectedNode.getWidgets();
@@ -215,14 +217,14 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
       if (imageWidget?.value?.params) {
         return imageWidget.value.params;
       }
-      
+
       // Also check for previewImage widget
       const previewWidget = widgets.find((w: any) => w.name === 'previewImage');
       if (previewWidget?.value) {
         return previewWidget.value;
       }
     }
-    
+
     if (!selectedNode?.widgets_values || typeof selectedNode.widgets_values !== 'object') {
       return null;
     }
@@ -230,17 +232,17 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
     // Handle object format widgets_values
     if (!Array.isArray(selectedNode.widgets_values)) {
       const widgetsValues = selectedNode.widgets_values as Record<string, any>;
-      
+
       // Check for imagepreview.params structure first (from execution outputs)
       if (widgetsValues.imagepreview && widgetsValues.imagepreview.params) {
         return widgetsValues.imagepreview.params;
       }
-      
+
       // Fallback to previewImage property for backwards compatibility
       if (widgetsValues.previewImage) {
         return widgetsValues.previewImage;
       }
-      
+
     }
 
     return null;
@@ -253,64 +255,64 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
       const widgets = selectedNode.getWidgets();
       if (widgets && widgets.length > 0) {
         return widgets.map((widget: any, index: number) => {
-      // Handle special control_after_generate widgets
-      if (widget.name === 'control_after_generate') {
-        // This widget is usually paired with a seed widget, skip standalone rendering
-        return null;
-      }
-      
-      // Check if this is a seed widget with control_after_generate
-      let hasDualWidget = false;
-      let controlValue = null;
-      if ((widget.name === 'seed' || widget.name === 'noise_seed') && widget.options?.control_after_generate) {
-        hasDualWidget = true;
-        // Find the control_after_generate widget value
-        const controlWidget = widgets.find((w: any) => w.name === 'control_after_generate');
-        controlValue = controlWidget?.value || 'fixed';
-      }
+          // Handle special control_after_generate widgets
+          if (widget.name === 'control_after_generate') {
+            // This widget is usually paired with a seed widget, skip standalone rendering
+            return null;
+          }
 
-      const param: IProcessedParameter = {
-        name: widget.name,
-        type: widget.type, // Use ComfyUI native types directly
-        value: widget.value,
-        description: widget.options?.tooltip,
-        possibleValues: widget.options?.values,
-        validation: {
-          min: widget.options?.min,
-          max: widget.options?.max,
-          step: widget.options?.step
-        },
-        required: !widget.options?.optional,
-        // Add widget index for proper widget management
-        widgetIndex: index,
-        config: {}, // Add missing config property
-        // Add control_after_generate info if this is a seed widget
-        controlAfterGenerate: hasDualWidget ? {
-          enabled: true,
-          value: controlValue,
-          options: ['fixed', 'increment', 'decrement', 'randomize']
-        } : undefined
-      };
+          // Check if this is a seed widget with control_after_generate
+          let hasDualWidget = false;
+          let controlValue = null;
+          if ((widget.name === 'seed' || widget.name === 'noise_seed') && widget.options?.control_after_generate) {
+            hasDualWidget = true;
+            // Find the control_after_generate widget value
+            const controlWidget = widgets.find((w: any) => w.name === 'control_after_generate');
+            controlValue = controlWidget?.value || 'fixed';
+          }
 
-      return param;
+          const param: IProcessedParameter = {
+            name: widget.name,
+            type: widget.type, // Use ComfyUI native types directly
+            value: widget.value,
+            description: widget.options?.tooltip,
+            possibleValues: widget.options?.values,
+            validation: {
+              min: widget.options?.min,
+              max: widget.options?.max,
+              step: widget.options?.step
+            },
+            required: !widget.options?.optional,
+            // Add widget index for proper widget management
+            widgetIndex: index,
+            config: {}, // Add missing config property
+            // Add control_after_generate info if this is a seed widget
+            controlAfterGenerate: hasDualWidget ? {
+              enabled: true,
+              value: controlValue,
+              options: ['fixed', 'increment', 'decrement', 'randomize']
+            } : undefined
+          };
+
+          return param;
         }).filter(Boolean) as IProcessedParameter[];
       }
     }
-    
+
     // Get current widgets
     let widgets = selectedNode.getWidgets ? selectedNode.getWidgets() : [];
-    
+
     // If no widgets, ensure they are initialized from widgets_values
     if ((!widgets || widgets.length === 0) && selectedNode.widgets_values) {
-      
+
       // Initialize widgets on the node - try to get metadata first
       if (selectedNode.initializeWidgets) {
         // Try to get metadata from processor or graph
         let nodeMetadata = (selectedNode as any).nodeMetadata;
-        
+
         // If no metadata on node, try to get it from processor's objectInfo
-        if (!nodeMetadata) {          
-          
+        if (!nodeMetadata) {
+
           // Try to get objectInfo from the graph
           const graph = (selectedNode as any).graph;
           if (graph && graph.processor && graph.processor.objectInfo) {
@@ -321,9 +323,9 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
             nodeMetadata = metadata;
           }
         }
-        
+
         selectedNode.initializeWidgets(selectedNode.widgets_values, nodeMetadata);
-        
+
         // Try again to get widgets
         const newWidgets = selectedNode.getWidgets ? selectedNode.getWidgets() : [];
         if (newWidgets && newWidgets.length > 0) {
@@ -331,7 +333,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
             if (widget.name === 'control_after_generate') {
               return null;
             }
-            
+
             return {
               name: widget.name,
               type: widget.type, // Use ComfyUI native types directly
@@ -351,7 +353,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
         }
       }
     }
-    
+
     return [];
   };
 
@@ -404,7 +406,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                     <div className="text-sm text-blue-700 dark:text-blue-300">
                       <div className="font-medium mb-1">{param.name}</div>
                       <div className="flex items-center space-x-1">
-                        <span>Connected to input</span>
+                        <span>{t('node.connectedToInput')}</span>
                         <ExternalLink className="w-3 h-3" />
                       </div>
                     </div>
@@ -420,10 +422,10 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                         param={param}
                         nodeId={typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id}
                         currentValue={getWidgetValue(
-                            typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id,
-                            param.name,
-                            param.value
-                          )}
+                          typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id,
+                          param.name,
+                          param.value
+                        )}
                         isEditing={editingParam?.nodeId === (typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id) && editingParam?.paramName === param.name}
                         editingValue={editingValue}
                         uploadState={uploadState}
@@ -444,10 +446,10 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                         onFilePreview={onFilePreview}
                         onFileUpload={onFileUpload}
                         onFileUploadDirect={onFileUploadDirect}
-                          // Pass additional ComfyGraphNode context
-                          node={selectedNode}
-                          widget={selectedNode.getWidgets ? selectedNode.getWidgets()[((param as any).widgetIndex || 0)] : undefined}
-                        />
+                        // Pass additional ComfyGraphNode context
+                        node={selectedNode}
+                        widget={selectedNode.getWidgets ? selectedNode.getWidgets()[((param as any).widgetIndex || 0)] : undefined}
+                      />
                     );
                   }
 
@@ -457,10 +459,10 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                       param={param}
                       nodeId={typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id}
                       currentValue={getWidgetValue(
-                          typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id, 
-                          param.name, 
-                          param.value
-                        )}
+                        typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id,
+                        param.name,
+                        param.value
+                      )}
                       isEditing={editingParam?.nodeId === (typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id) && editingParam?.paramName === param.name}
                       editingValue={editingValue}
                       uploadState={uploadState}
@@ -474,10 +476,10 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                       onFilePreview={onFilePreview}
                       onFileUpload={onFileUpload}
                       onFileUploadDirect={onFileUploadDirect}
-                        // Pass additional ComfyGraphNode context
-                        node={selectedNode}
-                        widget={selectedNode.getWidgets ? selectedNode.getWidgets()[((param as any).widgetIndex || 0)] : undefined}
-                      />
+                      // Pass additional ComfyGraphNode context
+                      node={selectedNode}
+                      widget={selectedNode.getWidgets ? selectedNode.getWidgets()[((param as any).widgetIndex || 0)] : undefined}
+                    />
                   );
                 })()
               ) : (
@@ -489,7 +491,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                       </span>
                       {param.required && (
                         <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
-                          Required
+                          {t('node.required')}
                         </Badge>
                       )}
                     </div>
@@ -497,7 +499,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                       {param.type}
                     </Badge>
                   </div>
-                  
+
                   {/* Parameter Value or Link Info */}
                   {param.linkInfo ? (
                     <div className="mb-3">
@@ -527,18 +529,18 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                           <ExternalLink className="w-3 h-3 text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform" />
                         </div>
                         <div className="mt-1 text-xs text-blue-600 dark:text-blue-400 text-left">
-                          Output: <span className="font-mono bg-blue-200 dark:bg-blue-800/50 px-1.5 py-0.5 rounded">{param.linkInfo.sourceOutputName}</span>
+                          {t('node.output')}: <span className="font-mono bg-blue-200 dark:bg-blue-800/50 px-1.5 py-0.5 rounded">{param.linkInfo.sourceOutputName}</span>
                         </div>
                       </button>
                     </div>
                   ) : (
                     <div className="mb-2">
-                      <span className="text-sm text-slate-600 dark:text-slate-400">Value: </span>
+                      <span className="text-sm text-slate-600 dark:text-slate-400">{t('node.value')}: </span>
                       <code className="text-sm bg-slate-200 dark:bg-slate-700 px-2 py-1 rounded inline-block max-w-[300px] md:max-w-[400px] truncate align-bottom">
-                        {param.value !== undefined 
-                          ? (typeof param.value === 'object' 
-                              ? JSON.stringify(param.value) 
-                              : String(param.value))
+                        {param.value !== undefined
+                          ? (typeof param.value === 'object'
+                            ? JSON.stringify(param.value)
+                            : String(param.value))
                           : 'undefined'
                         }
                       </code>
@@ -555,7 +557,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                   {/* Possible Values for COMBO type */}
                   {param.possibleValues && param.possibleValues.length > 0 && (
                     <div className="text-xs text-slate-500 dark:text-slate-400">
-                      <span className="font-medium">Options: </span>
+                      <span className="font-medium">{t('node.options')}: </span>
                       <span>
                         {(() => {
                           // Truncate long option values
@@ -563,23 +565,23 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                             return option.length > maxLength ? option.substring(0, maxLength) + '...' : option;
                           };
 
-                          const displayOptions = param.possibleValues!.slice(0, 3).map(option => 
+                          const displayOptions = param.possibleValues!.slice(0, 3).map(option =>
                             truncateOption(String(option))
                           );
-                          
+
                           const optionsText = displayOptions.join(', ');
-                          
+
                           // If the combined text is still too long, further truncate
                           const maxTotalLength = 60;
-                          const finalText = optionsText.length > maxTotalLength 
+                          const finalText = optionsText.length > maxTotalLength
                             ? optionsText.substring(0, maxTotalLength) + '...'
                             : optionsText;
-                          
+
                           return finalText;
                         })()}
                       </span>
                       {param.possibleValues.length > 3 && (
-                        <span> +{param.possibleValues.length - 3} more</span>
+                        <span> {t('node.more', { count: param.possibleValues.length - 3 })}</span>
                       )}
                     </div>
                   )}
@@ -588,13 +590,13 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                   {param.validation && (
                     <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                       {param.validation.min !== undefined && (
-                        <span>Min: {param.validation.min} </span>
+                        <span>{t('node.min')}: {param.validation.min} </span>
                       )}
                       {param.validation.max !== undefined && (
-                        <span>Max: {param.validation.max} </span>
+                        <span>{t('node.max')}: {param.validation.max} </span>
                       )}
                       {param.validation.step !== undefined && (
-                        <span>Step: {param.validation.step}</span>
+                        <span>{t('node.step')}: {param.validation.step}</span>
                       )}
                     </div>
                   )}
@@ -610,10 +612,10 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
   // Always use ComfyGraphNode data directly
   const videoPreview = extractVideoPreview();
   const imagePreview = extractImagePreview();
-  
+
   // Extract widgets from ComfyGraphNode
   const widgets = extractComfyGraphWidgets();
-    
+
   // Helper function to find source node info for a link
   const getSourceNodeInfo = (linkId: number) => {
     // Find the source node and output slot for this link
@@ -648,11 +650,11 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
     const inputSlots = selectedNode.inputs.filter((input: any) => {
       // If connected, always show
       if (input.link) return true;
-      
+
       // If not connected, only show if it's not a widget parameter
       const widgets = selectedNode.getWidgets ? selectedNode.getWidgets() : [];
       const hasWidget = widgets.some((widget: any) => widget.name === input.name);
-      
+
       return !hasWidget;
     });
 
@@ -662,12 +664,12 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
       <div className="space-y-3">
         <h4 className="text-md font-medium text-slate-700 dark:text-slate-300 flex items-center space-x-2">
           <ArrowDownToLine className="w-4 h-4" />
-          <span>Input Slots ({inputSlots.length})</span>
+          <span>{t('node.inputSlots')} ({inputSlots.length})</span>
         </h4>
         <div className="space-y-2">
           {inputSlots.map((input: any, index: number) => {
             const sourceInfo = input.link ? getSourceNodeInfo(input.link) : null;
-            
+
             return (
               <div key={`input-${index}`}>
                 {input.link && sourceInfo ? (
@@ -691,7 +693,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                               }
                             }}
                             className="p-2 rounded-md hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 transition-colors shadow-sm hover:shadow-md"
-                            title="Disconnect this input"
+                            title={t('node.disconnectInput')}
                           >
                             <X className="w-4 h-4" />
                           </button>
@@ -724,11 +726,11 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                             <ExternalLink className="w-3 h-3 text-blue-600 dark:text-blue-400 group-hover:translate-x-0.5 transition-transform" />
                           </div>
                           <div className="mt-1 text-xs text-blue-600 dark:text-blue-400 text-left">
-                            Output: <span className="font-mono bg-blue-200 dark:bg-blue-800/50 px-1.5 py-0.5 rounded">{sourceInfo.sourceOutputName}</span>
+                            {t('node.output')}: <span className="font-mono bg-blue-200 dark:bg-blue-800/50 px-1.5 py-0.5 rounded">{sourceInfo.sourceOutputName}</span>
                           </div>
                         </button>
                         <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center space-x-1">
-                          <span>Type:</span>
+                          <span>{t('node.type')}:</span>
                           <Badge variant="outline" className="text-xs px-1.5 py-0.5">
                             {input.type || 'Unknown'}
                           </Badge>
@@ -749,7 +751,7 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
                         </Badge>
                       </div>
                       <Badge variant="outline" className="text-xs">
-                        {input.type || 'Unknown'}
+                        {input.type || t('common.unknown')}
                       </Badge>
                     </div>
                   </div>
@@ -793,12 +795,12 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
       <div className="space-y-3">
         <h4 className="text-md font-medium text-slate-700 dark:text-slate-300 flex items-center space-x-2">
           <ArrowUpFromLine className="w-4 h-4" />
-          <span>Output Slots ({selectedNode.outputs.length})</span>
+          <span>{t('node.outputSlots')} ({selectedNode.outputs.length})</span>
         </h4>
         <div className="space-y-2">
           {selectedNode.outputs.map((output: any, index: number) => {
             const hasConnections = output.links && output.links.length > 0;
-            
+
             return (
               <div key={`output-${index}`}>
                 {hasConnections ? (
@@ -975,13 +977,12 @@ export const NodeParameterEditor: React.FC<NodeParameterEditorProps> = ({
               size="sm"
               disabled={isSingleExecuting}
               onClick={() => onSingleExecute(typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id)}
-              className={`h-8 px-3 rounded-lg text-xs font-medium transition-all duration-150 ${
-                isSingleExecuting
-                  ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
-                  : isOutputNode
-                    ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm hover:shadow-md active:shadow-sm active:scale-95'
-                    : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-sm hover:shadow-md active:shadow-sm active:scale-95'
-              }`}
+              className={`h-8 px-3 rounded-lg text-xs font-medium transition-all duration-150 ${isSingleExecuting
+                ? 'bg-gray-200 dark:bg-gray-700 text-gray-400 dark:text-gray-500 cursor-not-allowed'
+                : isOutputNode
+                  ? 'bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-600 hover:to-teal-600 text-white shadow-sm hover:shadow-md active:shadow-sm active:scale-95'
+                  : 'bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white shadow-sm hover:shadow-md active:shadow-sm active:scale-95'
+                }`}
             >
               <Play className="w-3 h-3 mr-1.5" />
               {isSingleExecuting ? 'Executing...' : 'Execute This'}

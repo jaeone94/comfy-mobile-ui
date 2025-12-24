@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useConnectionStore } from '@/ui/store/connectionStore';
-import { 
-  Database, 
-  Download, 
-  Upload, 
+import {
+  Database,
+  Download,
+  Upload,
   AlertTriangle,
   CheckCircle,
   Clock,
@@ -17,6 +16,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 interface BackupInfo {
   hasBackup: boolean;
@@ -25,6 +25,7 @@ interface BackupInfo {
 }
 
 export const BrowserDataBackup: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { url: serverUrl, isConnected, hasExtension, isCheckingExtension, checkExtension } = useConnectionStore();
   const [backupInfo, setBackupInfo] = useState<BackupInfo>({ hasBackup: false });
@@ -44,7 +45,7 @@ export const BrowserDataBackup: React.FC = () => {
     title: '',
     message: '',
     confirmText: '',
-    onConfirm: () => {}
+    onConfirm: () => { }
   });
 
   // Check extension availability on mount
@@ -59,7 +60,7 @@ export const BrowserDataBackup: React.FC = () => {
     try {
       setIsCheckingBackup(true);
       const response = await fetch(`${serverUrl}/comfymobile/api/backup/status`);
-      
+
       if (response.ok) {
         const contentType = response.headers.get('content-type');
         if (contentType && contentType.includes('application/json')) {
@@ -91,14 +92,14 @@ export const BrowserDataBackup: React.FC = () => {
     return new Promise((resolve, reject) => {
       // Try to open without specifying version to get current version
       const request = indexedDB.open('ComfyMobileUI');
-      
+
       request.onsuccess = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
         const version = db.version;
         db.close();
         resolve(version);
       };
-      
+
       request.onerror = () => {
         // If DB doesn't exist, assume version 1
         resolve(1);
@@ -132,13 +133,13 @@ export const BrowserDataBackup: React.FC = () => {
 
       // Get data from IndexedDB using current version
       const dbRequest = indexedDB.open('ComfyMobileUI', currentVersion);
-      
+
       await new Promise((resolve, reject) => {
         dbRequest.onsuccess = async (event) => {
           try {
             const db = (event.target as IDBOpenDBRequest).result;
             console.log('Available object stores:', Array.from(db.objectStoreNames));
-            
+
             // Get apiKeys if store exists
             if (db.objectStoreNames.contains('apiKeys')) {
               const apiKeysTransaction = db.transaction(['apiKeys'], 'readonly');
@@ -189,9 +190,9 @@ export const BrowserDataBackup: React.FC = () => {
     setConfirmDialog({
       isOpen: true,
       type: 'backup',
-      title: 'Create Backup',
-      message: 'This will create a backup of your browser data on the server. Any existing backup will be overwritten.',
-      confirmText: 'Create Backup',
+      title: t('backup.dialog.backupTitle'),
+      message: t('backup.dialog.backupMessage'),
+      confirmText: t('backup.dialog.confirmBackup'),
       onConfirm: handleBackup
     });
   };
@@ -201,9 +202,9 @@ export const BrowserDataBackup: React.FC = () => {
     setConfirmDialog({
       isOpen: true,
       type: 'restore',
-      title: 'Restore Backup',
-      message: 'This will restore your browser data from the server backup. All current data will be replaced and the page will reload.',
-      confirmText: 'Restore Data',
+      title: t('backup.dialog.restoreTitle'),
+      message: t('backup.dialog.restoreMessage'),
+      confirmText: t('backup.dialog.confirmRestore'),
       onConfirm: handleRestore
     });
   };
@@ -216,7 +217,7 @@ export const BrowserDataBackup: React.FC = () => {
       title: '',
       message: '',
       confirmText: '',
-      onConfirm: () => {}
+      onConfirm: () => { }
     });
   };
 
@@ -241,14 +242,14 @@ export const BrowserDataBackup: React.FC = () => {
 
       if (response.ok) {
         const result = await response.json();
-        toast.success('Browser data backed up successfully');
+        toast.success(t('backup.toast.backupSuccess'));
         await checkBackupStatus(); // Refresh backup status
       } else {
         const error = await response.text();
         throw new Error(error);
       }
     } catch (error) {
-      const errorMessage = `Failed to backup data: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      const errorMessage = t('backup.toast.backupFailed', { error: error instanceof Error ? error.message : 'Unknown error' });
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -283,21 +284,21 @@ export const BrowserDataBackup: React.FC = () => {
           await restoreIndexedDBData(backupData.indexedDB);
         }
 
-        toast.success('Browser data restored successfully');
-        
+        toast.success(t('backup.toast.restoreSuccess'));
+
         // Ask user to reload page for changes to take effect
         setTimeout(() => {
-          if (confirm('Data restored successfully. Reload the page to see changes?')) {
+          if (confirm(t('backup.toast.reloadPrompt'))) {
             window.location.reload();
           }
         }, 1000);
-        
+
       } else {
         const error = await response.text();
         throw new Error(error);
       }
     } catch (error) {
-      const errorMessage = `Failed to restore data: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      const errorMessage = t('backup.toast.restoreFailed', { error: error instanceof Error ? error.message : 'Unknown error' });
       setError(errorMessage);
       toast.error(errorMessage);
     } finally {
@@ -312,7 +313,7 @@ export const BrowserDataBackup: React.FC = () => {
         // Get current DB version
         const currentVersion = await getCurrentDBVersion();
         console.log(`Restoring to IndexedDB with version: ${currentVersion}`);
-        
+
         const request = indexedDB.open('ComfyMobileUI', currentVersion);
 
         request.onsuccess = async (event) => {
@@ -325,7 +326,7 @@ export const BrowserDataBackup: React.FC = () => {
               console.log(`Restoring ${indexedDBData.apiKeys.length} API keys`);
               const transaction = db.transaction(['apiKeys'], 'readwrite');
               const store = transaction.objectStore('apiKeys');
-              
+
               // Clear existing data
               await new Promise((resolve, reject) => {
                 const clearRequest = store.clear();
@@ -351,7 +352,7 @@ export const BrowserDataBackup: React.FC = () => {
               console.log(`Restoring ${indexedDBData.workflows.length} workflows`);
               const transaction = db.transaction(['workflows'], 'readwrite');
               const store = transaction.objectStore('workflows');
-              
+
               // Clear existing data
               await new Promise((resolve, reject) => {
                 const clearRequest = store.clear();
@@ -436,10 +437,10 @@ export const BrowserDataBackup: React.FC = () => {
               </Button>
               <div>
                 <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Browser Data Backup
+                  {t('backup.title')}
                 </h1>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Server connection required
+                  {t('backup.subtitle')}
                 </p>
               </div>
             </div>
@@ -458,17 +459,17 @@ export const BrowserDataBackup: React.FC = () => {
                 </div>
               </div>
               <h1 className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-2">
-                Server Connection Required
+                {t('backup.serverRequired')}
               </h1>
               <p className="text-orange-800 dark:text-orange-200 mb-6">
-                Connect to a ComfyUI server to use browser data backup and restore features.
+                {t('backup.connectPrompt')}
               </p>
               <Button
                 onClick={() => navigate('/settings/server')}
                 className="bg-orange-600 hover:bg-orange-700 text-white"
               >
                 <Settings className="h-4 w-4 mr-2" />
-                Configure Server
+                {t('backup.configureServer')}
               </Button>
             </div>
           </motion.div>
@@ -484,8 +485,8 @@ export const BrowserDataBackup: React.FC = () => {
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <div className="space-y-2">
-            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">Checking Extension...</h2>
-            <p className="text-slate-600 dark:text-slate-400">Verifying ComfyUI Mobile API extension</p>
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">{t('backup.checkingExtension')}</h2>
+            <p className="text-slate-600 dark:text-slate-400">{t('backup.verifyingExtension')}</p>
           </div>
         </div>
       </div>
@@ -517,11 +518,10 @@ export const BrowserDataBackup: React.FC = () => {
                 </div>
               </div>
               <h1 className="text-2xl font-bold text-red-900 dark:text-red-100 mb-2">
-                Extension Required
+                {t('backup.extensionRequired')}
               </h1>
               <p className="text-red-800 dark:text-red-200 mb-6">
-                The ComfyUI Mobile API extension is required for browser data backup functionality. 
-                Please install the extension in your ComfyUI custom_nodes directory.
+                {t('backup.extensionRequiredDesc')}
               </p>
               <div className="space-y-3">
                 <Button
@@ -529,14 +529,14 @@ export const BrowserDataBackup: React.FC = () => {
                   className="bg-red-600 hover:bg-red-700 text-white"
                 >
                   <Download className="h-4 w-4 mr-2" />
-                  Download Extension
+                  {t('backup.downloadExtension')}
                 </Button>
                 <Button
                   variant="outline"
                   onClick={() => checkExtension()}
                   className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300"
                 >
-                  Retry Check
+                  {t('backup.retryCheck')}
                 </Button>
               </div>
             </div>
@@ -564,10 +564,10 @@ export const BrowserDataBackup: React.FC = () => {
             </Button>
             <div>
               <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                Browser Data Backup
+                {t('backup.title')}
               </h1>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Backup and restore your data
+                {t('backup.subtitle')}
               </p>
             </div>
           </div>
@@ -575,210 +575,208 @@ export const BrowserDataBackup: React.FC = () => {
       </header>
       <div className="container mx-auto px-4 py-8 max-w-2xl">
 
-          {/* Main Content */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.1 }}
-            className="bg-white/50 dark:bg-slate-800/50 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 rounded-2xl shadow-xl shadow-slate-900/15 dark:shadow-slate-900/30 p-6 space-y-6"
-          >
-            
-            {/* Backup Status */}
-            <div className="space-y-4">
-              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
-                <HardDrive className="w-5 h-5 mr-2" />
-                Backup Status
-              </h2>
-              
-              {isCheckingBackup ? (
-                <div className="flex items-center space-x-3 p-4 bg-slate-100/80 dark:bg-slate-700/50 rounded-xl">
-                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-400/20 border-t-slate-600"></div>
-                  <span className="text-slate-600 dark:text-slate-400">Checking backup status...</span>
+        {/* Main Content */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="bg-white/50 dark:bg-slate-800/50 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 rounded-2xl shadow-xl shadow-slate-900/15 dark:shadow-slate-900/30 p-6 space-y-6"
+        >
+
+          {/* Backup Status */}
+          <div className="space-y-4">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
+              <HardDrive className="w-5 h-5 mr-2" />
+              {t('backup.status.title')}
+            </h2>
+
+            {isCheckingBackup ? (
+              <div className="flex items-center space-x-3 p-4 bg-slate-100/80 dark:bg-slate-700/50 rounded-xl">
+                <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-400/20 border-t-slate-600"></div>
+                <span className="text-slate-600 dark:text-slate-400">{t('backup.status.checking')}</span>
+              </div>
+            ) : backupInfo.hasBackup ? (
+              <div className="p-4 bg-green-50/80 dark:bg-green-950/40 border border-green-200/40 dark:border-green-800/40 rounded-xl">
+                <div className="flex items-center space-x-2 text-green-700 dark:text-green-300 mb-2">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="font-semibold">{t('backup.status.available')}</span>
                 </div>
-              ) : backupInfo.hasBackup ? (
-                <div className="p-4 bg-green-50/80 dark:bg-green-950/40 border border-green-200/40 dark:border-green-800/40 rounded-xl">
-                  <div className="flex items-center space-x-2 text-green-700 dark:text-green-300 mb-2">
-                    <CheckCircle className="h-5 w-5" />
-                    <span className="font-semibold">Backup Available</span>
-                  </div>
-                  <div className="text-sm text-green-600 dark:text-green-400 space-y-1">
-                    {backupInfo.createdAt && (
-                      <div className="flex items-center space-x-1">
-                        <Clock className="h-3 w-3" />
-                        <span>Created: {formatDate(backupInfo.createdAt)}</span>
-                      </div>
-                    )}
-                    {backupInfo.size && (
-                      <div className="flex items-center space-x-1">
-                        <Database className="h-3 w-3" />
-                        <span>Size: {formatFileSize(backupInfo.size)}</span>
-                      </div>
-                    )}
-                  </div>
+                <div className="text-sm text-green-600 dark:text-green-400 space-y-1">
+                  {backupInfo.createdAt && (
+                    <div className="flex items-center space-x-1">
+                      <Clock className="h-3 w-3" />
+                      <span>{t('backup.status.created', { date: formatDate(backupInfo.createdAt) })}</span>
+                    </div>
+                  )}
+                  {backupInfo.size && (
+                    <div className="flex items-center space-x-1">
+                      <Database className="h-3 w-3" />
+                      <span>{t('backup.status.size', { size: formatFileSize(backupInfo.size) })}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="p-4 bg-orange-50/80 dark:bg-orange-950/40 border border-orange-200/40 dark:border-orange-800/40 rounded-xl">
+                <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
+                  <AlertTriangle className="h-5 w-5" />
+                  <span className="font-semibold">{t('backup.status.notFound')}</span>
+                </div>
+                <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
+                  {t('backup.status.createFirst')}
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Error Display */}
+          <AnimatePresence>
+            {error && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="p-4 bg-red-50/80 dark:bg-red-950/40 border border-red-200/40 dark:border-red-800/40 rounded-xl"
+              >
+                <div className="flex items-center space-x-2 text-red-700 dark:text-red-300">
+                  <AlertTriangle className="h-4 w-4" />
+                  <span className="text-sm font-medium">Error</span>
+                </div>
+                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="mt-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                  onClick={() => setError('')}
+                >
+                  Dismiss
+                </Button>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          {/* Action Buttons */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            {/* Backup Button */}
+            <Button
+              onClick={showBackupConfirmation}
+              disabled={isLoading}
+              className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition-all duration-150 shadow-sm hover:shadow-md active:scale-95"
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600/20 border-t-blue-600 mr-2"></div>
+                  {t('backup.action.creating')}
                 </div>
               ) : (
-                <div className="p-4 bg-orange-50/80 dark:bg-orange-950/40 border border-orange-200/40 dark:border-orange-800/40 rounded-xl">
-                  <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
-                    <AlertTriangle className="h-5 w-5" />
-                    <span className="font-semibold">No backup found</span>
-                  </div>
-                  <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
-                    Create your first backup to secure your workflows and settings
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  {t('backup.action.create')}
+                </>
+              )}
+            </Button>
+
+            {/* Restore Button */}
+            <Button
+              onClick={showRestoreConfirmation}
+              disabled={isLoading || !backupInfo.hasBackup}
+              className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-green-300 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 disabled:border-slate-300 disabled:text-slate-400 disabled:hover:bg-transparent transition-all duration-150 shadow-sm hover:shadow-md active:scale-95"
+            >
+              {isLoading ? (
+                <div className="flex items-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600/20 border-t-green-600 mr-2"></div>
+                  {t('backup.action.restoring')}
+                </div>
+              ) : (
+                <>
+                  <Upload className="h-4 w-4 mr-2" />
+                  {t('backup.action.restore')}
+                </>
+              )}
+            </Button>
+          </div>
+
+          {/* Information */}
+          <div className="p-4 bg-slate-100/80 dark:bg-slate-700/50 rounded-xl">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('backup.info.title')}</h3>
+            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
+              <li>• {t('backup.info.workflows')}</li>
+              <li>• {t('backup.info.apiKeys')}</li>
+              <li>• {t('backup.info.storage')}</li>
+            </ul>
+            <p className="text-xs text-slate-500 dark:text-slate-500 mt-3">
+              {t('backup.info.note')}
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Confirmation Dialog */}
+      {confirmDialog.isOpen && (
+        <div className="fixed inset-0 pwa-modal z-[65] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="relative max-w-md w-full bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 flex flex-col overflow-hidden">
+            {/* Gradient Overlay for Enhanced Glass Effect */}
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+
+            {/* Dialog Header */}
+            <div className="relative flex items-center justify-between p-4 border-b border-white/10 dark:border-slate-600/10 flex-shrink-0">
+              <div className="flex items-center space-x-2">
+                <div className={`w-6 h-6 backdrop-blur-sm rounded-full flex items-center justify-center border ${confirmDialog.type === 'backup'
+                  ? 'bg-blue-500/20 border-blue-400/30'
+                  : 'bg-orange-500/20 border-orange-400/30'
+                  }`}>
+                  {confirmDialog.type === 'backup' ? (
+                    <Download className="w-4 h-4 text-blue-300" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-orange-300" />
+                  )}
+                </div>
+                <h3 className="text-lg font-semibold text-white">
+                  {confirmDialog.title}
+                </h3>
+              </div>
+            </div>
+
+            {/* Dialog Content */}
+            <div className="relative p-4">
+              <p className="text-white/90 mb-4">
+                {confirmDialog.message}
+              </p>
+              {confirmDialog.type === 'restore' && (
+                <div className="p-3 bg-orange-500/10 border border-orange-400/20 rounded-lg mb-4">
+                  <p className="text-orange-200 text-sm font-medium">⚠️ {t('backup.dialog.warning')}</p>
+                  <p className="text-orange-300/90 text-sm mt-1">
+                    {t('backup.dialog.warningMessage')}
                   </p>
                 </div>
               )}
             </div>
 
-            {/* Error Display */}
-            <AnimatePresence>
-              {error && (
-                <motion.div
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  className="p-4 bg-red-50/80 dark:bg-red-950/40 border border-red-200/40 dark:border-red-800/40 rounded-xl"
-                >
-                  <div className="flex items-center space-x-2 text-red-700 dark:text-red-300">
-                    <AlertTriangle className="h-4 w-4" />
-                    <span className="text-sm font-medium">Error</span>
-                  </div>
-                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                    onClick={() => setError('')}
-                  >
-                    Dismiss
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-
-            {/* Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* Backup Button */}
+            {/* Dialog Footer */}
+            <div className="relative flex justify-end gap-2 p-4 border-t border-white/10 dark:border-slate-600/10 flex-shrink-0">
               <Button
-                onClick={showBackupConfirmation}
-                disabled={isLoading}
-                className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition-all duration-150 shadow-sm hover:shadow-md active:scale-95"
+                onClick={closeConfirmDialog}
+                variant="outline"
+                className="bg-white/10 backdrop-blur-sm text-white/90 border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-300"
               >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600/20 border-t-blue-600 mr-2"></div>
-                    Creating Backup...
-                  </div>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4 mr-2" />
-                    Create Backup
-                  </>
-                )}
+                {t('backup.dialog.cancel')}
               </Button>
-
-              {/* Restore Button */}
               <Button
-                onClick={showRestoreConfirmation}
-                disabled={isLoading || !backupInfo.hasBackup}
-                className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-green-300 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 disabled:border-slate-300 disabled:text-slate-400 disabled:hover:bg-transparent transition-all duration-150 shadow-sm hover:shadow-md active:scale-95"
-              >
-                {isLoading ? (
-                  <div className="flex items-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600/20 border-t-green-600 mr-2"></div>
-                    Restoring...
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="h-4 w-4 mr-2" />
-                    Restore Backup
-                  </>
-                )}
-              </Button>
-            </div>
-
-            {/* Information */}
-            <div className="p-4 bg-slate-100/80 dark:bg-slate-700/50 rounded-xl">
-              <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">What gets backed up:</h3>
-              <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-                <li>• Workflow data (localStorage: comfyui_workflows)</li>
-                <li>• API keys (IndexedDB: apiKeys)</li>
-                <li>• Workflow storage (IndexedDB: workflows)</li>
-              </ul>
-              <p className="text-xs text-slate-500 dark:text-slate-500 mt-3">
-                Note: Only one backup file is maintained. New backups overwrite the existing one.
-              </p>
-            </div>
-          </motion.div>
-        </div>
-
-        {/* Confirmation Dialog */}
-        {confirmDialog.isOpen && (
-          <div className="fixed inset-0 pwa-modal z-[65] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-            <div className="relative max-w-md w-full bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 flex flex-col overflow-hidden">
-              {/* Gradient Overlay for Enhanced Glass Effect */}
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-
-              {/* Dialog Header */}
-              <div className="relative flex items-center justify-between p-4 border-b border-white/10 dark:border-slate-600/10 flex-shrink-0">
-                <div className="flex items-center space-x-2">
-                  <div className={`w-6 h-6 backdrop-blur-sm rounded-full flex items-center justify-center border ${
-                    confirmDialog.type === 'backup'
-                      ? 'bg-blue-500/20 border-blue-400/30'
-                      : 'bg-orange-500/20 border-orange-400/30'
-                  }`}>
-                    {confirmDialog.type === 'backup' ? (
-                      <Download className="w-4 h-4 text-blue-300" />
-                    ) : (
-                      <AlertTriangle className="w-4 h-4 text-orange-300" />
-                    )}
-                  </div>
-                  <h3 className="text-lg font-semibold text-white">
-                    {confirmDialog.title}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Dialog Content */}
-              <div className="relative p-4">
-                <p className="text-white/90 mb-4">
-                  {confirmDialog.message}
-                </p>
-                {confirmDialog.type === 'restore' && (
-                  <div className="p-3 bg-orange-500/10 border border-orange-400/20 rounded-lg mb-4">
-                    <p className="text-orange-200 text-sm font-medium">⚠️ Warning</p>
-                    <p className="text-orange-300/90 text-sm mt-1">
-                      This action cannot be undone. Make sure you have a current backup if needed.
-                    </p>
-                  </div>
-                )}
-              </div>
-
-              {/* Dialog Footer */}
-              <div className="relative flex justify-end gap-2 p-4 border-t border-white/10 dark:border-slate-600/10 flex-shrink-0">
-                <Button
-                  onClick={closeConfirmDialog}
-                  variant="outline"
-                  className="bg-white/10 backdrop-blur-sm text-white/90 border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-300"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  onClick={confirmDialog.onConfirm}
-                  className={`backdrop-blur-sm text-white transition-all duration-300 ${
-                    confirmDialog.type === 'backup'
-                      ? 'bg-blue-500/80 hover:bg-blue-500/90 border border-blue-400/30 hover:border-blue-400/50'
-                      : 'bg-orange-500/80 hover:bg-orange-500/90 border border-orange-400/30 hover:border-orange-400/50'
+                onClick={confirmDialog.onConfirm}
+                className={`backdrop-blur-sm text-white transition-all duration-300 ${confirmDialog.type === 'backup'
+                  ? 'bg-blue-500/80 hover:bg-blue-500/90 border border-blue-400/30 hover:border-blue-400/50'
+                  : 'bg-orange-500/80 hover:bg-orange-500/90 border border-orange-400/30 hover:border-orange-400/50'
                   }`}
-                >
-                  {confirmDialog.confirmText}
-                </Button>
-              </div>
+              >
+                {confirmDialog.confirmText}
+              </Button>
             </div>
           </div>
-        )}
-      </div>
-    );
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default BrowserDataBackup;

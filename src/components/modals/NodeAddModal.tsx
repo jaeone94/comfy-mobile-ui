@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Search, X, Plus, Hash, Copy, Clock } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +30,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
   position,
   onNodeAdd
 }) => {
+  const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
   const [displayCount, setDisplayCount] = useState(20); // Start with 20 items
   const [recentNodes, setRecentNodes] = useState<CopiedNode[]>([]);
@@ -201,7 +203,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
     // Even if metadata is missing/renamed, we can try to add it if the system allows
     // But ideally we should warn if type doesn't exist anymore
     if (!nodeMetadata) {
-      toast.error(`Node type ${copiedNode.type} not found in current graph`);
+      toast.error(t('nodeAdd.nodeTypeNotFound', { type: copiedNode.type }));
       return;
     }
 
@@ -210,7 +212,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
       worldY: position.worldY
     }, copiedNode.widgets, copiedNode.size);
 
-    toast.success("Node pasted from clipboard");
+    toast.success(t('nodeAdd.nodePasted'));
     onClose();
   };
 
@@ -243,7 +245,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                 <div className="flex items-center space-x-3">
                   <Plus className="w-6 h-6 text-blue-400 drop-shadow-sm" />
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white drop-shadow-sm">
-                    Add Node to Workflow
+                    {t('nodeAdd.title')}
                   </h2>
                 </div>
                 <Button
@@ -263,7 +265,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                 <Input
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder="Search node types by name or display name..."
+                  placeholder={t('nodeAdd.searchPlaceholder')}
                   className="pl-10 pr-10 bg-white/50 backdrop-blur-sm border-slate-200/50 dark:bg-slate-800/50 dark:border-slate-600/50 h-10"
                 />
                 {searchTerm && (
@@ -318,8 +320,8 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                     <Hash className="w-12 h-12 text-slate-400 mx-auto mb-4 opacity-50" />
                     <p className="text-slate-600 dark:text-slate-400 text-lg">
                       {nodeTypes.length === 0
-                        ? "No node types available"
-                        : `No nodes found matching "${searchTerm}"`
+                        ? t('nodeAdd.noNodeTypes')
+                        : t('nodeAdd.noMatchingNodes', { query: searchTerm })
                       }
                     </p>
                   </div>
@@ -421,10 +423,10 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                     {displayCount < filteredNodes.length && (
                       <div className="text-center py-4">
                         <div className="text-sm text-slate-500 dark:text-slate-400">
-                          Showing {displayCount} of {filteredNodes.length} nodes
+                          {t('nodeAdd.showingNodes', { count: displayCount, total: filteredNodes.length })}
                         </div>
                         <div className="text-xs text-slate-400 mt-1">
-                          Scroll down to load more...
+                          {t('nodeAdd.scrollMore')}
                         </div>
                       </div>
                     )}
@@ -436,9 +438,9 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
             {/* Footer Info */}
             <div className="relative p-4 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-t border-white/10 dark:border-slate-600/10">
               <div className="text-sm text-slate-600 dark:text-slate-400">
-                <span className="font-medium">{nodeTypes.length}</span> node types available
+                {t('nodeAdd.availableTypes', { count: nodeTypes.length })}
                 {searchTerm && (
-                  <span className="ml-2">• <span className="font-medium">{filteredNodes.length}</span> matching search</span>
+                  <span className="ml-2">• {t('nodeAdd.matchingSearch', { count: filteredNodes.length })}</span>
                 )}
               </div>
             </div>

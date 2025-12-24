@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { WidgetTypeSettings } from '../etc/WidgetTypeSettings';
 import { NodePatch } from '../etc/NodePatch';
+import { useTranslation } from 'react-i18next';
 
 export const CustomTypeManager: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const [currentTab, setCurrentTab] = useState<'widget-types' | 'node-mappings'>('widget-types');
 
@@ -59,10 +61,10 @@ export const CustomTypeManager: React.FC = () => {
                   </div>
                   <div>
                     <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                      Node Patches
+                      {t('customTypes.title')}
                     </h1>
                     <p className="text-sm text-slate-500 dark:text-slate-400">
-                      Manage custom widget types and node patches
+                      {t('customTypes.subtitle')}
                     </p>
                   </div>
                 </div>
@@ -78,20 +80,20 @@ export const CustomTypeManager: React.FC = () => {
               <button
                 onClick={() => setCurrentTab('widget-types')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${currentTab === 'widget-types'
-                    ? 'border-violet-500 text-violet-600 dark:text-violet-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                   }`}
               >
-                Widget Types
+                {t('customTypes.tabWidgetTypes')}
               </button>
               <button
                 onClick={() => setCurrentTab('node-mappings')}
                 className={`py-4 px-1 border-b-2 font-medium text-sm transition-colors ${currentTab === 'node-mappings'
-                    ? 'border-violet-500 text-violet-600 dark:text-violet-400'
-                    : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
+                  ? 'border-violet-500 text-violet-600 dark:text-violet-400'
+                  : 'border-transparent text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-300'
                   }`}
               >
-                Node Patches
+                {t('customTypes.tabNodePatches')}
               </button>
             </div>
           </div>

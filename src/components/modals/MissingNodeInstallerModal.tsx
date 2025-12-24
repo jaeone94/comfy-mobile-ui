@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -44,6 +45,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
   missingNodes,
   onInstallationComplete,
 }) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState(false);
   const [packages, setPackages] = useState<MissingNodePackage[]>([]);
   const [rowState, setRowState] = useState<Record<string, PackageRowState>>({});
@@ -84,7 +86,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
       } catch (err) {
         console.error('Failed to resolve missing node packages:', err);
         if (!cancelled) {
-          setError('Failed to resolve missing node packages. Please try again.');
+          setError(t('missingNodes.resolveFailed'));
         }
       } finally {
         if (!cancelled) {
@@ -124,7 +126,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
           return next;
         });
         setShowRebootPrompt(true);
-        toast.success('Missing node packages installed successfully');
+        toast.success(t('missingNodes.installedSuccess'));
 
         if (pendingInstallIdsRef.current.size > 0) {
           setPackages((prev) => prev.map((pkg) => (
@@ -169,7 +171,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
 
   const handleInstallPackage = async (pkg: MissingNodePackage) => {
     if (!pkg.isInstallable) {
-      toast.error('This package could not be resolved automatically.');
+      toast.error(t('missingNodes.resolveAutoFailed'));
       return;
     }
 
@@ -194,7 +196,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
     const success = await queueMissingNodeInstallation([selection]);
 
     if (!success) {
-      toast.error(`Failed to queue installation for ${pkg.packName ?? pkg.packId}`);
+      toast.error(t('missingNodes.queueFailed', { name: pkg.packName ?? pkg.packId }));
       setRowState((prev) => ({
         ...prev,
         [pkg.packId]: {
@@ -203,7 +205,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
         },
       }));
     } else {
-      toast.info('Installation queued. Monitoring progress...');
+      toast.info(t('missingNodes.installationQueued'));
       pendingInstallCountRef.current += 1;
       pendingInstallIdsRef.current.add(pkg.packId);
     }
@@ -221,7 +223,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
     }));
 
     if (!selections.length) {
-      toast.error('No installable packages detected.');
+      toast.error(t('missingNodes.noInstallable'));
       return;
     }
 
@@ -237,7 +239,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
     const success = await queueMissingNodeInstallation(selections);
 
     if (!success) {
-      toast.error('Failed to queue one or more package installations');
+      toast.error(t('missingNodes.queueAllFailed'));
       setRowState((prev) => {
         const reset: Record<string, PackageRowState> = { ...prev };
         selections.forEach((selection) => {
@@ -249,7 +251,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
         return reset;
       });
     } else {
-      toast.info('All selected packages queued for installation.');
+      toast.info(t('missingNodes.allQueued'));
       pendingInstallCountRef.current += selections.length;
       selections.forEach((selection) => pendingInstallIdsRef.current.add(selection.packId));
     }
@@ -259,12 +261,12 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
     // Navigate to the reboot page instead of directly calling the API
     onClose();
     navigate('/reboot');
-    toast.info('Navigating to server reboot page...');
+    toast.info(t('missingNodes.navigatingReboot'));
   };
 
   const renderPackageCard = (pkg: MissingNodePackage) => {
     const state = rowState[pkg.packId] ?? { selectedVersion: pkg.availableVersions[0] ?? 'latest', isInstalling: false };
-    const actionLabel = pkg.isInstalled ? 'Update' : 'Install';
+    const actionLabel = pkg.isInstalled ? t('missingNodes.update') : t('missingNodes.install');
     const badgeVariant = pkg.isInstalled ? 'secondary' : 'outline';
 
     return (
@@ -276,11 +278,11 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                 {pkg.packName ?? pkg.packId}
               </h3>
               <Badge variant={badgeVariant} className="uppercase tracking-wide text-xs">
-                {pkg.isInstalled ? 'Installed' : 'Missing'}
+                {pkg.isInstalled ? t('missingNodes.installed') : t('missingNodes.missing')}
               </Badge>
               {pkg.isUpdateAvailable && (
                 <Badge variant="destructive" className="uppercase tracking-wide text-xs">
-                  Update available
+                  {t('missingNodes.updateAvailable')}
                 </Badge>
               )}
             </div>
@@ -291,19 +293,19 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
               </p>
             )}
             <div className="text-xs text-slate-500 dark:text-slate-400 flex flex-wrap gap-x-3 gap-y-1">
-              <span>Source: {pkg.source}</span>
-              {pkg.repository && <span>Repository: {pkg.repository}</span>}
-              {pkg.latestVersion && <span>Latest: {pkg.latestVersion}</span>}
-              {pkg.installedVersion && <span>Installed: {pkg.installedVersion}</span>}
+              <span>{t('missingNodes.source')} {pkg.source}</span>
+              {pkg.repository && <span>{t('missingNodes.repository')} {pkg.repository}</span>}
+              {pkg.latestVersion && <span>{t('missingNodes.latest')} {pkg.latestVersion}</span>}
+              {pkg.installedVersion && <span>{t('missingNodes.current')} {pkg.installedVersion}</span>}
             </div>
             <div className="text-xs text-slate-500 dark:text-slate-400">
-              Missing nodes: {pkg.nodeTypes.join(', ')}
+              {t('missingNodes.missingNodes')} {pkg.nodeTypes.join(', ')}
             </div>
           </div>
           <div className="flex flex-col items-stretch gap-3 md:min-w-[220px]">
             <div className="space-y-2">
               <label className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                Version
+                {t('missingNodes.version')}
               </label>
               <Select
                 value={state.selectedVersion}
@@ -311,7 +313,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                 disabled={!pkg.isInstallable || state.isInstalling}
               >
                 <SelectTrigger className="h-11 rounded-xl border-white/30 dark:border-slate-700/40 bg-white/40 dark:bg-slate-900/40 text-sm">
-                  <SelectValue placeholder="Select version" />
+                  <SelectValue placeholder={t('missingNodes.selectVersion')} />
                 </SelectTrigger>
                 <SelectContent className="z-[120] backdrop-blur-xl bg-white/70 dark:bg-slate-900/80 border border-white/30 dark:border-slate-700/40">
                   {pkg.availableVersions.map((version) => (
@@ -330,7 +332,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
             >
               {state.isInstalling ? (
                 <span className="flex items-center gap-2 text-sm">
-                  <Loader2 className="h-4 w-4 animate-spin" /> Queued...
+                  <Loader2 className="h-4 w-4 animate-spin" /> {t('missingNodes.queued')}
                 </span>
               ) : (
                 <span className="flex items-center gap-2 text-sm">
@@ -370,10 +372,10 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
               <div className="relative flex items-center justify-between px-6 py-5 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
                 <div>
                   <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    Install Missing Nodes
+                    {t('missingNodes.title')}
                   </h2>
                   <p className="text-sm text-slate-600 dark:text-slate-400">
-                    Resolve missing packages detected in this workflow.
+                    {t('missingNodes.subtitle')}
                   </p>
                 </div>
                 <Button
@@ -390,7 +392,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                 {isLoading && (
                   <div className="flex flex-col items-center justify-center py-12 text-slate-600 dark:text-slate-300">
                     <Loader2 className="h-8 w-8 animate-spin" />
-                    <p className="mt-3 text-sm">Loading package information...</p>
+                    <p className="mt-3 text-sm">{t('missingNodes.loading')}</p>
                   </div>
                 )}
 
@@ -402,7 +404,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
 
                 {!isLoading && !error && packages.length === 0 && (
                   <div className="rounded-2xl border border-white/20 bg-white/10 px-6 py-6 text-center text-sm text-slate-600 backdrop-blur-sm dark:border-slate-600/20 dark:bg-slate-700/10 dark:text-slate-300">
-                    All required nodes are available on the server.
+                    {t('missingNodes.allAvailable')}
                   </div>
                 )}
 
@@ -418,18 +420,18 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                   {queueStatus ? (
                     queueStatus.status === 'in_progress' ? (
                       <span className="flex items-center gap-2">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Installing packages...
+                        <Loader2 className="h-4 w-4 animate-spin" /> {t('missingNodes.installing')}
                         {typeof queueStatus.doneCount === 'number' && typeof queueStatus.totalCount === 'number' && (
                           <span>
-                            {queueStatus.doneCount}/{queueStatus.totalCount} completed
+                            {t('missingNodes.completed', { done: queueStatus.doneCount, total: queueStatus.totalCount })}
                           </span>
                         )}
                       </span>
                     ) : (
-                      <span>Installation queue completed.</span>
+                      <span>{t('missingNodes.queueCompleted')}</span>
                     )
                   ) : (
-                    <span>Select a package to install or update.</span>
+                    <span>{t('missingNodes.selectPackage')}</span>
                   )}
                 </div>
                 <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -443,7 +445,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                     }
                   >
                     <span className="flex items-center gap-2">
-                      <PlugZap className="h-4 w-4" /> Install All
+                      <PlugZap className="h-4 w-4" /> {t('missingNodes.installAll')}
                     </span>
                   </Button>
                   {showRebootPrompt && (
@@ -453,7 +455,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                       onClick={handleRebootServer}
                     >
                       <span className="flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4" /> Go to Reboot Page
+                        <RefreshCw className="h-4 w-4" /> {t('missingNodes.goToReboot')}
                       </span>
                     </Button>
                   )}

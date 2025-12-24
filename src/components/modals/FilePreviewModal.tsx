@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { X, Image, Video, Download, ExternalLink, Info } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -38,6 +39,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   dimensions,
   duration,
 }) => {
+  const { t } = useTranslation();
   const [showInfo, setShowInfo] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -58,18 +60,23 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
   const handleImageError = () => {
     console.error('❌ Failed to load image in browser:', filename);
-    onMediaError?.('Failed to display image in browser');
+    onMediaError?.(t('media.failedToDisplayImage'));
   };
 
   const handleVideoError = () => {
     console.error('❌ Failed to load video in browser:', filename);
-    onMediaError?.('Failed to display video in browser');
+    onMediaError?.(t('media.failedToDisplayVideo'));
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 Bytes';
+    if (bytes === 0) return `0 ${t('media.fileSizes.bytes')}`;
     const k = 1024;
-    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const sizes = [
+      t('media.fileSizes.bytes'),
+      t('media.fileSizes.kb'),
+      t('media.fileSizes.mb'),
+      t('media.fileSizes.gb')
+    ];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
     return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
   };
@@ -101,13 +108,13 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
 
-      toast.success('Download started', {
-        description: `${filename} is being downloaded`,
+      toast.success(t('media.downloadStarted'), {
+        description: t('media.downloadStartedDesc', { filename }),
       });
     } catch (error) {
       console.error('Download failed:', error);
-      toast.error('Download failed', {
-        description: 'Could not download the file',
+      toast.error(t('media.downloadFailed'), {
+        description: t('media.downloadFailedDesc'),
       });
     } finally {
       setIsDownloading(false);
@@ -176,7 +183,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                     variant="ghost"
                     size="sm"
                     className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    title="Show file info"
+                    title={t('media.showFileInfo')}
                   >
                     <Info className="w-4 h-4" />
                   </Button>
@@ -186,7 +193,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                     variant="ghost"
                     size="sm"
                     className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    title="Open in new tab"
+                    title={t('media.openInNewTab')}
                   >
                     <ExternalLink className="w-4 h-4" />
                   </Button>
@@ -197,10 +204,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                     variant="ghost"
                     size="sm"
                     className="h-9 px-2 md:px-3 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-50"
-                    title="Download file"
+                    title={t('media.downloadFile')}
                   >
                     <Download className="w-4 h-4 md:mr-2" />
-                    <span className="hidden md:inline">{isDownloading ? 'Downloading...' : 'Download'}</span>
+                    <span className="hidden md:inline">{isDownloading ? t('media.downloading') : t('media.download')}</span>
                   </Button>
                 </>
               )}
@@ -210,10 +217,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 variant="ghost"
                 size="sm"
                 className="h-9 px-2 md:px-3 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700"
-                title="Close"
+                title={t('common.close')}
               >
                 <X className="w-4 h-4 md:mr-1" />
-                <span className="hidden md:inline">Close</span>
+                <span className="hidden md:inline">{t('common.close')}</span>
               </Button>
             </div>
           </div>
@@ -230,30 +237,30 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 <div className="p-4 space-y-3">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                     <div>
-                      <span className="text-slate-500 dark:text-slate-400">Type:</span>
+                      <span className="text-slate-500 dark:text-slate-400">{t('media.type')}:</span>
                       <div className="text-slate-700 dark:text-slate-200 font-medium">{fileType || getFileExtension(filename)}</div>
                     </div>
                     {fileSize && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Size:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t('media.size')}:</span>
                         <div className="text-slate-700 dark:text-slate-200 font-medium">{formatFileSize(fileSize)}</div>
                       </div>
                     )}
                     {dimensions && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Dimensions:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t('media.dimensions')}:</span>
                         <div className="text-slate-700 dark:text-slate-200 font-medium">{dimensions.width} × {dimensions.height}</div>
                       </div>
                     )}
                     {duration && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-400">Duration:</span>
+                        <span className="text-slate-500 dark:text-slate-400">{t('media.duration')}:</span>
                         <div className="text-slate-700 dark:text-slate-200 font-medium">{formatDuration(duration)}</div>
                       </div>
                     )}
                   </div>
                   <div>
-                    <span className="text-slate-500 dark:text-slate-400">Filename:</span>
+                    <span className="text-slate-500 dark:text-slate-400">{t('media.filename')}:</span>
                     <div className="text-slate-700 dark:text-slate-200 font-mono text-sm break-all">{filename}</div>
                   </div>
                 </div>
@@ -267,8 +274,8 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
               <div className="flex items-center justify-center flex-1">
                 <div className="text-center">
                   <div className="w-16 h-16 border-4 border-blue-400 border-t-transparent rounded-full animate-spin mx-auto mb-6"></div>
-                  <p className="text-slate-700 dark:text-slate-200 text-lg font-medium">Loading preview...</p>
-                  <p className="text-slate-500 dark:text-slate-400 mt-2">Downloading {filename}</p>
+                  <p className="text-slate-700 dark:text-slate-200 text-lg font-medium">{t('media.loadingPreview')}</p>
+                  <p className="text-slate-500 dark:text-slate-400 mt-2">{t('media.downloadingFile', { filename })}</p>
                 </div>
               </div>
             )}
@@ -279,14 +286,14 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
                     <X className="w-10 h-10 text-red-400" />
                   </div>
-                  <p className="text-red-400 font-medium text-lg mb-2">Preview Failed</p>
+                  <p className="text-red-400 font-medium text-lg mb-2">{t('media.previewFailed')}</p>
                   <p className="text-slate-500 dark:text-slate-400 mb-6">{error}</p>
                   <Button
                     onClick={() => onRetry(filename)}
                     variant="outline"
                     className="bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
-                    Try Again
+                    {t('common.retry')}
                   </Button>
                 </div>
               </div>
@@ -321,7 +328,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       className="content-fit rounded-xl shadow-lg"
                       onError={handleVideoError}
                     >
-                      Your browser does not support the video element.
+                      {t('media.videoNotSupported')}
                     </video>
                   )}
                 </div>

@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Settings, Clock, Search, Maximize2, Move, RefreshCw, Terminal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -92,6 +93,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   const consoleContainerRef = useRef<HTMLDivElement>(null);
   const { openPromptHistory } = usePromptHistoryStore();
   const { url: serverUrl } = useConnectionStore();
+  const { t } = useTranslation();
 
   // Advanced search function with scoring
   const searchNodes = (query: string): SearchableNode[] => {
@@ -158,15 +160,15 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   useEffect(() => {
     // 🎯 Check current execution state from persistent buffer (works for navigation & refresh)
     setTimeout(() => {
-      const currentState = globalWebSocketService.getCurrentExecutionState();                  
+      const currentState = globalWebSocketService.getCurrentExecutionState();
       if (currentState.isExecuting) {
         setIsExecuting(true);
       } else {
         setIsExecuting(false);
       }
     }, 100); // Later than ExecutionProgressBar to ensure consistency
-    const handleExecuting = (event: any) => {      
-      const { data } = event;      
+    const handleExecuting = (event: any) => {
+      const { data } = event;
       if (data.node === null) {
         // Execution completed
         setIsExecuting(false);
@@ -180,7 +182,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       setIsExecuting(false);
     };
 
-    const handleExecutionError = (event: any) => {    
+    const handleExecutionError = (event: any) => {
       setIsExecuting(false);
     };
 
@@ -191,11 +193,11 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
     // Handle progress_state messages to match ExecutionProgressBar behavior
     const handleProgressState = (event: any) => {
       const { data } = event;
-      
+
       if (data.nodes) {
         const nodes = data.nodes;
         let hasRunningNodes = false;
-        
+
         // Check if any node is in running state
         Object.keys(nodes).forEach(nodeId => {
           const nodeData = nodes[nodeId];
@@ -203,7 +205,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
             hasRunningNodes = true;
           }
         });
-        
+
         // Update execution state based on running nodes
         setIsExecuting(hasRunningNodes);
       }
@@ -348,25 +350,25 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
     try {
       const ComfyUIService = (await import('@/infrastructure/api/ComfyApiClient')).default;
       const success = await ComfyUIService.clearVRAM();
-      
+
       if (success) {
         const { toast } = await import('sonner');
-        toast.success('VRAM Cleared', {
-          description: 'Video memory has been successfully cleared',
+        toast.success(t('common.vramCleared'), {
+          description: t('common.vramClearedDesc'),
           duration: 3000,
         });
       } else {
         const { toast } = await import('sonner');
-        toast.error('Failed to Clear VRAM', {
-          description: 'Could not clear video memory. Please check the server connection.',
+        toast.error(t('common.vramClearFailed'), {
+          description: t('common.vramClearFailedDesc'),
           duration: 5000,
         });
       }
     } catch (error) {
       console.error('Error clearing VRAM:', error);
       const { toast } = await import('sonner');
-      toast.error('Error', {
-        description: 'An error occurred while clearing VRAM',
+      toast.error(t('common.error'), {
+        description: t('common.vramErrorDesc'),
         duration: 5000,
       });
     } finally {
@@ -514,7 +516,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   };
 
   return (
-    <div 
+    <div
       key={`floating-controls-${isExecuting ? 'executing' : 'idle'}`} // Force re-render on state change
       className="fixed right-4 z-40 pwa-header"
       style={{
@@ -533,14 +535,13 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleSearchToggle}
               variant="ghost"
               size="sm"
-              className={`h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60 ${
-                isSearchOpen ? 'bg-white/60 dark:bg-slate-700/60' : ''
-              }`}
-              title="Search Node"
+              className={`h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60 ${isSearchOpen ? 'bg-white/60 dark:bg-slate-700/60' : ''
+                }`}
+              title={t('workflow.searchNode')}
             >
               <Search className="h-4 w-4" />
             </Button>
-            
+
           </div>
 
           {/* Divider */}
@@ -553,7 +554,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
-              title="Refresh Workflow Slots"
+              title={t('workflow.refreshSlots')}
             >
               <RefreshCw className="h-4 w-4" />
             </Button>
@@ -570,10 +571,10 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                 variant="ghost"
                 size="sm"
                 className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
-                title="Fit to screen"
+                title={t('workflow.fitToScreen')}
               >
                 <Maximize2 className="h-4 w-4" />
-              </Button>                            
+              </Button>
             </>
           )}
 
@@ -586,7 +587,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
             variant="ghost"
             size="sm"
             className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
-            title="Queue"
+            title={t('workflow.queue')}
           >
             <Clock className="h-4 w-4" />
           </Button>
@@ -601,7 +602,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
-              title="Console"
+              title={t('workflow.console')}
             >
               <Terminal className="h-4 w-4" />
             </Button>
@@ -623,12 +624,11 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               variant="ghost"
               size="sm"
               className="relative h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
-              title="Settings"
+              title={t('common.settings')}
             >
               <Settings
-                className={`h-4 w-4 transition-transform duration-200 ${
-                  isSettingsOpen ? 'rotate-90' : ''
-                }`}
+                className={`h-4 w-4 transition-transform duration-200 ${isSettingsOpen ? 'rotate-90' : ''
+                  }`}
               />
               {/* Priority: Red for missing nodes, Yellow for missing models only */}
               {missingNodesCount > 0 ? (
@@ -702,7 +702,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
-                  placeholder="Search nodes by ID, type, or title..."
+                  placeholder={t('workflow.searchNodesPlaceholder')}
                   className="w-full px-3 py-2 text-sm bg-white/90 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-600/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500"
                 />
               </form>
@@ -711,7 +711,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               {searchValue.trim() && searchResults.length > 0 && (
                 <div className="space-y-1">
                   <div className="text-xs text-slate-500 dark:text-slate-400 mb-2 px-1">
-                    {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+                    {searchResults.length === 1
+                      ? t('workflow.resultFound')
+                      : t('workflow.resultsFound', { count: searchResults.length })}
                   </div>
                   <div
                     className="max-h-48 overflow-y-auto space-y-1 pr-1"
@@ -733,11 +735,10 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                       <button
                         key={node.id}
                         onClick={() => handleResultSelect(node)}
-                        className={`w-full text-left p-2 rounded-md transition-colors ${
-                          index === selectedResultIndex
-                            ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700'
-                            : 'hover:bg-white/40 dark:hover:bg-slate-700/50 bg-white/20 dark:bg-slate-800/20'
-                        }`}
+                        className={`w-full text-left p-2 rounded-md transition-colors ${index === selectedResultIndex
+                          ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700'
+                          : 'hover:bg-white/40 dark:hover:bg-slate-700/50 bg-white/20 dark:bg-slate-800/20'
+                          }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
@@ -761,7 +762,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               {/* No Results Message */}
               {searchValue.trim() && searchResults.length === 0 && (
                 <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-3">
-                  No nodes found for "{searchValue}"
+                  {t('workflow.noNodesFound', { query: searchValue })}
                 </div>
               )}
             </div>
@@ -807,7 +808,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               {/* Console Header */}
               <div className="flex items-center justify-between mb-3">
                 <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  Server Console
+                  {t('workflow.serverConsole')}
                 </div>
                 <Button
                   onClick={() => setConsoleLogs([])}
@@ -815,7 +816,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                   size="sm"
                   className="h-6 px-2 text-xs hover:bg-white/60 dark:hover:bg-slate-700/60"
                 >
-                  Clear
+                  {t('common.clear')}
                 </Button>
               </div>
 
@@ -839,7 +840,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               >
                 {consoleLogs.length === 0 ? (
                   <div className="flex items-center justify-center h-full text-slate-500 dark:text-slate-400">
-                    No logs available
+                    {t('workflow.noLogs')}
                   </div>
                 ) : (
                   consoleLogs.map((log, index) => (

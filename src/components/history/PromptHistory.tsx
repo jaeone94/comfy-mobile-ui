@@ -11,6 +11,7 @@ import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { PromptTracker } from '@/utils/promptTracker';
 import { IComfyFileInfo } from '@/shared/types/comfy/IComfyFile';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 
 interface PromptHistoryItem {
   promptId: string;
@@ -172,6 +173,7 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick }) => {
 };
 
 export const PromptHistory: React.FC = () => {
+  const { t } = useTranslation();
   const { isOpen, closePromptHistory } = usePromptHistoryStore();
   const { url: serverUrl } = useConnectionStore();
   const [activeTab, setActiveTab] = useState<'queues' | 'outputs'>('queues');
@@ -357,6 +359,7 @@ export const PromptHistory: React.FC = () => {
     }
   };
 
+
   const formatTimestamp = (timestamp: number): string => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -365,10 +368,10 @@ export const PromptHistory: React.FC = () => {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return t('promptHistory.time.justNow');
+    if (diffMins < 60) return t('promptHistory.time.ago', { time: `${diffMins}m` });
+    if (diffHours < 24) return t('promptHistory.time.ago', { time: `${diffHours}h` });
+    if (diffDays < 7) return t('promptHistory.time.ago', { time: `${diffDays}d` });
 
     return date.toLocaleDateString();
   };
@@ -543,7 +546,7 @@ export const PromptHistory: React.FC = () => {
                 <div className="flex items-center space-x-3">
                   <Layers className="h-6 w-6 text-violet-400 drop-shadow-sm" />
                   <h2 className="text-xl font-bold text-slate-900 dark:text-white drop-shadow-sm">
-                    Queue & Outputs
+                    {t('promptHistory.title')}
                   </h2>
                 </div>
                 <div className="flex items-center space-x-2">
@@ -579,7 +582,7 @@ export const PromptHistory: React.FC = () => {
                   >
                     <div className="flex items-center space-x-2">
                       <Clock className="h-4 w-4" />
-                      <span>Queues</span>
+                      <span>{t('promptHistory.queuesTab')}</span>
                       {historyData.length > 0 && activeTab === 'queues' && (
                         <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
                           {historyData.length}
@@ -596,7 +599,7 @@ export const PromptHistory: React.FC = () => {
                   >
                     <div className="flex items-center space-x-2">
                       <ImageIcon className="h-4 w-4" />
-                      <span>Outputs</span>
+                      <span>{t('promptHistory.outputsTab')}</span>
                       {outputFiles.length > 0 && activeTab === 'outputs' && (
                         <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
                           {outputFiles.length}
@@ -624,7 +627,7 @@ export const PromptHistory: React.FC = () => {
                       <div className="flex-1 flex items-center justify-center py-12">
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-4" />
-                          <p className="text-slate-600 dark:text-slate-400">Loading queue...</p>
+                          <p className="text-slate-600 dark:text-slate-400">{t('promptHistory.loading')}</p>
                         </div>
                       </div>
                     )}
@@ -641,7 +644,7 @@ export const PromptHistory: React.FC = () => {
                             className="bg-white/10 dark:bg-slate-800/20 backdrop-blur-sm border-white/20 dark:border-slate-700/20 hover:bg-white/20 dark:hover:bg-slate-700/30"
                           >
                             <RefreshCw className="h-4 w-4 mr-2" />
-                            Retry
+                            {t('promptHistory.retry')}
                           </Button>
                         </div>
                       </div>
@@ -651,7 +654,7 @@ export const PromptHistory: React.FC = () => {
                       <div className="flex-1 flex items-center justify-center py-12">
                         <div className="text-center">
                           <Clock className="h-8 w-8 text-slate-400 mx-auto mb-4" />
-                          <p className="text-slate-600 dark:text-slate-400">No queue items found</p>
+                          <p className="text-slate-600 dark:text-slate-400">{t('promptHistory.empty')}</p>
                         </div>
                       </div>
                     )}
@@ -692,7 +695,7 @@ export const PromptHistory: React.FC = () => {
                                           <XCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
                                           <div className="flex-1">
                                             <div className="font-medium text-red-300 mb-1">
-                                              Error Type (Click for details)
+                                              {t('promptHistory.errorType')} ({t('promptHistory.errorDetail')})
                                             </div>
                                             <div className="text-sm font-mono bg-red-500/20 px-2 py-1 rounded text-red-200">
                                               {item.exception_type}
@@ -703,7 +706,7 @@ export const PromptHistory: React.FC = () => {
                                       {item.exception_message && (
                                         <div className="space-y-2">
                                           <div className="font-medium text-red-300 text-sm">
-                                            Error Message
+                                            {t('promptHistory.errorMessage')}
                                           </div>
                                           <div className="text-sm text-red-200 font-mono bg-red-500/20 p-2 rounded border-l-2 border-red-400">
                                             {item.exception_message}
@@ -723,7 +726,7 @@ export const PromptHistory: React.FC = () => {
                                         <div className="flex items-center space-x-2">
                                           <CheckCircle className="h-4 w-4 text-green-400" />
                                           <span className="text-sm text-green-300">
-                                            Generated {getOutputFiles(item.outputs).length} file(s)
+                                            {t('promptHistory.generatedFiles', { count: getOutputFiles(item.outputs).length })}
                                           </span>
                                         </div>
                                         <Eye className="h-4 w-4 text-green-400" />
@@ -754,7 +757,7 @@ export const PromptHistory: React.FC = () => {
                         <div className="text-center">
                           <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-3" />
                           <p className="text-sm text-slate-600 dark:text-slate-400">
-                            Loading output history...
+                            {t('promptHistory.loadingOutputs')}
                           </p>
                         </div>
                       </div>
@@ -767,7 +770,7 @@ export const PromptHistory: React.FC = () => {
                           onClick={loadOutputHistory}
                           className="mt-2 text-xs text-red-300 hover:underline"
                         >
-                          Try again
+                          {t('promptHistory.tryAgain')}
                         </button>
                       </div>
                     )}
@@ -776,10 +779,10 @@ export const PromptHistory: React.FC = () => {
                       <div className="text-center py-12 px-4">
                         <ImageIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
                         <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
-                          No Output History
+                          {t('promptHistory.noOutputHistory')}
                         </h3>
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                          No output files found in the current session
+                          {t('promptHistory.noOutputFiles')}
                         </p>
                       </div>
                     )}

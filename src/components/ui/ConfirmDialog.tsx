@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { AlertTriangle, X, Trash2 } from 'lucide-react';
@@ -20,14 +21,17 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
   isOpen,
   title,
   message,
-  confirmText = 'Confirm',
-  cancelText = 'Cancel', 
+  confirmText,
+  cancelText,
   confirmVariant = 'destructive',
   onConfirm,
   onCancel,
   onClose,
   icon
 }) => {
+  const { t } = useTranslation();
+  const finalConfirmText = confirmText || t('common.confirm');
+  const finalCancelText = cancelText || t('common.cancel');
   // Prevent body scroll when modal is open
   React.useEffect(() => {
     if (isOpen) {
@@ -60,7 +64,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             className="fixed inset-0 bg-black/30 backdrop-blur-xl z-[99999] pwa-modal"
             onClick={onClose}
           />
-          
+
           {/* Enhanced Glassmorphism Dialog */}
           <motion.div
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -73,7 +77,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
             <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 w-full max-w-md mx-auto overflow-hidden">
               {/* Gradient Overlay for Enhanced Glass Effect */}
               <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-              
+
               {/* Glassmorphism Header */}
               <div className="relative flex items-center justify-between p-6 pb-4 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
                 <div className="flex items-center space-x-3">
@@ -110,14 +114,14 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
                   onClick={handleCancel}
                   className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 hover:bg-white/30 dark:hover:bg-slate-700/30 text-slate-800 dark:text-slate-200 transition-all duration-200"
                 >
-                  {cancelText}
+                  {finalCancelText}
                 </Button>
                 <Button
                   variant={confirmVariant}
                   onClick={handleConfirm}
                   className="bg-red-600/90 hover:bg-red-700/90 text-white shadow-lg hover:shadow-xl backdrop-blur-sm transition-all duration-200"
                 >
-                  {confirmText}
+                  {finalConfirmText}
                 </Button>
               </div>
             </div>

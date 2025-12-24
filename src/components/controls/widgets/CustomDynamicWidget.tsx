@@ -12,6 +12,7 @@
  */
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { BaseWidgetProps } from './types';
 import { Switch } from '@/components/ui/switch';
 import { Input } from '@/components/ui/input';
@@ -24,10 +25,10 @@ import { ChevronDown, Search, X } from 'lucide-react';
 export interface CustomDynamicWidgetProps extends BaseWidgetProps {
   /** The custom widget type from field definitions */
   customType: string;
-  
+
   /** Field definitions from custom widget metadata */
   fields: Record<string, any>;
-  
+
   /** Current widget values as object */
   editingValue: Record<string, any>;
 }
@@ -40,26 +41,30 @@ interface FieldRendererProps {
   onChange: (value: any) => void;
 }
 
-const BooleanFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig, value, onChange }) => (
-  <div className="flex items-center justify-between">
-    <label className="text-sm text-slate-600 dark:text-slate-400">
-      {fieldConfig.label || fieldName}
-    </label>
-    <Switch
-      checked={Boolean(value)}
-      onCheckedChange={onChange}
-      className="data-[state=checked]:bg-green-600"
-    />
-  </div>
-);
+const BooleanFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig, value, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="flex items-center justify-between">
+      <label className="text-sm text-slate-600 dark:text-slate-400">
+        {fieldConfig.label || fieldName}
+      </label>
+      <Switch
+        checked={Boolean(value)}
+        onCheckedChange={onChange}
+        className="data-[state=checked]:bg-green-600"
+      />
+    </div>
+  );
+};
 
 const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig, value, onChange }) => {
+  const { t } = useTranslation();
   const hasMinMax = fieldConfig.min !== undefined && fieldConfig.max !== undefined;
   const min = fieldConfig.min;
   const max = fieldConfig.max;
   const step = fieldConfig.step !== undefined ? fieldConfig.step : 1;
   const currentValue = Number(value) || fieldConfig.default || 0;
-  
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -70,13 +75,13 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
           {currentValue}
         </span>
       </div>
-      
+
       {hasMinMax ? (
         <>
           {/* Slider mode - when min/max are defined */}
-          <div 
+          <div
             className="px-2"
-            style={{ 
+            style={{
               touchAction: 'pan-x pinch-zoom',
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
@@ -102,7 +107,7 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
               }}
             />
           </div>
-          
+
           {/* Manual Input with constraints */}
           <Input
             type="number"
@@ -123,10 +128,10 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
             step={step}
             className="text-center text-lg font-medium"
-            placeholder="Enter integer value..."
+            placeholder={t('node.enterIntegerValue')}
           />
           <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
-            ⚠️ Define Min and Max values to enable slider controls
+            {t('node.defineMinMaxForSlider')}
           </p>
         </>
       )}
@@ -135,12 +140,13 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
 };
 
 const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig, value, onChange }) => {
+  const { t } = useTranslation();
   const hasMinMax = fieldConfig.min !== undefined && fieldConfig.max !== undefined;
   const min = fieldConfig.min;
   const max = fieldConfig.max;
   const step = fieldConfig.step !== undefined ? fieldConfig.step : 0.1;
   const currentValue = Number(value) || fieldConfig.default || 0;
-  
+
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
@@ -151,13 +157,13 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
           {currentValue.toFixed(2)}
         </span>
       </div>
-      
+
       {hasMinMax ? (
         <>
           {/* Slider mode - when min/max are defined */}
-          <div 
+          <div
             className="px-2"
-            style={{ 
+            style={{
               touchAction: 'pan-x pinch-zoom',
               WebkitTouchCallout: 'none',
               WebkitUserSelect: 'none',
@@ -183,7 +189,7 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
               }}
             />
           </div>
-          
+
           {/* Manual Input with constraints */}
           <Input
             type="number"
@@ -204,10 +210,10 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
             onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
             step={step}
             className="text-center text-lg font-medium"
-            placeholder="Enter float value..."
+            placeholder={t('node.enterFloatValue')}
           />
           <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
-            ⚠️ Define Min and Max values to enable slider controls
+            {t('node.defineMinMaxForSlider')}
           </p>
         </>
       )}
@@ -216,6 +222,7 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
 };
 
 const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig, value, onChange }) => {
+  const { t } = useTranslation();
   const [loraList, setLoraList] = useState<Array<{
     name: string;
     path: string;
@@ -275,39 +282,39 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
     if (!query.trim()) {
       return loraFiles.map((lora, index) => ({ lora, score: 0, originalIndex: index }));
     }
-    
+
     const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
-    
+
     const scoredLoraFiles = loraFiles.map((lora, originalIndex) => {
       const loraName = lora.name.toLowerCase();
       let totalScore = 0;
-      
+
       // 1. Exact match (highest score)
       if (loraName === query.toLowerCase()) {
         totalScore += 1000;
       }
-      
+
       // 2. Starts with query (high score)
       if (loraName.startsWith(query.toLowerCase())) {
         totalScore += 500;
       }
-      
+
       // 3. Contains exact query (medium-high score)
       if (loraName.includes(query.toLowerCase())) {
         totalScore += 300;
       }
-      
+
       // 4. All search terms found (flexible matching)
       const foundTerms = searchTerms.filter(term => loraName.includes(term));
       if (foundTerms.length > 0) {
         // Base score for having matches
         totalScore += foundTerms.length * 50;
-        
+
         // Bonus for finding all terms
         if (foundTerms.length === searchTerms.length) {
           totalScore += 200;
         }
-        
+
         // Bonus for term proximity (terms close together)
         if (searchTerms.length > 1) {
           let proximityBonus = 0;
@@ -322,7 +329,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
           }
           totalScore += proximityBonus;
         }
-        
+
         // Bonus for word boundary matches (more natural)
         searchTerms.forEach(term => {
           const wordBoundaryRegex = new RegExp(`\\b${term}`, 'i');
@@ -330,7 +337,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
             totalScore += 25;
           }
         });
-        
+
         // Special bonus for LoRA-specific patterns
         searchTerms.forEach(term => {
           // Bonus for matching version numbers
@@ -342,12 +349,12 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
             totalScore += 20;
           }
         });
-        
+
         // Penalty for length difference (shorter LoRA names preferred when scores are similar)
         const lengthPenalty = Math.max(0, loraName.length - query.length) * 0.3;
         totalScore -= lengthPenalty;
       }
-      
+
       return {
         lora,
         score: totalScore,
@@ -356,7 +363,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
         totalTerms: searchTerms.length
       };
     });
-    
+
     // Filter out non-matches and sort by score (descending)
     return scoredLoraFiles
       .filter(item => item.score > 0)
@@ -373,19 +380,19 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
         return a.originalIndex - b.originalIndex;
       });
   };
-  
+
   const loraSearchResults = getLoraSearchMatches(loraList, searchQuery);
   const filteredLoraList = loraSearchResults.map(result => result.lora);
-  
+
   // Highlight matching text in LoRA names
   const highlightLoraMatches = (text: string, query: string): React.ReactNode => {
     if (!query.trim()) return text;
-    
+
     const searchTerms = query.toLowerCase().split(/\s+/).filter(term => term.length > 0);
-    
+
     // Create a map to track all matches
     const matches: { start: number; end: number; }[] = [];
-    
+
     searchTerms.forEach(term => {
       const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
       let match;
@@ -394,13 +401,13 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
         regex.lastIndex = match.index + 1; // Prevent infinite loops
       }
     });
-    
+
     if (matches.length === 0) return text;
-    
+
     // Sort matches by start position and merge overlapping
     matches.sort((a, b) => a.start - b.start);
     const mergedMatches: { start: number; end: number; }[] = [];
-    
+
     matches.forEach(match => {
       if (mergedMatches.length === 0 || mergedMatches[mergedMatches.length - 1].end < match.start) {
         mergedMatches.push(match);
@@ -409,35 +416,35 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
         mergedMatches[mergedMatches.length - 1].end = Math.max(mergedMatches[mergedMatches.length - 1].end, match.end);
       }
     });
-    
+
     // Build highlighted JSX
     const parts: React.ReactNode[] = [];
     let lastEnd = 0;
-    
+
     mergedMatches.forEach((match, index) => {
       // Add text before match
       if (match.start > lastEnd) {
         parts.push(text.slice(lastEnd, match.start));
       }
-      
+
       // Add highlighted match
       parts.push(
-        <mark 
-          key={index} 
+        <mark
+          key={index}
           className="bg-yellow-200 dark:bg-yellow-600/30 text-slate-900 dark:text-slate-100 font-semibold rounded px-0.5"
         >
           {text.slice(match.start, match.end)}
         </mark>
       );
-      
+
       lastEnd = match.end;
     });
-    
+
     // Add remaining text
     if (lastEnd < text.length) {
       parts.push(text.slice(lastEnd));
     }
-    
+
     return <>{parts}</>;
   };
 
@@ -462,7 +469,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
             type="text"
             value={value || ''}
             readOnly
-            placeholder={isLoading ? "Loading LoRA models..." : "Click dropdown to select LoRA file..."}
+            placeholder={isLoading ? t('node.loadingLoras') : t('node.clickToSelectLora')}
             className="text-sm pr-16 cursor-pointer"
             disabled={isLoading}
             onClick={() => setIsDropdownOpen(true)}
@@ -474,7 +481,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
                 size="sm"
                 className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
                 onClick={clearLoraSelection}
-                title="Clear selection"
+                title={t('node.clearSelection')}
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -485,13 +492,13 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
               className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={isLoading}
-              title="Browse LoRA models"
+              title={t('node.browseLoras')}
             >
               <ChevronDown className={`h-3 w-3 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
             </Button>
           </div>
         </div>
-        
+
         {/* Dropdown */}
         {isDropdownOpen && (
           <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-60 overflow-hidden">
@@ -503,12 +510,12 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search LoRA models..."
+                  placeholder={t('node.searchLorasPlaceholder')}
                   className="w-full pl-7 pr-2 py-1 text-xs bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 placeholder-slate-400"
                 />
               </div>
             </div>
-            
+
             {/* LoRA list */}
             <div className="overflow-y-auto max-h-48">
               {filteredLoraList.length > 0 ? (
@@ -533,7 +540,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
                 ))
               ) : (
                 <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
-                  {searchQuery ? `No LoRA models match "${searchQuery}"` : 'No LoRA models found'}
+                  {searchQuery ? t('node.noLorasMatch', { query: searchQuery }) : t('node.noLorasFound')}
                 </div>
               )}
             </div>
@@ -544,20 +551,23 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
   );
 };
 
-const StringFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig, value, onChange }) => (
-  <div className="space-y-2">
-    <label className="text-sm text-slate-600 dark:text-slate-400">
-      {fieldConfig.label || fieldName}
-    </label>
-    <Input
-      type="text"
-      value={value || ''}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={fieldConfig.placeholder || `Enter ${fieldName}...`}
-      className="text-sm"
-    />
-  </div>
-);
+const StringFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig, value, onChange }) => {
+  const { t } = useTranslation();
+  return (
+    <div className="space-y-2">
+      <label className="text-sm text-slate-600 dark:text-slate-400">
+        {fieldConfig.label || fieldName}
+      </label>
+      <Input
+        type="text"
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={fieldConfig.placeholder || t('node.enterValueFor', { name: fieldName })}
+        className="text-sm"
+      />
+    </div>
+  );
+};
 
 // Field renderer factory
 const getFieldRenderer = (fieldType: string): React.FC<FieldRendererProps> => {
@@ -587,6 +597,7 @@ export const CustomDynamicWidget: React.FC<CustomDynamicWidgetProps> = ({
   customType,
   fields
 }) => {
+  const { t } = useTranslation();
   // Determine if this is a single field widget
   const fieldNames = Object.keys(fields);
   const isSingleField = fieldNames.length === 1;
@@ -616,8 +627,8 @@ export const CustomDynamicWidget: React.FC<CustomDynamicWidgetProps> = ({
       handleValueChange(value);
     } else {
       // For multi-field widgets, use object structure
-      const currentValue = typeof editingValue === 'object' && editingValue !== null 
-        ? editingValue 
+      const currentValue = typeof editingValue === 'object' && editingValue !== null
+        ? editingValue
         : {};
       const newConfig = { ...currentValue, [fieldName]: value };
       handleValueChange(newConfig);
@@ -631,11 +642,11 @@ export const CustomDynamicWidget: React.FC<CustomDynamicWidgetProps> = ({
       return editingValue !== undefined ? editingValue : fieldConfig.default;
     } else {
       // For multi-field widgets, access field from object
-      const objectValue = typeof editingValue === 'object' && editingValue !== null 
-        ? editingValue 
+      const objectValue = typeof editingValue === 'object' && editingValue !== null
+        ? editingValue
         : {};
-      return objectValue[fieldName] !== undefined 
-        ? objectValue[fieldName] 
+      return objectValue[fieldName] !== undefined
+        ? objectValue[fieldName]
         : fieldConfig.default;
     }
   };
@@ -650,12 +661,12 @@ export const CustomDynamicWidget: React.FC<CustomDynamicWidgetProps> = ({
           {customType}
         </Badge>
       </div>
-      
+
       {/* Render fields dynamically */}
       {Object.entries(fields).map(([fieldName, fieldConfig]) => {
         const FieldRenderer = getFieldRenderer(fieldConfig.type);
         const fieldValue = getFieldValue(fieldName, fieldConfig);
-        
+
         return (
           <div key={fieldName}>
             <FieldRenderer

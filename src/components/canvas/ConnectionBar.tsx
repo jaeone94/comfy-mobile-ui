@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, ArrowRight, CheckCircle } from 'lucide-react';
 import { WorkflowNode } from '@/shared/types/app/IComfyWorkflow';
@@ -23,18 +24,19 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
   onClearSource,
   onClearTarget,
 }) => {
+  const { t } = useTranslation();
   const canProceed = sourceNode && targetNode;
-  
+
   // Generate status message
   const getStatusMessage = () => {
     if (!sourceNode && !targetNode) {
-      return 'Select a source node to start connecting';
+      return t('node.selectSourceToStart');
     } else if (sourceNode && !targetNode) {
-      return 'Now select a target node to connect to';
+      return t('node.selectTargetToConnect');
     } else if (sourceNode && targetNode) {
-      return 'Ready to connect! Choose connection details';
+      return t('node.readyToConnect');
     }
-    return 'Connection mode active';
+    return t('node.connectionModeActive');
   };
 
   return (
@@ -51,12 +53,12 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
           <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 p-4 relative overflow-hidden">
             {/* Gradient Overlay for Enhanced Glass Effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-            
+
             <div className="relative z-10">
               {/* Header */}
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-white">
-                  Create Connection
+                  {t('node.createConnection')}
                 </h3>
                 <Button
                   onClick={onCancel}
@@ -73,7 +75,7 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                 {/* Source Node Slot */}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                    Source Node
+                    {t('node.sourceNode')}
                   </label>
                   <button
                     onClick={() => {
@@ -96,16 +98,16 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                           {sourceNode.type}
                         </div>
                         <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                          ID: {sourceNode.id} • Click to clear
+                          ID: {sourceNode.id} • {t('node.clickToClear')}
                         </div>
                       </div>
                     ) : (
                       <div className="text-center">
                         <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                          Tap a node
+                          {t('node.tapANode')}
                         </div>
                         <div className="text-xs text-slate-400 dark:text-slate-500">
-                          to select source
+                          {t('node.toSelectSource')}
                         </div>
                       </div>
                     )}
@@ -116,15 +118,15 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                 <div className="flex-shrink-0 py-4">
                   <div className={`
                     p-2 rounded-full transition-all duration-200
-                    ${canProceed 
-                      ? 'bg-blue-100 dark:bg-blue-900/30' 
+                    ${canProceed
+                      ? 'bg-blue-100 dark:bg-blue-900/30'
                       : 'bg-slate-100 dark:bg-slate-800'
                     }
                   `}>
                     <ArrowRight className={`
                       h-4 w-4 transition-colors duration-200
-                      ${canProceed 
-                        ? 'text-blue-600 dark:text-blue-400' 
+                      ${canProceed
+                        ? 'text-blue-600 dark:text-blue-400'
                         : 'text-slate-400 dark:text-slate-500'
                       }
                     `} />
@@ -134,7 +136,7 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                 {/* Target Node Slot */}
                 <div className="flex-1">
                   <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-2">
-                    Target Node
+                    {t('node.targetNode')}
                   </label>
                   <button
                     onClick={() => {
@@ -157,16 +159,16 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                           {targetNode.type}
                         </div>
                         <div className="text-xs text-red-600 dark:text-red-400 mt-1">
-                          ID: {targetNode.id} • Click to clear
+                          ID: {targetNode.id} • {t('node.clickToClear')}
                         </div>
                       </div>
                     ) : (
                       <div className="text-center">
                         <div className="text-sm text-slate-500 dark:text-slate-400 font-medium">
-                          {sourceNode ? 'Tap target node' : 'Select source first'}
+                          {sourceNode ? t('node.tapTargetNode') : t('node.selectSourceFirst')}
                         </div>
                         <div className="text-xs text-slate-400 dark:text-slate-500">
-                          {sourceNode ? 'to connect' : ''}
+                          {sourceNode ? t('node.toConnect') : ''}
                         </div>
                       </div>
                     )}
@@ -181,21 +183,21 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                   variant="outline"
                   className="flex-1 bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 hover:bg-white/30 dark:hover:bg-slate-700/30 text-slate-800 dark:text-slate-200"
                 >
-                  Cancel
+                  {t('common.cancel')}
                 </Button>
                 <Button
                   onClick={onProceed}
                   disabled={!canProceed}
                   className={`
                     flex-1 shadow-lg backdrop-blur-sm transition-all duration-200 flex items-center justify-center space-x-2
-                    ${canProceed 
-                      ? 'bg-green-600/90 hover:bg-green-700/90 text-white hover:shadow-xl' 
+                    ${canProceed
+                      ? 'bg-green-600/90 hover:bg-green-700/90 text-white hover:shadow-xl'
                       : 'bg-slate-400/50 text-slate-500 cursor-not-allowed'
                     }
                   `}
                 >
                   <CheckCircle className="h-4 w-4" />
-                  <span>Connect Nodes</span>
+                  <span>{t('node.connectNodes')}</span>
                 </Button>
               </div>
 

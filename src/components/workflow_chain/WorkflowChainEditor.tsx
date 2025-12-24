@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import { createPortal } from 'react-dom';
 import { ArrowLeft, Plus, X, Save, Play, Edit, Loader2, CheckCircle2, XCircle, RefreshCw, Dices } from 'lucide-react';
@@ -32,6 +33,7 @@ interface WorkflowNodeWithAnalysis {
 }
 
 export const WorkflowChainEditor: React.FC = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { id } = useParams();
   const { url: serverUrl } = useConnectionStore();
@@ -179,7 +181,7 @@ export const WorkflowChainEditor: React.FC = () => {
         setAvailableWorkflows(workflows);
       } catch (error) {
         console.error('Failed to load workflows:', error);
-        toast.error('Failed to load workflows');
+        toast.error(t('common.error'));
       } finally {
         setLoadingWorkflows(false);
       }
@@ -240,7 +242,7 @@ export const WorkflowChainEditor: React.FC = () => {
         }
       } catch (error) {
         console.error('Failed to load chain:', error);
-        toast.error('Failed to load chain');
+        toast.error(t('common.error'));
       }
     };
 
@@ -250,7 +252,7 @@ export const WorkflowChainEditor: React.FC = () => {
   // Add workflow to chain
   const handleAddWorkflow = async (workflow: Workflow) => {
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
@@ -310,7 +312,7 @@ export const WorkflowChainEditor: React.FC = () => {
       toast.success(`Added workflow: ${workflow.name}`);
     } catch (error) {
       console.error('Failed to add workflow:', error);
-      toast.error('Failed to convert workflow to API format');
+      toast.error(t('common.error'));
     } finally {
       setIsConverting(false);
     }
@@ -319,13 +321,13 @@ export const WorkflowChainEditor: React.FC = () => {
   // Remove workflow from chain
   const handleRemoveWorkflow = (index: number) => {
     setWorkflowNodes(prev => prev.filter((_, i) => i !== index));
-    toast.success('Workflow removed from chain');
+    toast.success(t('workflowChain.editor.toast.removed'));
   };
 
   // Refresh workflow from IndexedDB
   const handleRefreshWorkflow = async (index: number, workflowId: string) => {
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
@@ -497,7 +499,7 @@ export const WorkflowChainEditor: React.FC = () => {
   // Refresh all workflows from IndexedDB
   const handleRefreshAllWorkflows = async () => {
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
@@ -590,8 +592,8 @@ export const WorkflowChainEditor: React.FC = () => {
   // Handle file selection from OutputsGallery (for static bindings)
   const handleFileSelect = (filename: string) => {
     if (fileSelectionState.workflowIndex !== null &&
-        fileSelectionState.inputNodeId &&
-        fileSelectionState.widgetName) {
+      fileSelectionState.inputNodeId &&
+      fileSelectionState.widgetName) {
 
       handleUpdateBinding(
         fileSelectionState.workflowIndex,
@@ -617,7 +619,7 @@ export const WorkflowChainEditor: React.FC = () => {
   // Interrupt chain execution
   const handleInterruptChain = async () => {
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
@@ -640,35 +642,35 @@ export const WorkflowChainEditor: React.FC = () => {
   // Execute chain
   const handleExecuteChain = async () => {
     if (!id || !serverUrl) {
-      toast.error('Cannot execute: missing chain ID or server URL');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
     if (workflowNodes.length === 0) {
-      toast.error('Cannot execute: chain has no workflows');
+      toast.error(t('workflowChain.editor.noWorkflowsAvailable'));
       return;
     }
 
-    toast.info('Starting chain execution...');
+    toast.info(t('workflowChain.toast.starting', { name: chainName || id }));
 
     try {
       const response = await executeChain(serverUrl, id);
 
       if (response.success) {
-        toast.success(`Chain executed successfully! Execution ID: ${response.executionId}`);
+        toast.success(t('workflowChain.toast.executed', { name: chainName || id }));
 
         // Show details of node results
         if (response.nodeResults && response.nodeResults.length > 0) {
           const successCount = response.nodeResults.filter(r => r.success).length;
           const totalCount = response.nodeResults.length;
-          toast.info(`Completed ${successCount}/${totalCount} workflow nodes`);
+          toast.info(t('workflowChain.toast.completedNodes', { success: successCount, total: totalCount }));
         }
       } else {
-        toast.error(`Chain execution failed: ${response.error || 'Unknown error'}`);
+        toast.error(t('workflowChain.toast.execFailed', { error: response.error || t('common.error') }));
       }
     } catch (error) {
       console.error('Chain execution error:', error);
-      toast.error('Failed to execute chain');
+      toast.error(t('workflowChain.toast.failedExec', { name: chainName || id }));
     }
   };
 
@@ -727,7 +729,7 @@ export const WorkflowChainEditor: React.FC = () => {
   // Save existing chain (without modal)
   const handleSaveExisting = async () => {
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
@@ -772,7 +774,7 @@ export const WorkflowChainEditor: React.FC = () => {
       }
     } catch (error) {
       console.error('Failed to save chain:', error);
-      toast.error('Failed to save chain');
+      toast.error(t('common.error'));
     } finally {
       setIsSaving(false);
     }
@@ -786,7 +788,7 @@ export const WorkflowChainEditor: React.FC = () => {
     }
 
     if (!serverUrl) {
-      toast.error('Server URL not configured');
+      toast.error(t('common.notConfigured'));
       return;
     }
 
@@ -825,16 +827,16 @@ export const WorkflowChainEditor: React.FC = () => {
           })
         );
 
-        toast.success('Chain saved successfully!');
+        toast.success(t('workflowChain.editor.toast.saved'));
         setShowSaveModal(false);
         setIsEditMode(false);
         navigate(`/chains/edit/${newChainId}`);
       } else {
-        toast.error(response.error || 'Failed to save chain');
+        toast.error(response.error || t('common.error'));
       }
     } catch (error) {
       console.error('Failed to save chain:', error);
-      toast.error('Failed to save chain');
+      toast.error(t('common.error'));
     } finally {
       setIsSaving(false);
     }
@@ -887,10 +889,10 @@ export const WorkflowChainEditor: React.FC = () => {
               </Button>
               <div className="min-w-0 flex-1">
                 <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100 truncate">
-                  {id && chainName ? chainName : (id ? 'Edit Chain' : 'New Chain')}
+                  {id && chainName ? chainName : (id ? t('workflowChain.editor.editChain') : t('workflowChain.editor.newChain'))}
                 </h1>
                 <p className="text-sm text-slate-600 dark:text-slate-400">
-                  {workflowNodes.length} {workflowNodes.length === 1 ? 'workflow' : 'workflows'}
+                  {t('workflowChain.editor.workflowsCount_plural', { count: workflowNodes.length })}
                 </p>
               </div>
             </div>
@@ -912,7 +914,7 @@ export const WorkflowChainEditor: React.FC = () => {
                     variant="ghost"
                     size="sm"
                     className="bg-purple-500/20 dark:bg-purple-600/20 backdrop-blur-sm border border-purple-400/30 dark:border-purple-500/30 shadow-lg hover:shadow-xl hover:bg-purple-500/30 dark:hover:bg-purple-600/30 transition-all duration-300 h-10 w-10 p-0 rounded-lg"
-                    title="Refresh all from app storage"
+                    title={t('workflowChain.editor.toast.refreshed')}
                   >
                     <RefreshCw className="h-5 w-5 text-purple-700 dark:text-purple-300" />
                   </Button>
@@ -927,7 +929,7 @@ export const WorkflowChainEditor: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       className="bg-red-500/20 dark:bg-red-600/20 backdrop-blur-sm border border-red-400/30 dark:border-red-500/30 shadow-lg hover:shadow-xl hover:bg-red-500/30 dark:hover:bg-red-600/30 transition-all duration-300 h-10 w-10 p-0 rounded-lg"
-                      title="Stop execution"
+                      title={t('workflowChain.toast.stopping')}
                     >
                       <XCircle className="h-5 w-5 text-red-700 dark:text-red-300" />
                     </Button>
@@ -938,7 +940,7 @@ export const WorkflowChainEditor: React.FC = () => {
                       variant="ghost"
                       size="sm"
                       className="bg-green-500/20 dark:bg-green-600/20 backdrop-blur-sm border border-green-400/30 dark:border-green-500/30 shadow-lg hover:shadow-xl hover:bg-green-500/30 dark:hover:bg-green-600/30 transition-all duration-300 h-10 w-10 p-0 rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="Execute chain"
+                      title={t('workflow.execute')}
                     >
                       <Play className="h-5 w-5 text-green-700 dark:text-green-300" />
                     </Button>
@@ -978,7 +980,7 @@ export const WorkflowChainEditor: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <Loader2 className="h-4 w-4 animate-spin text-blue-600 dark:text-blue-400" />
                     <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                      Chain Executing
+                      {t('workflowChain.editor.chainExecuting')}
                     </span>
                   </div>
                   <span className="text-sm text-blue-600 dark:text-blue-400">
@@ -1001,7 +1003,7 @@ export const WorkflowChainEditor: React.FC = () => {
                   <div className="flex items-center gap-2">
                     <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                     <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                      Server Console
+                      {t('workflowChain.editor.serverConsole')}
                     </span>
                   </div>
                   <Button
@@ -1023,7 +1025,7 @@ export const WorkflowChainEditor: React.FC = () => {
                 >
                   {consoleLogs.length === 0 ? (
                     <div className="flex items-center justify-center h-full text-slate-500 dark:text-slate-400">
-                      Waiting for logs...
+                      {t('workflowChain.editor.waitingLogs')}
                     </div>
                   ) : (
                     <div className="space-y-0.5">
@@ -1064,7 +1066,7 @@ export const WorkflowChainEditor: React.FC = () => {
                       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-300 dark:via-blue-700 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
                       <div className="flex items-center gap-1 text-sm font-medium">
                         <Plus className="h-4 w-4" />
-                        <span>Insert workflow</span>
+                        <span>{t('workflowChain.editor.insertWorkflow')}</span>
                       </div>
                       <div className="h-px flex-1 bg-gradient-to-r from-transparent via-blue-300 dark:via-blue-700 to-transparent opacity-50 group-hover:opacity-100 transition-opacity" />
                     </button>
@@ -1105,19 +1107,19 @@ export const WorkflowChainEditor: React.FC = () => {
                 }}
                 className="w-full p-8 border-2 border-dashed border-blue-400/50 dark:border-blue-500/50 rounded-xl bg-blue-50/30 dark:bg-blue-950/20 hover:bg-blue-100/50 dark:hover:bg-blue-950/30 transition-all duration-300 group"
               >
-              <div className="flex flex-col items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-blue-500/20 dark:bg-blue-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
-                  <Plus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                <div className="flex flex-col items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-blue-500/20 dark:bg-blue-600/20 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <Plus className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div className="text-center">
+                    <p className="font-medium text-blue-700 dark:text-blue-300">
+                      {t('workflowChain.editor.addWorkflow')}
+                    </p>
+                    <p className="text-sm text-blue-600/70 dark:text-blue-400/70">
+                      {t('workflowChain.editor.addWorkflowDesc')}
+                    </p>
+                  </div>
                 </div>
-                <div className="text-center">
-                  <p className="font-medium text-blue-700 dark:text-blue-300">
-                    Add Workflow
-                  </p>
-                  <p className="text-sm text-blue-600/70 dark:text-blue-400/70">
-                    Click to select a workflow to add to the chain
-                  </p>
-                </div>
-              </div>
               </button>
             )}
           </div>
@@ -1211,6 +1213,7 @@ const WorkflowNodeCard: React.FC<WorkflowNodeCardProps> = ({
   onUpdateBinding,
   onOpenFileSelection
 }) => {
+  const { t } = useTranslation();
   const { url: serverUrl } = useConnectionStore();
 
   // Check if workflow exists in IndexedDB
@@ -1223,11 +1226,10 @@ const WorkflowNodeCard: React.FC<WorkflowNodeCardProps> = ({
   });
 
   return (
-    <div className={`backdrop-blur-md border rounded-xl shadow-lg p-6 space-y-4 transition-all duration-300 ${
-      workflowStatus === 'running'
-        ? 'bg-green-50/80 dark:bg-green-950/30 border-green-400/50 ring-2 ring-green-400/30'
-        : 'bg-white/70 dark:bg-slate-900/70 border-white/20 dark:border-slate-700/30'
-    }`}>
+    <div className={`backdrop-blur-md border rounded-xl shadow-lg p-6 space-y-4 transition-all duration-300 ${workflowStatus === 'running'
+      ? 'bg-green-50/80 dark:bg-green-950/30 border-green-400/50 ring-2 ring-green-400/30'
+      : 'bg-white/70 dark:bg-slate-900/70 border-white/20 dark:border-slate-700/30'
+      }`}>
       {/* Header with Thumbnail */}
       <div className="flex items-start justify-between gap-4">
         {node.thumbnail && (
@@ -1240,30 +1242,30 @@ const WorkflowNodeCard: React.FC<WorkflowNodeCardProps> = ({
         <div className="flex-1">
           <div className="flex items-center gap-2 mb-1">
             <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
-              Step {index + 1}
+              {t('workflowChain.editor.step', { index: index + 1 })}
             </span>
             {workflowStatus === 'waiting' && (
               <span className="px-2 py-0.5 bg-yellow-500/20 text-yellow-700 dark:text-yellow-300 rounded-full text-xs font-medium flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Waiting to Start
+                {t('workflowChain.editor.waitingStart')}
               </span>
             )}
             {workflowStatus === 'running' && (
               <span className="px-2 py-0.5 bg-green-500/20 text-green-700 dark:text-green-300 rounded-full text-xs font-medium flex items-center gap-1">
                 <Loader2 className="h-3 w-3 animate-spin" />
-                Processing
+                {t('workflowChain.editor.processing')}
               </span>
             )}
             {workflowStatus === 'completed' && (
               <span className="px-2 py-0.5 bg-blue-500/20 text-blue-700 dark:text-blue-300 rounded-full text-xs font-medium flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
-                Done
+                {t('workflowChain.editor.done')}
               </span>
             )}
             {workflowStatus === 'failed' && (
               <span className="px-2 py-0.5 bg-red-500/20 text-red-700 dark:text-red-300 rounded-full text-xs font-medium flex items-center gap-1">
                 <X className="h-3 w-3" />
-                Failed
+                {t('workflowChain.editor.failed')}
               </span>
             )}
           </div>
@@ -1312,7 +1314,7 @@ const WorkflowNodeCard: React.FC<WorkflowNodeCardProps> = ({
       {node.inputs.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Input Bindings ({node.inputs.length})
+            {t('workflowChain.editor.inputBindings', { count: node.inputs.length })}
           </h4>
           <div className="space-y-2">
             {node.inputs.map((input) => {
@@ -1341,7 +1343,7 @@ const WorkflowNodeCard: React.FC<WorkflowNodeCardProps> = ({
       {node.outputs.length > 0 && (
         <div className="space-y-2">
           <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
-            Output Nodes ({node.outputs.length})
+            {t('workflowChain.editor.outputNodes', { count: node.outputs.length })}
           </h4>
           <div className="space-y-1">
             {node.outputs.map((output) => (
@@ -1395,6 +1397,7 @@ const InputBindingRow: React.FC<InputBindingRowProps> = ({
   onUpdateBinding,
   onOpenFileSelection
 }) => {
+  const { t } = useTranslation();
   // Get current binding values
   const bindingType = currentBinding?.type || 'static';
   const staticValue = currentBinding?.type === 'static'
@@ -1431,14 +1434,13 @@ const InputBindingRow: React.FC<InputBindingRowProps> = ({
         <button
           onClick={() => isEditMode && onOpenFileSelection(workflowIndex, input.nodeId, input.widgetName, input.widgetType)}
           disabled={!isEditMode}
-          className={`w-full text-left p-3 bg-white dark:bg-slate-800 border rounded-lg transition-colors ${
-            isEditMode
-              ? 'hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
-              : 'opacity-50 cursor-not-allowed'
-          }`}
+          className={`w-full text-left p-3 bg-white dark:bg-slate-800 border rounded-lg transition-colors ${isEditMode
+            ? 'hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
+            : 'opacity-50 cursor-not-allowed'
+            }`}
         >
           <div className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">
-            {staticValue || 'Click to select file...'}
+            {staticValue || t('workflowChain.editor.selectFile')}
           </div>
         </button>
       ) : (
@@ -1451,7 +1453,7 @@ const InputBindingRow: React.FC<InputBindingRowProps> = ({
                 onClick={() => handleBindingTypeChange('static')}
                 disabled={!isEditMode}
               >
-                Static
+                {t('workflowChain.editor.static')}
               </Button>
               <Button
                 variant={bindingType === 'dynamic' ? 'default' : 'outline'}
@@ -1459,7 +1461,7 @@ const InputBindingRow: React.FC<InputBindingRowProps> = ({
                 onClick={() => handleBindingTypeChange('dynamic')}
                 disabled={!isEditMode}
               >
-                Dynamic
+                {t('workflowChain.editor.dynamic')}
               </Button>
             </div>
           )}
@@ -1468,11 +1470,10 @@ const InputBindingRow: React.FC<InputBindingRowProps> = ({
             <button
               onClick={() => isEditMode && onOpenFileSelection(workflowIndex, input.nodeId, input.widgetName, input.widgetType)}
               disabled={!isEditMode}
-              className={`w-full text-left p-3 bg-white dark:bg-slate-800 border rounded-lg transition-colors ${
-                isEditMode
-                  ? 'hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
-                  : 'opacity-50 cursor-not-allowed'
-              }`}
+              className={`w-full text-left p-3 bg-white dark:bg-slate-800 border rounded-lg transition-colors ${isEditMode
+                ? 'hover:bg-slate-50 dark:hover:bg-slate-700 cursor-pointer'
+                : 'opacity-50 cursor-not-allowed'
+                }`}
             >
               <div className="text-sm font-mono text-slate-700 dark:text-slate-300 truncate">
                 {staticValue || 'Click to select file...'}
@@ -1496,13 +1497,13 @@ const InputBindingRow: React.FC<InputBindingRowProps> = ({
                 }
               }}
             >
-              <option value="">Select output source...</option>
+              <option value="">{t('workflowChain.editor.selectSource')}</option>
               {previousWorkflows.map((prevWorkflow, prevIdx) =>
                 prevWorkflow.outputs
                   .filter(output => output.outputType === input.widgetType)
                   .map(output => (
                     <option key={`${prevIdx}|${output.nodeId}`} value={`${prevIdx}|${output.nodeId}`}>
-                      Step {prevIdx + 1}: {prevWorkflow.name} - {output.nodeTitle}
+                      {t('workflowChain.editor.step', { index: prevIdx + 1 })}: {prevWorkflow.name} - {output.nodeTitle}
                     </option>
                   ))
               )}
@@ -1532,6 +1533,7 @@ const WorkflowSelectionPanel: React.FC<WorkflowSelectionPanelProps> = ({
   isConverting,
   onSelect
 }) => {
+  const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
 
   // Filter workflows based on search query
@@ -1572,7 +1574,7 @@ const WorkflowSelectionPanel: React.FC<WorkflowSelectionPanelProps> = ({
               <div className="p-4 border-b border-slate-200 dark:border-slate-700 space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    Select Workflow
+                    {t('workflowChain.editor.selectWorkflow')}
                   </h2>
                   <Button
                     onClick={onClose}
@@ -1588,7 +1590,7 @@ const WorkflowSelectionPanel: React.FC<WorkflowSelectionPanelProps> = ({
                 <div className="relative">
                   <Input
                     type="text"
-                    placeholder="Search workflows..."
+                    placeholder={t('workflowChain.editor.searchWorkflows')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="w-full"
@@ -1608,11 +1610,11 @@ const WorkflowSelectionPanel: React.FC<WorkflowSelectionPanelProps> = ({
               <div className="flex-1 overflow-y-auto p-4 relative">
                 {loading ? (
                   <div className="text-center py-8 text-slate-500">
-                    Loading workflows...
+                    {t('workflowChain.editor.loading')}
                   </div>
                 ) : filteredWorkflows.length === 0 ? (
                   <div className="text-center py-8 text-slate-500">
-                    {searchQuery ? `No workflows found for "${searchQuery}"` : 'No workflows available'}
+                    {searchQuery ? t('workflowChain.editor.noWorkflowsFound', { query: searchQuery }) : t('workflowChain.editor.noWorkflowsAvailable')}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1646,7 +1648,7 @@ const WorkflowSelectionPanel: React.FC<WorkflowSelectionPanelProps> = ({
                     <div className="text-center">
                       <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto mb-4"></div>
                       <div className="text-white font-medium">
-                        Converting workflow...
+                        {t('workflowChain.editor.converting')}
                       </div>
                     </div>
                   </div>
@@ -1682,6 +1684,7 @@ const SaveChainModal: React.FC<SaveChainModalProps> = ({
   onSave,
   isSaving
 }) => {
+  const { t } = useTranslation();
   return (
     <AnimatePresence>
       {isOpen && (

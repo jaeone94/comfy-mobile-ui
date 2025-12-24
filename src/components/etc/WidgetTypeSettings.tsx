@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
 import { Plus, Edit, Trash2, Download, Upload, Copy, FileText, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,14 +9,16 @@ import { toast } from 'sonner';
 import { WidgetTypeDefinitionModal } from '@/components/modals/WidgetTypeDefinitionModal';
 import { WidgetTypeDefinition } from '@/shared/types/app/WidgetFieldTypes';
 import { useWidgetTypes, WidgetTypeManager } from '@/core/services/WidgetTypeManager';
+import { useTranslation } from 'react-i18next';
 
 export const WidgetTypeSettings: React.FC = () => {
+  const { t } = useTranslation();
   const { widgetTypes, loading, error, saveWidgetType, deleteWidgetType, loadWidgetTypes } = useWidgetTypes();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingWidgetType, setEditingWidgetType] = useState<WidgetTypeDefinition | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredWidgetTypes = widgetTypes.filter(type => 
+  const filteredWidgetTypes = widgetTypes.filter(type =>
     type.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
     type.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -31,15 +34,15 @@ export const WidgetTypeSettings: React.FC = () => {
   };
 
   const handleDelete = async (widgetType: WidgetTypeDefinition) => {
-    if (!confirm(`Are you sure you want to delete widget type "${widgetType.id}"?`)) {
+    if (!confirm(t('widgetTypeSettings.deleteConfirm', { id: widgetType.id }))) {
       return;
     }
 
     try {
       await deleteWidgetType(widgetType.id);
-      toast.success(`Widget type "${widgetType.id}" deleted successfully`);
+      toast.success(t('widgetTypeSettings.toast.deleteSuccess', { id: widgetType.id }));
     } catch (error) {
-      toast.error(`Failed to delete widget type: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(t('widgetTypeSettings.toast.deleteFailed', { error: error instanceof Error ? error.message : 'Unknown error' }));
     }
   };
 
@@ -62,7 +65,7 @@ export const WidgetTypeSettings: React.FC = () => {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Widget type exported successfully');
+    toast.success(t('widgetTypeSettings.toast.exportSuccess'));
   };
 
   const handleImport = () => {
@@ -76,17 +79,17 @@ export const WidgetTypeSettings: React.FC = () => {
       try {
         const jsonString = await file.text();
         const widgetType = WidgetTypeManager.importWidgetType(jsonString);
-        
+
         const validation = WidgetTypeManager.validateWidgetType(widgetType);
         if (!validation.valid) {
-          toast.error(`Invalid widget type: ${validation.errors.join(', ')}`);
+          toast.error(t('widgetTypeSettings.toast.invalidType', { errors: validation.errors.join(', ') }));
           return;
         }
 
         await saveWidgetType(widgetType);
-        toast.success(`Widget type "${widgetType.id}" imported successfully`);
+        toast.success(t('widgetTypeSettings.toast.importSuccess', { id: widgetType.id }));
       } catch (error) {
-        toast.error(`Failed to import widget type: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        toast.error(t('widgetTypeSettings.toast.importFailed', { error: error instanceof Error ? error.message : 'Unknown error' }));
       }
     };
     input.click();
@@ -96,9 +99,9 @@ export const WidgetTypeSettings: React.FC = () => {
     try {
       const jsonString = WidgetTypeManager.exportWidgetType(widgetType);
       await navigator.clipboard.writeText(jsonString);
-      toast.success('Widget type configuration copied to clipboard');
+      toast.success(t('widgetTypeSettings.toast.copySuccess'));
     } catch (error) {
-      toast.error('Failed to copy to clipboard');
+      toast.error(t('widgetTypeSettings.toast.copyFailed'));
     }
   };
 
@@ -106,9 +109,9 @@ export const WidgetTypeSettings: React.FC = () => {
     try {
       const loraExample = WidgetTypeManager.createLoraConfigExample();
       await saveWidgetType(loraExample);
-      toast.success('LORA_CONFIG example created successfully');
+      toast.success(t('widgetTypeSettings.toast.exampleSuccess'));
     } catch (error) {
-      toast.error(`Failed to create example: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      toast.error(t('widgetTypeSettings.toast.exampleFailed', { error: error instanceof Error ? error.message : 'Unknown error' }));
     }
   };
 
@@ -117,7 +120,7 @@ export const WidgetTypeSettings: React.FC = () => {
       <div className="flex items-center justify-center h-64">
         <div className="flex flex-col items-center space-y-4">
           <Loader2 className="h-8 w-8 animate-spin text-slate-600 dark:text-slate-400" />
-          <p className="text-sm text-slate-600 dark:text-slate-400">Loading widget types...</p>
+          <p className="text-sm text-slate-600 dark:text-slate-400">{t('widgetTypeSettings.loading')}</p>
         </div>
       </div>
     );
@@ -128,7 +131,7 @@ export const WidgetTypeSettings: React.FC = () => {
       <div className="text-center py-8">
         <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
         <Button onClick={loadWidgetTypes} variant="outline">
-          Retry
+          {t('widgetTypeSettings.retry')}
         </Button>
       </div>
     );
@@ -140,21 +143,21 @@ export const WidgetTypeSettings: React.FC = () => {
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div>
           <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            Widget Types
+            {t('widgetTypeSettings.title')}
           </h2>
           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            Manage custom widget type definitions for dynamic form generation
+            {t('widgetTypeSettings.subtitle')}
           </p>
         </div>
-        
+
         <div className="flex gap-2">
           <Button onClick={handleImport} variant="outline" size="sm" className="gap-2">
             <Upload className="h-4 w-4" />
-            Import
+            {t('widgetTypeSettings.import')}
           </Button>
           <Button onClick={handleCreateNew} size="sm" className="gap-2">
             <Plus className="h-4 w-4" />
-            Create Type
+            {t('widgetTypeSettings.createType')}
           </Button>
         </div>
       </div>
@@ -163,17 +166,17 @@ export const WidgetTypeSettings: React.FC = () => {
       <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
         <div className="flex-1 max-w-md">
           <Input
-            placeholder="Search widget types..."
+            placeholder={t('widgetTypeSettings.searchPlaceholder')}
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="w-full"
           />
         </div>
-        
+
         {widgetTypes.length === 0 && (
           <Button onClick={handleCreateLoraExample} variant="outline" size="sm" className="gap-2">
             <FileText className="h-4 w-4" />
-            Create LORA Example
+            {t('widgetTypeSettings.createLoraExample')}
           </Button>
         )}
       </div>
@@ -186,32 +189,32 @@ export const WidgetTypeSettings: React.FC = () => {
               <div className="text-slate-500 dark:text-slate-400">
                 {searchTerm ? (
                   <>
-                    <p className="text-lg font-medium">No matching widget types</p>
-                    <p className="text-sm">Try adjusting your search terms</p>
+                    <p className="text-lg font-medium">{t('widgetTypeSettings.noMatchingTypes')}</p>
+                    <p className="text-sm">{t('widgetTypeSettings.noMatchingTypesDesc')}</p>
                   </>
                 ) : (
                   <>
-                    <p className="text-lg font-medium">No widget types defined yet</p>
-                    <p className="text-sm">Create your first widget type to get started</p>
+                    <p className="text-lg font-medium">{t('widgetTypeSettings.noTypesDefined')}</p>
+                    <p className="text-sm">{t('widgetTypeSettings.noTypesDefinedDesc')}</p>
                   </>
                 )}
               </div>
-              
+
               {!searchTerm && (
                 <div className="flex gap-2 justify-center">
-                  <Button 
-                    onClick={handleCreateNew} 
+                  <Button
+                    onClick={handleCreateNew}
                     className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white backdrop-blur-sm"
                   >
                     <Plus className="h-4 w-4" />
-                    Create Widget Type
+                    {t('widgetTypeSettings.createWidgetType')}
                   </Button>
-                  <Button 
-                    onClick={handleCreateLoraExample} 
+                  <Button
+                    onClick={handleCreateLoraExample}
                     className="gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
                   >
                     <FileText className="h-4 w-4" />
-                    Create LORA Example
+                    {t('widgetTypeSettings.createLoraExample')}
                   </Button>
                 </div>
               )}
@@ -221,8 +224,8 @@ export const WidgetTypeSettings: React.FC = () => {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredWidgetTypes.map((widgetType) => (
-            <div 
-              key={widgetType.id} 
+            <div
+              key={widgetType.id}
               className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-700/30 rounded-xl shadow-lg hover:shadow-xl hover:bg-white/80 dark:hover:bg-slate-900/80 transition-all duration-300 group"
             >
               <div className="p-6">
@@ -231,7 +234,7 @@ export const WidgetTypeSettings: React.FC = () => {
                     {widgetType.id}
                   </h3>
                 </div>
-                
+
                 {widgetType.description && (
                   <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4">
                     {widgetType.description}
@@ -241,11 +244,11 @@ export const WidgetTypeSettings: React.FC = () => {
                 {/* Field Summary */}
                 <div className="space-y-2 mb-4">
                   <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    Fields ({Object.keys(widgetType.fields).length})
+                    {t('widgetTypeSettings.fields', { count: Object.keys(widgetType.fields).length })}
                   </div>
                   <div className="flex flex-wrap gap-1">
                     {Object.entries(widgetType.fields).slice(0, 4).map(([name, config]) => (
-                      <span 
+                      <span
                         key={name}
                         className="text-xs bg-slate-100/60 dark:bg-slate-800/60 backdrop-blur-sm text-slate-700 dark:text-slate-300 px-2 py-1 rounded border border-slate-200/50 dark:border-slate-700/50"
                       >
@@ -263,34 +266,34 @@ export const WidgetTypeSettings: React.FC = () => {
 
                 {/* Actions */}
                 <div className="flex gap-2 pt-2">
-                  <Button 
-                    onClick={() => handleEdit(widgetType)} 
-                    size="sm" 
+                  <Button
+                    onClick={() => handleEdit(widgetType)}
+                    size="sm"
                     className="flex-1 gap-1 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200"
                   >
                     <Edit className="h-3 w-3" />
-                    Edit
+                    {t('widgetTypeSettings.edit')}
                   </Button>
-                  
-                  <Button 
-                    onClick={() => handleCopyToClipboard(widgetType)} 
-                    size="sm" 
+
+                  <Button
+                    onClick={() => handleCopyToClipboard(widgetType)}
+                    size="sm"
                     className="gap-1 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200"
                   >
                     <Copy className="h-3 w-3" />
                   </Button>
-                  
-                  <Button 
-                    onClick={() => handleExport(widgetType)} 
-                    size="sm" 
+
+                  <Button
+                    onClick={() => handleExport(widgetType)}
+                    size="sm"
                     className="gap-1 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200"
                   >
                     <Download className="h-3 w-3" />
                   </Button>
-                  
-                  <Button 
-                    onClick={() => handleDelete(widgetType)} 
-                    size="sm" 
+
+                  <Button
+                    onClick={() => handleDelete(widgetType)}
+                    size="sm"
                     className="gap-1 bg-red-50/60 dark:bg-red-900/30 backdrop-blur-sm hover:bg-red-100/80 dark:hover:bg-red-900/50 border border-red-200/50 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all duration-200"
                   >
                     <Trash2 className="h-3 w-3" />

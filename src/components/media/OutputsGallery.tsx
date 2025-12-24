@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ArrowLeft, Image as ImageIcon, Video, Loader2, RefreshCw, Server, AlertCircle, CheckCircle, Trash2, FolderOpen, Check, X, MousePointer, CheckSquare, Copy } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -16,36 +17,36 @@ type FolderType = 'input' | 'output' | 'temp' | 'all';
 
 // Utility function to find matching image file for a video
 const findMatchingImageFile = (
-  videoFilename: string, 
-  imageFiles: IComfyFileInfo[], 
-  subfolder?: string, 
+  videoFilename: string,
+  imageFiles: IComfyFileInfo[],
+  subfolder?: string,
   type?: string
 ): IComfyFileInfo | null => {
   // Get video filename without extension
   let videoNameWithoutExt = videoFilename.substring(0, videoFilename.lastIndexOf('.'));
-  
+
   // Remove -audio suffix if present (e.g., "something-video-audio" -> "something-video")
   if (videoNameWithoutExt.endsWith('-audio')) {
     videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
   }
-  
+
   // Look for image with same name but image extension in the SAME subfolder and folder type
   const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
-  
+
   for (const img of imageFiles) {
     // Must match subfolder and folder type (input/output/temp) as well as filename
     if (img.subfolder !== subfolder || img.type !== type) {
       continue;
     }
-    
+
     const imgNameWithoutExt = img.filename.substring(0, img.filename.lastIndexOf('.'));
     const imgExt = img.filename.split('.').pop()?.toLowerCase() || '';
-    
+
     if (imgNameWithoutExt === videoNameWithoutExt && imageExtensions.includes(imgExt)) {
       return img;
     }
   }
-  
+
   return null;
 };
 
@@ -59,15 +60,16 @@ interface LazyImageProps {
   onSelectionChange?: (file: IComfyFileInfo, selected: boolean) => void;
 }
 
-const LazyImage: React.FC<LazyImageProps> = ({ 
-  file, 
-  onImageClick, 
-  allFiles, 
-  index = 0, 
-  isSelectionMode = false, 
-  isSelected = false, 
-  onSelectionChange 
+const LazyImage: React.FC<LazyImageProps> = ({
+  file,
+  onImageClick,
+  allFiles,
+  index = 0,
+  isSelectionMode = false,
+  isSelected = false,
+  onSelectionChange
 }) => {
+  const { t } = useTranslation();
   const [isLoaded, setIsLoaded] = useState(false);
   // Load first 12 items immediately (2 rows on most screens)
   const [isInView, setIsInView] = useState(index < 12);
@@ -81,7 +83,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
   useEffect(() => {
     // Skip lazy loading for first 12 items
     if (index < 12) return;
-    
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -94,7 +96,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
 
     if (imgRef.current) {
       observer.observe(imgRef.current);
-      
+
       // Check if element is already in view on mount
       const rect = imgRef.current.getBoundingClientRect();
       const isInitiallyVisible = rect.top >= 0 && rect.top <= window.innerHeight;
@@ -115,39 +117,39 @@ const LazyImage: React.FC<LazyImageProps> = ({
   // Find matching image thumbnail for video files
   const findMatchingImageForVideo = (videoFilename: string): IComfyFileInfo | null => {
     if (!allFiles?.images || !isVideoFile(videoFilename)) return null;
-    
+
     return findMatchingImageFile(videoFilename, allFiles.images, file.subfolder, file.type);
   };
 
   // Check if an image file has a corresponding video (for filtering out thumbnails)
   const hasCorrespondingVideo = (imageFile: IComfyFileInfo): boolean => {
     if (!allFiles?.videos) return false;
-    
+
     // Get image filename without extension
     const imgNameWithoutExt = imageFile.filename.substring(0, imageFile.filename.lastIndexOf('.'));
-    
+
     // Look for video with same name in the SAME subfolder and folder type
     const videoExtensions = ['mp4', 'avi', 'mov', 'mkv', 'webm'];
-    
+
     for (const video of allFiles.videos) {
       // Must match subfolder and folder type (input/output/temp) as well as filename
       if (video.subfolder !== imageFile.subfolder || video.type !== imageFile.type) {
         continue;
       }
-      
+
       let videoNameWithoutExt = video.filename.substring(0, video.filename.lastIndexOf('.'));
       const videoExt = video.filename.split('.').pop()?.toLowerCase() || '';
-      
+
       // Remove -audio suffix if present (e.g., "something-video-audio" -> "something-video")
       if (videoNameWithoutExt.endsWith('-audio')) {
         videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
       }
-      
+
       if (imgNameWithoutExt === videoNameWithoutExt && videoExtensions.includes(videoExt)) {
         return true; // Found corresponding video
       }
     }
-    
+
     return false;
   };
 
@@ -192,9 +194,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
       animate={{ opacity: 1, scale: 1 }}
       whileHover={{ scale: 1.02 }}
       whileTap={{ scale: 0.98 }}
-      className={`relative aspect-square bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden cursor-pointer group ${
-        isSelected ? 'ring-2 ring-blue-500' : ''
-      }`}
+      className={`relative aspect-square bg-slate-200 dark:bg-slate-800 rounded-lg overflow-hidden cursor-pointer group ${isSelected ? 'ring-2 ring-blue-500' : ''
+        }`}
       onClick={handleClick}
     >
       {/* Loading Placeholder */}
@@ -217,7 +218,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
             ) : (
               <ImageIcon className="h-8 w-8 text-slate-400 mx-auto mb-2" />
             )}
-            <p className="text-xs text-slate-500 dark:text-slate-400">Failed to load</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400">{t('media.failedToLoad')}</p>
           </div>
         </div>
       )}
@@ -256,9 +257,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
             <img
               src={thumbnailUrl}
               alt={file.filename}
-              className={`w-full h-full object-cover transition-opacity duration-300 ${
-                isLoaded ? 'opacity-100' : 'opacity-0'
-              }`}
+              className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'
+                }`}
               onLoad={() => setIsLoaded(true)}
               onError={() => {
                 setHasError(true);
@@ -272,9 +272,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
       {/* Selection Checkbox */}
       {isSelectionMode && (
         <div className="absolute top-2 left-2 z-20">
-          <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${
-            isSelected ? 'bg-blue-500' : 'bg-black/30'
-          }`}>
+          <div className={`w-6 h-6 rounded-full border-2 border-white flex items-center justify-center ${isSelected ? 'bg-blue-500' : 'bg-black/30'
+            }`}>
             {isSelected && <Check className="h-4 w-4 text-white" />}
           </div>
         </div>
@@ -282,13 +281,12 @@ const LazyImage: React.FC<LazyImageProps> = ({
 
       {/* Folder Type Badge */}
       <div className="absolute top-2 right-2 z-20">
-        <Badge 
-          variant="secondary" 
-          className={`text-xs ${
-            file.type === 'input' ? 'bg-green-500/80 text-white' :
+        <Badge
+          variant="secondary"
+          className={`text-xs ${file.type === 'input' ? 'bg-green-500/80 text-white' :
             file.type === 'output' ? 'bg-blue-500/80 text-white' :
-            'bg-orange-500/80 text-white'
-          }`}
+              'bg-orange-500/80 text-white'
+            }`}
         >
           {file.type}
         </Badge>
@@ -319,8 +317,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   allowVideos = true,
   onFileSelect,
   onBackClick,
-  selectionTitle = "Select File"
+  selectionTitle
 }) => {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>(
     allowImages ? 'images' : allowVideos ? 'videos' : 'images'
   );
@@ -335,14 +334,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
-  
+
   // Selection mode states
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
 
   const navigate = useNavigate();
   const { url: serverUrl, isConnected, hasExtension, isCheckingExtension, checkExtension } = useConnectionStore();
-  
+
   // Memoize the service instance to prevent infinite loops
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
 
@@ -361,7 +360,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
     try {
       const fileList = await comfyFileService.listFiles();
-      
+
       // Sort by modification time (newest first), fallback to filename if no modified field
       const sortByModified = (a: IComfyFileInfo, b: IComfyFileInfo) => {
         if (a.modified !== undefined && b.modified !== undefined) {
@@ -370,11 +369,11 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         // Fallback to filename comparison if modified is not available
         return b.filename.localeCompare(a.filename);
       };
-      
+
       // Filter files based on active folder selection
       let filteredImages = fileList.images;
       let filteredVideos = fileList.videos;
-      
+
       if (activeFolder === 'all') {
         // All Tab: temp folder excluded, input/output only
         filteredImages = fileList.images.filter(f => f.type !== 'temp');
@@ -389,17 +388,17 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         images: filteredImages.sort(sortByModified),
         videos: filteredVideos.sort(sortByModified)
       });
-      
+
       console.log('🔍 Files loaded:', {
         folder: activeFolder,
         totalImages: fileList.images.length,
         filteredImages: filteredImages.length,
-        totalVideos: fileList.videos.length, 
+        totalVideos: fileList.videos.length,
         filteredVideos: filteredVideos.length
       });
     } catch (err) {
       console.error('❌ Failed to load files:', err);
-      setError('Failed to load files');
+      setError(t('gallery.loadingError') || 'Failed to load files');
     } finally {
       setLoading(false);
     }
@@ -430,7 +429,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
             const fullPath = file.subfolder ? `${file.subfolder}/${file.filename}` : file.filename;
             onFileSelect(fullPath);
           } else {
-            setError(`Failed to copy file: ${result.error}`);
+            setError(`${t('gallery.copyError') || 'Failed to copy file'}: ${result.error}`);
             return;
           }
         } else {
@@ -440,7 +439,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         }
       } catch (error) {
         console.error('Failed to process file selection:', error);
-        setError('Failed to process file selection');
+        setError(t('gallery.processSelectionError') || 'Failed to process file selection');
       } finally {
         setLoading(false);
       }
@@ -462,7 +461,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       setPreviewUrl(url);
     } catch (err) {
       console.error('❌ Failed to create preview URL:', err);
-      setPreviewError('Failed to load file preview');
+      setPreviewError(t('media.failedToLoad') || 'Failed to load file preview');
     } finally {
       setPreviewLoading(false);
     }
@@ -494,13 +493,13 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const handleSelectionChange = (file: IComfyFileInfo, selected: boolean) => {
     const fileKey = `${file.filename}-${file.subfolder}-${file.type}`;
     const newSelected = new Set(selectedFiles);
-    
+
     if (selected) {
       newSelected.add(fileKey);
     } else {
       newSelected.delete(fileKey);
     }
-    
+
     setSelectedFiles(newSelected);
   };
 
@@ -524,29 +523,29 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   // File operations
   const handleDeleteSelected = async () => {
     if (selectedFiles.size === 0) return;
-    
+
     const allFiles = [...files.images, ...files.videos];
-    const selectedFilesList = allFiles.filter(f => 
+    const selectedFilesList = allFiles.filter(f =>
       selectedFiles.has(`${f.filename}-${f.subfolder}-${f.type}`)
     );
-    
+
     const filesToDelete = selectedFilesList.map(f => ({
       filename: f.filename,
       subfolder: f.subfolder,
       type: f.type
     }));
-    
+
     // For each video file being deleted, also find and delete its matching thumbnail image
     const additionalThumbnailsToDelete: { filename: string; subfolder?: string; type: string }[] = [];
-    
+
     for (const file of selectedFilesList) {
       const isVideo = file.filename.split('.').pop()?.toLowerCase() || '';
       const videoExtensions = ['mp4', 'avi', 'mov', 'mkv', 'webm'];
-      
+
       if (videoExtensions.includes(isVideo)) {
         // This is a video file, find its matching thumbnail
         const matchingThumbnail = findMatchingImageFile(file.filename, files.images, file.subfolder, file.type);
-        
+
         if (matchingThumbnail) {
           // Check if the thumbnail is not already selected for deletion
           const thumbnailKey = `${matchingThumbnail.filename}-${matchingThumbnail.subfolder}-${matchingThumbnail.type}`;
@@ -561,14 +560,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         }
       }
     }
-    
+
     // Combine original files and additional thumbnails
     const allFilesToDelete = [...filesToDelete, ...additionalThumbnailsToDelete];
 
     try {
       setLoading(true);
       const result = await comfyFileService.deleteFiles(allFilesToDelete);
-      
+
       if (result.success) {
         const totalDeleted = allFilesToDelete.length;
         const thumbnailsDeleted = additionalThumbnailsToDelete.length;
@@ -589,9 +588,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
   const handleMoveSelected = async (destinationType: 'input' | 'output' | 'temp') => {
     if (selectedFiles.size === 0) return;
-    
+
     const allFiles = [...files.images, ...files.videos];
-    const filesToMove = allFiles.filter(f => 
+    const filesToMove = allFiles.filter(f =>
       selectedFiles.has(`${f.filename}-${f.subfolder}-${f.type}`)
     ).map(f => ({
       filename: f.filename,
@@ -602,7 +601,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     try {
       setLoading(true);
       const result = await comfyFileService.moveFiles(filesToMove, destinationType);
-      
+
       if (result.success) {
         console.log(`✅ Successfully moved ${filesToMove.length} files to ${destinationType}`);
         await loadFiles(); // Refresh the file list
@@ -621,9 +620,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
   const handleCopySelected = async (destinationType: 'input' | 'output' | 'temp') => {
     if (selectedFiles.size === 0) return;
-    
+
     const allFiles = [...files.images, ...files.videos];
-    const filesToCopy = allFiles.filter(f => 
+    const filesToCopy = allFiles.filter(f =>
       selectedFiles.has(`${f.filename}-${f.subfolder}-${f.type}`)
     ).map(f => ({
       filename: f.filename,
@@ -634,7 +633,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     try {
       setLoading(true);
       const result = await comfyFileService.copyFiles(filesToCopy, destinationType);
-      
+
       if (result.success) {
         console.log(`✅ Successfully copied ${filesToCopy.length} files to ${destinationType}`);
         await loadFiles(); // Refresh the file list
@@ -706,7 +705,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const totalFiles = files.images.length + files.videos.length;
 
   return (
-    <div 
+    <div
       className="bg-black transition-colors duration-300 pwa-container"
       style={{
         overflow: 'hidden',
@@ -722,12 +721,12 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     >
       {/* Main Background with Gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" />
-      
+
       {/* Glassmorphism Background Overlay */}
       <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-      
+
       {/* Main Scrollable Content Area */}
-      <div 
+      <div
         className="absolute top-0 left-0 right-0 bottom-0"
         style={{
           overflowY: 'auto',
@@ -739,388 +738,384 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       >
         {/* Fixed Header inside scroll area */}
         <header className="sticky top-0 z-50 pwa-header bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
-        {/* Gradient Overlay for Enhanced Glass Effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-        <div className="relative flex items-center justify-between p-4 z-10">
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={handleGoBack}
-              variant="outline"
-              size="sm"
-              className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                {isFileSelectionMode ? selectionTitle : 'Image & Video'}
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {totalFiles} files total
-                {isSelectionMode && selectedFiles.size > 0 && (
-                  <span className="ml-2 text-blue-600 dark:text-blue-400">
-                    • {selectedFiles.size} selected
-                  </span>
-                )}
-              </p>
+          {/* Gradient Overlay for Enhanced Glass Effect */}
+          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+          <div className="relative flex items-center justify-between p-4 z-10">
+            <div className="flex items-center space-x-4">
+              <Button
+                onClick={handleGoBack}
+                variant="outline"
+                size="sm"
+                className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                  {isFileSelectionMode ? (selectionTitle || t('gallery.selectFile')) : t('gallery.title')}
+                </h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  {t('gallery.filesTotal', { count: totalFiles })}
+                  {isSelectionMode && selectedFiles.size > 0 && (
+                    <span className="ml-2 text-blue-600 dark:text-blue-400">
+                      • {t('gallery.selectedCount', { count: selectedFiles.size })}
+                    </span>
+                  )}
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-1">
+              {isSelectionMode ? (
+                <>
+                  <Button
+                    onClick={handleDeselectAll}
+                    variant="ghost"
+                    size="sm"
+                    disabled={selectedFiles.size === 0}
+                    className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg"
+                    title={t('gallery.clearSelection')}
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    onClick={handleSelectAll}
+                    variant="ghost"
+                    size="sm"
+                    className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg"
+                    title={t('gallery.selectAll')}
+                  >
+                    <CheckSquare className="h-4 w-4" />
+                  </Button>
+                </>
+              ) : (
+                <Button
+                  onClick={loadFiles}
+                  variant="outline"
+                  size="sm"
+                  disabled={loading}
+                  className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg"
+                  title={t('gallery.refreshFiles')}
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                </Button>
+              )}
+              <Button
+                onClick={toggleSelectionMode}
+                variant={isSelectionMode ? "default" : "outline"}
+                size="sm"
+                className={`bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg ${isSelectionMode
+                  ? 'bg-blue-500/80 dark:bg-blue-500/80 border-blue-400/50 text-white'
+                  : ''
+                  }`}
+                title={isSelectionMode ? t('gallery.exitSelectionMode') : t('gallery.enterSelectionMode')}
+              >
+                <MousePointer className="h-4 w-4" />
+              </Button>
             </div>
           </div>
-          <div className="flex items-center space-x-1">
-            {isSelectionMode ? (
-              <>
-                <Button
-                  onClick={handleDeselectAll}
-                  variant="ghost"
-                  size="sm"
-                  disabled={selectedFiles.size === 0}
-                  className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg"
-                  title="Clear selection"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-                <Button
-                  onClick={handleSelectAll}
-                  variant="ghost"
-                  size="sm"
-                  className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg"
-                  title="Select all"
-                >
-                  <CheckSquare className="h-4 w-4" />
-                </Button>
-              </>
-            ) : (
+
+          {/* Folder Filter - Hidden in selection mode */}
+          {!isSelectionMode && (
+            <div className="relative px-4 pb-2 z-10">
+              <div className="flex space-x-1 bg-white/10 dark:bg-slate-800/10 backdrop-blur-md rounded-lg p-1 border border-white/20 dark:border-slate-600/20 shadow-lg">
+                {(['all', 'input', 'output', 'temp'] as FolderType[]).map((folderType) => (
+                  <button
+                    key={folderType}
+                    onClick={() => {
+                      setActiveFolder(folderType);
+                      window.scrollTo(0, 0);
+                      setTimeout(() => {
+                        const refreshButton = document.querySelector('[title="Refresh files"]') as HTMLButtonElement;
+                        if (refreshButton) {
+                          refreshButton.click();
+                        }
+                      }, 300);
+                    }}
+                    className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${activeFolder === folderType
+                      ? 'bg-white/30 dark:bg-slate-700/30 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-sm border border-white/20 dark:border-slate-600/20'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-700/20 backdrop-blur-sm'
+                      }`}
+                  >
+                    <FolderOpen className="h-3 w-3" />
+                    <span className="capitalize">{t(`gallery.folders.${folderType}`)}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Media Type Tabs - Hidden in selection mode */}
+          {!isSelectionMode && (
+            <div className="relative flex px-4 pb-4 z-10">
+              <div className="flex space-x-1 bg-white/10 dark:bg-slate-800/10 backdrop-blur-md rounded-lg p-1 border border-white/20 dark:border-slate-600/20 shadow-lg">
+                {allowImages && (
+                  <button
+                    onClick={() => {
+                      setActiveTab('images');
+                      window.scrollTo(0, 0);
+                    }}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'images'
+                      ? 'bg-white/30 dark:bg-slate-700/30 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-sm border border-white/20 dark:border-slate-600/20'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-700/20 backdrop-blur-sm'
+                      }`}
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                    <span>{t('gallery.tabs.images')}</span>
+                    <Badge variant="secondary" className="ml-1">
+                      {filteredImageCount}
+                    </Badge>
+                  </button>
+                )}
+                {allowVideos && (
+                  <button
+                    onClick={() => {
+                      setActiveTab('videos');
+                      window.scrollTo(0, 0);
+                    }}
+                    className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${activeTab === 'videos'
+                      ? 'bg-white/30 dark:bg-slate-700/30 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-sm border border-white/20 dark:border-slate-600/20'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-700/20 backdrop-blur-sm'
+                      }`}
+                  >
+                    <Video className="h-4 w-4" />
+                    <span>{t('gallery.tabs.videos')}</span>
+                    <Badge variant="secondary" className="ml-1">
+                      {files.videos.length}
+                    </Badge>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Selection Actions Panel */}
+          {isSelectionMode && selectedFiles.size > 0 && (
+            <div className="px-4 pb-4">
+              <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2 text-sm text-blue-700 dark:text-blue-300">
+                    <Check className="h-4 w-4" />
+                    <span>{t('gallery.selectedCount', { count: selectedFiles.size })}</span>
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    {/* Move buttons */}
+                    <Button
+                      onClick={() => handleMoveSelected('input')}
+                      variant="ghost"
+                      size="sm"
+                      disabled={loading}
+                      className="h-8 px-2 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/20"
+                      title={t('gallery.actions.moveToInput')}
+                    >
+                      <FolderOpen className="h-3 w-3 mr-1" />
+                      {t('gallery.actions.in')}
+                    </Button>
+                    <Button
+                      onClick={() => handleMoveSelected('output')}
+                      variant="ghost"
+                      size="sm"
+                      disabled={loading}
+                      className="h-8 px-2 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/20"
+                      title={t('gallery.actions.moveToOutput')}
+                    >
+                      <FolderOpen className="h-3 w-3 mr-1" />
+                      {t('gallery.actions.out')}
+                    </Button>
+                    <Button
+                      onClick={() => handleMoveSelected('temp')}
+                      variant="ghost"
+                      size="sm"
+                      disabled={loading}
+                      className="h-8 px-2 text-xs text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/20"
+                      title={t('gallery.actions.moveToTemp')}
+                    >
+                      <FolderOpen className="h-3 w-3 mr-1" />
+                      {t('gallery.actions.tmp')}
+                    </Button>
+                    {/* Copy button - copies to output folder by default */}
+                    <Button
+                      onClick={() => handleCopySelected('output')}
+                      variant="ghost"
+                      size="sm"
+                      disabled={loading}
+                      className="h-8 w-8 p-0 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/20"
+                      title={t('gallery.actions.copyToOutput')}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    {/* Delete button */}
+                    <Button
+                      onClick={handleDeleteSelected}
+                      variant="ghost"
+                      size="sm"
+                      disabled={loading}
+                      className="h-8 w-8 p-0 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/20"
+                      title={t('gallery.actions.delete')}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </header>
+
+        {/* Server Status Check */}
+        {(isCheckingExtension || !isConnected || !hasExtension) && (
+          <div className="p-4">
+            <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center space-x-2">
+                  <Server className="h-5 w-5" />
+                  <span>{t('gallery.server.requirements')}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {isCheckingExtension ? (
+                  <div className="flex items-center space-x-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {t('gallery.server.checking')}
+                    </span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Server Connection Status */}
+                    <div className="flex items-center space-x-3">
+                      {isConnected ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className="text-sm">
+                        ComfyUI Server: {isConnected ? (
+                          <span className="text-green-600 dark:text-green-400 font-medium">{t('gallery.server.connected')}</span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400 font-medium">{t('gallery.server.disconnected')}</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* API Extension Status */}
+                    <div className="flex items-center space-x-3">
+                      {hasExtension ? (
+                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-4 w-4 text-red-500" />
+                      )}
+                      <span className="text-sm">
+                        Mobile UI API Extension: {hasExtension ? (
+                          <span className="text-green-600 dark:text-green-400 font-medium">{t('gallery.server.available')}</span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400 font-medium">{t('gallery.server.notFound')}</span>
+                        )}
+                      </span>
+                    </div>
+
+                    {/* Error Messages */}
+                    {(!isConnected || !hasExtension) && (
+                      <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">{t('gallery.server.issuesFound')}</h4>
+                        <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
+                          {!isConnected && <li>• {t('gallery.server.cannotConnect')}</li>}
+                          {isConnected && !hasExtension && <li>• {t('gallery.server.extensionNotFound')}</li>}
+                        </ul>
+
+                        {!hasExtension && isConnected && (
+                          <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded">
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                              <strong>To fix:</strong> {t('gallery.server.installInstruction')}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Retry Buttons */}
+                    <div className="flex justify-end gap-2 mt-4">
+                      <Button onClick={handleRetryConnection} variant="outline" size="sm">
+                        <RefreshCw className="h-4 w-4 mr-2" />
+                        {t('gallery.server.recheck')}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Content */}
+        <main className="p-4 relative z-10">
+          {loading && (
+            <div className="flex items-center justify-center py-12">
+              <div className="text-center">
+                <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-3" />
+                <p className="text-sm text-slate-600 dark:text-slate-400">
+                  {t('gallery.loading')}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <div className="max-w-md mx-auto p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
               <Button
                 onClick={loadFiles}
                 variant="outline"
                 size="sm"
-                disabled={loading}
-                className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg"
-                title="Refresh files"
+                className="w-full"
               >
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+                {t('common.retry')}
               </Button>
-            )}
-            <Button
-              onClick={toggleSelectionMode}
-              variant={isSelectionMode ? "default" : "outline"}
-              size="sm"
-              className={`bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg ${
-                isSelectionMode 
-                  ? 'bg-blue-500/80 dark:bg-blue-500/80 border-blue-400/50 text-white'
-                  : ''
-              }`}
-              title={isSelectionMode ? 'Exit selection mode' : 'Enter selection mode'}
-            >
-              <MousePointer className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Folder Filter - Hidden in selection mode */}
-        {!isSelectionMode && (
-          <div className="relative px-4 pb-2 z-10">
-            <div className="flex space-x-1 bg-white/10 dark:bg-slate-800/10 backdrop-blur-md rounded-lg p-1 border border-white/20 dark:border-slate-600/20 shadow-lg">
-            {(['all', 'input', 'output', 'temp'] as FolderType[]).map((folderType) => (
-              <button
-                key={folderType}
-                onClick={() => {
-                  setActiveFolder(folderType);
-                  window.scrollTo(0, 0);
-                  setTimeout(() => {
-                    const refreshButton = document.querySelector('[title="Refresh files"]') as HTMLButtonElement;
-                    if (refreshButton) {
-                      refreshButton.click();
-                    }
-                  }, 300);
-                }}
-                className={`flex items-center space-x-2 px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                  activeFolder === folderType
-                    ? 'bg-white/30 dark:bg-slate-700/30 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-sm border border-white/20 dark:border-slate-600/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-700/20 backdrop-blur-sm'
-                }`}
-              >
-                <FolderOpen className="h-3 w-3" />
-                <span className="capitalize">{folderType}</span>
-              </button>
-            ))}
-          </div>
-        </div>
-        )}
-
-        {/* Media Type Tabs - Hidden in selection mode */}
-        {!isSelectionMode && (
-        <div className="relative flex px-4 pb-4 z-10">
-          <div className="flex space-x-1 bg-white/10 dark:bg-slate-800/10 backdrop-blur-md rounded-lg p-1 border border-white/20 dark:border-slate-600/20 shadow-lg">
-            {allowImages && (
-              <button
-                onClick={() => {
-                  setActiveTab('images');
-                  window.scrollTo(0, 0);
-                }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  activeTab === 'images'
-                    ? 'bg-white/30 dark:bg-slate-700/30 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-sm border border-white/20 dark:border-slate-600/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-700/20 backdrop-blur-sm'
-                }`}
-              >
-                <ImageIcon className="h-4 w-4" />
-                <span>Images</span>
-                <Badge variant="secondary" className="ml-1">
-                  {filteredImageCount}
-                </Badge>
-              </button>
-            )}
-            {allowVideos && (
-              <button
-                onClick={() => {
-                  setActiveTab('videos');
-                  window.scrollTo(0, 0);
-                }}
-                className={`flex items-center space-x-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                  activeTab === 'videos'
-                    ? 'bg-white/30 dark:bg-slate-700/30 text-slate-900 dark:text-slate-100 shadow-sm backdrop-blur-sm border border-white/20 dark:border-slate-600/20'
-                    : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/20 dark:hover:bg-slate-700/20 backdrop-blur-sm'
-                }`}
-              >
-                <Video className="h-4 w-4" />
-                <span>Videos</span>
-                <Badge variant="secondary" className="ml-1">
-                  {files.videos.length}
-                </Badge>
-              </button>
-            )}
-          </div>
-        </div>
-        )}
-
-        {/* Selection Actions Panel */}
-        {isSelectionMode && selectedFiles.size > 0 && (
-          <div className="px-4 pb-4">
-            <div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2 text-sm text-blue-700 dark:text-blue-300">
-                  <Check className="h-4 w-4" />
-                  <span>{selectedFiles.size} files</span>
-                </div>
-                <div className="flex items-center space-x-1">
-                  {/* Move buttons */}
-                  <Button
-                    onClick={() => handleMoveSelected('input')}
-                    variant="ghost"
-                    size="sm"
-                    disabled={loading}
-                    className="h-8 px-2 text-xs text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/20"
-                    title="Move to Input folder"
-                  >
-                    <FolderOpen className="h-3 w-3 mr-1" />
-                    In
-                  </Button>
-                  <Button
-                    onClick={() => handleMoveSelected('output')}
-                    variant="ghost"
-                    size="sm"
-                    disabled={loading}
-                    className="h-8 px-2 text-xs text-blue-700 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/20"
-                    title="Move to Output folder"
-                  >
-                    <FolderOpen className="h-3 w-3 mr-1" />
-                    Out
-                  </Button>
-                  <Button
-                    onClick={() => handleMoveSelected('temp')}
-                    variant="ghost"
-                    size="sm"
-                    disabled={loading}
-                    className="h-8 px-2 text-xs text-orange-700 dark:text-orange-300 hover:bg-orange-100 dark:hover:bg-orange-900/20"
-                    title="Move to Temp folder"
-                  >
-                    <FolderOpen className="h-3 w-3 mr-1" />
-                    Tmp
-                  </Button>
-                  {/* Copy button - copies to output folder by default */}
-                  <Button
-                    onClick={() => handleCopySelected('output')}
-                    variant="ghost"
-                    size="sm"
-                    disabled={loading}
-                    className="h-8 w-8 p-0 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-900/20"
-                    title="Copy files to Output folder"
-                  >
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                  {/* Delete button */}
-                  <Button
-                    onClick={handleDeleteSelected}
-                    variant="ghost"
-                    size="sm"
-                    disabled={loading}
-                    className="h-8 w-8 p-0 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/20"
-                    title="Delete files"
-                  >
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
-                </div>
-              </div>
             </div>
-          </div>
-        )}
-      </header>
+          )}
 
-      {/* Server Status Check */}
-      {(isCheckingExtension || !isConnected || !hasExtension) && (
-        <div className="p-4">
-          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20">
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2">
-                <Server className="h-5 w-5" />
-                <span>Server Requirements</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {isCheckingExtension ? (
-                <div className="flex items-center space-x-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    Checking server connection and API extension...
-                  </span>
-                </div>
+          {!loading && !error && currentFiles.length === 0 && (
+            <div className="text-center py-12">
+              {activeTab === 'images' ? (
+                <ImageIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
               ) : (
-                <>
-                  {/* Server Connection Status */}
-                  <div className="flex items-center space-x-3">
-                    {isConnected ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                    )}
-                    <span className="text-sm">
-                      ComfyUI Server: {isConnected ? (
-                        <span className="text-green-600 dark:text-green-400 font-medium">Connected</span>
-                      ) : (
-                        <span className="text-red-600 dark:text-red-400 font-medium">Disconnected</span>
-                      )}
-                    </span>
-                  </div>
-
-                  {/* API Extension Status */}
-                  <div className="flex items-center space-x-3">
-                    {hasExtension ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                    )}
-                    <span className="text-sm">
-                      Mobile UI API Extension: {hasExtension ? (
-                        <span className="text-green-600 dark:text-green-400 font-medium">Available</span>
-                      ) : (
-                        <span className="text-red-600 dark:text-red-400 font-medium">Not Found</span>
-                      )}
-                    </span>
-                  </div>
-
-                  {/* Error Messages */}
-                  {(!isConnected || !hasExtension) && (
-                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">Issues Found:</h4>
-                      <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
-                        {!isConnected && <li>• Cannot connect to ComfyUI server</li>}
-                        {isConnected && !hasExtension && <li>• ComfyUI Mobile UI API extension not found</li>}
-                      </ul>
-                      
-                      {!hasExtension && isConnected && (
-                        <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded">
-                          <p className="text-xs text-blue-700 dark:text-blue-300">
-                            <strong>To fix:</strong> Install the ComfyUI Mobile UI API extension in your ComfyUI custom_nodes directory.
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Retry Buttons */}
-                  <div className="flex justify-end gap-2 mt-4">
-                    <Button onClick={handleRetryConnection} variant="outline" size="sm">
-                      <RefreshCw className="h-4 w-4 mr-2" />
-                      Recheck
-                    </Button>
-                  </div>
-                </>
+                <Video className="h-16 w-16 text-slate-400 mx-auto mb-4" />
               )}
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
-        {/* Content */}
-        <main className="p-4 relative z-10">
-        {loading && (
-          <div className="flex items-center justify-center py-12">
-            <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin text-blue-500 mx-auto mb-3" />
-              <p className="text-sm text-slate-600 dark:text-slate-400">
-                Loading output files...
+              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                {t('gallery.noFilesFound', { type: t(`gallery.tabs.${activeTab}`) })}
+              </h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
+                {t('gallery.noFilesDescription', { type: t(`gallery.tabs.${activeTab}`) })}
               </p>
+              <Button onClick={loadFiles} variant="outline" size="sm">
+                <RefreshCw className="h-4 w-4 mr-2" />
+                {t('common.refresh')}
+              </Button>
             </div>
-          </div>
-        )}
+          )}
 
-        {error && (
-          <div className="max-w-md mx-auto p-4 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-            <p className="text-sm text-red-600 dark:text-red-400 mb-3">{error}</p>
-            <Button
-              onClick={loadFiles}
-              variant="outline"
-              size="sm"
-              className="w-full"
-            >
-              Try Again
-            </Button>
-          </div>
-        )}
+          {!loading && !error && currentFiles.length > 0 && (
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+              <AnimatePresence>
+                {currentFiles.map((file, index) => {
+                  const fileKey = `${file.filename}-${file.subfolder}-${file.type}`;
+                  const isSelected = selectedFiles.has(fileKey);
 
-        {!loading && !error && currentFiles.length === 0 && (
-          <div className="text-center py-12">
-            {activeTab === 'images' ? (
-              <ImageIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-            ) : (
-              <Video className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-            )}
-            <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
-              No {activeTab} found
-            </h3>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mb-4">
-              No {activeTab} have been generated yet
-            </p>
-            <Button onClick={loadFiles} variant="outline" size="sm">
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Refresh
-            </Button>
-          </div>
-        )}
-
-        {!loading && !error && currentFiles.length > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
-            <AnimatePresence>
-              {currentFiles.map((file, index) => {
-                const fileKey = `${file.filename}-${file.subfolder}-${file.type}`;
-                const isSelected = selectedFiles.has(fileKey);
-                
-                return (
-                  <LazyImage
-                    key={`${file.filename}-${index}`}
-                    file={file}
-                    onImageClick={handleFileClick}
-                    allFiles={files}
-                    index={index}
-                    isSelectionMode={isSelectionMode}
-                    isSelected={isSelected}
-                    onSelectionChange={handleSelectionChange}
-                  />
-                );
-              })}
-            </AnimatePresence>
-          </div>
-        )}
+                  return (
+                    <LazyImage
+                      key={`${file.filename}-${index}`}
+                      file={file}
+                      onImageClick={handleFileClick}
+                      allFiles={files}
+                      index={index}
+                      isSelectionMode={isSelectionMode}
+                      isSelected={isSelected}
+                      onSelectionChange={handleSelectionChange}
+                    />
+                  );
+                })}
+              </AnimatePresence>
+            </div>
+          )}
         </main>
       </div>
 

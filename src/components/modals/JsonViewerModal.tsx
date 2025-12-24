@@ -3,6 +3,7 @@ import { X, Copy, Download, Loader2, Search, ChevronUp, ChevronDown, FileText } 
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
+import { useTranslation } from 'react-i18next';
 
 interface JsonViewerModalProps {
   isOpen: boolean;
@@ -17,6 +18,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
   title,
   data
 }) => {
+  const { t } = useTranslation();
   const [isCopying, setIsCopying] = useState(false);
   const [isProcessing, setIsProcessing] = useState(true);
   const [jsonString, setJsonString] = useState<string>('');
@@ -43,7 +45,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
         setJsonString(processed);
       } catch (error) {
         setJsonString(JSON.stringify({
-          error: 'Failed to serialize data',
+          error: t('jsonViewer.failedToSerialize'),
           details: String(error)
         }, null, 2));
       } finally {
@@ -178,9 +180,9 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
     setIsCopying(true);
     try {
       await navigator.clipboard.writeText(jsonString);
-      toast.success('Copied to clipboard');
+      toast.success(t('jsonViewer.copiedToClipboard'));
     } catch (error) {
-      toast.error('Failed to copy to clipboard');
+      toast.error(t('jsonViewer.failedToCopy'));
       console.error('Copy failed:', error);
     } finally {
       setIsCopying(false);
@@ -199,7 +201,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    toast.success('Downloaded JSON file');
+    toast.success(t('jsonViewer.downloadedJson'));
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -298,11 +300,11 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                   {isProcessing ? (
                     <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
                       <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>Processing JSON data...</span>
+                      <span>{t('jsonViewer.processingJson')}</span>
                     </div>
                   ) : (
                     <p className="text-sm text-slate-600 dark:text-slate-400">
-                      {jsonString.split('\n').length} lines • {(new Blob([jsonString]).size / 1024).toFixed(1)} KB
+                      {jsonString.split('\n').length} {t('jsonViewer.lines')} • {(new Blob([jsonString]).size / 1024).toFixed(1)} KB
                     </p>
                   )}
                 </div>
@@ -313,8 +315,8 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                     variant="outline"
                     size="sm"
                     className={`h-8 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full ${isSearchOpen
-                        ? 'bg-violet-500/20 text-violet-700 dark:text-violet-300'
-                        : 'bg-white/10 dark:bg-slate-700/10 hover:bg-white/20 dark:hover:bg-slate-700/30'
+                      ? 'bg-violet-500/20 text-violet-700 dark:text-violet-300'
+                      : 'bg-white/10 dark:bg-slate-700/10 hover:bg-white/20 dark:hover:bg-slate-700/30'
                       }`}
                     disabled={isProcessing}
                   >
@@ -328,7 +330,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                     disabled={isProcessing}
                   >
                     <Download className="h-4 w-4 mr-1" />
-                    Download
+                    {t('jsonViewer.download')}
                   </Button>
                   <Button
                     onClick={handleCopy}
@@ -338,7 +340,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                     disabled={isCopying || isProcessing}
                   >
                     <Copy className="h-4 w-4 mr-1" />
-                    {isCopying ? 'Copying...' : 'Copy'}
+                    {isCopying ? t('jsonViewer.copying') : t('jsonViewer.copy')}
                   </Button>
                 </div>
               </div>
@@ -358,7 +360,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                         <input
                           ref={searchInputRef}
                           type="text"
-                          placeholder="Enter search term and click Search..."
+                          placeholder={t('jsonViewer.searchPlaceholder')}
                           className="flex-1 px-3 py-2 text-sm bg-white/20 dark:bg-slate-800/20 backdrop-blur-sm border border-white/20 dark:border-slate-600/20 rounded-xl focus:outline-none focus:ring-2 focus:ring-violet-500/50 text-slate-900 dark:text-slate-100 placeholder-slate-500 dark:placeholder-slate-400"
                           autoFocus
                         />
@@ -368,7 +370,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                           size="sm"
                           className="h-8 px-3 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full hover:bg-white/20 dark:hover:bg-slate-700/30"
                         >
-                          Search
+                          {t('jsonViewer.search')}
                         </Button>
                       </div>
 
@@ -376,7 +378,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                         <>
                           <div className="flex items-center space-x-1 text-sm text-slate-600 dark:text-slate-400 min-w-0">
                             <span className="whitespace-nowrap">
-                              {currentMatchIndex + 1} of {searchMatches.length}
+                              {t('jsonViewer.matchCount', { current: currentMatchIndex + 1, total: searchMatches.length })}
                             </span>
                           </div>
 
@@ -405,7 +407,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
 
                       {activeSearchQuery && searchMatches.length === 0 && (
                         <div className="text-sm text-slate-500 dark:text-slate-400">
-                          No matches for "{activeSearchQuery}"
+                          {t('jsonViewer.noMatches', { query: activeSearchQuery })}
                         </div>
                       )}
                     </div>
@@ -420,9 +422,9 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                     <div className="flex flex-col items-center space-y-4">
                       <Loader2 className="h-8 w-8 animate-spin text-violet-400" />
                       <div className="text-sm text-slate-600 dark:text-slate-400 text-center">
-                        <p>Processing JSON data...</p>
+                        <p>{t('jsonViewer.processingJson')}</p>
                         <p className="text-xs mt-1 text-slate-500 dark:text-slate-500">
-                          Large datasets may take a few moments
+                          {t('jsonViewer.largeDatasets')}
                         </p>
                       </div>
                     </div>
