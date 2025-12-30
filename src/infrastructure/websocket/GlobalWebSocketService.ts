@@ -81,7 +81,7 @@ class GlobalWebSocketService extends EventEmitter {
   private webSocket: WebSocket | null = null;
   private clientId: string;
   private reconnectTimer: NodeJS.Timeout | null = null;
-  
+
   // State management
   private state: GlobalWebSocketState = {
     isConnected: false,
@@ -114,10 +114,10 @@ class GlobalWebSocketService extends EventEmitter {
   private maxBufferSize: number = 10; // Keep last 10 execution events
   private bufferEventTypes: Set<string> = new Set([
     'executing',
-    'progress', 
+    'progress',
     'executed',
     'execution_started',
-    'execution_success', 
+    'execution_success',
     'execution_error',
     'execution_interrupted',
     'progress_state'
@@ -133,9 +133,9 @@ class GlobalWebSocketService extends EventEmitter {
     // 🎯 Use hardcoded static clientId to ensure consistent connection across all browsers and sessions
     // This MUST match ComfyApiClient's clientId for proper message routing
     const staticClientId = 'comfy-mobile-ui-client-2025';
-    
+
     console.log(`🎯 [GlobalWebSocketService] Using static clientId:`, staticClientId);
-    
+
     return staticClientId;
   }
 
@@ -178,11 +178,11 @@ class GlobalWebSocketService extends EventEmitter {
     let currentPromptId: string | null = null;
     let executingNodeId: string | null = null;
     let nodeExecutionProgress: { nodeId: string; progress: number } | null = null;
-    
+
     // Process events in chronological order to get current state
     const sortedEvents = this.executionStateBuffer
       .sort((a, b) => a.timestamp - b.timestamp);
-    
+
     for (const event of sortedEvents) {
       switch (event.type) {
         case 'executing':
@@ -200,12 +200,12 @@ class GlobalWebSocketService extends EventEmitter {
             nodeExecutionProgress = null; // Reset progress when new node starts
           }
           break;
-          
+
         case 'execution_started':
           isExecuting = true;
           currentPromptId = event.data.promptId || currentPromptId;
           break;
-          
+
         case 'progress':
           if (event.data.node && event.data.value !== undefined && event.data.max !== undefined) {
             const percentage = Math.round((event.data.value / event.data.max) * 100);
@@ -217,14 +217,14 @@ class GlobalWebSocketService extends EventEmitter {
             isExecuting = true; // Progress means something is executing
           }
           break;
-          
+
         case 'progress_state':
           if (event.data.nodes) {
             const nodes = event.data.nodes;
             let hasRunningNodes = false;
             let currentRunningNodeId: string | null = null;
             let currentNodeProgress: { nodeId: string; progress: number } | null = null;
-            
+
             // Find running nodes
             Object.keys(nodes).forEach(nodeId => {
               const nodeData = nodes[nodeId];
@@ -237,14 +237,14 @@ class GlobalWebSocketService extends EventEmitter {
                 }
               }
             });
-            
+
             isExecuting = hasRunningNodes;
             currentPromptId = event.data.prompt_id || currentPromptId;
             executingNodeId = currentRunningNodeId;
             nodeExecutionProgress = currentNodeProgress;
           }
           break;
-          
+
         case 'execution_success':
         case 'execution_error':
         case 'execution_interrupted':
@@ -256,7 +256,7 @@ class GlobalWebSocketService extends EventEmitter {
           break;
       }
     }
-    
+
     return {
       isExecuting,
       currentPromptId,
@@ -275,14 +275,14 @@ class GlobalWebSocketService extends EventEmitter {
         data,
         timestamp: Date.now()
       };
-      
+
       this.executionStateBuffer.push(bufferedEvent);
-      
+
       // Keep only the most recent maxBufferSize events (rolling buffer)
       if (this.executionStateBuffer.length > this.maxBufferSize) {
         this.executionStateBuffer = this.executionStateBuffer.slice(-this.maxBufferSize);
       }
-      
+
       console.log(`📋 [GlobalWebSocketService] Added to execution state buffer:`, {
         type,
         bufferSize: this.executionStateBuffer.length,
@@ -296,10 +296,10 @@ class GlobalWebSocketService extends EventEmitter {
    */
   setServerUrl(url: string): void {
     const cleanUrl = url.replace(/\/$/, ''); // Remove trailing slash
-    
+
     if (this.serverUrl !== cleanUrl) {
       this.serverUrl = cleanUrl;
-      
+
       // Reconnect if URL changed and was previously connected
       if (this.state.isConnected || this.state.isConnecting) {
         this.disconnect();
@@ -329,17 +329,17 @@ class GlobalWebSocketService extends EventEmitter {
       connectionState: 'connecting'
     });
 
-    this.updateState({ 
-      isConnecting: true, 
-      error: null 
+    this.updateState({
+      isConnecting: true,
+      error: null
     });
 
-    const wsUrl = this.serverUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/ws?clientId=' + this.clientId;
-    
+    const wsUrl = this.serverUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/comfymobile/ws?clientId=' + this.clientId;
+
     this.webSocket = new WebSocket(wsUrl);
-    
+
     this.webSocket.onopen = () => {
-      
+
       this.updateState({
         isConnected: true,
         isConnecting: false,
@@ -368,7 +368,7 @@ class GlobalWebSocketService extends EventEmitter {
       // Emit connection event
       this.emit('connected', { clientId: this.clientId });
     };
-    
+
     this.webSocket.onmessage = (event) => {
       try {
         // Handle both text and binary messages (Python example pattern)
@@ -389,16 +389,16 @@ class GlobalWebSocketService extends EventEmitter {
               isConnected: this.state.isConnected
             });
           }
-          
+
           // Emit the raw message for any components to handle
           this.emit('message', message);
-          
+
           // Also emit specific message types for easier filtering
           this.emit(`message:${message.type}`, message.data);
-          
+
           // 🎯 ComfyUI-specific event processing
           this.handleComfyUIMessage(message);
-          
+
         } else if (event.data instanceof ArrayBuffer) {
           // Binary message (likely image data as per Python example)
           console.log(`🖼️ [GlobalWebSocketService] Binary message received:`, {
@@ -407,14 +407,14 @@ class GlobalWebSocketService extends EventEmitter {
             timestamp: new Date().toISOString(),
             isConnected: this.state.isConnected
           });
-          
+
           // Python example skips first 8 bytes (message type info)
           const imageData = event.data.slice(8);
           const blob = new Blob([imageData], { type: 'image/png' });
           const imageUrl = URL.createObjectURL(blob);
-          
+
           this.updateState({ lastMessageTime: Date.now() });
-          
+
           // Emit in ComfyApiClient format
           this.emit('binary_image_received', {
             type: 'binary_image',
@@ -424,17 +424,17 @@ class GlobalWebSocketService extends EventEmitter {
             blob,
             timestamp: Date.now()
           });
-          
+
         } else if (event.data instanceof Blob) {
           // Handle Blob data (convert to ArrayBuffer)
-          
+
           event.data.arrayBuffer().then(buffer => {
             const imageData = buffer.slice(8);
             const blob = new Blob([imageData], { type: 'image/png' });
             const imageUrl = URL.createObjectURL(blob);
-            
+
             this.updateState({ lastMessageTime: Date.now() });
-            
+
             // Emit in ComfyApiClient format
             this.emit('binary_image_received', {
               type: 'binary_image',
@@ -446,13 +446,13 @@ class GlobalWebSocketService extends EventEmitter {
             });
           });
         }
-        
+
       } catch (error) {
         console.error('Error parsing global WebSocket message:', error);
         this.emit('error', { type: 'parse_error', error });
       }
     };
-    
+
     this.webSocket.onerror = (error) => {
       console.error('❌ [GlobalWebSocketService] WebSocket error:', {
         error: error,
@@ -461,16 +461,16 @@ class GlobalWebSocketService extends EventEmitter {
         connectionState: 'error',
         clientId: this.clientId
       });
-      
-      this.updateState({ 
+
+      this.updateState({
         error: 'WebSocket connection error',
-        isConnecting: false 
+        isConnecting: false
       });
-      
+
       this.emit('error', { type: 'connection_error', error });
       this.attemptReconnect();
     };
-    
+
     this.webSocket.onclose = (event) => {
       console.warn(`🔌 [GlobalWebSocketService] WebSocket closed:`, {
         code: event.code,
@@ -481,16 +481,16 @@ class GlobalWebSocketService extends EventEmitter {
         connectionState: 'disconnected',
         clientId: this.clientId
       });
-      
+
       this.updateState({
         isConnected: false,
         isConnecting: false
       });
 
       // No heartbeat to stop
-      
+
       this.emit('disconnected', { code: event.code, reason: event.reason });
-      
+
       // Attempt reconnection for unexpected disconnections
       // Even "clean" closes (1000) might be server timeouts that we want to recover from
       if (this.state.reconnectAttempts < this.state.maxReconnectAttempts) {
@@ -535,7 +535,7 @@ class GlobalWebSocketService extends EventEmitter {
   private attemptReconnect(): void {
     if (this.state.reconnectAttempts >= this.state.maxReconnectAttempts) {
       console.error('❌ Max reconnect attempts reached for global WebSocket');
-      this.updateState({ 
+      this.updateState({
         error: `Max reconnection attempts (${this.state.maxReconnectAttempts}) exceeded`
       });
       return;
@@ -543,7 +543,7 @@ class GlobalWebSocketService extends EventEmitter {
 
     const attempt = this.state.reconnectAttempts + 1;
     const delay = Math.min(1000 * Math.pow(2, attempt - 1), 10000); // Exponential backoff, max 10s
-    
+
     console.log(`🔄 [GlobalWebSocketService] Scheduling reconnection:`, {
       attempt: attempt,
       maxAttempts: this.state.maxReconnectAttempts,
@@ -552,11 +552,11 @@ class GlobalWebSocketService extends EventEmitter {
       timestamp: new Date().toISOString(),
       url: this.serverUrl
     });
-    
-    this.updateState({ 
-      reconnectAttempts: attempt 
+
+    this.updateState({
+      reconnectAttempts: attempt
     });
-    
+
     this.reconnectTimer = setTimeout(() => {
       console.log(`🔄 [GlobalWebSocketService] Executing reconnection attempt ${attempt}`);
       this.connect();
@@ -582,10 +582,10 @@ class GlobalWebSocketService extends EventEmitter {
       workflowId,
       workflowName
     });
-    
+
     // Update processing state
     this.setProcessingState(true, promptId, workflowId, workflowName);
-    
+
     const eventData = {
       type: 'execution_started',
       promptId,
@@ -593,10 +593,10 @@ class GlobalWebSocketService extends EventEmitter {
       workflowName,
       timestamp: Date.now()
     };
-    
+
     // 🎯 Add to persistent execution state buffer
     this.addToExecutionStateBuffer('execution_started', eventData);
-    
+
     this.emit('execution_started', eventData);
   }
 
@@ -604,8 +604,8 @@ class GlobalWebSocketService extends EventEmitter {
    * Set processing state (compatible with original ComfyApiClient)
    */
   private setProcessingState(
-    processing: boolean, 
-    promptId: string | null = null, 
+    processing: boolean,
+    promptId: string | null = null,
     workflowId: string | null = null,
     workflowName: string | null = null
   ): void {
@@ -680,7 +680,7 @@ class GlobalWebSocketService extends EventEmitter {
         return false;
       }
     }
-    
+
     console.warn('Cannot send message: WebSocket not connected');
     return false;
   }
@@ -740,10 +740,10 @@ class GlobalWebSocketService extends EventEmitter {
    * Destroy service and cleanup resources
    */
   destroy(): void {
-    
+
     this.disconnect();
     this.removeAllListeners();
-    
+
     // Reset state
     this.state = {
       isConnected: false,

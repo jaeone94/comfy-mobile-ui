@@ -31,6 +31,8 @@ try:
     from .handlers.video_download_handler import *
     from .handlers.chain_handler import *
     from .handlers.chain_progress_handler import *
+    from .handlers.global_websocket_handler import *
+    from .utils.global_websocket_manager import global_websocket_manager
 except ImportError as e:
     print(f"Warning: Could not import handlers: {e}")
     # Fallback imports (for development/testing)
@@ -48,6 +50,8 @@ except ImportError as e:
     from handlers.video_download_handler import *
     from handlers.chain_handler import *
     from handlers.chain_progress_handler import *
+    from handlers.global_websocket_handler import *
+    from utils.global_websocket_manager import global_websocket_manager
 
 def get_routes():
     """Get routes from ComfyUI server module"""
@@ -75,6 +79,9 @@ def setup_routes():
     try:
         print("ComfyMobileUI API: Setting up routes...")
         
+        # Initialize Global WebSocket Manager (Hook into ComfyUI)
+        global_websocket_manager.hook_comfyui_server()
+        
         # Try to get the server instance and add routes
         import server
         
@@ -83,6 +90,9 @@ def setup_routes():
             prompt_server = server.PromptServer.instance
             if prompt_server and hasattr(prompt_server, 'app'):
                 app = prompt_server.app
+                
+                # Global WebSocket route
+                app.router.add_get('/comfymobile/ws', global_websocket_handler)
                 
                 # System routes
                 app.router.add_get('/comfymobile/api/status', api_status)
@@ -182,6 +192,7 @@ def setup_routes():
 
                 print("✅ ComfyMobileUI API routes registered successfully")
                 print("📋 Modular handlers loaded:")
+                print("   🌐  Global WebSocket - consolidated event stream")
                 print("   🗂️  System Handler - status, reboot")
                 print("   📄  Workflow Handler - workflow CRUD operations")
                 print("   📁  File Handler - file management operations")
@@ -198,6 +209,9 @@ def setup_routes():
         
         # Method 2: Try direct routes access (older versions)
         if routes is not None:
+            # Global WebSocket route
+            routes.get('/comfymobile/ws')(global_websocket_handler)
+
             # System routes
             routes.get('/comfymobile/api/status')(api_status)
             routes.post('/comfymobile/api/reboot')(reboot_server)
@@ -237,6 +251,7 @@ def setup_routes():
             attr = getattr(server, attr_name)
             if hasattr(attr, 'router') and hasattr(attr.router, 'add_get'):
                 # Basic routes only for unknown server configurations
+                attr.router.add_get('/comfymobile/ws', global_websocket_handler)
                 attr.router.add_get('/comfymobile/api/status', api_status)
                 attr.router.add_get('/comfymobile/api/workflows/list', list_workflows)
                 attr.router.add_post('/comfymobile/api/reboot', reboot_server)
@@ -246,6 +261,11 @@ def setup_routes():
         
         print("❌ ComfyMobileUI API: Could not find compatible route registration method")
         print("   Extension loaded but API endpoints may not be available")
+        return False
+        
+    except Exception as e:
+        print(f"❌ ComfyMobileUI API setup failed: {e}")
+        print("   Extension loaded but API endpoints are not available")
         return False
         
     except Exception as e:

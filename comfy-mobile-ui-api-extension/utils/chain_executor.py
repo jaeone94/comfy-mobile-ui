@@ -25,8 +25,9 @@ try:
 except:
     COMFY_BASE_PATH = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Hard-coded client ID for server-side execution (different from client)
-SERVER_CLIENT_ID = "comfy-mobile-chain-executor-v1"
+# Hard-coded client ID for server-side execution (synchronized with mobile client)
+# This ensures that events are broadcasted to the mobile client via our global hook
+SERVER_CLIENT_ID = "comfy-mobile-ui-client-2025"
 
 # Import progress manager
 try:
