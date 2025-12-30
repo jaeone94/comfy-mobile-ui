@@ -3,6 +3,8 @@
         "cancel": "취소",
         "delete": "삭제",
         "save": "저장",
+        "copy": "복사",
+        "paste": "붙여넣기",
         "close": "닫기",
         "open": "열기",
         "loading": "로딩 중...",
@@ -478,6 +480,9 @@
         "pasteShortcutTip": "텍스트를 붙여넣으려면 Ctrl+V (Mac의 경우 Cmd+V)를 사용하세요",
         "textCopied": "텍스트가 클립보드에 복사되었습니다!",
         "textPasted": "텍스트가 클립보드에서 붙여넣어졌습니다!",
+        "failedToCopy": "클립보드 복사 실패",
+        "copyToClipboard": "클립보드에 복사",
+        "pasteFromClipboard": "클립보드에서 붙여넣기",
         "enterText": "텍스트 입력...",
         "seedModes": {
             "fixed": "고정",
@@ -799,9 +804,48 @@
         "confirmList": {
             "interrupt": "모든 실행 중인 작업 중단",
             "reload": "모든 확장 및 커스텀 노드 다시 로드",
-            "clear": "메모리 정리 및 모델 다시 초기화"
+            "clear": "메모리 정리 및 모델 다시 초기화",
+            "time": "완료하는 데 약 60-120초 소요"
         },
-        "time": "완료하는 데 약 60-120초 소요"
+        "button": "ComfyUI 서버 재부팅",
+        "initiating": "서버 재부팅을 시작하는 중...",
+        "usingExtension": "모바일 UI 확장 API 사용 중",
+        "usingWatchdog": "Watchdog 서비스 API 사용 중",
+        "restarting": "재시작 중...",
+        "extensionInitiated": "확장 API를 통해 재부팅 요청을 보냈습니다. 서버가 재시작되기를 기다리는 중입니다.",
+        "watchdogInitiated": "Watchdog에 재시작 요청을 보냈습니다. 프로세스가 재시작될 때까지 {{seconds}}초 동안 기다립니다.",
+        "rebootSuccess": "재부팅 성공",
+        "rebootSuccessDesc": "서버가 재시작되었으며 이제 사용할 준비가 되었습니다.",
+        "connectionRestored": "연결이 복구되었습니다.",
+        "timeout": "재부팅 시간 초과",
+        "timeoutDesc": "서버가 예상 시간 내에 응답하지 않았습니다.",
+        "waitingForExtension": "확장 프로그램 대기 중",
+        "waitingForExtensionDesc": "서버가 가동되었습니다. 확장 API를 사용할 수 있을 때까지 대기 중 ({{seconds}}초 남음)...",
+        "waitingForExtensionDesc2": "서버는 가동되었지만 확장 API 확인에 실패했습니다. 대기 중 ({{seconds}}초 남음)...",
+        "waitingForServer": "서버 대기 중",
+        "checkingHealth": "서버 상태 확인 중 ({{seconds}}초 남음)...",
+        "noMethod": "사용 가능한 재부팅 방법 없음",
+        "noMethodDesc": "서버를 재부팅할 수 있는 유효한 방법을 찾을 수 없습니다. 연결 및 확장 설치 상태를 확인해주세요.",
+        "failedInitiate": "재부팅을 시작하지 못함",
+        "failedInitiateDesc": "{{method}}를 통해 재부팅 요청을 보낼 수 없습니다.",
+        "requestFailed": "재부팅 요청 실패",
+        "rebooting": "재부팅 중...",
+        "waiting": "서버 대기 중...",
+        "processing": "처리 중...",
+        "unavailableReasons": {
+            "title": "다음 이유로 재부팅을 할 수 없습니다:",
+            "noService": "확장 API 또는 Watchdog 서비스를 모두 사용할 수 없습니다",
+            "disconnected": "ComfyUI 서버 연결이 끊겼습니다",
+            "noExtension": "확장 API를 찾을 수 없고 Watchdog 서비스가 실행되고 있지 않습니다"
+        },
+        "helpTitle": "재부팅이 필요한 경우",
+        "helpList": {
+            "1": "커스텀 노드를 설치하거나 업데이트한 후",
+            "2": "메모리 문제나 모델 로딩 문제가 발생할 때",
+            "3": "캐시된 데이터를 지우고 서버 상태를 초기화하고 싶을 때",
+            "4": "커스텀 노드가 제대로 작동하지 않을 때",
+            "5": "ComfyUI 설정을 변경한 후"
+        }
     },
     "serverSettings": {
         "title": "서버 설정",

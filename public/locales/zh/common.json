@@ -3,6 +3,8 @@
         "cancel": "取消",
         "delete": "删除",
         "save": "保存",
+        "copy": "复制",
+        "paste": "粘贴",
         "close": "关闭",
         "open": "打开",
         "loading": "加载中...",
@@ -478,6 +480,9 @@
         "pasteShortcutTip": "请使用 Ctrl+V (Mac 上为 Cmd+V) 粘贴文本",
         "textCopied": "文本已复制到剪贴板！",
         "textPasted": "文本已从剪贴板粘贴！",
+        "failedToCopy": "复制到剪贴板失败",
+        "copyToClipboard": "复制到剪贴板",
+        "pasteFromClipboard": "从剪贴板粘贴",
         "enterText": "输入文本...",
         "seedModes": {
             "fixed": "固定",
@@ -799,9 +804,48 @@
         "confirmList": {
             "interrupt": "中断所有正在运行的任务",
             "reload": "重新加载所有扩展和自定义节点",
-            "clear": "清除内存并重新初始化模型"
+            "clear": "清除内存并重新初始化模型",
+            "time": "大约需要 60-120 秒完成"
         },
-        "time": "大约需要 60-120 秒完成"
+        "button": "重启 ComfyUI 服务器",
+        "initiating": "正在启动服务器重启...",
+        "usingExtension": "正在使用移动端 UI 扩展 API",
+        "usingWatchdog": "正在使用 Watchdog 服务 API",
+        "restarting": "正在重启...",
+        "extensionInitiated": "已通过扩展 API 发送重启请求。正在等待服务器重启。",
+        "watchdogInitiated": "已向 Watchdog 发送重启请求。正在等待 {{seconds}} 秒以重新启动进程。",
+        "rebootSuccess": "重启成功",
+        "rebootSuccessDesc": "服务器已重启，现在可以使用。",
+        "connectionRestored": "连接已恢复。",
+        "timeout": "重启超时",
+        "timeoutDesc": "服务器未在预期时间内响应。",
+        "waitingForExtension": "正在等待扩展",
+        "waitingForExtensionDesc": "服务器已启动，正在等待扩展 API 可用（剩余 {{seconds}} 秒）...",
+        "waitingForExtensionDesc2": "服务器已启动，但扩展 API 检查失败。正在等待（剩余 {{seconds}} 秒）...",
+        "waitingForServer": "正在等待服务器",
+        "checkingHealth": "正在检查服务器状态（剩余 {{seconds}} 秒）...",
+        "noMethod": "无可用重启方法",
+        "noMethodDesc": "找不到重启服务器的有效方法。请检查您的连接和扩展安装。",
+        "failedInitiate": "启动重启失败",
+        "failedInitiateDesc": "无法通过 {{method}} 发送重启请求。",
+        "requestFailed": "重启请求失败",
+        "rebooting": "重启中...",
+        "waiting": "正在等待服务器...",
+        "processing": "处理中...",
+        "unavailableReasons": {
+            "title": "无法重启，原因如下:",
+            "noService": "扩展 API 和 Watchdog 服务均不可用",
+            "disconnected": "ComfyUI 服务器已断开连接",
+            "noExtension": "找不到扩展 API 且 Watchdog 服务未运行"
+        },
+        "helpTitle": "何时重启",
+        "helpList": {
+            "1": "安装或更新自定义节点后",
+            "2": "遇到内存问题或模型加载问题时",
+            "3": "清除缓存数据并重置服务器状态",
+            "4": "当自定义节点无法正常工作时",
+            "5": "更改 ComfyUI 配置后"
+        }
     },
     "serverSettings": {
         "title": "服务器设置",
