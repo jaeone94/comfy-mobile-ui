@@ -9,16 +9,11 @@ import {
   Folder as FolderIcon,
   FileText,
   ArrowUpDown,
-  Upload,
-  FolderPlus,
   Menu,
   Image,
   Link as LinkIcon,
-  CheckSquare,
   X,
-  ArrowRightLeft,
-  Zap
-} from 'lucide-react';
+  ArrowRightLeft} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
@@ -33,7 +28,6 @@ import SideMenu from '@/components/controls/SideMenu';
 import {
   loadAllWorkflows,
   addWorkflow,
-  removeWorkflow,
 } from '@/infrastructure/storage/IndexedDBWorkflowService';
 import { WorkflowFileService } from '@/core/services/WorkflowFileService';
 import { toast } from 'sonner';
@@ -202,7 +196,9 @@ const WorkflowList: React.FC = () => {
   const handleCreateEmptyWorkflow = async () => {
     try {
       setIsLoading(true);
-      const newId = crypto.randomUUID();
+      const newId = typeof crypto !== 'undefined' && crypto.randomUUID
+        ? crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       const baseName = t('workflow.newWorkflowName');
       const newName = `${baseName} ${new Date().toLocaleTimeString()}`;
 
