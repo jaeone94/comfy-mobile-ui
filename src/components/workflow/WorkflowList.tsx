@@ -198,7 +198,7 @@ const WorkflowList: React.FC = () => {
       setIsLoading(true);
       const newId = typeof crypto !== 'undefined' && crypto.randomUUID
         ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        : `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
       const baseName = t('workflow.newWorkflowName');
       const newName = `${baseName} ${new Date().toLocaleTimeString()}`;
 
