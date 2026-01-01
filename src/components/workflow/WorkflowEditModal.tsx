@@ -11,6 +11,7 @@ import { updateWorkflow, removeWorkflow, addWorkflow, loadAllWorkflows } from '@
 import { generateWorkflowThumbnail } from '@/shared/utils/rendering/CanvasRendererService';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
+import { generateUUID } from '@/utils/uuid';
 
 interface WorkflowEditModalProps {
   isOpen: boolean;
@@ -209,9 +210,7 @@ const WorkflowEditModal: React.FC<WorkflowEditModalProps> = ({
       const newName = `${baseName}_${newNumber.toString().padStart(2, '0')}`;
 
       // Generate new ID using crypto.randomUUID() or fallback
-      const newId = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const newId = generateUUID();
 
       const copiedWorkflow: Workflow = {
         ...workflow,

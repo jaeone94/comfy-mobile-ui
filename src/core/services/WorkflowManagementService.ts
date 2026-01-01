@@ -57,7 +57,7 @@ export function getWorkflowStatistics(workflow: Workflow): {
 } {
   const json = workflow.workflow_json
   const jsonString = JSON.stringify(json)
-  
+
   return {
     nodeCount: (json.nodes as any)?.length || 0,
     linkCount: (json.links as any)?.length || 0,
@@ -78,7 +78,7 @@ export function exportWorkflowAsJson(workflow: Workflow, prettify: boolean = tru
       return value
     }, 2)
   }
-  
+
   return JSON.stringify({
     ...workflow,
     _graph: undefined
@@ -100,7 +100,7 @@ export function getDownloadFilename(workflow: Workflow): string {
     .replace(/[^a-zA-Z0-9\s\-_]/g, '')
     .replace(/\s+/g, '_')
     .toLowerCase()
-  
+
   return `${safeName}.json`
 }
 
@@ -122,19 +122,19 @@ export function validateWorkflowStructure(workflow: Workflow): { valid: boolean;
     errors.push('Missing workflow JSON data')
   } else {
     const json = workflow.workflow_json
-    
+
     if (!Array.isArray(json.nodes)) {
       errors.push('Invalid nodes structure')
     }
-    
+
     if (!Array.isArray(json.links)) {
       errors.push('Invalid links structure')
     }
-    
+
     if (typeof json.last_node_id !== 'number') {
       errors.push('Invalid last_node_id')
     }
-    
+
     if (typeof json.last_link_id !== 'number') {
       errors.push('Invalid last_link_id')
     }
@@ -174,22 +174,22 @@ export function repairWorkflow(workflow: Workflow): { workflow: Workflow; repair
 
   if (repairedWorkflow.workflow_json) {
     const json = { ...repairedWorkflow.workflow_json }
-    
+
     if (!Array.isArray(json.nodes)) {
       json.nodes = [] as any
       changes.push('Initialized empty nodes array')
     }
-    
+
     if (!Array.isArray(json.links)) {
       json.links = [] as any
       changes.push('Initialized empty links array')
     }
-    
+
     if (typeof json.last_node_id !== 'number') {
       json.last_node_id = Math.max(...(json.nodes as any).map((n: any) => n.id || 0), 0)
       changes.push('Calculated last_node_id from nodes')
     }
-    
+
     if (typeof json.last_link_id !== 'number') {
       json.last_link_id = Math.max(...(json.links as any).map((l: any) => l[0] || 0), 0)
       changes.push('Calculated last_link_id from links')

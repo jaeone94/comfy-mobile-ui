@@ -13,7 +13,8 @@ import {
   Image,
   Link as LinkIcon,
   X,
-  ArrowRightLeft} from 'lucide-react';
+  ArrowRightLeft
+} from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
@@ -38,6 +39,7 @@ import {
   convertPngDataToWorkflow,
   getPngWorkflowPreview,
 } from '@/utils/pngMetadataExtractor';
+import { generateUUID } from '@/utils/uuid';
 
 const STORAGE_KEY_FOLDER_PATH = 'comfy_mobile_folder_path';
 
@@ -196,9 +198,7 @@ const WorkflowList: React.FC = () => {
   const handleCreateEmptyWorkflow = async () => {
     try {
       setIsLoading(true);
-      const newId = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+      const newId = generateUUID();
       const baseName = t('workflow.newWorkflowName');
       const newName = `${baseName} ${new Date().toLocaleTimeString()}`;
 
