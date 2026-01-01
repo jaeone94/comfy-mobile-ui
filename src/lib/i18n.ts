@@ -4,10 +4,10 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 
 // Import translation files
 // Note: In production, you might want to load these from a server or use a backend plugin
-import enCommon from '../../public/locales/en/common.json';
-import koCommon from '../../public/locales/ko/common.json';
-import zhCommon from '../../public/locales/zh/common.json';
-import jaCommon from '../../public/locales/ja/common.json';
+import enCommon from '../locale/en/common.json';
+import koCommon from '../locale/ko/common.json';
+import zhCommon from '../locale/zh/common.json';
+import jaCommon from '../locale/ja/common.json';
 
 i18n
   .use(LanguageDetector)
