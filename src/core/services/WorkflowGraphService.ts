@@ -108,7 +108,18 @@ export function addNodeToWorkflow(
   size?: number[]
 ): IComfyJson {
   // Generate new node ID (increment last_node_id)
-  const newNodeId = workflowJson.last_node_id + 1;
+  // Fix: Handle case where last_node_id is missing or NaN (e.g. new workflow)
+  let newNodeId: number;
+  if (typeof workflowJson.last_node_id === 'number' && !isNaN(workflowJson.last_node_id)) {
+    newNodeId = workflowJson.last_node_id + 1;
+  } else {
+    // Calculate from existing nodes if last_node_id is invalid
+    if (workflowJson.nodes && workflowJson.nodes.length > 0) {
+      newNodeId = Math.max(...workflowJson.nodes.map(n => n.id)) + 1;
+    } else {
+      newNodeId = 1;
+    }
+  }
 
   // Create the new node instance
   const newNode: IComfyJsonNode = createNodeInstance(

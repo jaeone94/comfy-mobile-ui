@@ -9,15 +9,11 @@ import {
   Folder as FolderIcon,
   FileText,
   ArrowUpDown,
-  Upload,
-  FolderPlus,
   Menu,
   Image,
   Link as LinkIcon,
-  CheckSquare,
   X,
-  ArrowRightLeft,
-  Zap
+  ArrowRightLeft
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -33,7 +29,6 @@ import SideMenu from '@/components/controls/SideMenu';
 import {
   loadAllWorkflows,
   addWorkflow,
-  removeWorkflow,
 } from '@/infrastructure/storage/IndexedDBWorkflowService';
 import { WorkflowFileService } from '@/core/services/WorkflowFileService';
 import { toast } from 'sonner';
@@ -44,6 +39,7 @@ import {
   convertPngDataToWorkflow,
   getPngWorkflowPreview,
 } from '@/utils/pngMetadataExtractor';
+import { generateUUID } from '@/utils/uuid';
 
 const STORAGE_KEY_FOLDER_PATH = 'comfy_mobile_folder_path';
 
@@ -202,7 +198,7 @@ const WorkflowList: React.FC = () => {
   const handleCreateEmptyWorkflow = async () => {
     try {
       setIsLoading(true);
-      const newId = crypto.randomUUID();
+      const newId = generateUUID();
       const baseName = t('workflow.newWorkflowName');
       const newName = `${baseName} ${new Date().toLocaleTimeString()}`;
 

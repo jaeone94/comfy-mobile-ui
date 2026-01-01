@@ -10,6 +10,7 @@ import { generateWorkflowThumbnail } from '@/shared/utils/rendering/CanvasRender
 import { motion, AnimatePresence } from 'framer-motion';
 import { updateWorkflow, removeWorkflow, addWorkflow, loadAllWorkflows } from '@/infrastructure/storage/IndexedDBWorkflowService';
 import { toast } from 'sonner';
+import { generateUUID } from '@/utils/uuid';
 
 interface WorkflowDetailModalProps {
   isOpen: boolean;
@@ -160,9 +161,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
       const newNumber = maxNumber + 1;
       const newName = `${baseName}_${newNumber.toString().padStart(2, '0')}`;
 
-      const newId = typeof crypto !== 'undefined' && crypto.randomUUID
-        ? crypto.randomUUID()
-        : `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const newId = generateUUID();
 
       const copiedWorkflow: Workflow = {
         ...workflow,
