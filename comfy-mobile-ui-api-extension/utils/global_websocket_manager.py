@@ -188,6 +188,8 @@ class GlobalWebSocketManager:
                     
                     # Logic: just send all buffered events
                     for event, data in self.last_events.items():
+                        if event == 'execution_error':
+                            continue
                         message = {"type": event, "data": data}
                         await ws.send_str(json.dumps(message))
                 except Exception as e:
