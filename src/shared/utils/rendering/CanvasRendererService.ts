@@ -263,6 +263,39 @@ export function darkenColor(color: string, amount: number): string {
   return color;
 }
 
+/**
+ * Get color for a specific slot type
+ */
+function getSlotColor(type: string | undefined): string {
+  if (!type) return '#10b981'; // Default Green for unknown/untyped
+
+  // Normalize type
+  const normalizedType = type.toUpperCase();
+
+  // Color mapping for common ComfyUI types
+  // Using vibrant, distinct colors that work well on dark backgrounds
+  const colorMap: Record<string, string> = {
+    'IMAGE': '#64B5F6',        // Blue
+    'LATENT': '#E040FB',       // Purple
+    'MODEL': '#7986CB',        // Indigo
+    'CLIP': '#FFD54F',         // Amber/Yellow
+    'VAE': '#FF5252',          // Red
+    'CONDITIONING': '#FFB74D', // Orange
+    'MASK': '#81C784',         // Green
+    'FLOAT': '#4DB6AC',        // Teal
+    'INT': '#4DB6AC',          // Teal
+    'NUMBER': '#4DB6AC',       // Teal
+    'STRING': '#A1887F',       // Brown
+    'BOOLEAN': '#90A4AE',      // Blue Grey
+    'CONTROL_NET': '#009688',  // Teal Dark
+    'STYLE_MODEL': '#AFB42B',  // Lime
+    'CLIP_VISION': '#795548',  // Brown Dark
+    'CLIP_VISION_OUTPUT': '#795548',  // Brown Dark
+  };
+
+  return colorMap[normalizedType] || '#10b981'; // Default to green if not found
+}
+
 // Note: enhanceNodeColor function removed for performance optimization
 
 // Note: getOptimalTextColor function removed for performance optimization - using fixed white text
@@ -585,7 +618,6 @@ export function renderConnections(
   nodeBounds: Map<number, NodeBounds>,
   config: CanvasConfig = DEFAULT_CANVAS_CONFIG
 ): void {
-  ctx.strokeStyle = config.linkColor;
   ctx.lineWidth = 2.5; // Increased from 1.5 to 2.5
   ctx.setLineDash([]);
 
@@ -615,10 +647,22 @@ export function renderConnections(
       continue;
     }
 
-
     // Get the actual nodes to access slot information
     const sourceNode = sourceBounds.node;
     const targetNode = targetBounds.node;
+
+    // Determine connection color based on source output slot type
+    let connectionColor = config.linkColor; // Default fallback
+    if (sourceNode.outputs && sourceNode.outputs[sourceSlot]) {
+      let type = sourceNode.outputs[sourceSlot].type;
+
+      // If source type is wildcard '*', try to use target input type
+      if (type === '*' && targetNode.inputs && targetNode.inputs[targetSlot]) {
+        type = targetNode.inputs[targetSlot].type;
+      }
+
+      connectionColor = getSlotColor(type);
+    }
 
     // Check if nodes are collapsed or too small to fit slots
     const sourceConnectedInputs = sourceNode.inputs?.filter((i: any) => i.link).length || 0;
@@ -675,6 +719,9 @@ export function renderConnections(
       false, // is input
       targetCollapsed
     );
+
+    // Set color for this specific connection
+    ctx.strokeStyle = connectionColor;
 
     // Draw bezier curve connection
     ctx.beginPath();
@@ -1449,7 +1496,14 @@ export function renderNodes(
           const slotY = bounds.y + bounds.height / 2;
           const slotX = bounds.x;
 
-          ctx.fillStyle = '#10b981'; // Always green for collapsed connected slots
+          // Try to get color from first connected input
+          let slotColor = '#10b981';
+          const validInput = node.inputs?.find((i: any) => i.link);
+          if (validInput) {
+            slotColor = getSlotColor(validInput.type);
+          }
+
+          ctx.fillStyle = slotColor; // Use determined color
           ctx.beginPath();
           ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
           ctx.fill();
@@ -1460,7 +1514,14 @@ export function renderNodes(
           const slotY = bounds.y + bounds.height / 2;
           const slotX = bounds.x + bounds.width;
 
-          ctx.fillStyle = '#10b981';
+          // Try to get color from first connected output
+          let slotColor = '#10b981';
+          const validOutput = node.outputs?.find((o: any) => o.links && o.links.length > 0);
+          if (validOutput) {
+            slotColor = getSlotColor(validOutput.type);
+          }
+
+          ctx.fillStyle = slotColor;
           ctx.beginPath();
           ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
           ctx.fill();
@@ -1478,8 +1539,8 @@ export function renderNodes(
             const slotX = bounds.x;
             connectedIndex++; // Increment only for connected slots
 
-            // Draw slot circle (always green since it's connected)
-            ctx.fillStyle = '#10b981';
+            // Draw slot circle
+            ctx.fillStyle = getSlotColor(input.type);
             ctx.beginPath();
             ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
             ctx.fill();
@@ -1518,8 +1579,8 @@ export function renderNodes(
             const slotX = bounds.x + bounds.width;
             connectedIndex++; // Increment only for connected slots
 
-            // Draw slot circle (always green since it's connected)
-            ctx.fillStyle = '#10b981';
+            // Draw slot circle
+            ctx.fillStyle = getSlotColor(output.type);
             ctx.beginPath();
             ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
             ctx.fill();
