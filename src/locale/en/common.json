@@ -369,6 +369,7 @@
         "copySuccessDesc": "You can paste it from the Add Node menu",
         "copyError": "Failed to copy node",
         "copyErrorDesc": "An error occurred while copying",
+        "parameters": "Parameters",
         "enterTitle": "Enter node title...",
         "editTitle": "Edit node title",
         "copySettings": "Copy node settings",

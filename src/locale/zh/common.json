@@ -369,6 +369,7 @@
         "copySuccessDesc": "您可以从添加节点菜单粘贴它",
         "copyError": "复制节点失败",
         "copyErrorDesc": "复制时发生错误",
+        "parameters": "参数",
         "enterTitle": "输入节点标题...",
         "editTitle": "编辑节点标题",
         "copySettings": "复制节点设置",

@@ -876,7 +876,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                         <div className="space-y-8">
                             {/* Widgets / Controls */}
                             {widgets.length > 0 ? (
-                                renderParameterSection("Parameters", widgets, <SlidersHorizontal className="w-4 h-4" />, true)
+                                renderParameterSection(t('node.parameters'), widgets, <SlidersHorizontal className="w-4 h-4" />, true)
                             ) : (
                                 selectedNode.widgets_values && (
                                     <div className={`p-4 rounded-xl border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}>

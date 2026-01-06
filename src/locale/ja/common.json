@@ -369,6 +369,7 @@
         "copySuccessDesc": "「ノードを追加」メニューから貼り付けることができます",
         "copyError": "ノードのコピーに失敗しました",
         "copyErrorDesc": "コピー中にエラーが発生しました",
+        "parameters": "パラメータ",
         "enterTitle": "ノードタイトルを入力...",
         "editTitle": "ノードタイトルを編集",
         "copySettings": "ノード設定をコピー",
