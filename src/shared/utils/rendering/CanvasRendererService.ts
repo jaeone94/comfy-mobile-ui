@@ -877,6 +877,35 @@ export function renderNodes(
     // Simple rectangular nodes for maximum performance
     const cornerRadius = 4; // Minimal rounding to reduce GPU load
 
+    // Calculate font size early for dynamic title bar height
+    // Use viewport scale if provided, otherwise fallback to transform matrix
+    let currentScale = 1.0; // Default scale
+
+    if (viewportScale !== undefined) {
+      currentScale = viewportScale;
+    } else {
+      const transform = ctx.getTransform();
+      currentScale = transform.a; // a is the horizontal scale factor
+    }
+
+    // Calculate font sizes
+    const maxScale = 0.8;
+    const minFontSize = 50;
+    const maxFontSize = 10;
+
+    let fontSize: number;
+    if (currentScale >= maxScale) {
+      fontSize = maxFontSize;
+    } else {
+      const progress = currentScale / maxScale;
+      fontSize = minFontSize - (progress * (minFontSize - maxFontSize));
+    }
+
+    const clampedFontSize = Math.max(15, Math.min(60, fontSize));
+    const finalFontSize = isCollapsed
+      ? Math.min(clampedFontSize * 0.8, bounds.height / 3)
+      : clampedFontSize;
+
     {
       // Check if node is executing and has progress for gradient background
       const hasProgress = isExecuting && nodeExecutionProgress?.nodeId === String(node.id);
@@ -908,9 +937,43 @@ export function renderNodes(
         ctx.fillStyle = backgroundColor;
       }
 
+      // Calculate font size early for dynamic title bar height
+      // (This inner calculation block removed as it is now in outer scope)
+
       ctx.beginPath();
       ctx.roundRect(bounds.x, bounds.y, bounds.width, bounds.height, cornerRadius);
       ctx.fill();
+
+      // Draw separate title area background for expanded nodes
+      if (!isCollapsed && bounds.height > 40) {
+        // Dynamic title height based on font size
+        // Padding: approx 8px top + 8px bottom = 16px
+        const titleHeight = Math.max(30, finalFontSize + 16);
+
+        // Make title area slightly darker than the body
+        const titleColor = darkenColor(backgroundColor, 0.25);
+
+        ctx.fillStyle = titleColor;
+        ctx.beginPath();
+        // Use custom path for top rounding only
+        ctx.moveTo(bounds.x + cornerRadius, bounds.y);
+        ctx.lineTo(bounds.x + bounds.width - cornerRadius, bounds.y);
+        ctx.quadraticCurveTo(bounds.x + bounds.width, bounds.y, bounds.x + bounds.width, bounds.y + cornerRadius);
+        ctx.lineTo(bounds.x + bounds.width, bounds.y + titleHeight);
+        ctx.lineTo(bounds.x, bounds.y + titleHeight);
+        ctx.lineTo(bounds.x, bounds.y + cornerRadius);
+        ctx.quadraticCurveTo(bounds.x, bounds.y, bounds.x + cornerRadius, bounds.y);
+        ctx.closePath();
+        ctx.fill();
+
+        // Add a subtle separator line
+        ctx.beginPath();
+        ctx.moveTo(bounds.x, bounds.y + titleHeight);
+        ctx.lineTo(bounds.x + bounds.width, bounds.y + titleHeight);
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
     }
 
     // Always draw subtle white outline for all nodes
@@ -962,16 +1025,6 @@ export function renderNodes(
     // Draw node title and widgets with LOD rendering
     // Optimization: Only draw detailed content (text, widgets) if the node is visible
     if (showText && isVisible) {
-      // Use viewport scale if provided, otherwise fallback to transform matrix
-      let currentScale = 1.0; // Default scale
-
-      if (viewportScale !== undefined) {
-        currentScale = viewportScale;
-      } else {
-        const transform = ctx.getTransform();
-        currentScale = transform.a; // a is the horizontal scale factor
-      }
-
       // LOD (Level of Detail) thresholds
       const LOD_LOW = 0.5;     // Below 50% - very simplified
       const LOD_MEDIUM = 0.8;  // 50% to 80% - basic widgets
@@ -990,23 +1043,7 @@ export function renderNodes(
         lodLevel = 'ultra';
       }
 
-      // Calculate font sizes
-      const maxScale = 0.8;
-      const minFontSize = 50;
-      const maxFontSize = 10;
-
-      let fontSize: number;
-      if (currentScale >= maxScale) {
-        fontSize = maxFontSize;
-      } else {
-        const progress = currentScale / maxScale;
-        fontSize = minFontSize - (progress * (minFontSize - maxFontSize));
-      }
-
-      const clampedFontSize = Math.max(15, Math.min(60, fontSize));
-      const finalFontSize = isCollapsed
-        ? Math.min(clampedFontSize * 0.8, bounds.height / 3)
-        : clampedFontSize;
+      // Font size calculation moved up for dynamic title bar height
 
       const displayText = node.title || node.type || `Node ${node.id}`;
 
@@ -1020,7 +1057,9 @@ export function renderNodes(
       // Handle collapsed nodes or nodes too small for slots - title in center, no widgets
       if (isCollapsed || isTooSmallForSlots) {
         ctx.fillStyle = '#ffffff';
-        ctx.font = `${finalFontSize}px system-ui, -apple-system, sans-serif`;
+        // Match standard title font size and weight
+        const smallNodeFontSize = Math.min(finalFontSize * 0.8, 20);
+        ctx.font = `bold ${smallNodeFontSize}px system-ui, -apple-system, sans-serif`;
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
