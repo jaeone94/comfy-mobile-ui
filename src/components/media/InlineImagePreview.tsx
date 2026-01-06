@@ -14,12 +14,18 @@ interface InlineImagePreviewProps {
   imagePreview: ImagePreviewData | string;
   onClick: () => void;
   isFromExecution?: boolean; // true if from workflow execution output
+  themeOverride?: {
+    container?: string;
+    text?: string;
+    secondaryText?: string;
+  };
 }
 
 export const InlineImagePreview: React.FC<InlineImagePreviewProps> = ({
   imagePreview,
   onClick,
-  isFromExecution = false
+  isFromExecution = false,
+  themeOverride
 }) => {
   const { t } = useTranslation();
   const [imageUrl, setImageUrl] = useState<string | null>(null);
@@ -160,7 +166,7 @@ export const InlineImagePreview: React.FC<InlineImagePreviewProps> = ({
 
   return (
     <div
-      className="w-full bg-slate-50 dark:bg-slate-800/50 rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] group"
+      className={`w-full rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] group ${themeOverride?.container || 'bg-slate-50 dark:bg-slate-800/50'}`}
       onClick={onClick}
     >
       <div className="relative">
@@ -177,10 +183,10 @@ export const InlineImagePreview: React.FC<InlineImagePreviewProps> = ({
         </div>
       </div>
       <div className="p-3">
-        <p className="text-xs text-slate-600 dark:text-slate-400 truncate">
+        <p className={`text-xs truncate ${themeOverride?.text || 'text-slate-600 dark:text-slate-400'}`}>
           {typeof imagePreview === 'string' ? imagePreview : (imagePreview.filename || t('media.preview'))}
         </p>
-        <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+        <p className={`text-xs mt-1 ${themeOverride?.secondaryText || 'text-blue-600 dark:text-blue-400'}`}>
           {t('media.clickToViewFullSize')}
         </p>
       </div>

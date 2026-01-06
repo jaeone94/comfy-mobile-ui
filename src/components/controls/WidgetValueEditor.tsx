@@ -54,7 +54,16 @@ interface WidgetValueEditorProps {
   node?: ComfyGraphNode;
   widget?: IComfyWidget;
   // Callback to save control_after_generate to workflow metadata
+  // Callback to save control_after_generate to workflow metadata
   onControlAfterGenerateChange?: (nodeId: number, value: string) => void;
+  // Theme override for custom node colors
+  themeOverride?: {
+    container?: string;
+    text?: string;
+    label?: string;
+    secondaryText?: string;
+    border?: string;
+  };
 }
 
 // Clipboard helper function with fallback
@@ -103,7 +112,8 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
   // ComfyGraphNode context
   node,
   widget,
-  onControlAfterGenerateChange
+  onControlAfterGenerateChange,
+  themeOverride
 }) => {
   const { t } = useTranslation();
   const [showAlbumModal, setShowAlbumModal] = useState(false);
@@ -165,7 +175,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   if (isEditing) {
     return (
-      <div className="p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800 transition-all duration-200">
+      <div className={`p-4 rounded-lg border transition-all duration-200 ${themeOverride?.container || 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'}`}>
         {/* Value Input Area */}
         <div className="space-y-4">
           {/* Widget Control Components */}
@@ -352,10 +362,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   // Normal display mode
   return (
-    <div className="p-3 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+    <div className={`p-3 rounded-lg ${themeOverride?.container || 'bg-slate-50 dark:bg-slate-800/50'}`}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-2">
-          <span className="font-medium text-slate-900 dark:text-slate-100">
+          <span className={`font-medium ${themeOverride?.label || 'text-slate-900 dark:text-slate-100'}`}>
             {param.name}
           </span>
           {param.required && (
@@ -376,7 +386,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       </div>
 
       <div className="mb-2">
-        <span className="text-sm text-slate-600 dark:text-slate-400">{t('node.value')}: </span>
+        <span className={`text-sm ${themeOverride?.secondaryText || 'text-slate-600 dark:text-slate-400'}`}>{t('node.value')}: </span>
         <div className="inline-flex items-center space-x-2">
           {isEditable ? (
             <button
@@ -387,7 +397,9 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               }}
               className={`text-sm px-2 py-1 rounded inline-flex items-center max-w-[250px] md:max-w-[350px] align-bottom transition-all duration-200 hover:shadow-sm active:scale-95 cursor-pointer border ${isModified
                 ? 'bg-[#10b981] dark:bg-[#10b981] text-white dark:text-white border-[#10b981] dark:border-[#10b981] hover:bg-[#059669] dark:hover:bg-[#059669]'
-                : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600'
+                : (themeOverride
+                  ? 'bg-transparent border-white/20 text-white/90 hover:bg-white/10'
+                  : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600')
                 } ${modifiedHighlightClasses}`}
             >
               {param.type === 'BOOLEAN' ? (
@@ -416,7 +428,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               <Edit className="w-3 h-3 opacity-60 flex-shrink-0" />
             </button>
           ) : (
-            <div className="text-sm px-2 py-1 rounded inline-block max-w-[250px] md:max-w-[350px] truncate align-bottom bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400">
+            <div className={`text-sm px-2 py-1 rounded inline-block max-w-[250px] md:max-w-[350px] truncate align-bottom border ${themeOverride ? 'bg-transparent border-white/20 text-white/80' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
               {param.type === 'BOOLEAN' ? (
                 <div className="flex items-center">
                   <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
@@ -489,6 +501,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             <InlineImagePreview
               imagePreview={currentValue}
               onClick={() => onFilePreview(currentValue)}
+              themeOverride={themeOverride ? {
+                ...themeOverride,
+                container: 'bg-black/20 border border-white/5'
+              } : undefined}
             />
           </div>
         )}
@@ -499,6 +515,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             <InlineVideoPreview
               videoPreview={currentValue}
               onClick={() => onFilePreview(currentValue)}
+              themeOverride={themeOverride ? {
+                ...themeOverride,
+                container: 'bg-black/20 border border-white/5'
+              } : undefined}
             />
           </div>
         )}

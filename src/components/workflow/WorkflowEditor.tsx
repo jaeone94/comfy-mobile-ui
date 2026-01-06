@@ -34,7 +34,8 @@ import { wrapGraphNodesForLogging } from '@/utils/GraphChangeLogger';
 // Components
 import { WorkflowHeader } from '@/components/workflow/WorkflowHeader';
 import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
-import { NodeInspector } from '@/components/canvas/NodeInspector';
+// import { NodeInspector } from '@/components/canvas/NodeInspector'; // Replaced
+import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
 import WorkflowSnapshots from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
@@ -2501,14 +2502,13 @@ const WorkflowEditor: React.FC = () => {
       )}
 
 
-      {/* Selected Node Panel */}
-      {selectedNode && (
-        <NodeInspector
+      {/* Selected Node Panel (Now NodeDetailModal) */}
+      {isNodePanelVisible && selectedNode && (
+        <NodeDetailModal
           selectedNode={selectedNode as any}
           nodeMetadata={nodeMetadata}
           metadataLoading={metadataLoading}
           metadataError={metadataError}
-          isNodePanelVisible={isNodePanelVisible}
           editingParam={widgetEditor.editingParam}
           editingValue={widgetEditor.editingValue}
           modifiedWidgetValues={widgetEditor.modifiedWidgetValues}
@@ -2553,6 +2553,7 @@ const WorkflowEditor: React.FC = () => {
           onSelectNode={(node: IComfyGraphNode) => {
             // Select the provided node directly
             setSelectedNode(node);
+            setIsNodePanelVisible(true);
           }}
           onNodeColorChange={handleNodeColorChange}
           onNodeDelete={handleNodeDelete}
