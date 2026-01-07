@@ -53,7 +53,10 @@
         "selectFile": "Select File",
         "or": "Or",
         "searchWorkflows": "Search workflows...",
-        "serverSettings": "Server Settings"
+        "serverSettings": "Server Settings",
+        "edit": "Edit",
+        "navigate": "Navigate",
+        "toggleMode": "Toggle Mode"
     },
     "workflow": {
         "details": "Workflow Details",

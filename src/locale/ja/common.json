@@ -53,7 +53,10 @@
         "selectFile": "ファイルを選択",
         "or": "または",
         "searchWorkflows": "ワークフローを検索...",
-        "serverSettings": "サーバー設定"
+        "serverSettings": "サーバー設定",
+        "edit": "編集",
+        "navigate": "移動",
+        "toggleMode": "モード切替"
     },
     "workflow": {
         "details": "ワークフロー詳細",

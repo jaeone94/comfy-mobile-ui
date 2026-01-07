@@ -53,7 +53,10 @@
         "selectFile": "选择文件",
         "or": "或",
         "searchWorkflows": "搜索工作流...",
-        "serverSettings": "服务器设置"
+        "serverSettings": "服务器设置",
+        "edit": "编辑",
+        "navigate": "定位",
+        "toggleMode": "切换模式"
     },
     "workflow": {
         "details": "工作流详情",

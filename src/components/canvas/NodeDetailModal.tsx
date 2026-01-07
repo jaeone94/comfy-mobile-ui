@@ -226,24 +226,17 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     // Given user request "Popup", if GroupInspector is not a popup, it might look weird. 
     // But let's stick to the logic for now.
     if (isGroupNode) {
-        // Create a portal for group inspector to ensure it's on top
-        return createPortal(
-            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl w-full max-w-lg max-h-[85vh] overflow-hidden">
-                    <GroupInspector
-                        selectedNode={selectedNode}
-                        isVisible={true}
-                        onClose={onClose}
-                        onNavigateToNode={onNavigateToNode}
-                        onSelectNode={onSelectNode}
-                        onNodeModeChange={onNodeModeChange}
-                        getNodeMode={getNodeMode}
-                        onGroupDelete={onGroupDelete}
-                        onGroupSizeChange={onGroupSizeChange}
-                    />
-                </div>
-            </div>,
-            document.body
+        return (
+            <GroupInspector
+                selectedNode={selectedNode}
+                isVisible={true}
+                onClose={onClose}
+                onNavigateToNode={onNavigateToNode}
+                onSelectNode={onSelectNode}
+                onNodeModeChange={onNodeModeChange}
+                getNodeMode={getNodeMode}
+                onGroupDelete={onGroupDelete}
+            />
         );
     }
 
