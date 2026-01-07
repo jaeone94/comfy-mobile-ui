@@ -105,10 +105,10 @@ export function addNodeToWorkflow(
   position: [number, number],
   nodeMetadata: any,
   initialValues?: Record<string, any>,
-  size?: number[]
+  size?: number[],
+  title?: string
 ): IComfyJson {
   // Generate new node ID (increment last_node_id)
-  // Fix: Handle case where last_node_id is missing or NaN (e.g. new workflow)
   let newNodeId: number;
   if (typeof workflowJson.last_node_id === 'number' && !isNaN(workflowJson.last_node_id)) {
     newNodeId = workflowJson.last_node_id + 1;
@@ -128,7 +128,8 @@ export function addNodeToWorkflow(
     position,
     nodeMetadata,
     initialValues,
-    size
+    size,
+    title
   );
 
   // Create updated workflow JSON
@@ -137,6 +138,25 @@ export function addNodeToWorkflow(
     last_node_id: newNodeId,
     nodes: [...workflowJson.nodes, newNode]
   };
+
+  // Handle mobile_ui_metadata preservation (e.g. control_after_generate)
+  if (initialValues && initialValues.control_after_generate) {
+    if (!updatedWorkflow.mobile_ui_metadata) {
+      updatedWorkflow.mobile_ui_metadata = {
+        version: '0.1',
+        created_by: 'ComfyMobileUI',
+        control_after_generate: {}
+      };
+    }
+
+    const metadata = updatedWorkflow.mobile_ui_metadata;
+    if (metadata) {
+      if (!metadata.control_after_generate) {
+        metadata.control_after_generate = {};
+      }
+      metadata.control_after_generate[newNodeId] = initialValues.control_after_generate;
+    }
+  }
 
   return updatedWorkflow;
 }
@@ -155,7 +175,8 @@ function createNodeInstance(
   position: [number, number],
   nodeMetadata: any,
   initialValues?: Record<string, any>,
-  size?: number[]
+  size?: number[],
+  title?: string
 ): IComfyJsonNode {
   // Calculate node size (basic implementation), or use provided size
   const nodeSize = size && size.length === 2
@@ -190,7 +211,7 @@ function createNodeInstance(
     outputs: outputs,
     widgets_values: widgetValues,
     properties: {},
-    title: nodeMetadata.display_name || nodeType
+    title: title || nodeMetadata.display_name || nodeType
   };
 }
 

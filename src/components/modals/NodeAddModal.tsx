@@ -20,7 +20,7 @@ interface NodeAddModalProps {
   onClose: () => void;
   graph: any | null;
   position: { canvasX: number; canvasY: number; worldX: number; worldY: number } | null;
-  onNodeAdd?: (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }, initialValues?: Record<string, any>, size?: number[]) => void;
+  onNodeAdd?: (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }, initialValues?: Record<string, any>, size?: number[], title?: string) => void;
 }
 
 export const NodeAddModal: React.FC<NodeAddModalProps> = ({
@@ -210,7 +210,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
     onNodeAdd(copiedNode.type, nodeMetadata, {
       worldX: position.worldX,
       worldY: position.worldY
-    }, copiedNode.widgets, copiedNode.size);
+    }, copiedNode.widgets, copiedNode.size, copiedNode.title);
 
     toast.success(t('nodeAdd.nodePasted'));
     onClose();

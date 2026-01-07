@@ -155,6 +155,7 @@
         "sizeUpdateFailed": "ノードサイズの更新に失敗しました",
         "collapseUpdated": "ノードの折りたたみ状態を更新しました",
         "collapseUpdateFailed": "ノードの折りたたみ状態の更新に失敗しました",
+        "modeUpdateFailed": "ノードモードの更新に失敗しました",
         "groupSizeUpdated": "グループサイズを更新しました",
         "groupSizeUpdateFailed": "グループサイズの更新に失敗しました",
         "repositioningApplied": "再配置を適用しました",
@@ -379,6 +380,8 @@
         "controls": "ノードコントロール",
         "outputSlots": "出力スロット",
         "deleteTitle": "ノードを削除",
+        "deleteConfirmTitle": "ノードを削除しますか？",
+        "deleteConfirmMessage": "この操作は元に戻せません。本当にこのノードを削除しますか？",
         "deleteConfirm": "ノード {{id}} ({{title}}) を削除しますか？接続されているすべてのワイヤーも削除されます。",
         "connected": "接続済み",
         "connectedToInput": "入力に接続済み",
@@ -498,6 +501,34 @@
         },
         "group": {
             "noGroups": "このワークフローにグループが見つかりません。"
+        }
+    },
+    "circularMenu": {
+        "node": {
+            "resize": "リサイズ",
+            "copy": "コピー",
+            "expand": "展開",
+            "collapse": "折りたたみ",
+            "color": "色",
+            "mode": "モード",
+            "delete": "削除",
+            "connect": "接続"
+        },
+        "canvas": {
+            "reposition": "再配置",
+            "link": "リンク",
+            "addNode": "ノード追加"
+        },
+        "colors": {
+            "brown": "茶色",
+            "teal": "ティール",
+            "blue": "青",
+            "purple": "紫",
+            "green": "緑",
+            "red": "赤",
+            "blueGray": "ブルーグレー",
+            "black": "黒",
+            "default": "デフォルト"
         }
     },
     "gallery": {

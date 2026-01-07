@@ -24,6 +24,7 @@ import { ComfyNodeMetadataService } from '@/infrastructure/api/ComfyNodeMetadata
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { convertGraphToAPI } from '@/infrastructure/api/ComfyApiFunctions';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
+import { NodeClipboardService } from '@/services/NodeClipboardService';
 
 // Utilities
 import { PromptTracker } from '@/utils/promptTracker';
@@ -40,12 +41,14 @@ import WorkflowSnapshots from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
 import { RepositionActionBar } from '@/components/controls/RepositionActionBar';
+import { CircularMenu, CircularMenuRef } from '@/components/canvas/CircularMenu';
 import { ConnectionBar } from '@/components/canvas/ConnectionBar';
 import { ConnectionModal } from '@/components/canvas/ConnectionModal';
 import { FilePreviewModal } from '@/components/modals/FilePreviewModal';
 import { GroupModeModal } from '@/components/ui/GroupModeModal';
 import { JsonViewerModal } from '@/components/modals/JsonViewerModal';
 import { NodeAddModal } from '@/components/modals/NodeAddModal';
+import { SimpleConfirmDialog } from '@/components/ui/SimpleConfirmDialog';
 import MissingNodeInstallerModal from '@/components/modals/MissingNodeInstallerModal';
 import MissingModelDetectorModal from '@/components/modals/MissingModelDetectorModal';
 
@@ -63,7 +66,7 @@ import { useConnectionStore } from '@/ui/store/connectionStore';
 import { useGlobalStore } from '@/ui/store/globalStore';
 
 // Types
-import type { IComfyGraphNode, IComfyWorkflow } from '@/shared/types/app/base';
+import type { IComfyGraphNode, IComfyWorkflow, IComfyWidget } from '@/shared/types/app/base';
 import { NodeMode } from '@/shared/types/app/base';
 import { INodeWithMetadata } from '@/shared/types/comfy/IComfyObjectInfo';
 import { IComfyGraphGroup } from '@/shared/types/app/base';
@@ -85,6 +88,7 @@ const WorkflowEditor: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const circularMenuRef = useRef<CircularMenuRef>(null);
 
   // ComfyGraph instance  
   const comfyGraphRef = useRef<any | null>(null);
@@ -133,6 +137,25 @@ const WorkflowEditor: React.FC = () => {
   const [queueRefreshTrigger, setQueueRefreshTrigger] = useState<number>(0);
   const [uploadState, setUploadState] = useState<any>({ isUploading: false });
   const [renderTrigger, setRenderTrigger] = useState(0);
+  const [nodeIdToDelete, setNodeIdToDelete] = useState<number | null>(null);
+
+
+  // Circular Menu State
+  const [circularMenuState, setCircularMenuState] = useState<{
+    isOpen: boolean;
+    center: { x: number; y: number };
+    pointer: { x: number; y: number } | null;
+    initialPointer: { x: number; y: number } | null;
+    context: 'CANVAS' | 'NODE' | 'NODE_COLOR' | 'NODE_MODE';
+    nodeId: number | null;
+  }>({
+    isOpen: false,
+    center: { x: 0, y: 0 },
+    pointer: null,
+    initialPointer: null,
+    context: 'CANVAS',
+    nodeId: null,
+  });
 
   // Connection state
   const { url: serverUrl, isConnected } = useConnectionStore();
@@ -260,14 +283,37 @@ const WorkflowEditor: React.FC = () => {
       targetNodeId: connectionMode.connectionMode.targetNode?.id || null,
       compatibleNodeIds: connectionMode.connectionMode.compatibleNodeIds
     },
-    // Long press callback - single step connection mode activation
-    onNodeLongPress: (node: any) => {
-      connectionMode.enterConnectionModeWithSource(node);
+    // Long press callback - open circular menu
+    onNodeLongPress: (node: any, position: { x: number; y: number }) => {
+      setCircularMenuState({
+        isOpen: true,
+        center: position,
+        pointer: position,
+        initialPointer: position,
+        context: 'NODE',
+        nodeId: typeof node.id === 'string' ? parseInt(node.id) : node.id
+      });
     },
-    onCanvasLongPress: (position: { x: number; y: number }) => {
-      // Enter reposition mode
-      canvasInteraction.enterRepositionMode();
+    onCanvasLongPress: (worldPos: { x: number; y: number }, screenPos?: { x: number; y: number }) => {
+      if (screenPos) {
+        setCircularMenuState({
+          isOpen: true,
+          center: screenPos,
+          pointer: screenPos,
+          initialPointer: screenPos,
+          context: 'CANVAS',
+          nodeId: null
+        });
+      }
     },
+    // Menu interaction callbacks
+    isMenuOpen: circularMenuState.isOpen,
+    onMenuDrag: (position: { x: number; y: number }) => {
+      setCircularMenuState(prev => ({ ...prev, pointer: position }));
+    },
+    onMenuRelease: () => {
+      circularMenuRef.current?.handleRelease();
+    }
   });
 
   // Canvas renderer hook
@@ -1118,10 +1164,28 @@ const WorkflowEditor: React.FC = () => {
   // #endregion helper functions for tools
 
   // #region Node Actions
+  // Handle add node from circular menu
+  const handleAddNodeFromMenu = useCallback((position: { x: number; y: number }) => {
+    const { x, y } = position;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (rect) {
+      const worldX = (x - rect.left - viewport.x) / viewport.scale;
+      const worldY = (y - rect.top - viewport.y) / viewport.scale;
+
+      canvasInteraction.setNodeAddPosition({
+        canvasX: x - rect.left,
+        canvasY: y - rect.top,
+        worldX,
+        worldY
+      });
+      canvasInteraction.setIsNodeAddModalOpen(true);
+    }
+  }, [viewport, canvasInteraction]);
+
   // Handle add node - add new node to workflow_json and reload
-  const handleAddNode = useCallback(async (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }, initialValues?: Record<string, any>, size?: number[]) => {
-    if (!id || !workflow) {
-      toast.error(t('workflow.snapshotLoadFailed'));
+  const handleAddNode = useCallback(async (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }, initialValues?: Record<string, any>, size?: number[], title?: string) => {
+    if (!workflow) {
+      toast.error(t('workflow.snapshotLoadFailed')); // Or a more specific error
       return;
     }
 
@@ -1161,12 +1225,51 @@ const WorkflowEditor: React.FC = () => {
       await loadWorkflow();
 
       toast.success(t('workflow.nodeAdded', { type: nodeMetadata.display_name || nodeType }));
-
     } catch (error) {
       console.error('Failed to add node:', error);
       toast.error(t('workflow.nodeAddFailed'));
     }
   }, [id, workflow, loadWorkflow]);
+
+  // Handle node copy to clipboard
+  const handleNodeCopy = useCallback((nodeId: number) => {
+    if (!comfyGraphRef.current) return;
+
+    const node = comfyGraphRef.current.getNodeById(nodeId);
+    if (!node) {
+      toast.error(t('workflow.nodeNotFound', { id: nodeId }));
+      return;
+    }
+
+    try {
+      // Extract comprehensive widget map by name
+      const widgetMap: Record<string, any> = {};
+      const widgets = node.getWidgets();
+      widgets.forEach((w: IComfyWidget) => {
+        if (w.name) {
+          widgetMap[w.name] = w.value;
+        }
+      });
+
+      const success = NodeClipboardService.saveNode({
+        originalNodeId: nodeId,
+        type: node.type || '',
+        title: node.title || node.type || '',
+        widgets: widgetMap,
+        color: (node as any).bgcolor || (node as any).color,
+        size: node.size ? [node.size[0], node.size[1]] : undefined
+      });
+
+      if (success) {
+        toast.success(t('node.copySuccess'));
+      } else {
+        toast.error(t('node.copyError'));
+      }
+    } catch (error) {
+      console.error('Failed to copy node:', error);
+      toast.error(t('node.copyError'));
+    }
+  }, [t]);
 
   // Force re-render utility
   const forceRender = useCallback(() => {
@@ -1328,6 +1431,19 @@ const WorkflowEditor: React.FC = () => {
   }
 
   const handleNodeDelete = async (nodeId: number) => {
+    // Close circular menu first
+    setCircularMenuState(prev => ({ ...prev, isOpen: false }));
+
+    // Set nodeId to trigger confirmation dialog
+    setNodeIdToDelete(nodeId);
+  }
+
+  const confirmNodeDelete = async () => {
+    if (nodeIdToDelete === null) return;
+
+    const nodeId = nodeIdToDelete;
+    setNodeIdToDelete(null);
+
     // Delete node and its links from both workflow_json and ComfyGraph
     if (!workflow?.workflow_json || !comfyGraphRef.current) {
       console.warn('No workflow_json or ComfyGraph available');
@@ -1974,6 +2090,80 @@ const WorkflowEditor: React.FC = () => {
     }
   };
 
+  const handleNodeModeChange = (nodeId: number, mode: number) => {
+    if (!workflow?.graph) return;
+
+    try {
+      console.log('Updating node mode:', { nodeId, mode });
+
+      // Find the node in the graph
+      const node = workflow.graph._nodes?.find(n => n.id === nodeId);
+      if (!node) {
+        console.error('Node not found:', nodeId);
+        return;
+      }
+
+      // Update the node's mode immediately for real-time canvas update
+      node.mode = mode;
+
+      // Update workflow_json for persistence - SHALLOW copy to preserve references
+      const updatedWorkflowJson = {
+        ...workflow.workflow_json,
+        nodes: workflow.workflow_json.nodes ? [...workflow.workflow_json.nodes] : []
+      };
+
+      // Update only the specific node's mode in workflow_json
+      if (Array.isArray(updatedWorkflowJson.nodes)) {
+        const nodeIndex = updatedWorkflowJson.nodes.findIndex((n: any) => n.id === nodeId);
+        if (nodeIndex !== -1) {
+          // Shallow copy the node and update only the mode
+          updatedWorkflowJson.nodes[nodeIndex] = {
+            ...updatedWorkflowJson.nodes[nodeIndex],
+            mode: mode
+          };
+        }
+      }
+
+      // Update local workflow state immediately for UI responsiveness
+      const updatedWorkflow = {
+        ...workflow,
+        workflow_json: updatedWorkflowJson,
+        modified_at: new Date().toISOString()
+      };
+
+      setWorkflow(updatedWorkflow);
+
+      // Update nodeBounds for immediate canvas rendering with new mode
+      setNodeBounds(prevBounds => {
+        const newBounds = new Map(prevBounds);
+        const existingBounds = newBounds.get(nodeId);
+        if (existingBounds) {
+          // Redraw with the updated node reference to reflect mode change (visual status)
+          newBounds.set(nodeId, {
+            ...existingBounds,
+            node: node as any
+          });
+        }
+        return newBounds;
+      });
+
+      // Update selected node to reflect changes in UI immediately
+      if (selectedNode && selectedNode.id === nodeId) {
+        setSelectedNode(node as any);
+      }
+
+      // Save to backend asynchronously (don't await)
+      updateWorkflow(updatedWorkflow).catch(error => {
+        console.error('Failed to save node mode to backend:', error);
+      });
+
+      console.log('Node mode updated successfully');
+    } catch (error) {
+      console.error('Failed to update node mode:', error);
+      toast.error(t('workflow.modeUpdateFailed'));
+    }
+  };
+
   const handleNodeCollapseChange = (nodeId: number, collapsed: boolean) => {
     if (!workflow?.graph) return;
 
@@ -2151,6 +2341,8 @@ const WorkflowEditor: React.FC = () => {
     const originalMode = node.mode !== undefined ? node.mode : NodeMode.ALWAYS;
     return widgetEditor.getNodeMode(nodeId, originalMode);
   }, [workflow?.graph?._nodes, widgetEditor]);
+
+
 
   // #endregion Node Actions
 
@@ -2541,10 +2733,7 @@ const WorkflowEditor: React.FC = () => {
             fileOperations.handleFileUpload(nodeId, paramName, fileInputRef);
           }}
           onFileUploadDirect={fileOperations.handleFileUploadDirect}
-          onNodeModeChange={(nodeId: number, mode: number) => {
-            // Directly set the node mode (0 = ALWAYS, 2 = NEVER/MUTE, 4 = BYPASS)
-            widgetEditor.setNodeMode(nodeId, mode);
-          }}
+          onNodeModeChange={handleNodeModeChange}
           setWidgetValue={widgetEditor.setWidgetValue}
           onNavigateToNode={(nodeId: number) => {
             // Use shared navigation function from useCanvasInteraction
@@ -2555,6 +2744,7 @@ const WorkflowEditor: React.FC = () => {
             setSelectedNode(node);
             setIsNodePanelVisible(true);
           }}
+          onCopyNode={handleNodeCopy}
           onNodeColorChange={handleNodeColorChange}
           onNodeDelete={handleNodeDelete}
           onGroupDelete={handleGroupDelete}
@@ -2650,6 +2840,46 @@ const WorkflowEditor: React.FC = () => {
         accept="image/*,video/*"
         style={{ display: 'none' }}
         onChange={fileOperations.handleFileSelect}
+      />
+      <CircularMenu
+        ref={circularMenuRef}
+        circularMenuState={circularMenuState}
+        setCircularMenuState={setCircularMenuState}
+        workflow={workflow}
+        onNodeColorChange={handleNodeColorChange}
+        onNodeModeChange={handleNodeModeChange}
+        onNodeDelete={handleNodeDelete}
+        onPanMode={() => {
+          setCircularMenuState(prev => ({ ...prev, isOpen: false }));
+          toast.info(t('workflow.panModeActive'));
+        }}
+        onToggleConnectionMode={connectionMode.toggleConnectionMode}
+        onEnterConnectionModeWithSource={(nodeId: number) => {
+          const node = comfyGraphRef.current?.getNodeById(nodeId);
+          if (node) {
+            connectionMode.enterConnectionModeWithSource(node);
+          }
+        }}
+        onEnterRepositionMode={(nodeId?: number) => canvasInteraction.enterRepositionMode(nodeId)}
+        onCopyNode={handleNodeCopy}
+        onNodeCollapseChange={handleNodeCollapseChange}
+        onAddNode={handleAddNodeFromMenu}
+        onClose={() => setCircularMenuState(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <SimpleConfirmDialog
+        isOpen={nodeIdToDelete !== null}
+        onClose={() => setNodeIdToDelete(null)}
+        onConfirm={confirmNodeDelete}
+        title={t('node.deleteConfirmTitle')}
+        message={t('node.deleteConfirmMessage')}
+        nodeInfo={(() => {
+          if (nodeIdToDelete === null) return undefined;
+          const node = comfyGraphRef.current?.getNodeById(nodeIdToDelete);
+          return node ? `${node.title || node.type}#${node.id}` : `#${nodeIdToDelete}`;
+        })()}
+        confirmText={t('common.delete')}
+        isDestructive={true}
       />
     </div>
   );

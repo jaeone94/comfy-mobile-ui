@@ -39,10 +39,10 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
   onTouchEnd,
 }) => {
   return (
-    <div 
+    <div
       ref={containerRef}
       className="absolute top-16 left-0 right-0 bottom-0 overflow-hidden"
-      style={{ 
+      style={{
         cursor: isDragging ? 'grabbing' : 'grab',
         touchAction: 'none', // Prevent browser touch gestures
         overscrollBehavior: 'none', // Prevent overscroll
@@ -66,7 +66,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
       />
-      
+
       {/* Long Press Progress Overlay */}
       {longPressState?.showProgress && (
         <div
@@ -80,9 +80,9 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         >
           {/* Simple progress ring with CSS animation */}
           <div className="absolute inset-0">
-            <svg 
-              width="110" 
-              height="110" 
+            <svg
+              width="110"
+              height="110"
               className="transform -rotate-90"
               viewBox="0 0 110 110"
             >
@@ -107,15 +107,15 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
                 strokeDasharray={`${2 * Math.PI * 45}`}
                 strokeDashoffset={`${2 * Math.PI * 45}`}
                 style={{
-                  animation: 'longPressProgress 0.7s linear forwards',
+                  animation: 'longPressProgress 0.35s linear forwards',
                   filter: 'drop-shadow(0 0 4px rgba(59, 130, 246, 0.6))',
                 }}
               />
             </svg>
           </div>
-          
+
           {/* Center dot */}
-          <div 
+          <div
             className="absolute rounded-full bg-blue-500"
             style={{
               left: 55 - 8,
@@ -127,7 +127,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
           />
         </div>
       )}
-      
+
       <style>{`
         @keyframes longPressProgress {
           from {

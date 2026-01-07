@@ -155,6 +155,7 @@
         "sizeUpdateFailed": "노드 크기 업데이트 실패",
         "collapseUpdated": "노드 접기 상태 업데이트 성공",
         "collapseUpdateFailed": "노드 접기 상태 업데이트 실패",
+        "modeUpdateFailed": "노드 모드 업데이트 실패",
         "groupSizeUpdated": "그룹 크기 업데이트 성공",
         "groupSizeUpdateFailed": "그룹 크기 업데이트 실패",
         "repositioningApplied": "재배치 적용 성공",
@@ -379,6 +380,8 @@
         "controls": "노드 제어",
         "outputSlots": "출력 슬롯",
         "deleteTitle": "노드 삭제",
+        "deleteConfirmTitle": "노드를 삭제하시겠습니까?",
+        "deleteConfirmMessage": "이 작업은 되돌릴 수 없습니다. 정말로 이 노드를 삭제하시겠습니까?",
         "deleteConfirm": "노드 {{id}} ({{title}})를 삭제하시겠습니까? 연결된 모든 링크도 제거됩니다.",
         "connected": "연결됨",
         "connectedToInput": "입력에 연결됨",
@@ -498,6 +501,34 @@
         },
         "group": {
             "noGroups": "이 워크플로우에서 그룹을 찾을 수 없습니다."
+        }
+    },
+    "circularMenu": {
+        "node": {
+            "resize": "크기 조절",
+            "copy": "복사",
+            "expand": "펼치기",
+            "collapse": "접기",
+            "color": "색상",
+            "mode": "모드",
+            "delete": "삭제",
+            "connect": "연결"
+        },
+        "canvas": {
+            "reposition": "위치 변경",
+            "link": "링크",
+            "addNode": "노드 추가"
+        },
+        "colors": {
+            "brown": "갈색",
+            "teal": "청록색",
+            "blue": "파란색",
+            "purple": "보라색",
+            "green": "초록색",
+            "red": "빨간색",
+            "blueGray": "청회색",
+            "black": "검정색",
+            "default": "기본값"
         }
     },
     "gallery": {

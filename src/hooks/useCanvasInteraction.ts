@@ -80,8 +80,12 @@ interface UseCanvasInteractionProps {
     compatibleNodeIds: Set<number>;
   } | null;
   // Long press callbacks
-  onNodeLongPress?: (node: WorkflowNode) => void;
-  onCanvasLongPress?: (position: { x: number; y: number }) => void;
+  onNodeLongPress?: (node: WorkflowNode, position: { x: number; y: number }) => void;
+  onCanvasLongPress?: (position: { x: number; y: number }, screenPosition?: { x: number; y: number }) => void;
+  // Menu interaction
+  isMenuOpen?: boolean;
+  onMenuDrag?: (position: { x: number; y: number }) => void;
+  onMenuRelease?: () => void;
 }
 
 export const useCanvasInteraction = ({
@@ -100,15 +104,18 @@ export const useCanvasInteraction = ({
   connectionMode,
   onNodeLongPress,
   onCanvasLongPress,
+  isMenuOpen = false,
+  onMenuDrag,
+  onMenuRelease,
 }: UseCanvasInteractionProps) => {
   const [isDragging, setIsDragging] = useState(false);
-  const [mouseDownInfo, setMouseDownInfo] = useState<{ 
-    x: number, 
-    y: number, 
+  const [mouseDownInfo, setMouseDownInfo] = useState<{
+    x: number,
+    y: number,
     time: number,
     clickedNode?: WorkflowNode | null,
     clickedGroup?: GroupBounds | null,
-    initialViewport: { x: number, y: number } 
+    initialViewport: { x: number, y: number }
   } | null>(null);
   const [touchStart, setTouchStart] = useState<TouchStartInfo | null>(null);
   const [pinchDistance, setPinchDistance] = useState<number | null>(null);
@@ -127,11 +134,11 @@ export const useCanvasInteraction = ({
 
   // Node add modal state
   const [isNodeAddModalOpen, setIsNodeAddModalOpen] = useState<boolean>(false);
-  const [nodeAddPosition, setNodeAddPosition] = useState<{ 
-    canvasX: number; 
-    canvasY: number; 
-    worldX: number; 
-    worldY: number 
+  const [nodeAddPosition, setNodeAddPosition] = useState<{
+    canvasX: number;
+    canvasY: number;
+    worldX: number;
+    worldY: number
   } | null>(null);
 
   // Repositioning mode state
@@ -151,7 +158,7 @@ export const useCanvasInteraction = ({
     newPosition: [number, number];
     originalPosition: [number, number];
   }>>([]);
-  
+
   const [groupChanges, setGroupChanges] = useState<Array<{
     groupId: number;
     newPosition: [number, number];
@@ -168,7 +175,7 @@ export const useCanvasInteraction = ({
     originalPosition: [number, number];
   }>>([]);
 
-  
+
   // Store selected group's node list (calculated once when group is selected)
   const [selectedGroupNodeIds, setSelectedGroupNodeIds] = useState<number[]>([]);
 
@@ -185,9 +192,8 @@ export const useCanvasInteraction = ({
   });
 
   // Constants for long press
-  const LONG_PRESS_DURATION = 1000; // 1 second
-  const PROGRESS_DELAY = 300; // 0.3 seconds before showing progress
-  const PROGRESS_ANIMATION_DURATION = 700; // 0.7 seconds of visible animation (1000 - 300)
+  const LONG_PRESS_DURATION = 500; // Reduced from 1000
+  const PROGRESS_DELAY = 150; // Delay before showing progress (half of 300)
   const LONG_PRESS_TOLERANCE = 8; // pixels
   const DRAG_THRESHOLD = 8; // pixels
 
@@ -213,21 +219,21 @@ export const useCanvasInteraction = ({
 
   // Removed complex progress tracking - CSS animation handles visual progress independently
 
-  const startLongPress = useCallback((x: number, y: number, targetNode?: WorkflowNode) => {
+  const startLongPress = useCallback((x: number, y: number, targetNode?: WorkflowNode | null, screenPos?: { x: number; y: number }) => {
     // Don't start long press if multiple touches are active
     if (activeTouchCount > 1) {
       return;
     }
-    
+
     // Don't start long press if connection mode is active
     if (connectionMode?.isActive) {
       return;
     }
-    
+
     clearLongPress();
-    
+
     const startTime = Date.now();
-    
+
     // First timeout: Show progress after 0.3 seconds
     const progressTimeoutId = setTimeout(() => {
       setLongPressState(prev => ({
@@ -236,7 +242,7 @@ export const useCanvasInteraction = ({
         progressTimeoutId: null,
       }));
     }, PROGRESS_DELAY);
-    
+
     // Second timeout: Complete long press after 1 second total
     const timeoutId = setTimeout(() => {
       // Long press completed - mark as completed before calling callback
@@ -244,18 +250,26 @@ export const useCanvasInteraction = ({
         ...prev,
         timeoutId: null, // Mark as completed
       }));
-      
+
       // Handle long press completion - simple and direct
       if (targetNode && onNodeLongPress) {
         // Node long press: Single-step connection mode activation
-        onNodeLongPress(targetNode);
+        // Pass SCREEN coordinates (x, y) which are preserved in closure
+        onNodeLongPress(targetNode, screenPos || { x, y });
       } else if (!targetNode && onCanvasLongPress) {
         // Canvas long press: Enter reposition mode
+
+        // CRITICAL FIX: onCanvasLongPress expects World Coordinates (logic in WorkflowEditor)
+        // But for Circular Menu on Canvas, it might need Screen Coords?
+        // WorkflowEditor's onCanvasLongPress currently converts World to Screen.
+        // So we should pass World Coords here to maintain compatibility.
+        // The bug was specific to onNodeLongPress being passed relative coords for menu.
+
         const worldX = (x - viewport.x) / viewport.scale;
         const worldY = (y - viewport.y) / viewport.scale;
-        onCanvasLongPress({ x: worldX, y: worldY });
+        onCanvasLongPress({ x: worldX, y: worldY }, screenPos);
       }
-      
+
       // Clear after a short delay to allow UI feedback to be visible
       setTimeout(() => {
         setLongPressState(prev => ({
@@ -265,7 +279,7 @@ export const useCanvasInteraction = ({
         }));
       }, 100);
     }, LONG_PRESS_DURATION);
-    
+
     setLongPressState({
       isActive: true,
       showProgress: false, // Progress will show after 0.3s delay
@@ -280,11 +294,11 @@ export const useCanvasInteraction = ({
 
   const checkLongPressMovement = useCallback((currentX: number, currentY: number): boolean => {
     if (!longPressState.isActive) return false;
-    
+
     const deltaX = Math.abs(currentX - longPressState.startX);
     const deltaY = Math.abs(currentY - longPressState.startY);
     const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-    
+
     if (distance > LONG_PRESS_TOLERANCE) {
       console.log('🚫 [LongPress] Movement exceeded tolerance', { distance, tolerance: LONG_PRESS_TOLERANCE });
       clearLongPress();
@@ -397,17 +411,17 @@ export const useCanvasInteraction = ({
         }));
       }
     }
-    
+
     // Start long press timer (only if not in repositioning mode)
     if (!repositionMode.isActive) {
-      startLongPress(x, y, clickedNode || undefined);
+      startLongPress(x, y, clickedNode || undefined, { x: e.clientX, y: e.clientY });
     }
-    
+
     // Always store mouse down info for potential dragging (from anywhere on canvas)
     // Include clicked node info and initial viewport to decide later if we should select it
-    setMouseDownInfo({ 
-      x: e.clientX, 
-      y: e.clientY, 
+    setMouseDownInfo({
+      x: e.clientX,
+      y: e.clientY,
       time: Date.now(),
       clickedNode,
       clickedGroup,
@@ -496,6 +510,18 @@ export const useCanvasInteraction = ({
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Handle menu drag
+    if (isMenuOpen && onMenuDrag) {
+      const rect = canvasRef.current?.getBoundingClientRect();
+      if (rect) {
+        onMenuDrag({
+          x: e.clientX,
+          y: e.clientY
+        });
+      }
+      return;
+    }
+
     // Handle cursor feedback
     handleMouseHover(e);
 
@@ -524,7 +550,7 @@ export const useCanvasInteraction = ({
 
     // Continue dragging if already started
     if (isDragging) {
-      
+
       // Check if we're in repositioning mode with a selected node or group
       if (repositionMode.isActive) {
         // Handle resize mode
@@ -608,6 +634,12 @@ export const useCanvasInteraction = ({
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (isMenuOpen) {
+      if (onMenuRelease) onMenuRelease();
+      setMouseDownInfo(null); // Prevent phantom clicks
+      return;
+    }
+
     // Clear long press only if it's still in progress (not completed)
     if (longPressState.isActive && longPressState.timeoutId) {
       clearLongPress();
@@ -641,7 +673,7 @@ export const useCanvasInteraction = ({
 
       // Only add to changes if size or position actually changed
       if (currentSize[0] !== originalSize[0] || currentSize[1] !== originalSize[1] ||
-          currentPosition[0] !== originalPosition[0] || currentPosition[1] !== originalPosition[1]) {
+        currentPosition[0] !== originalPosition[0] || currentPosition[1] !== originalPosition[1]) {
         setResizeChanges(prev => {
           // Remove any existing resize change for this node/group
           const filtered = prev.filter(change =>
@@ -664,7 +696,7 @@ export const useCanvasInteraction = ({
         resizeMode: undefined
       }));
     }
-    
+
     // If we weren't dragging and had a mouse down, handle click/double-click logic
     if (!isDragging && mouseDownInfo) {
       // If we clicked on a node/group and didn't drag, select it now
@@ -705,7 +737,7 @@ export const useCanvasInteraction = ({
           if (lastClickInfo) {
             const timeDiff = currentClickInfo.time - lastClickInfo.time;
             const positionDiff = Math.sqrt(
-              Math.pow(currentClickInfo.x - lastClickInfo.x, 2) + 
+              Math.pow(currentClickInfo.x - lastClickInfo.x, 2) +
               Math.pow(currentClickInfo.y - lastClickInfo.y, 2)
             );
 
@@ -737,26 +769,28 @@ export const useCanvasInteraction = ({
         }
       }
     }
-    
+
     // Completely clean up all drag-related states
     setIsDragging(false);
     setMouseDownInfo(null);
   };
 
   // Touch event handlers for mobile
+
+
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
     // Prevent browser back/forward gestures
     e.preventDefault();
-    
+
     // Update active touch count and last touch time
     setActiveTouchCount(e.touches.length);
     setLastTouchTime(Date.now());
-    
+
     // Cancel any active long press if multi-touch detected
     if (e.touches.length > 1 && longPressState.isActive) {
       clearLongPress();
     }
-    
+
     if (e.touches.length === 1) {
       // Single touch
       const touch = e.touches[0];
@@ -820,25 +854,25 @@ export const useCanvasInteraction = ({
       // Check if touching a node (using Z-order priority)
       let touchedNode: WorkflowNode | null = null;
       let highestPriority = -Infinity;
-      
+
       // Helper function to calculate connection mode priority (same as in CanvasRenderer)
       const getConnectionPriority = (node: WorkflowNode) => {
         if (!connectionMode?.isActive) return 0;
-        
+
         // Source and target nodes get highest priority
         if (connectionMode.sourceNodeId === node.id) return 1000;
         if (connectionMode.targetNodeId === node.id) return 1000;
-        
+
         // Compatible nodes get medium priority (above normal nodes, below source/target)
-        if (connectionMode.phase === 'TARGET_SELECTION' && 
-            connectionMode.compatibleNodeIds.has(node.id) &&
-            connectionMode.sourceNodeId !== node.id) {
+        if (connectionMode.phase === 'TARGET_SELECTION' &&
+          connectionMode.compatibleNodeIds.has(node.id) &&
+          connectionMode.sourceNodeId !== node.id) {
           return 500;
         }
-        
+
         return 0;
       };
-      
+
       nodeBounds.forEach((bounds) => {
         if (
           worldX >= bounds.x &&
@@ -849,15 +883,15 @@ export const useCanvasInteraction = ({
           // Calculate priority for this node (same logic as CanvasRenderer sorting)
           const isCollapsed = bounds.node.flags?.collapsed === true;
           let priority = bounds.node.order || 0;
-          
+
           // Add collapsed penalty (collapsed nodes should be behind)
           if (isCollapsed) {
             priority -= 10000;
           }
-          
+
           // Add connection mode priority
           priority += getConnectionPriority(bounds.node);
-          
+
           if (priority > highestPriority) {
             highestPriority = priority;
             touchedNode = bounds.node;
@@ -896,7 +930,12 @@ export const useCanvasInteraction = ({
 
       // Start long press timer (only if not in repositioning mode)
       if (!repositionMode.isActive) {
-        startLongPress(x, y, touchedNode || undefined);
+        startLongPress(
+          touch.clientX - (canvasRef.current?.getBoundingClientRect().left || 0),
+          touch.clientY - (canvasRef.current?.getBoundingClientRect().top || 0),
+          touchedNode,
+          { x: touch.clientX, y: touch.clientY }
+        );
       }
 
       // Only clear selected node if touching background
@@ -930,16 +969,27 @@ export const useCanvasInteraction = ({
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       setPinchDistance(Math.sqrt(dx * dx + dy * dy));
-      
+
       // Clear touch start when switching to pinch
       setTouchStart(null);
     }
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (isMenuOpen && onMenuDrag && e.touches.length > 0) {
+      // Prevent default to stop scrolling/refresh
+      if (e.cancelable) e.preventDefault();
+
+      onMenuDrag({
+        x: e.touches[0].clientX,
+        y: e.touches[0].clientY
+      });
+      return;
+    }
+
     // Prevent browser gestures
     e.preventDefault();
-    
+
     // Update last touch time to prevent mouse events
     setLastTouchTime(Date.now());
 
@@ -953,7 +1003,7 @@ export const useCanvasInteraction = ({
         checkLongPressMovement(x, y);
       }
     }
-    
+
     if (e.touches.length === 1 && touchStart) {
       // Single touch drag
       const touch = Array.from(e.touches).find(t => t.identifier === touchStart.identifier);
@@ -1057,34 +1107,41 @@ export const useCanvasInteraction = ({
       const dx = e.touches[0].clientX - e.touches[1].clientX;
       const dy = e.touches[0].clientY - e.touches[1].clientY;
       const newDistance = Math.sqrt(dx * dx + dy * dy);
-      
+
       const scale = newDistance / pinchDistance;
       const newScale = Math.max(0.05, Math.min(5, viewport.scale * scale));
-      
+
       // Calculate center point for zoom
       const centerX = (e.touches[0].clientX + e.touches[1].clientX) / 2;
       const centerY = (e.touches[0].clientY + e.touches[1].clientY) / 2;
-      
+
       const rect = canvasRef.current?.getBoundingClientRect();
       if (rect) {
         const x = centerX - rect.left;
         const y = centerY - rect.top;
-        
+
         const worldX = (x - viewport.x) / viewport.scale;
         const worldY = (y - viewport.y) / viewport.scale;
-        
+
         setViewport({
           scale: newScale,
           x: x - worldX * newScale,
           y: y - worldY * newScale
         });
       }
-      
+
       setPinchDistance(newDistance);
     }
   };
 
   const handleTouchEnd = (e: React.TouchEvent<HTMLCanvasElement>) => {
+    if (isMenuOpen) {
+      if (onMenuRelease) onMenuRelease();
+      // Clear touch start to prevent phantom taps after menu closes
+      setTouchStart(null);
+      return;
+    }
+
     e.preventDefault();
 
     // Update active touch count and last touch time
@@ -1124,7 +1181,7 @@ export const useCanvasInteraction = ({
 
       // Only add to changes if size or position actually changed
       if (currentSize[0] !== originalSize[0] || currentSize[1] !== originalSize[1] ||
-          currentPosition[0] !== originalPosition[0] || currentPosition[1] !== originalPosition[1]) {
+        currentPosition[0] !== originalPosition[0] || currentPosition[1] !== originalPosition[1]) {
         setResizeChanges(prev => {
           // Remove any existing resize change for this node/group
           const filtered = prev.filter(change =>
@@ -1147,23 +1204,23 @@ export const useCanvasInteraction = ({
         resizeMode: undefined
       }));
     }
-    
+
     if (e.touches.length === 0) {
       // All fingers lifted - check if it was a tap on a node or background
       if (touchStart) {
         const endTime = Date.now();
         const duration = endTime - touchStart.startTime;
-        
+
         // Get end position from the changedTouches (last finger that was lifted)
         const lastTouch = Array.from(e.changedTouches).find(
           t => t.identifier === touchStart.identifier
         );
-        
+
         if (lastTouch) {
           const deltaX = Math.abs(lastTouch.clientX - touchStart.x);
           const deltaY = Math.abs(lastTouch.clientY - touchStart.y);
           const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-          
+
           // Consider it a tap if:
           // 1. Duration is less than 500ms
           // 2. Movement is less than 10 pixels
@@ -1196,15 +1253,15 @@ export const useCanvasInteraction = ({
                 x: lastTouch.clientX,
                 y: lastTouch.clientY
               };
-              
+
               // Check if this is a double tap
               if (lastTapInfo) {
                 const timeDiff = currentTapInfo.time - lastTapInfo.time;
                 const positionDiff = Math.sqrt(
-                  Math.pow(currentTapInfo.x - lastTapInfo.x, 2) + 
+                  Math.pow(currentTapInfo.x - lastTapInfo.x, 2) +
                   Math.pow(currentTapInfo.y - lastTapInfo.y, 2)
                 );
-                
+
                 // Double tap detected if:
                 // 1. Second tap within 500ms of first tap
                 // 2. Taps are within 50 pixels of each other
@@ -1216,18 +1273,19 @@ export const useCanvasInteraction = ({
                     const canvasY = lastTouch.clientY - rect.top;
                     const worldX = (canvasX - viewport.x) / viewport.scale;
                     const worldY = (canvasY - viewport.y) / viewport.scale;
-                    
+
+                    // DEPRECATED: Double tap for node addition replaced with long press (CircularMenu)
                     // Skip AddNodeModal in repositioning mode
-                    if (!repositionMode.isActive) {
-                      handleDoubleTap({
-                        canvasX,
-                        canvasY,
-                        worldX,
-                        worldY
-                      });
-                    }
+                    // if (!repositionMode.isActive) {
+                    //   handleDoubleTap({
+                    //     canvasX,
+                    //     canvasY,
+                    //     worldX,
+                    //     worldY
+                    //   });
+                    // }
                   }
-                  
+
                   // Clear the last tap info to prevent triple-tap issues
                   setLastTapInfo(null);
                 } else {
@@ -1265,7 +1323,7 @@ export const useCanvasInteraction = ({
 
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     // e.preventDefault();
-    
+
     const rect = canvasRef.current?.getBoundingClientRect();
     if (!rect) return;
 
@@ -1331,23 +1389,23 @@ export const useCanvasInteraction = ({
     const animate = (currentTime: number) => {
       const elapsed = currentTime - startTime;
       const progress = Math.min(elapsed / duration, 1);
-      
+
       // Easing function (ease-out)
       const easeOut = 1 - Math.pow(1 - progress, 3);
-      
+
       const currentViewport = {
         x: startViewport.x + (targetViewport.x - startViewport.x) * easeOut,
         y: startViewport.y + (targetViewport.y - startViewport.y) * easeOut,
         scale: startViewport.scale + (targetViewport.scale - startViewport.scale) * easeOut
       };
-      
+
       setViewport(currentViewport);
-      
+
       if (progress < 1) {
         requestAnimationFrame(animate);
       }
     };
-    
+
     requestAnimationFrame(animate);
   };
 
@@ -1410,7 +1468,7 @@ export const useCanvasInteraction = ({
     // tracking node changes (only when repositioning mode)
     if (repositionMode.isActive) {
       let originalPos: [number, number] | null = null;
-      
+
       // single node movement
       if (repositionMode.selectedNodeId === nodeId && repositionMode.originalPosition) {
         originalPos = repositionMode.originalPosition;
@@ -1424,7 +1482,7 @@ export const useCanvasInteraction = ({
         setNodeChanges(prev => {
           // remove existing changes for this node
           const filtered = prev.filter(change => change.nodeId !== nodeId);
-          
+
           // add only if position has changed
           if (Math.abs(x - originalPos![0]) > 0.1 || Math.abs(y - originalPos![1]) > 0.1) {
             return [...filtered, {
@@ -1485,13 +1543,26 @@ export const useCanvasInteraction = ({
   };
 
   // Repositioning mode control functions
-  const enterRepositionMode = () => {
+  const enterRepositionMode = (nodeId?: number) => {
+    let selectedNodeId: number | null = null;
+    let originalPosition: [number, number] | null = null;
+
+    if (nodeId) {
+      const nodeBound = nodeBounds.get(nodeId);
+      if (nodeBound) {
+        selectedNodeId = nodeId;
+        originalPosition = [nodeBound.node.pos[0], nodeBound.node.pos[1]];
+        // Clear selected group's node list when selecting a node
+        setSelectedGroupNodeIds([]);
+      }
+    }
+
     setRepositionMode({
       isActive: true,
-      selectedNodeId: null,
+      selectedNodeId,
       selectedGroupId: null,
-      originalPosition: null,
-      currentPosition: null,
+      originalPosition,
+      currentPosition: originalPosition,
       gridSnapEnabled: true, // Always enable grid snap when entering repositioning mode
       originalNodePositions: new Map()
     });
@@ -1553,7 +1624,7 @@ export const useCanvasInteraction = ({
       setGroupChanges(prev => {
         // remove existing changes for this group
         const filtered = prev.filter(change => change.groupId !== groupId);
-        
+
         // add only if position has changed
         if (Math.abs(x - originalPos[0]) > 0.1 || Math.abs(y - originalPos[1]) > 0.1) {
           return [...filtered, {
@@ -1572,10 +1643,10 @@ export const useCanvasInteraction = ({
     if (!nodeBound) return false;
 
     const originalPos: [number, number] = [nodeBound.node.pos[0], nodeBound.node.pos[1]];
-    
+
     // Clear selected group's node list when selecting a node
     setSelectedGroupNodeIds([]);
-    
+
     setRepositionMode(prev => ({
       ...prev,
       selectedNodeId: nodeId,
@@ -1589,26 +1660,26 @@ export const useCanvasInteraction = ({
 
   const selectGroupForRepositioning = (groupId: number) => {
     const groupBound = groupBounds.find(g => g.id === groupId);
-    
+
     if (!groupBound) {
       return false;
     }
 
     const originalPos: [number, number] = [groupBound.x, groupBound.y];
-    
+
     // Use the same workflowGroups that handleGroupModeChange uses (for consistency)
     let groupNodeIds: number[] = [];
     let groupTitle = `Group ${groupId}`;
-    
+
     const group = workflowGroups.find(g => g.id === groupId);
     if (group) {
       groupNodeIds = group.nodeIds;
       groupTitle = group.title;
     }
-    
+
     // Store the calculated node list
     setSelectedGroupNodeIds(groupNodeIds);
-    
+
     // Save original positions of all nodes in the group
     const nodeOriginalPositions = new Map<number, [number, number]>();
     groupNodeIds.forEach(nodeId => {
@@ -1617,7 +1688,7 @@ export const useCanvasInteraction = ({
         nodeOriginalPositions.set(nodeId, [nodeBound.node.pos[0], nodeBound.node.pos[1]]);
       }
     });
-    
+
     setRepositionMode(prev => {
       const newMode = {
         ...prev,
@@ -1627,7 +1698,7 @@ export const useCanvasInteraction = ({
         currentPosition: originalPos,
         originalNodePositions: nodeOriginalPositions, // Store original node positions
       };
-      
+
       return newMode;
     });
 
@@ -1671,7 +1742,7 @@ export const useCanvasInteraction = ({
 
     // set selected node to group node
     setSelectedNode(groupNode);
-    
+
     return true;
   };
 
@@ -1868,7 +1939,7 @@ export const useCanvasInteraction = ({
     if (!nodeBound) return false;
 
     const canvas = canvasRef.current;
-    
+
     // Calculate node center
     const nodeCenter = {
       x: nodeBound.x + nodeBound.width / 2,
@@ -1890,16 +1961,16 @@ export const useCanvasInteraction = ({
 
     // Animate to target viewport (300ms duration like original)
     animateToViewport(targetViewport, 300);
-    
+
     return true;
   };
 
   // Handle double tap for node addition
-  const handleDoubleTap = useCallback((position: { 
-    canvasX: number; 
-    canvasY: number; 
-    worldX: number; 
-    worldY: number 
+  const handleDoubleTap = useCallback((position: {
+    canvasX: number;
+    canvasY: number;
+    worldX: number;
+    worldY: number
   }) => {
     // Set position and open modal
     setNodeAddPosition(position);

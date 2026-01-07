@@ -155,6 +155,7 @@
         "sizeUpdateFailed": "更新节点大小失败",
         "collapseUpdated": "节点折叠状态更新成功",
         "collapseUpdateFailed": "更新节点折叠状态失败",
+        "modeUpdateFailed": "更新节点模式失败",
         "groupSizeUpdated": "组大小更新成功",
         "groupSizeUpdateFailed": "更新组大小失败",
         "repositioningApplied": "重新定位应用成功",
@@ -379,6 +380,8 @@
         "controls": "节点控制",
         "outputSlots": "输出插槽",
         "deleteTitle": "删除节点",
+        "deleteConfirmTitle": "删除节点？",
+        "deleteConfirmMessage": "此操作无法撤销。您确定要删除此节点吗？",
         "deleteConfirm": "确定要删除节点 {{id}} ({{title}}) 吗？所有连接的连线也将被移除。",
         "connected": "已连接",
         "connectedToInput": "已连接到输入",
@@ -498,6 +501,34 @@
         },
         "group": {
             "noGroups": "在此工作流中未找到组。"
+        }
+    },
+    "circularMenu": {
+        "node": {
+            "resize": "调整大小",
+            "copy": "复制",
+            "expand": "展开",
+            "collapse": "折叠",
+            "color": "颜色",
+            "mode": "模式",
+            "delete": "删除",
+            "connect": "连接"
+        },
+        "canvas": {
+            "reposition": "重新定位",
+            "link": "链接",
+            "addNode": "添加节点"
+        },
+        "colors": {
+            "brown": "棕色",
+            "teal": "鸭翅绿",
+            "blue": "蓝色",
+            "purple": "紫色",
+            "green": "绿色",
+            "red": "红色",
+            "blueGray": "蓝灰色",
+            "black": "黑色",
+            "default": "默认"
         }
     },
     "gallery": {

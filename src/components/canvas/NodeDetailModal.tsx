@@ -5,7 +5,10 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 
-import { RefreshCw, X, ExternalLink, Play, Image as ImageIcon, SlidersHorizontal, Edit3, Check } from 'lucide-react';
+import {
+    RefreshCw, X, ExternalLink, Play, Image as ImageIcon, SlidersHorizontal, Edit3, Check,
+    Copy, Minimize2, Maximize2, Palette, VolumeX, Shuffle, MousePointer2, Trash2
+} from 'lucide-react';
 import { INodeWithMetadata, IProcessedParameter } from '@/shared/types/comfy/IComfyObjectInfo';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 import { GroupInspector } from '@/components/canvas/GroupInspector';
@@ -77,6 +80,8 @@ interface NodeDetailModalProps {
     onSingleExecute?: (nodeId: number) => void;
     // Node color change functionality
     onNodeColorChange?: (nodeId: number, bgcolor: string) => void;
+    // Node copy functionality
+    onCopyNode?: (nodeId: number) => void;
     // Node deletion functionality
     onNodeDelete?: (nodeId: number) => void;
     // Group deletion functionality
@@ -126,6 +131,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     isSingleExecuting = false,
     onSingleExecute,
     onNodeColorChange,
+    onCopyNode,
     onNodeDelete,
     onGroupDelete,
     onNodeRefresh,
@@ -140,14 +146,34 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     const nodeId = typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id;
     const metadata = nodeMetadata.get(nodeId);
 
-    // Node Color Extraction
-    // Node Color Extraction
-    // Use the explicit node color if available, otherwise fallback to the canvas config default
-    const rawNodeColor = selectedNode.bgcolor || selectedNode.color || (selectedNode.properties?.['Node Color']);
-    const nodeColor = rawNodeColor || DEFAULT_CANVAS_CONFIG.defaultNodeColor;
-    // We treat it as a custom color if it's explicitly set OR if we are using the default dark mode color 
-    // (creating a consistent dark themed modal)
     const hasCustomColor = true; // Always true now as we default to dark grey
+
+    const [showColorPicker, setShowColorPicker] = useState(false);
+    const [showModePicker, setShowModePicker] = useState(false);
+
+    const isCollapsed = (selectedNode as any)?.flags?.collapsed;
+    const currentMode = (selectedNode as any)?.mode || 0;
+
+    // Mode-based style overrides
+    const isMuted = currentMode === 2;
+    const isBypassed = currentMode === 4;
+    const isAlways = currentMode === 0;
+
+    const baseColor = (selectedNode.bgcolor || selectedNode.color || (selectedNode.properties?.['Node Color'])) || '#374151';
+    const effectiveBgColor = isMuted ? '#3b82f6' : (isBypassed ? '#9333ea' : baseColor);
+    const effectiveOpacity = (isMuted || isBypassed) ? 0.5 : 1;
+
+    const NODE_COLORS = [
+        { name: 'Brown', value: '#593930' },
+        { name: 'Teal', value: '#3f5159' },
+        { name: 'Blue', value: '#29699c' },
+        { name: 'Purple', value: '#335' },
+        { name: 'Green', value: '#353' },
+        { name: 'Red', value: '#653' },
+        { name: 'Blue Gray', value: '#364254' },
+        { name: 'Black', value: '#000' },
+        { name: 'Default', value: '' }
+    ];
 
     // File selection state (for Image/Video widgets)
     const [fileSelectionState, setFileSelectionState] = useState<{
@@ -425,15 +451,11 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 ) : (
                                     (() => {
                                         const parameterType = detectParameterType(param);
-                                        const Wrapper = ({ children }: { children: React.ReactNode }) => (
-                                            <div className="space-y-1.5">
-                                                {children}
-                                            </div>
-                                        );
+                                        const wrapperClasses = "space-y-1.5";
 
                                         if (parameterType) {
                                             return (
-                                                <Wrapper>
+                                                <div className={wrapperClasses}>
                                                     <WidgetValueEditor
                                                         param={param}
                                                         nodeId={nodeId}
@@ -463,12 +485,12 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                             border: 'border-white/10',
                                                         } : undefined}
                                                     />
-                                                </Wrapper>
+                                                </div>
                                             );
                                         }
                                         // Default WidgetValueEditor
                                         return (
-                                            <Wrapper>
+                                            <div className={wrapperClasses}>
                                                 <WidgetValueEditor
                                                     param={param}
                                                     nodeId={nodeId}
@@ -496,7 +518,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                         border: 'border-white/10',
                                                     } : undefined}
                                                 />
-                                            </Wrapper>
+                                            </div>
                                         );
                                     })()
                                 )
@@ -769,151 +791,258 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                     onClick={onClose}
                 />
 
-                {/* Enterprise Card Container - pointer-events-auto */}
+                {/* Modal Container */}
                 <motion.div
                     initial={{ opacity: 0, scale: 0.96, y: 15 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
                     exit={{ opacity: 0, scale: 0.96, y: 15 }}
                     transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-                    style={{ backgroundColor: nodeColor || undefined }}
-                    className={`relative w-[80vw] bg-white dark:bg-slate-950 rounded-3xl shadow-2xl ring-1 ring-slate-900/5 dark:ring-slate-100/10 overflow-hidden flex flex-col h-[75vh] pointer-events-auto ${hasCustomColor ? 'text-white' : ''}`}
+                    className="relative w-[80vw] h-[75vh] pointer-events-auto flex flex-col"
                 >
-                    {/* Minimalist Floating Close Button */}
-                    <div className="absolute top-5 right-5 z-20">
-                        <button
-                            onClick={onClose}
-                            className={`p-2 rounded-full transition-all ${hasCustomColor ? 'bg-black/20 text-white hover:bg-black/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:hover:text-slate-200 dark:hover:bg-slate-700'}`}
-                        >
-                            <X className="w-5 h-5" />
-                        </button>
+                    {/* Action Buttons Row - Positioned above the modal */}
+                    <div className="absolute top-0 left-0 -translate-y-[calc(100%+16px)] flex items-center w-full min-h-[48px] pointer-events-none">
+                        <div className="flex items-center pointer-events-auto">
+                            <AnimatePresence mode="wait">
+                                {!showColorPicker ? (
+                                    <motion.div
+                                        key="main-actions"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="flex items-center gap-2"
+                                    >
+                                        <button
+                                            onClick={() => onCopyNode?.(nodeId)}
+                                            className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors active:scale-95"
+                                            title={t('circularMenu.node.copy')}
+                                        >
+                                            <Copy className="w-5 h-5" />
+                                        </button>
+
+                                        <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+                                        <div className="flex items-center gap-1 p-1 bg-[#374151] rounded-full shadow-xl border border-white/10">
+                                            {[
+                                                { id: 0, icon: Play, activeColor: 'text-emerald-400', label: t('node.mode.always') },
+                                                { id: 2, icon: VolumeX, activeColor: 'text-[#3b82f6]', label: t('node.mode.mute') },
+                                                { id: 4, icon: Shuffle, activeColor: 'text-[#9333ea]', label: t('node.mode.bypass') }
+                                            ].map((mode) => (
+                                                <button
+                                                    key={mode.id}
+                                                    onClick={() => onNodeModeChange?.(nodeId, mode.id)}
+                                                    title={mode.label}
+                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${currentMode === mode.id
+                                                        ? `${mode.activeColor} bg-white/10 shadow-inner`
+                                                        : 'text-white/40 hover:text-white/60 hover:bg-white/5'
+                                                        }`}
+                                                >
+                                                    <mode.icon className="w-5 h-5" />
+                                                </button>
+                                            ))}
+                                        </div>
+
+                                        <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+                                        <button
+                                            onClick={() => setShowColorPicker(true)}
+                                            className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"
+                                            title={t('circularMenu.node.color')}
+                                        >
+                                            <Palette className="w-5 h-5" />
+                                        </button>
+
+                                        <div className="w-[1px] h-6 bg-white/10 mx-1" />
+
+                                        <button
+                                            onClick={() => onNodeDelete?.(nodeId)}
+                                            className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/10 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-95"
+                                            title={t('circularMenu.node.delete')}
+                                        >
+                                            <Trash2 className="w-5 h-5" />
+                                        </button>
+                                    </motion.div>
+                                ) : (
+                                    <motion.div
+                                        key="color-picker"
+                                        initial={{ opacity: 0 }}
+                                        animate={{ opacity: 1 }}
+                                        exit={{ opacity: 0 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="flex items-center gap-1.5"
+                                    >
+                                        <button
+                                            onClick={() => setShowColorPicker(false)}
+                                            className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/30 flex items-center justify-center text-white transition-all active:scale-95"
+                                        >
+                                            <X className="w-5 h-5" />
+                                        </button>
+
+                                        <div className="flex items-center gap-1.5 p-1.5 bg-[#374151] rounded-full shadow-xl border border-white/10">
+                                            {NODE_COLORS.map((c) => (
+                                                <button
+                                                    key={c.name}
+                                                    onClick={() => {
+                                                        onNodeColorChange?.(nodeId, c.value);
+                                                        setShowColorPicker(false);
+                                                    }}
+                                                    style={{ backgroundColor: c.value || '#374151' }}
+                                                    className="w-10 h-10 rounded-full border border-white/20 shadow-sm active:scale-90 transition-transform"
+                                                    title={c.name}
+                                                />
+                                            ))}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                     </div>
 
-                    {/* Single Scrollable Content Area */}
-                    <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 sm:p-8 custom-scrollbar">
-                        {/* Node Identity Header (Inside Body) */}
-                        <div className={`mb-8 -mx-6 -mt-6 px-8 py-8 ${hasCustomColor ? 'bg-black/20' : 'bg-transparent'}`}>
-                            <div className="mb-2 pt-2">
-                                <div className="flex items-center space-x-2 mb-3">
-                                    <Badge variant="secondary" className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${hasCustomColor ? 'bg-black/20 text-white/80' : 'text-slate-500 bg-slate-100 dark:bg-slate-900'}`}>
-                                        ID: {nodeId}
-                                    </Badge>
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest ${hasCustomColor ? 'text-white/60' : 'text-slate-400'}`}>
-                                        {selectedNode.type}
-                                    </span>
-                                </div>
-
-                                {isEditingTitle ? (
-                                    <div className="flex items-center space-x-2">
-                                        <input
-                                            type="text"
-                                            value={editingTitleValue}
-                                            onChange={(e) => setEditingTitleValue(e.target.value)}
-                                            onKeyDown={handleTitleKeyDown}
-                                            className={`flex-1 text-2xl sm:text-3xl font-extrabold bg-transparent border-b-2 focus:outline-none ${hasCustomColor ? 'text-white border-white/50' : 'text-slate-900 dark:text-white border-primary'}`}
-                                            autoFocus
-                                        />
-                                        <Button variant="ghost" size="icon" onClick={handleSaveTitleChange} className={`h-8 w-8 ${hasCustomColor ? 'text-white/80 hover:bg-white/10' : 'text-green-500'}`}>
-                                            <Check className="w-5 h-5" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" onClick={handleCancelTitleEdit} className={`h-8 w-8 ${hasCustomColor ? 'text-white/80 hover:bg-white/10' : 'text-red-500'}`}>
-                                            <X className="w-5 h-5" />
-                                        </Button>
-                                    </div>
-                                ) : (
-                                    <div className="flex items-center group/title cursor-pointer" onClick={handleStartEditingTitle}>
-                                        <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight mr-2 ${hasCustomColor ? 'text-white/95' : 'text-slate-900 dark:text-white'}`}>
-                                            {metadata?.displayName || selectedNode.title || selectedNode.type}
-                                        </h2>
-                                        <Edit3 className={`w-5 h-5 opacity-0 group-hover/title:opacity-100 transition-opacity ${hasCustomColor ? 'text-white/70' : 'text-slate-400'}`} />
-                                    </div>
-                                )}
-                                {metadata?.category && (
-                                    <p className={`mt-2 inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${hasCustomColor ? 'text-white/80 bg-black/20 border-white/10' : 'text-slate-500 bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800'}`}>
-                                        {metadata.category}
-                                    </p>
-                                )}
-                            </div>
+                    {/* Main Card */}
+                    <div
+                        style={{
+                            backgroundColor: effectiveBgColor,
+                            opacity: effectiveOpacity
+                        }}
+                        className={`relative w-full h-full bg-white dark:bg-slate-950 rounded-3xl shadow-2xl ring-1 ring-slate-900/5 dark:ring-slate-100/10 overflow-hidden flex flex-col ${hasCustomColor ? 'text-white' : ''}`}
+                    >
+                        {/* Minimalist Floating Close Button */}
+                        <div className="absolute top-5 right-5 z-20">
+                            <button
+                                onClick={onClose}
+                                className={`p-2 rounded-full transition-all ${hasCustomColor ? 'bg-black/20 text-white hover:bg-black/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:hover:text-slate-200 dark:hover:bg-slate-700'}`}
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
 
-                        {/* Image Preview */}
-                        {imagePreview && (
-                            <div className={`mb-8 rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
-                                <InlineImagePreview
-                                    imagePreview={imagePreview}
-                                    onClick={() => onFilePreview(imagePreview.filename || imagePreview)}
-                                    isFromExecution={true}
-                                    themeOverride={hasCustomColor ? {
-                                        container: 'bg-transparent shadow-none',
-                                        text: 'text-white/80',
-                                        secondaryText: 'text-white/60'
-                                    } : undefined}
-                                />
-                            </div>
-                        )}
-
-                        {/* Video Preview */}
-                        {videoPreview && (
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-                                {(Array.isArray(videoPreview) ? videoPreview : [videoPreview]).map((vp: any, idx: number) => (
-                                    <div key={idx} className={`rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
-                                        <VideoPreviewSection
-                                            videoPreview={vp}
-                                            nodeId={nodeId}
-                                            nodeTitle={metadata?.displayName || selectedNode.title}
-                                            themeOverride={hasCustomColor ? {
-                                                container: 'bg-black/10 border-white/10',
-                                                text: 'text-white/80',
-                                                secondaryText: 'text-white/60',
-                                                border: 'border-white/10'
-                                            } : undefined}
-                                        />
+                        {/* Single Scrollable Content Area */}
+                        <div className="flex-1 overflow-y-auto overflow-x-hidden p-6 sm:p-8 custom-scrollbar">
+                            {/* Node Identity Header (Inside Body) */}
+                            <div className={`mb-8 -mx-6 -mt-6 px-8 py-8 ${hasCustomColor ? 'bg-black/20' : 'bg-transparent'}`}>
+                                <div className="mb-2 pt-2">
+                                    <div className="flex items-center space-x-2 mb-3">
+                                        <Badge variant="secondary" className={`text-[10px] font-mono px-2 py-0.5 rounded-full ${hasCustomColor ? 'bg-black/20 text-white/80' : 'text-slate-500 bg-slate-100 dark:bg-slate-900'}`}>
+                                            ID: {nodeId}
+                                        </Badge>
+                                        <span className={`text-[10px] font-bold uppercase tracking-widest ${hasCustomColor ? 'text-white/60' : 'text-slate-400'}`}>
+                                            {selectedNode.type}
+                                        </span>
                                     </div>
-                                ))}
+
+                                    {isEditingTitle ? (
+                                        <div className="flex items-center space-x-2">
+                                            <input
+                                                type="text"
+                                                value={editingTitleValue}
+                                                onChange={(e) => setEditingTitleValue(e.target.value)}
+                                                onKeyDown={handleTitleKeyDown}
+                                                className={`flex-1 text-2xl sm:text-3xl font-extrabold bg-transparent border-b-2 focus:outline-none ${hasCustomColor ? 'text-white border-white/50' : 'text-slate-900 dark:text-white border-primary'}`}
+                                                autoFocus
+                                            />
+                                            <Button variant="ghost" size="icon" onClick={handleSaveTitleChange} className={`h-8 w-8 ${hasCustomColor ? 'text-white/80 hover:bg-white/10' : 'text-green-500'}`}>
+                                                <Check className="w-5 h-5" />
+                                            </Button>
+                                            <Button variant="ghost" size="icon" onClick={handleCancelTitleEdit} className={`h-8 w-8 ${hasCustomColor ? 'text-white/80 hover:bg-white/10' : 'text-red-500'}`}>
+                                                <X className="w-5 h-5" />
+                                            </Button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center group/title cursor-pointer" onClick={handleStartEditingTitle}>
+                                            <h2 className={`text-2xl sm:text-3xl font-extrabold tracking-tight leading-tight mr-2 ${hasCustomColor ? 'text-white/95' : 'text-slate-900 dark:text-white'}`}>
+                                                {metadata?.displayName || selectedNode.title || selectedNode.type}
+                                            </h2>
+                                            <Edit3 className={`w-5 h-5 opacity-0 group-hover/title:opacity-100 transition-opacity ${hasCustomColor ? 'text-white/70' : 'text-slate-400'}`} />
+                                        </div>
+                                    )}
+                                    {metadata?.category && (
+                                        <p className={`mt-2 inline-flex items-center text-xs font-medium px-2 py-1 rounded-md border ${hasCustomColor ? 'text-white/80 bg-black/20 border-white/10' : 'text-slate-500 bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800'}`}>
+                                            {metadata.category}
+                                        </p>
+                                    )}
+                                </div>
                             </div>
-                        )}
 
-                        {/* Main Stack */}
-                        <div className="space-y-8">
-                            {/* Widgets / Controls */}
-                            {widgets.length > 0 ? (
-                                renderParameterSection(t('node.parameters'), widgets, <SlidersHorizontal className="w-4 h-4" />, true)
-                            ) : (
-                                selectedNode.widgets_values && (
-                                    <div className={`p-4 rounded-xl border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}>
-                                        <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${hasCustomColor ? 'text-white/50' : 'text-slate-400'}`}>Raw Widget Values</p>
-                                        <code className={`text-xs break-all font-mono leading-relaxed ${hasCustomColor ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
-                                            {JSON.stringify(selectedNode.widgets_values)}
-                                        </code>
-
-                                        {/* Refresh Button for Raw Values Mode */}
-                                        {onNodeRefresh && (
-                                            <div className={`mt-4 pt-4 border-t ${hasCustomColor ? 'border-white/10' : 'border-slate-200 dark:border-slate-700'}`}>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => onNodeRefresh(nodeId)}
-                                                    className={`w-full text-xs h-9 ${hasCustomColor ? 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white' : 'text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400'}`}
-                                                >
-                                                    <RefreshCw className="w-3.5 h-3.5 mr-2" />
-                                                    Refresh Node
-                                                </Button>
-                                            </div>
-                                        )}
-                                    </div>
-                                )
-                            )}
-
-                            {/* Inputs & Outputs (Now stacked below) */}
-                            {(selectedNode.inputs?.length > 0 || selectedNode.outputs?.length > 0) && (
-                                <div className="pt-2">
-                                    {renderInputSlots()}
-                                    <div className="h-8"></div> {/* Spacer */}
-                                    {renderOutputSlots()}
+                            {/* Image Preview */}
+                            {imagePreview && (
+                                <div className={`mb-8 rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
+                                    <InlineImagePreview
+                                        imagePreview={imagePreview}
+                                        onClick={() => onFilePreview(imagePreview.filename || imagePreview)}
+                                        isFromExecution={true}
+                                        themeOverride={hasCustomColor ? {
+                                            container: 'bg-transparent shadow-none',
+                                            text: 'text-white/80',
+                                            secondaryText: 'text-white/60'
+                                        } : undefined}
+                                    />
                                 </div>
                             )}
 
-                            {/* Single Execute Footer */}
-                            {renderSingleExecute()}
+                            {/* Video Preview */}
+                            {videoPreview && (
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                                    {(Array.isArray(videoPreview) ? videoPreview : [videoPreview]).map((vp: any, idx: number) => (
+                                        <div key={idx} className={`rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
+                                            <VideoPreviewSection
+                                                videoPreview={vp}
+                                                nodeId={nodeId}
+                                                nodeTitle={metadata?.displayName || selectedNode.title}
+                                                themeOverride={hasCustomColor ? {
+                                                    container: 'bg-black/10 border-white/10',
+                                                    text: 'text-white/80',
+                                                    secondaryText: 'text-white/60',
+                                                    border: 'border-white/10'
+                                                } : undefined}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+
+                            {/* Main Stack */}
+                            <div className="space-y-8">
+                                {/* Widgets / Controls */}
+                                {widgets.length > 0 ? (
+                                    renderParameterSection(t('node.parameters'), widgets, <SlidersHorizontal className="w-4 h-4" />, true)
+                                ) : (
+                                    selectedNode.widgets_values && (
+                                        <div className={`p-4 rounded-xl border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}>
+                                            <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${hasCustomColor ? 'text-white/50' : 'text-slate-400'}`}>Raw Widget Values</p>
+                                            <code className={`text-xs break-all font-mono leading-relaxed ${hasCustomColor ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
+                                                {JSON.stringify(selectedNode.widgets_values)}
+                                            </code>
+
+                                            {/* Refresh Button for Raw Values Mode */}
+                                            {onNodeRefresh && (
+                                                <div className={`mt-4 pt-4 border-t ${hasCustomColor ? 'border-white/10' : 'border-slate-200 dark:border-slate-700'}`}>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        onClick={() => onNodeRefresh(nodeId)}
+                                                        className={`w-full text-xs h-9 ${hasCustomColor ? 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white' : 'text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400'}`}
+                                                    >
+                                                        <RefreshCw className="w-3.5 h-3.5 mr-2" />
+                                                        Refresh Node
+                                                    </Button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )
+                                )}
+
+                                {/* Inputs & Outputs (Now stacked below) */}
+                                {(selectedNode.inputs?.length > 0 || selectedNode.outputs?.length > 0) && (
+                                    <div className="pt-2">
+                                        {renderInputSlots()}
+                                        <div className="h-8"></div> {/* Spacer */}
+                                        {renderOutputSlots()}
+                                    </div>
+                                )}
+
+                                {/* Single Execute Footer */}
+                                {renderSingleExecute()}
+                            </div>
                         </div>
                     </div>
                 </motion.div>

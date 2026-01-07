@@ -857,7 +857,7 @@ export function renderNodes(
       if (node.bgcolor) {
         backgroundColor = node.bgcolor;
       } else {
-        backgroundColor = '#2e2e2e';
+        backgroundColor = '#374151';
       }
 
       // Simple state modifications without complex color enhancement

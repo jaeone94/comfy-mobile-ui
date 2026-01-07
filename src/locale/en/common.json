@@ -155,6 +155,7 @@
         "sizeUpdateFailed": "Failed to update node size",
         "collapseUpdated": "Node collapse updated successfully",
         "collapseUpdateFailed": "Failed to update node collapse",
+        "modeUpdateFailed": "Failed to update node mode",
         "groupSizeUpdated": "Group size updated successfully",
         "groupSizeUpdateFailed": "Failed to update group size",
         "repositioningApplied": "Repositioning applied successfully",
@@ -379,6 +380,8 @@
         "controls": "Node Controls",
         "outputSlots": "Output Slots",
         "deleteTitle": "Delete Node",
+        "deleteConfirmTitle": "Delete Node?",
+        "deleteConfirmMessage": "This action cannot be undone. Are you sure you want to delete this node?",
         "deleteConfirm": "Are you sure you want to delete node {{id}} ({{title}})? All connected links will also be removed.",
         "connected": "Connected",
         "connectedToInput": "Connected to input",
@@ -498,6 +501,34 @@
         },
         "group": {
             "noGroups": "No groups found in this workflow."
+        }
+    },
+    "circularMenu": {
+        "node": {
+            "resize": "Resize",
+            "copy": "Copy",
+            "expand": "Expand",
+            "collapse": "Collapse",
+            "color": "Color",
+            "mode": "Mode",
+            "delete": "Delete",
+            "connect": "Connect"
+        },
+        "canvas": {
+            "reposition": "Reposition",
+            "link": "Link",
+            "addNode": "Add Node"
+        },
+        "colors": {
+            "brown": "Brown",
+            "teal": "Teal",
+            "blue": "Blue",
+            "purple": "Purple",
+            "green": "Green",
+            "red": "Red",
+            "blueGray": "Blue Gray",
+            "black": "Black",
+            "default": "Default"
         }
     },
     "gallery": {
