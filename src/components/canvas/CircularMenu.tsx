@@ -31,7 +31,9 @@ interface CircularMenuProps {
     onCopyNode: (nodeId: number) => void;
     onAddNode: (position: { x: number; y: number }) => void;
     onNodeCollapseChange?: (nodeId: number, collapsed: boolean) => void;
+    onEnterSubgraph?: (nodeType: string, title: string) => void;
     onClose: () => void;
+    graph?: any;
 }
 
 export interface CircularMenuRef {
@@ -53,8 +55,10 @@ export const CircularMenu = forwardRef<CircularMenuRef, CircularMenuProps>((prop
         onCopyNode,
         onAddNode,
         onNodeCollapseChange,
-        onClose
-    } = props; // destructure needed? circularMenuState has nodeId. 
+        onEnterSubgraph,
+        onClose,
+        graph
+    } = props;
     // Wait, circularMenuState has nodeId, but component also accepted nodeId as top level prop in previous version.
     // In my usage in WorkflowEditor, I passed nodeId={circularMenuState.nodeId}.
     // But I can get it from circularMenuState prop now.
@@ -74,7 +78,9 @@ export const CircularMenu = forwardRef<CircularMenuRef, CircularMenuProps>((prop
         onEnterRepositionMode,
         onCopyNode,
         onAddNode,
-        onNodeCollapseChange
+        onNodeCollapseChange,
+        onEnterSubgraph,
+        graph
     });
     const { isOpen, center, pointer, nodeId: stateNodeId } = circularMenuState;
 

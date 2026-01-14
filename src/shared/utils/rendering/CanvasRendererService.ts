@@ -62,6 +62,19 @@ function isVideoFile(filename: string): boolean {
 }
 
 /**
+ * Get display label for a slot or widget with prioritization:
+ * localized_name -> label -> (options.label) -> name -> type
+ */
+function getSlotLabel(item: any): string {
+  if (!item) return '';
+  if (item.localized_name) return item.localized_name;
+  if (item.label) return item.label;
+  if (item.options?.label) return item.options.label; // Handle widgets with label in options
+  if (item.name) return item.name;
+  return item.type || 'Unknown';
+}
+
+/**
  * Convert video filename to thumbnail PNG filename
  */
 function getVideoThumbnailFilename(videoFilename: string): string {
@@ -220,6 +233,7 @@ export interface RenderingOptions {
     maxY: number;
   } | null;
   longPressState?: LongPressState | null; // Long press visual feedback
+  subgraphDefinitions?: Map<string, any>; // Subgraph definitions for name resolution
 }
 
 /**
@@ -267,7 +281,7 @@ export function darkenColor(color: string, amount: number): string {
  * Get color for a specific slot type
  */
 function getSlotColor(type: string | undefined): string {
-  if (!type) return '#10b981'; // Default Green for unknown/untyped
+  if (!type || typeof type !== 'string') return '#10b981'; // Default Green for unknown/untyped
 
   // Normalize type
   const normalizedType = type.toUpperCase();
@@ -431,6 +445,18 @@ export function calculateAllBounds(
       height = 30; // Fixed smaller height for collapsed nodes
     }
 
+    // Special handling for virtual nodes (GraphInput/GraphOutput)
+    const isVirtualNode = node.type === 'GraphInput' || node.type === 'GraphOutput';
+    if (isVirtualNode) {
+      width = 80; // Hardcoded width for virtual nodes to achieve narrow "bracket" look
+      // Height should be at least enough for all slots
+      const connectedInputs = node.inputs?.filter((i: any) => i.link).length || 0;
+      const connectedOutputs = node.outputs?.filter((o: any) => o.links?.length > 0).length || 0;
+      const slotCount = Math.max(connectedInputs, connectedOutputs, node.inputs?.length || 0, node.outputs?.length || 0);
+      const minHeight = slotCount * 20 + 40;
+      height = Math.max(height, minHeight);
+    }
+
     const scaledX = canvasWidth ? (x - minX) * scale + config.padding : x;
     const scaledY = canvasHeight ? (y - minY) * scale + config.padding : y;
 
@@ -470,6 +496,7 @@ export function calculateAllBounds(
         height: scaledHeight,
         title: group.title || '',
         color: group.color || config.groupColor,
+        id: group.id, // FIX: Pass group ID for interaction detection
       });
     }
   }
@@ -501,17 +528,12 @@ export function renderGroups(
   } | null
 ): void {
   for (const group of groupBounds) {
-    // Draw group background with slight transparency (no border)
-    ctx.fillStyle = group.color + '80'; // Add 50% opacity
+    // Draw group background with safe transparency using globalAlpha
+    ctx.save();
+    ctx.globalAlpha = 0.5; // 50% opacity
+    ctx.fillStyle = group.color || config.groupColor;
     ctx.fillRect(group.x, group.y, group.width, group.height);
-
-    // Draw selection outline if this group is selected in repositioning mode
-    if (repositionMode?.isActive && group.id !== undefined && repositionMode.selectedGroupId === group.id) {
-      ctx.strokeStyle = '#3B82F6'; // Blue color (same as node selection)
-      ctx.lineWidth = 3;
-      ctx.setLineDash([]);
-      ctx.strokeRect(group.x, group.y, group.width, group.height);
-    }
+    ctx.restore();
 
     // Draw group title (only if showText is enabled)
     if (showText && group.title) {
@@ -598,7 +620,8 @@ function getSlotPosition(
   }
 
   const slotHeight = 20; // Height per slot
-  const topMargin = 35; // Fixed 35px from top (matching the slot rendering logic)
+  const isVirtualNode = nodeBounds.node.type === 'GraphInput' || nodeBounds.node.type === 'GraphOutput';
+  const topMargin = isVirtualNode ? 10 : 35; // Match rendering logic (10px for virtual, 35px for others)
 
   // Calculate Y position - slots start from top margin, evenly spaced
   const y = nodeBounds.y + topMargin + (slotIndex * slotHeight) + (slotHeight / 2);
@@ -607,6 +630,82 @@ function getSlotPosition(
   const x = isOutput ? nodeBounds.x + nodeBounds.width : nodeBounds.x;
 
   return { x, y };
+}
+
+/**
+ * Draw custom bracket shape for virtual nodes (GraphInput/GraphOutput)
+ */
+function drawVirtualNodeBracket(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  type: 'GraphInput' | 'GraphOutput',
+  options: {
+    isSelected?: boolean;
+    isExecuting?: boolean;
+    isError?: boolean;
+    backgroundColor?: string;
+  } = {}
+): void {
+  const { isSelected, isExecuting, isError } = options;
+  const isInput = type === 'GraphInput';
+
+  ctx.save();
+
+  // Set stroke style based on state
+  if (isError) {
+    ctx.strokeStyle = '#ef4444';
+    ctx.lineWidth = 4;
+  } else if (isExecuting) {
+    ctx.strokeStyle = '#10b981';
+    ctx.lineWidth = 4;
+    // Add glow for executing state
+    ctx.shadowColor = '#10b981';
+    ctx.shadowBlur = 10;
+  } else if (isSelected) {
+    ctx.strokeStyle = '#3b82f6';
+    ctx.lineWidth = 4;
+    ctx.shadowColor = '#3b82f6';
+    ctx.shadowBlur = 8;
+  } else {
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+    ctx.lineWidth = 3;
+  }
+
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const offset = 15;
+  const bracketX = isInput ? x + width + offset : x - offset;
+  const curveSize = 20;
+  const inset = isInput ? -curveSize : curveSize;
+
+  ctx.beginPath();
+  // Draw vertical bracket with curves at ends
+  // Start top curve
+  ctx.moveTo(bracketX + inset, y);
+  ctx.quadraticCurveTo(bracketX, y, bracketX, y + curveSize);
+
+  // Vertical line
+  ctx.lineTo(bracketX, y + height - curveSize);
+
+  // Bottom curve
+  ctx.quadraticCurveTo(bracketX, y + height, bracketX + inset, y + height);
+
+  ctx.stroke();
+
+  // Draw a subtle background for the hit area if selected
+  if (isSelected) {
+    ctx.globalAlpha = 0.1;
+    ctx.fillStyle = ctx.strokeStyle;
+    ctx.beginPath();
+    ctx.roundRect(x, y, width, height, 8);
+    ctx.fill();
+  }
+
+  ctx.restore();
 }
 
 /**
@@ -874,13 +973,11 @@ export function renderNodes(
       }
     }
 
-    // Simple rectangular nodes for maximum performance
-    const cornerRadius = 4; // Minimal rounding to reduce GPU load
+    const cornerRadius = 4;
+    const isVirtualNode = node.type === 'GraphInput' || node.type === 'GraphOutput';
 
-    // Calculate font size early for dynamic title bar height
-    // Use viewport scale if provided, otherwise fallback to transform matrix
-    let currentScale = 1.0; // Default scale
-
+    // Calculate scaling and font sizes early for all nodes
+    let currentScale = 1.0;
     if (viewportScale !== undefined) {
       currentScale = viewportScale;
     } else {
@@ -888,7 +985,6 @@ export function renderNodes(
       currentScale = transform.a; // a is the horizontal scale factor
     }
 
-    // Calculate font sizes
     const maxScale = 0.8;
     const minFontSize = 50;
     const maxFontSize = 10;
@@ -906,7 +1002,23 @@ export function renderNodes(
       ? Math.min(clampedFontSize * 0.8, bounds.height / 3)
       : clampedFontSize;
 
-    {
+    if (isVirtualNode) {
+      // Draw custom bracket instead of a standard node box
+      drawVirtualNodeBracket(
+        ctx,
+        bounds.x,
+        bounds.y,
+        bounds.width,
+        bounds.height,
+        node.type as 'GraphInput' | 'GraphOutput',
+        {
+          isSelected: isSelected || isRepositionSelected,
+          isExecuting,
+          isError,
+          backgroundColor
+        }
+      );
+    } else {
       // Check if node is executing and has progress for gradient background
       const hasProgress = isExecuting && nodeExecutionProgress?.nodeId === String(node.id);
 
@@ -937,9 +1049,6 @@ export function renderNodes(
         ctx.fillStyle = backgroundColor;
       }
 
-      // Calculate font size early for dynamic title bar height
-      // (This inner calculation block removed as it is now in outer scope)
-
       ctx.beginPath();
       ctx.roundRect(bounds.x, bounds.y, bounds.width, bounds.height, cornerRadius);
       ctx.fill();
@@ -947,7 +1056,6 @@ export function renderNodes(
       // Draw separate title area background for expanded nodes
       if (!isCollapsed && bounds.height > 40) {
         // Dynamic title height based on font size
-        // Padding: approx 8px top + 8px bottom = 16px
         const titleHeight = Math.max(30, finalFontSize + 16);
 
         // Make title area slightly darker than the body
@@ -976,49 +1084,51 @@ export function renderNodes(
       }
     }
 
-    // Always draw subtle white outline for all nodes
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // 20% opacity white
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.roundRect(bounds.x, bounds.y, bounds.width, bounds.height, cornerRadius);
-    ctx.stroke();
-
-    // Additional border for special states
-    if (isSelected || isError || hasModifications || isRepositionSelected ||
-      isConnectionSourceSelected || isConnectionTargetSelected || isConnectionCompatible || isMissingNodeType) {
-      let strokeColor = '#ffffff'; // Simple white for selected
-      let lineWidth = 2;
-
-      if (isMissingNodeType) {
-        strokeColor = '#dc2626'; // Red border for missing node types
-        lineWidth = 3;
-      } else if (isError) {
-        strokeColor = '#ef4444'; // Simple red for errors
-        lineWidth = 2;
-      } else if (hasModifications) {
-        strokeColor = '#10b981'; // Simple green for nodes with temporary changes
-        lineWidth = 6;
-      } else if (isRepositionSelected) {
-        strokeColor = '#3b82f6'; // Blue for repositioning selection
-        lineWidth = 3;
-      } else if (isConnectionSourceSelected) {
-        strokeColor = '#3b82f6'; // Bright blue border for source node
-        lineWidth = 4;
-      } else if (isConnectionTargetSelected) {
-        strokeColor = '#ef4444'; // Bright red border for target node
-        lineWidth = 4;
-      } else if (isConnectionCompatible) {
-        strokeColor = '#16a34a'; // Green border for compatible nodes
-        lineWidth = 3;
-      }
-
-      ctx.strokeStyle = strokeColor;
-      ctx.lineWidth = lineWidth;
-
-      // Draw special state border
+    // Always draw subtle white outline for all nodes (Skip for virtual nodes as they have their own bracket line)
+    if (!isVirtualNode) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // 20% opacity white
+      ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.roundRect(bounds.x, bounds.y, bounds.width, bounds.height, cornerRadius);
       ctx.stroke();
+
+      // Additional border for special states
+      if (isSelected || isError || hasModifications || isRepositionSelected ||
+        isConnectionSourceSelected || isConnectionTargetSelected || isConnectionCompatible || isMissingNodeType) {
+        let strokeColor = '#ffffff'; // Simple white for selected
+        let lineWidth = 2;
+
+        if (isMissingNodeType) {
+          strokeColor = '#dc2626'; // Red border for missing node types
+          lineWidth = 3;
+        } else if (isError) {
+          strokeColor = '#ef4444'; // Simple red for errors
+          lineWidth = 2;
+        } else if (hasModifications) {
+          strokeColor = '#10b981'; // Simple green for nodes with temporary changes
+          lineWidth = 6;
+        } else if (isRepositionSelected) {
+          strokeColor = '#3b82f6'; // Blue for repositioning selection
+          lineWidth = 3;
+        } else if (isConnectionSourceSelected) {
+          strokeColor = '#3b82f6'; // Bright blue border for source node
+          lineWidth = 4;
+        } else if (isConnectionTargetSelected) {
+          strokeColor = '#ef4444'; // Bright red border for target node
+          lineWidth = 4;
+        } else if (isConnectionCompatible) {
+          strokeColor = '#16a34a'; // Green border for compatible nodes
+          lineWidth = 3;
+        }
+
+        ctx.strokeStyle = strokeColor;
+        ctx.lineWidth = lineWidth;
+
+        // Draw special state border
+        ctx.beginPath();
+        ctx.roundRect(bounds.x, bounds.y, bounds.width, bounds.height, cornerRadius);
+        ctx.stroke();
+      }
     }
 
 
@@ -1045,7 +1155,15 @@ export function renderNodes(
 
       // Font size calculation moved up for dynamic title bar height
 
-      const displayText = node.title || node.type || `Node ${node.id}`;
+      let displayText = node.title || node.type || `Node ${node.id}`;
+
+      // Use subgraph definition name if available (overrides title for subgraph nodes as per request)
+      if (options.subgraphDefinitions) {
+        const def = options.subgraphDefinitions.get(node.type);
+        if (def && def.name) {
+          displayText = def.name;
+        }
+      }
 
       // Calculate if node is too small to show slots properly
       const connectedInputs = node.inputs?.filter((i: any) => i.link).length || 0;
@@ -1084,17 +1202,19 @@ export function renderNodes(
 
         ctx.fillText(truncatedText, textX, textY);
       } else {
-        // Expanded nodes - title at top-left, widgets below with LOD
-        // Always show title at top-left for expanded nodes
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `bold ${Math.min(finalFontSize * 0.8, 20)}px system-ui, -apple-system, sans-serif`;
-        ctx.textAlign = 'left';
-        ctx.textBaseline = 'top';
+        // Expanded nodes - title at top-left (skip for virtual nodes)
+        const titleYOffset = 8;
+        if (!isVirtualNode) {
+          ctx.fillStyle = '#ffffff';
+          ctx.font = `bold ${Math.min(finalFontSize * 0.8, 20)}px system-ui, -apple-system, sans-serif`;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
 
-        // Draw title at top-left with padding
-        const titleX = bounds.x + 12;
-        const titleY = bounds.y + 8;
-        ctx.fillText(displayText, titleX, titleY);
+          // Draw title at top-left with padding
+          const titleX = bounds.x + 12;
+          const titleY = bounds.y + titleYOffset;
+          ctx.fillText(displayText, titleX, titleY);
+        }
 
         // Calculate slot area to avoid overlap
         let slotAreaHeight = 0;
@@ -1113,7 +1233,7 @@ export function renderNodes(
           const widgets = node.getWidgets();
           if (widgets.length > 0) {
             // Widget area starts below title and slot area
-            const widgetStartY = Math.max(titleY + 30, bounds.y + slotAreaHeight + 10);
+            const widgetStartY = Math.max(bounds.y + titleYOffset + 30, bounds.y + slotAreaHeight + 10);
             const widgetHeight = 24;
             const widgetSpacing = 4;
             const widgetLineHeight = widgetHeight + widgetSpacing;
@@ -1207,9 +1327,10 @@ export function renderNodes(
                   // Show widget names only
                   ctx.fillStyle = isConnectedWidget ? 'rgba(16, 185, 129, 0.7)' : 'rgba(255, 255, 255, 0.5)';
                   ctx.font = `11px system-ui, -apple-system, sans-serif`;
+                  ctx.font = `11px system-ui, -apple-system, sans-serif`;
                   ctx.textAlign = 'left';
                   ctx.textBaseline = 'middle';
-                  const widgetName = widget.name || `Widget ${index}`;
+                  const widgetName = getSlotLabel(widget) || `Widget ${index}`;
                   ctx.fillText(widgetName, widgetX + 8, widgetY + widgetHeight / 2);
 
                   // Add "⤓" indicator for connected widgets
@@ -1227,7 +1348,7 @@ export function renderNodes(
                   ctx.fillStyle = isConnectedWidget ? 'rgba(16, 185, 129, 0.7)' : 'rgba(255, 255, 255, 0.7)';
                   ctx.textAlign = 'left';
                   ctx.textBaseline = 'middle';
-                  const widgetName = widget.name || `Widget ${index}`;
+                  const widgetName = getSlotLabel(widget) || `Widget ${index}`;
                   const maxNameWidth = widgetWidth * 0.5;
 
                   let truncatedName = widgetName;
@@ -1306,7 +1427,7 @@ export function renderNodes(
                   ctx.fillStyle = isConnectedWidget ? 'rgba(16, 185, 129, 0.9)' : 'rgba(255, 255, 255, 0.8)';
                   ctx.textAlign = 'left';
                   ctx.textBaseline = 'middle';
-                  const widgetName = widget.name || `Widget ${index}`;
+                  const widgetName = getSlotLabel(widget) || `Widget ${index}`;
                   const maxNameWidth = widgetWidth * 0.45;
 
                   let truncatedName = widgetName;
@@ -1519,7 +1640,7 @@ export function renderNodes(
       const slotAreaHeight = maxSlots * 20 + 35;
       const treatAsCollapsed = isCollapsed || slotAreaHeight > bounds.height;
 
-      const topMargin = treatAsCollapsed ? bounds.height * 0.05 : 35; // Fixed 35px for expanded nodes, 5% for collapsed
+      const topMargin = treatAsCollapsed ? bounds.height * 0.05 : (isVirtualNode ? 10 : 35); // Smaller 10px margin for virtual nodes
 
       // Get current font size for slot labels
       const slotFontSize = 10; // Fixed small size for slot labels
@@ -1566,17 +1687,27 @@ export function renderNodes(
           ctx.fill();
         }
       } else {
-        // For expanded nodes, show only connected slots
-        // Draw connected input slots
+        // For expanded nodes, show connected slots OR all slots if it's a virtual node (GraphInput/Output)
+        const showAllSlots = node.type === 'GraphInput' || node.type === 'GraphOutput' || node.type === 'Reroute';
+
+        // Calculate scaling factor for relative positioning
+        // bounds.width is scaled, node.size[0] is original
+        // Use default size if not available to avoid division by zero
+        const nodeOriginalWidth = (node.size && node.size[0]) || 200;
+        const currentScale = bounds.width / nodeOriginalWidth;
+
+        // Draw input slots
         if (node.inputs && node.inputs.length > 0) {
           let connectedIndex = 0; // Track position for connected slots only
           node.inputs.forEach((input: any, index: number) => {
-            // Only draw if connected
-            if (!input.link) return;
+            // Only draw if connected OR if we should show all slots
+            if (!input.link && !showAllSlots) return;
 
-            const slotY = bounds.y + topMargin + (connectedIndex * slotHeight) + (slotHeight / 2);
+            const effectiveIndex = showAllSlots ? index : connectedIndex;
+            const slotY = bounds.y + topMargin + (effectiveIndex * slotHeight) + (slotHeight / 2);
             const slotX = bounds.x;
-            connectedIndex++; // Increment only for connected slots
+
+            if (!showAllSlots) connectedIndex++;
 
             // Draw slot circle
             ctx.fillStyle = getSlotColor(input.type);
@@ -1584,14 +1715,14 @@ export function renderNodes(
             ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Draw slot label (only if enough space)
-            if (bounds.width > 100) {
+            // Draw slot label (only if enough space OR it is a virtual node)
+            if (bounds.width > 100 || isVirtualNode) {
               ctx.fillStyle = '#ffffff';
               ctx.font = `${slotFontSize}px system-ui, -apple-system, sans-serif`;
               ctx.textAlign = 'left';
               ctx.textBaseline = 'middle';
-              const labelText = input.name || input.type || '';
-              const maxLabelWidth = bounds.width * 0.3;
+              const labelText = getSlotLabel(input);
+              const maxLabelWidth = isVirtualNode ? bounds.width * 0.8 : bounds.width * 0.3;
 
               // Truncate if too long
               let truncatedLabel = labelText;
@@ -1607,16 +1738,18 @@ export function renderNodes(
           });
         }
 
-        // Draw connected output slots
+        // Draw output slots
         if (node.outputs && node.outputs.length > 0) {
           let connectedIndex = 0; // Track position for connected slots only
           node.outputs.forEach((output: any, index: number) => {
-            // Only draw if connected
-            if (!output.links || output.links.length === 0) return;
+            // Only draw if connected OR if we should show all slots
+            if ((!output.links || output.links.length === 0) && !showAllSlots) return;
 
-            const slotY = bounds.y + topMargin + (connectedIndex * slotHeight) + (slotHeight / 2);
+            const effectiveIndex = showAllSlots ? index : connectedIndex;
+            const slotY = bounds.y + topMargin + (effectiveIndex * slotHeight) + (slotHeight / 2);
             const slotX = bounds.x + bounds.width;
-            connectedIndex++; // Increment only for connected slots
+
+            if (!showAllSlots) connectedIndex++;
 
             // Draw slot circle
             ctx.fillStyle = getSlotColor(output.type);
@@ -1624,14 +1757,14 @@ export function renderNodes(
             ctx.arc(slotX, slotY, slotRadius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Draw slot label (only if enough space)
-            if (bounds.width > 100) {
+            // Draw slot label (only if enough space OR it is a virtual node)
+            if (bounds.width > 100 || isVirtualNode) {
               ctx.fillStyle = '#ffffff';
               ctx.font = `${slotFontSize}px system-ui, -apple-system, sans-serif`;
               ctx.textAlign = 'right';
               ctx.textBaseline = 'middle';
-              const labelText = output.name || output.type || '';
-              const maxLabelWidth = bounds.width * 0.3;
+              const labelText = getSlotLabel(output);
+              const maxLabelWidth = isVirtualNode ? bounds.width * 0.8 : bounds.width * 0.3;
 
               // Truncate if too long
               let truncatedLabel = labelText;
@@ -1784,6 +1917,9 @@ export function drawResizeGrippers(
   height: number,
   viewportScale: number = 1
 ): void {
+  // Save context to prevent state leakage to other elements
+  ctx.save();
+
   const gripperSize = 16; // Base gripper size in screen pixels
   const actualGripperSize = gripperSize / viewportScale; // Adjust for viewport scale
   const halfGripper = actualGripperSize / 2;
@@ -1813,6 +1949,9 @@ export function drawResizeGrippers(
     ctx.fillRect(gripper.x, gripper.y, actualGripperSize, actualGripperSize);
     ctx.strokeRect(gripper.x, gripper.y, actualGripperSize, actualGripperSize);
   }
+
+  // Restore context
+  ctx.restore();
 }
 
 /**

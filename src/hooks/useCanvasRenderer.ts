@@ -64,6 +64,7 @@ interface UseCanvasRendererProps {
   };
   missingNodeIds?: Set<number>;
   longPressState?: LongPressState;
+  subgraphDefinitions?: Map<string, any>;
 }
 
 export const useCanvasRenderer = ({
@@ -79,6 +80,7 @@ export const useCanvasRenderer = ({
   connectionMode,
   missingNodeIds,
   longPressState,
+  subgraphDefinitions
 }: UseCanvasRendererProps) => {
   // Canvas configuration - use shared config
   const config = useMemo<CanvasConfig>(() => DEFAULT_CANVAS_CONFIG, []);
@@ -340,7 +342,8 @@ export const useCanvasRenderer = ({
             minY: -viewport.y / viewport.scale,
             maxX: (canvas.width - viewport.x) / viewport.scale,
             maxY: (canvas.height - viewport.y) / viewport.scale
-          }
+          },
+          subgraphDefinitions
         };
 
         renderNodes(ctx, nodes as ComfyGraphNode[], nodeBounds, config, renderingOptions);

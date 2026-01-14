@@ -57,7 +57,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
         description: metadata.description || 'No description available'
       } as NodeType;
     });
-  }, [graph]);
+  }, [graph, graph?._metadata]);
 
   // Filter nodes based on search term
   const filteredNodes = useMemo(() => {

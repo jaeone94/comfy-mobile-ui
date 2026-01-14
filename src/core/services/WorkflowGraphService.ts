@@ -115,7 +115,10 @@ export function addNodeToWorkflow(
   } else {
     // Calculate from existing nodes if last_node_id is invalid
     if (workflowJson.nodes && workflowJson.nodes.length > 0) {
-      newNodeId = Math.max(...workflowJson.nodes.map(n => n.id)) + 1;
+      const numericIds = workflowJson.nodes
+        .map(n => Number(n.id))
+        .filter(id => !isNaN(id));
+      newNodeId = numericIds.length > 0 ? Math.max(...numericIds) + 1 : 1;
     } else {
       newNodeId = 1;
     }
@@ -293,9 +296,12 @@ export function createInputSlots(inputSpec: any, inputOrder?: any): any[] {
     let dataType = Array.isArray(spec) ? spec[0] : spec;
     const config = Array.isArray(spec) && spec.length > 1 ? spec[1] : {};
 
-    // Handle COMBO type (when first element is an array)
-    if (Array.isArray(dataType)) {
-      // This is a COMBO type - the first element is an array of options
+    // Handle COMBO type (when first element is an array OR it's explicitly "COMBO")
+    if (Array.isArray(dataType) || dataType === "COMBO") {
+      // This is a COMBO type
+      // Options can be in dataType (if it's an array) or in config.options or config.values
+      const comboOptions = Array.isArray(dataType) ? dataType : (config?.options || config?.values || []);
+
       const slot = {
         name: name,
         type: "COMBO",
@@ -303,7 +309,7 @@ export function createInputSlots(inputSpec: any, inputOrder?: any): any[] {
         widget: {
           type: "combo",
           name: name,
-          options: dataType  // The array of combo options
+          options: comboOptions
         }
       };
       slots.push(slot);
@@ -349,8 +355,8 @@ export function createOutputSlots(outputs: string[], outputNames: string[]): any
  * Determine if an input should be a widget instead of a connection slot
  */
 function shouldCreateWidget(dataType: string | string[], config: any): boolean {
-  // COMBO type (when dataType is an array) is always a widget
-  if (Array.isArray(dataType)) {
+  // COMBO type (when dataType is an array or explicitly "COMBO") is always a widget
+  if (Array.isArray(dataType) || dataType === "COMBO") {
     return true;
   }
 
@@ -508,8 +514,9 @@ function getDefaultValue(dataType: string, config: any): any {
     case 'STRING':
       return '';
     default:
-      if (config?.values && config.values.length > 0) {
-        return config.values[0];
+      const options = config?.values || config?.options;
+      if (options && Array.isArray(options) && options.length > 0) {
+        return options[0];
       }
       return null;
   }
@@ -521,11 +528,11 @@ function getDefaultValue(dataType: string, config: any): any {
  * @param nodeId - The node ID to collect links for
  * @returns Array of link IDs that are connected to this node
  */
-export function collectNodeLinkIds(workflowJson: IComfyJson, nodeId: number): number[] {
+export function collectNodeLinkIds(workflowJson: IComfyJson, nodeId: number | string): number[] {
   const linkIds: Set<number> = new Set();
 
   // Find the target node
-  const targetNode = workflowJson.nodes?.find(node => node.id === nodeId);
+  const targetNode = workflowJson.nodes?.find(node => String(node.id) === String(nodeId));
   if (!targetNode) {
     return [];
   }
@@ -568,7 +575,7 @@ export function collectNodeLinkIds(workflowJson: IComfyJson, nodeId: number): nu
 export function removeNodeWithLinks(
   workflowJson: IComfyJson,
   comfyGraph: ComfyGraph,
-  nodeId: number
+  nodeId: number | string
 ): { workflowJson: IComfyJson; comfyGraph: ComfyGraph } {
 
   // 1. Collect all link IDs associated with the node
@@ -588,7 +595,7 @@ export function removeNodeWithLinks(
 
   // 4. Remove the node from workflow JSON nodes array
   if (updatedWorkflowJson.nodes && Array.isArray(updatedWorkflowJson.nodes)) {
-    updatedWorkflowJson.nodes = updatedWorkflowJson.nodes.filter(node => node.id !== nodeId);
+    updatedWorkflowJson.nodes = updatedWorkflowJson.nodes.filter(node => String(node.id) !== String(nodeId));
   }
 
   // 5. Remove links from other nodes that reference the deleted links
@@ -633,8 +640,7 @@ export function removeNodeWithLinks(
 
   // Remove the node from ComfyGraph._nodes
   updatedComfyGraph._nodes = updatedComfyGraph._nodes.filter(node => {
-    const nodeIdNumber = typeof node.id === 'string' ? parseInt(node.id) : node.id;
-    return nodeIdNumber !== nodeId;
+    return String(node.id) !== String(nodeId);
   });
 
   return {

@@ -101,6 +101,17 @@ export function detectMissingWorkflowNodes(
       continue;
     }
 
+    // Check if it's a subgraph node (defined in workflow)
+    if (workflowJson.subgraphs?.some(sg => sg.id === node.type)) {
+      continue;
+    }
+
+    // Fallback: Check if type is a UUID (likely a subgraph even if definition is missing/not loaded yet)
+    // dbe682c8-c9d2-4f3f-a199-35cc09e15d27
+    if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(node.type)) {
+      continue;
+    }
+
     missingNodes.push({
       id: node.id,
       type: node.type,

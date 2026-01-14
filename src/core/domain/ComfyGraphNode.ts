@@ -3,10 +3,11 @@
  * Provides complete node functionality for ComfyUI workflows
  */
 
-import type { 
+import type {
   IComfyGraph,
   IComfyGraphNode,
   IComfyWidget,
+  IComfySubgraph,
   IComfyNodeInputSlot,
   IComfyNodeOutputSlot,
   INodeFlags,
@@ -31,29 +32,30 @@ export class ComfyGraphNode implements IComfyGraphNode {
   mode: NodeMode
   order: number
   //graph: IComfyGraph | undefined
-  
+
   // Visual properties
   color?: string
   bgcolor?: string
   _original_bgcolor?: string
-  
+
   // Input/Output slots
   inputs: IComfyNodeInputSlot[]
   outputs: IComfyNodeOutputSlot[]
-  
+
   // ComfyUI-specific properties
   comfyClass: string
   widgets_values?: any
   properties: INodeProperties
   serialize_widgets: boolean // Controls whether widgets should be serialized
   nodeData?: INodeMetadata | undefined // Runtime metadata from server /object_info
-  
+  subgraphDefinition?: IComfySubgraph | undefined // Subgraph definition if this node is a subgraph
+
   // Internal state
   private _widgets: IComfyWidget[]
   private _isExecuting: boolean = false
   private _lastExecutionTime: number = 0
   private _executionId: string | null = null
-  
+
   constructor(
     id: number,
     type: string,
@@ -68,7 +70,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
       this.title = comfyNode.title
     }
     // If no title provided, leave it undefined for perfect ComfyUI compatibility
-    
+
     // Position and size
     this.pos = [
       comfyNode?.pos?.[0] || 0,
@@ -78,24 +80,24 @@ export class ComfyGraphNode implements IComfyGraphNode {
       comfyNode?.size?.[0] || 200,
       comfyNode?.size?.[1] || 100
     ] as [number, number]
-    
+
     // State
     this.flags = {} as INodeFlags
     this.mode = NodeMode.ALWAYS
     this.order = 0
     //this.graph = undefined
-    
+
     // Initialize slots
     this.inputs = []
     this.outputs = []
-    
+
     // ComfyUI properties - preserve exact original structure
     // ✅ Only set widgets_values if it existed in original data - DO NOT default to []
     if (comfyNode && 'widgets_values' in comfyNode) {
       // 🔧 GraphChangeLogger: Wrap widgets_values with logging proxy
       this.widgets_values = createWidgetsValuesProxy(
-        comfyNode.widgets_values, 
-        this.id, 
+        comfyNode.widgets_values,
+        this.id,
         this.type
       );
       this.serialize_widgets = true
@@ -104,20 +106,20 @@ export class ComfyGraphNode implements IComfyGraphNode {
       this.serialize_widgets = false
     }
     this.properties = (comfyNode?.properties ? { ...comfyNode.properties } : {}) as INodeProperties
-    
+
     // Internal state
     this._widgets = []
-    
+
     // Initialize from ComfyNode data
     if (comfyNode) {
       this.initializeFromComfyNode(comfyNode)
     }
   }
-  
+
   // ============================================================================
   // Initialization Methods
   // ============================================================================
-  
+
   /**
    * Initialize node from ComfyUI node data
    */
@@ -128,30 +130,34 @@ export class ComfyGraphNode implements IComfyGraphNode {
         name: input.name,
         type: input.type,
         link: input.link || null,
-        // widget: input.widget || null
+        widget: input.widget || null,
+        label: input.label,
+        localized_name: input.localized_name
       }))
     }
-    
+
     // Initialize outputs
     if (comfyNode.outputs) {
       this.outputs = comfyNode.outputs.map((output: IComfyNodeOutputSlot) => ({
         name: output.name,
         type: output.type,
-        links: output.links || []
+        links: output.links || [],
+        label: output.label,
+        localized_name: output.localized_name
       }))
     }
-    
+
     // Initialize widgets
     if (comfyNode.widgets_values && comfyNode.widgets_values.length > 0) {
       this.initializeWidgets(comfyNode.widgets_values)
     }
-    
+
     // Set node mode if specified
     if (typeof comfyNode.mode === 'number') {
       this.mode = comfyNode.mode as NodeMode
     }
   }
-  
+
   /**
    * Initialize widgets from workflow values
    * @param widgetValues - Workflow widget values (array or object)
@@ -160,18 +166,18 @@ export class ComfyGraphNode implements IComfyGraphNode {
    */
   initializeWidgets(widgetValues: any[] | Record<string, any>, nodeMetadata?: any, workflowMetadata?: any): void {
     this._widgets = []
-    
+
     // Initialize widgets_values proxy
     if (widgetValues && !this.widgets_values) {
       this.widgets_values = createWidgetsValuesProxy(widgetValues, this.id, this.type);
     }
-        
+
     // Server metadata available, use it
     if (nodeMetadata?.input?.required) {
       this.initializeFromServerMetadata(widgetValues, nodeMetadata, workflowMetadata);
       return;
     }
-    
+
     // No server metadata, handle nodes without it
     this.handleNoServerMetadata(widgetValues, nodeMetadata, workflowMetadata);
   }
@@ -182,48 +188,55 @@ export class ComfyGraphNode implements IComfyGraphNode {
   private initializeFromServerMetadata(widgetValues: any[] | Record<string, any>, nodeMetadata: any, workflowMetadata?: any): void {
     const requiredInputs = nodeMetadata.input.required;
     let valueIndex = 0;
-    
+
     // Find current node's inputs from workflow metadata (includes preprocessed custom fields)
     const nodeInputs = workflowMetadata?.nodes?.find((n: any) => n.id === this.id)?.inputs || [];
-    
+
     // Build combined input processing map
     const allInputsToProcess = this.buildInputProcessingMap(requiredInputs, nodeInputs);
-    
+
     // Process all inputs (server + custom) in correct order
     for (const [inputName, inputData] of allInputsToProcess) {
       const { source, inputSpec, workflowInput } = inputData;
-      
-      console.log(`[${this.type}] Processing ${source} input "${inputName}": workflowInput =`, workflowInput);
-      
-      if (!workflowInput?.widget) {
+
+      // we should skip if workflowInput exists but has no widget property (connection slot)
+      if (workflowInput && !workflowInput.widget) {
         console.log(`Skipping "${inputName}" - no widget property (connection slot)`);
         continue;
       }
-      
-      console.log(`Creating widget for "${inputName}" (${source}) with widget:`, workflowInput.widget);
-      
+
+      // FIX: Check if this input is already a connected input slot on the node instance
+      // This prevents "re-widgetizing" converted inputs during refresh/re-initialization
+      const isExistingInput = this.inputs.some(i => i.name === inputName && !i.widget);
+      if (isExistingInput) {
+        console.log(`Skipping "${inputName}" - existing input slot detected`);
+        continue;
+      }
+
+      console.log(`Creating widget for "${inputName}" (${source}) with widget:`, workflowInput?.widget);
+
       // Process input and create widget
       const result = this.processInput(inputName, inputSpec, widgetValues, valueIndex, workflowInput);
       if (!result) continue;
-      
+
       const { widget, widgetType } = result;
-      
+
       // Create widget using custom metadata if available
       console.log(`Created widget for "${inputName}":`, {
         type: widgetType,
         value: widget.value,
         isCustomType: !!WorkflowMappingService.getWidgetDefinitionSync(widgetType)
       });
-      
+
       const createdWidget = this.createWidget(widget);
       this._widgets.push(createdWidget);
-      
+
       // Handle dynamic widgets and control_after_generate
       valueIndex = this.handleSpecialWidgetCases(inputName, inputSpec[1], widget, widgetValues, valueIndex, workflowMetadata);
-      
+
       valueIndex++;
     }
-    
+
     // Process optional inputs
     this.processOptionalInputs(nodeMetadata.input.optional, widgetValues, valueIndex, nodeInputs);
   }
@@ -233,7 +246,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
    */
   private buildInputProcessingMap(requiredInputs: any, nodeInputs: any[]): Map<string, any> {
     const allInputsToProcess = new Map();
-    
+
     // Add server metadata inputs
     Object.entries(requiredInputs).forEach(([inputName, inputSpec]) => {
       allInputsToProcess.set(inputName, {
@@ -242,7 +255,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
         workflowInput: nodeInputs.find((inp: any) => inp.name === inputName)
       });
     });
-    
+
     // Add/override custom fields (priority over server metadata)
     nodeInputs.forEach((input: any) => {
       if (input.widget?.isCustomField) {
@@ -254,7 +267,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
         });
       }
     });
-    
+
     return allInputsToProcess;
   }
 
@@ -263,7 +276,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
    */
   private processInput(inputName: string, inputSpec: any, widgetValues: any[] | Record<string, any>, valueIndex: number, workflowInput?: any): { widget: IComfyWidget, widgetType: string } | null {
     const [inputType, inputConfig] = inputSpec as any;
-    
+
     // For custom fields, use the widget type from workflowInput (overrides server metadata)
     let widgetType: string;
     if (workflowInput?.widget?.isCustomField && workflowInput?.type) {
@@ -271,7 +284,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
       console.log(`  🎨 Custom field "${inputName}" using custom widget type: ${widgetType}`);
     } else {
       // Standard server metadata type determination
-      if (Array.isArray(inputType)) {
+      if (Array.isArray(inputType) || inputType === 'COMBO') {
         widgetType = 'COMBO';
       } else {
         // Use ComfyUI native types directly, with semantic enhancement for seed
@@ -286,7 +299,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
         }
       }
     }
-    
+
     // Create widget
     const widget: IComfyWidget = {
       name: inputName,
@@ -294,10 +307,10 @@ export class ComfyGraphNode implements IComfyGraphNode {
       value: Array.isArray(widgetValues) ? widgetValues[valueIndex] : widgetValues[inputName],
       options: {
         ...inputConfig,
-        values: Array.isArray(inputType) ? inputType : undefined
+        values: Array.isArray(inputType) ? inputType : (inputConfig?.options || inputConfig?.values)
       }
     };
-    
+
     return { widget, widgetType };
   }
 
@@ -306,15 +319,15 @@ export class ComfyGraphNode implements IComfyGraphNode {
    */
   private handleSpecialWidgetCases(inputName: string, inputConfig: any, widget: IComfyWidget, widgetValues: any[] | Record<string, any>, valueIndex: number, workflowMetadata?: any): number {
     let currentIndex = valueIndex;
-    
+
     // Handle dynamic widgets based on format selection (e.g., VHS_VideoCombine)
     currentIndex = this.createDynamicWidgets(inputConfig, widget, widgetValues, currentIndex);
-    
+
     // Handle control_after_generate for seed widgets
     if (inputName === 'seed' || inputName === 'noise_seed') {
       currentIndex = this.createControlAfterGenerateWidget(widgetValues, currentIndex + 1, workflowMetadata);
     }
-    
+
     return currentIndex;
   }
 
@@ -325,20 +338,20 @@ export class ComfyGraphNode implements IComfyGraphNode {
     if (!inputConfig?.formats || typeof parentWidget.value !== 'string') {
       return valueIndex;
     }
-    
+
     const formatKey = parentWidget.value + '.json';
     const dynamicFields = inputConfig.formats[formatKey];
-    
+
     if (!dynamicFields || !Array.isArray(dynamicFields)) {
       return valueIndex;
     }
-    
+
     let currentIndex = valueIndex;
-    
+
     for (const [fieldName, fieldType, fieldConfig] of dynamicFields) {
       let dynamicWidgetType: string;
-      
-      if (Array.isArray(fieldType)) {
+
+      if (Array.isArray(fieldType) || fieldType === 'COMBO') {
         dynamicWidgetType = 'COMBO';
       } else {
         // Use ComfyUI native types directly, with semantic enhancement for seed
@@ -352,23 +365,23 @@ export class ComfyGraphNode implements IComfyGraphNode {
             break;
         }
       }
-      
+
       const dynamicWidget: IComfyWidget = {
         name: fieldName,
         type: dynamicWidgetType,
         value: Array.isArray(widgetValues) ? widgetValues[currentIndex] : widgetValues[fieldName],
         options: {
           ...fieldConfig,
-          values: Array.isArray(fieldType) ? fieldType : undefined
+          values: Array.isArray(fieldType) ? fieldType : (fieldConfig?.options || fieldConfig?.values)
         }
       };
-      
+
       // Create dynamic widget with custom metadata if applicable
       const createdDynamicWidget = this.createWidget(dynamicWidget);
       this._widgets.push(createdDynamicWidget);
       currentIndex++;
     }
-    
+
     return currentIndex;
   }
 
@@ -379,7 +392,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
     // Add control_after_generate widget after seed
     // CRITICAL: Use metadata value first, then fallback to widget_values, then default
     let controlValue = 'fixed'; // Default fallback
-    
+
     // First priority: Mobile UI metadata
     if (workflowMetadata?.mobile_ui_metadata?.control_after_generate?.[this.id]) {
       controlValue = workflowMetadata.mobile_ui_metadata.control_after_generate[this.id];
@@ -387,12 +400,12 @@ export class ComfyGraphNode implements IComfyGraphNode {
     // Second priority: widget_values array (for backward compatibility)
     else if (Array.isArray(widgetValues) && valueIndex < widgetValues.length) {
       const widgetValue = widgetValues[valueIndex];
-      if (typeof widgetValue === 'string' && 
-          ['fixed', 'increment', 'decrement', 'randomize'].includes(widgetValue)) {
+      if (typeof widgetValue === 'string' &&
+        ['fixed', 'increment', 'decrement', 'randomize'].includes(widgetValue)) {
         controlValue = widgetValue;
       }
     }
-    
+
     const controlWidget: IComfyWidget = {
       name: 'control_after_generate',
       type: 'COMBO',
@@ -401,11 +414,11 @@ export class ComfyGraphNode implements IComfyGraphNode {
         values: ['fixed', 'increment', 'decrement', 'randomize']
       }
     };
-    
+
     // Create control widget with custom metadata if applicable
     const createdControlWidget = this.createWidget(controlWidget);
     this._widgets.push(createdControlWidget);
-    
+
     return valueIndex;
   }
 
@@ -414,28 +427,28 @@ export class ComfyGraphNode implements IComfyGraphNode {
    */
   private processOptionalInputs(optionalInputs: any, widgetValues: any[] | Record<string, any>, startIndex: number, nodeInputs: any[]): void {
     if (!optionalInputs) return;
-    
+
     let valueIndex = startIndex;
-    
+
     for (const [inputName, inputSpec] of Object.entries(optionalInputs)) {
       // Find corresponding workflow input to check if it has widget property
       const workflowInput = nodeInputs.find((inp: any) => inp.name === inputName);
-      
+
       console.log(`🔍 [${this.type}] Processing optional input "${inputName}": workflowInput =`, workflowInput);
-      
+
       // Skip if this input doesn't have widget property (it's a connection slot)
       if (!workflowInput?.widget) {
         console.log(`Skipping optional input "${inputName}" - no widget property (connection slot)`);
         continue;
       }
-      
+
       console.log(`Creating widget for optional input "${inputName}" with widget:`, workflowInput.widget);
-      
+
       const result = this.processInput(inputName, inputSpec, widgetValues, valueIndex);
       if (!result) continue;
-      
+
       const { widget } = result;
-      
+
       // Create optional input widget with custom metadata if applicable
       const createdWidget = this.createWidget(widget);
       this._widgets.push(createdWidget);
@@ -459,26 +472,26 @@ export class ComfyGraphNode implements IComfyGraphNode {
       if (specialWidgets && specialWidgets.length > 0) {
         // Create special widgets using custom metadata
         const createdSpecialWidgets = specialWidgets.map(widget => this.createWidget(widget));
-        
+
         // Add special widgets to existing custom field widgets
         this._widgets.push(...createdSpecialWidgets);
         return;
       }
     }
-    
+
     // If custom field widgets were created, complete
     if (this._widgets.length > 0) {
       console.log(`✅ [${this.type}] Created ${this._widgets.length} custom field widgets`);
       return;
     }
   }
-  
-  
-  
+
+
+
   // ============================================================================
   // Core Node Methods (LiteGraph compatibility)
   // ============================================================================
-  
+
   /**
    * Clone this node
    */
@@ -497,13 +510,13 @@ export class ComfyGraphNode implements IComfyGraphNode {
         mode: this.mode
       }
     )
-    
+
     cloned.flags = this.flags
     cloned.order = this.order
-    
+
     return cloned
   }
-  
+
   /**
    * Serialize node to JSON (ComfyUI LiteGraph format)
    */
@@ -522,23 +535,23 @@ export class ComfyGraphNode implements IComfyGraphNode {
     if (this.title && this.title !== this.type) {
       data.title = this.title
     }
-    
+
     // IMPORTANT: ComfyUI uses undefined for missing inputs/outputs, not empty arrays
     // Only add if they exist and have content
     if (this.inputs && this.inputs.length > 0) {
       data.inputs = this.inputs.map(input => ({ ...input }))
     }
     // Don't add empty inputs array
-    
+
     if (this.outputs && this.outputs.length > 0) {
       data.outputs = this.outputs.map(output => ({ ...output }))
     }
     // Don't add empty outputs array
-    
+
     if (this.widgets_values && this.widgets_values.length > 0) {
       data.widgets_values = [...this.widgets_values]
     }
-    
+
     if (this.properties && Object.keys(this.properties).length > 0) {
       data.properties = { ...this.properties }
     }
@@ -554,10 +567,10 @@ export class ComfyGraphNode implements IComfyGraphNode {
     // IMPORTANT: Explicitly exclude nodeData from serialization
     // nodeData is metadata used only at runtime, not for workflow persistence
     // Note: We don't copy all properties to avoid including nodeData
-    
+
     return data
   }
-  
+
   /**
    * Configure node from serialized data
    */
@@ -571,30 +584,30 @@ export class ComfyGraphNode implements IComfyGraphNode {
     if (data.flags !== undefined) this.flags = data.flags
     if (data.mode !== undefined) this.mode = data.mode
     if (data.order !== undefined) this.order = data.order
-    
+
     // Handle inputs - some nodes may not have inputs
     this.inputs = data.inputs ? data.inputs.map((input: any) => ({ ...input })) : []
-    
+
     // Handle outputs - some nodes (like SaveImage) may not have outputs
     this.outputs = data.outputs ? data.outputs.map((output: any) => ({ ...output })) : []
-    
+
     if (data.widgets_values) {
       this.widgets_values = [...data.widgets_values]
       this.initializeWidgets(this.widgets_values)
     }
     if (data.properties) this.properties = { ...data.properties }
-    
+
     // Emit configuration event
     emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
       node: this,
       newValue: data
     } as any)
   }
-  
+
   // ============================================================================
   // Input/Output Management
   // ============================================================================
-  
+
   /**
    * Add input slot to node
    */
@@ -604,19 +617,19 @@ export class ComfyGraphNode implements IComfyGraphNode {
       type: String(type),
       link: null
     }
-    
+
     this.inputs.push(input)
-    
+
     // Emit event
     emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
       node: this,
       previousValue: null,
       newValue: input
     } as any)
-    
+
     return input
   }
-  
+
   /**
    * Add output slot to node
    */
@@ -626,16 +639,16 @@ export class ComfyGraphNode implements IComfyGraphNode {
       type: String(type),
       links: []
     }
-    
+
     this.outputs.push(output)
-    
+
     // Emit event
     emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
       node: this,
       previousValue: null,
       newValue: output
     } as any)
-    
+
     return output
   }
 
@@ -644,64 +657,64 @@ export class ComfyGraphNode implements IComfyGraphNode {
     return this.inputs[slot].link
   }
 
-  
+
   /**
    * Remove input by index
    */
   removeInput(index: number): boolean {
     if (index >= 0 && index < this.inputs.length) {
       const removed = this.inputs.splice(index, 1)[0]
-      
+
       // Emit event
       emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
         node: this,
         previousValue: removed,
         newValue: null
       } as any)
-      
+
       return true
     }
     return false
   }
-  
+
   /**
    * Remove output by index
    */
   removeOutput(index: number): boolean {
     if (index >= 0 && index < this.outputs.length) {
       const removed = this.outputs.splice(index, 1)[0]
-      
+
       // Emit event
       emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
         node: this,
         previousValue: removed,
         newValue: null
       } as any)
-      
+
       return true
     }
     return false
   }
-  
+
   /**
    * Get input by name or index
    */
   getInputData(slotIndex: number): any {
     if (slotIndex >= 0 && slotIndex < this.inputs.length) {
       const input = this.inputs[slotIndex]
-      
+
       // If input has a widget, return widget value  
       if ((input as any).widget && this._widgets[slotIndex]) {
         return this._widgets[slotIndex].value
       }
-      
+
       // If input has a link, would normally get from connected node
       // For now, return undefined (would be implemented in graph execution)
       return undefined
     }
     return undefined
   }
-  
+
   /**
    * Set output data
    */
@@ -711,11 +724,11 @@ export class ComfyGraphNode implements IComfyGraphNode {
       this.properties[`output_${slotIndex}`] = data
     }
   }
-  
+
   // ============================================================================
   // Widget Management
   // ============================================================================
-  
+
   /**
    * Get all widgets
    */
@@ -736,21 +749,21 @@ export class ComfyGraphNode implements IComfyGraphNode {
   set widgets(value: IComfyWidget[]) {
     this._widgets = value || []
   }
-  
+
   /**
    * Get widget by name
    */
   getWidget(name: string): IComfyWidget | null {
     return this._widgets.find(w => w.name === name) || null
   }
-  
+
   /**
    * Set widget value
    */
   setWidgetValue(nameOrIndex: string | number, value: any): boolean {
     let widget: IComfyWidget | undefined
     let widgetIndex: number
-    
+
     if (typeof nameOrIndex === 'string') {
       widgetIndex = this._widgets.findIndex(w => w.name === nameOrIndex)
       widget = this._widgets[widgetIndex]
@@ -758,14 +771,14 @@ export class ComfyGraphNode implements IComfyGraphNode {
       widgetIndex = nameOrIndex
       widget = this._widgets[widgetIndex]
     }
-    
+
     if (!widget || widgetIndex === -1) {
       return false
     }
-    
+
     const previousValue = widget.value
     widget.value = value
-    
+
     // 🔧 GraphChangeLogger: Log widget value change via setter method
     graphChangeLogger.logChange({
       nodeId: this.id,
@@ -776,12 +789,12 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: value,
       source: 'ComfyGraphNode.setWidgetValue'
     });
-    
+
     // Update widgets_values array (logging handled by proxy)
     if (widgetIndex < this.widgets_values.length) {
       this.widgets_values[widgetIndex] = value
     }
-    
+
     // Emit widget value changed event
     emit(GraphEventTypes.WIDGET_VALUE_CHANGED, {
       node: this as any, // Cast to ComfyNode interface
@@ -790,43 +803,43 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: value,
       widget
     } as any)
-    
+
     return true
   }
-  
+
   /**
    * Process custom fields that weren't handled by server metadata
    */
   private processCustomFields(nodeInputs: any[], requiredInputs?: any, widgetValues?: any[]): void {
-    const customFields = nodeInputs.filter((input: any) => 
-      input.widget?.isCustomField && 
-      input.type && 
+    const customFields = nodeInputs.filter((input: any) =>
+      input.widget?.isCustomField &&
+      input.type &&
       (!requiredInputs || !requiredInputs[input.name]) // Not in server metadata
     );
-    
+
     if (customFields.length > 0) {
       customFields.forEach((input: any) => {
         // Find the widget value for this custom field
         // Custom fields are added to the end of widgets_values array during preprocessing
         const customFieldIndex = this.findCustomFieldValueIndex(input.name, nodeInputs, widgetValues);
-        const widgetValue = Array.isArray(widgetValues) && customFieldIndex >= 0 
-          ? widgetValues[customFieldIndex] 
+        const widgetValue = Array.isArray(widgetValues) && customFieldIndex >= 0
+          ? widgetValues[customFieldIndex]
           : null;
-          
+
         console.log(`Custom field "${input.name}" value index: ${customFieldIndex}, value:`, widgetValue);
-        
+
         const widget: IComfyWidget = {
           name: input.name,
           type: input.type,
           value: widgetValue,
           options: {}
         };
-        
+
         console.log(`Creating custom widget for "${input.name}" (${input.type}) with value:`, widgetValue);
         const createdWidget = this.createWidget(widget);
         this._widgets.push(createdWidget);
       });
-      
+
       console.log(`[${this.type}] Total widgets: ${this._widgets.length}`);
     }
   }
@@ -836,7 +849,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
    */
   private findCustomFieldValueIndex(fieldName: string, nodeInputs: any[], widgetValues?: any[]): number {
     if (!Array.isArray(widgetValues)) return -1;
-    
+
     // Count how many widget inputs come before this custom field
     let widgetInputCount = 0;
     for (const input of nodeInputs) {
@@ -848,7 +861,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
         widgetInputCount++;
       }
     }
-    
+
     return widgetInputCount < widgetValues.length ? widgetInputCount : -1;
   }
 
@@ -858,16 +871,16 @@ export class ComfyGraphNode implements IComfyGraphNode {
   private createWidget(widget: IComfyWidget): IComfyWidget {
     // Check if this is a custom widget type
     const customDefinition = WorkflowMappingService.getWidgetDefinitionSync(widget.type);
-    
+
     console.log(`createWidget: "${widget.name}" (${widget.type})`, {
       hasCustomDefinition: !!customDefinition,
       widgetValue: widget.value,
       widgetOptions: Object.keys(widget.options || {})
     });
-    
+
     if (customDefinition) {
       console.log(`Enhancing widget "${widget.name}" with custom metadata for type "${widget.type}"`);
-      
+
       // Inject widget definition metadata
       const enhancedWidget = {
         ...widget,
@@ -881,17 +894,17 @@ export class ComfyGraphNode implements IComfyGraphNode {
           ...widget.options
         }
       };
-      
+
       console.log(`Enhanced widget result:`, {
         name: enhancedWidget.name,
         type: enhancedWidget.type,
         hasCustomDefinition: true,
         fieldsCount: enhancedWidget.options?.fields?.length || 0
       });
-      
+
       return enhancedWidget;
     }
-    
+
     console.log(`Standard widget (no enhancement needed)`);
     return widget;
   }
@@ -907,38 +920,38 @@ export class ComfyGraphNode implements IComfyGraphNode {
       callback: callback as any,
       options: options || {}
     }
-    
+
     // Create widget with custom metadata if applicable
     const createdWidget = this.createWidget(widget);
-    
+
     this._widgets.push(createdWidget)
-    
+
     // Ensure widgets_values array is properly wrapped
     if (!this.widgets_values) {
       this.widgets_values = createWidgetsValuesProxy([], this.id, this.type);
     }
     this.widgets_values.push(value)
-    
+
     // Emit event
     emit(GraphEventTypes.WIDGET_ADDED, {
       node: this,
       widget: createdWidget
     } as any)
-    
+
     return createdWidget
   }
-  
+
   // ============================================================================
   // Execution State Management
   // ============================================================================
-  
+
   /**
    * Check if node is currently executing
    */
   isExecuting(): boolean {
     return this._isExecuting
   }
-  
+
   /**
    * Set execution state
    */
@@ -946,7 +959,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
     const wasExecuting = this._isExecuting
     this._isExecuting = executing
     this._executionId = executionId || null
-    
+
     if (executing && !wasExecuting) {
       // Started executing
       emit(GraphEventTypes.EXECUTION_NODE_STARTED, {
@@ -962,46 +975,46 @@ export class ComfyGraphNode implements IComfyGraphNode {
       } as any)
     }
   }
-  
+
   /**
    * Get last execution time
    */
   getLastExecutionTime(): number {
     return this._lastExecutionTime
   }
-  
+
   /**
    * Get execution ID
    */
   getExecutionId(): string | null {
     return this._executionId
   }
-  
+
   // ============================================================================
   // Node State Management
   // ============================================================================
-  
+
   /**
    * Check if node is muted
    */
   isMuted(): boolean {
     return this.mode === NodeMode.NEVER
   }
-  
+
   /**
    * Check if node is bypassed
    */
   isBypassed(): boolean {
     return this.mode === NodeMode.BYPASS
   }
-  
+
   /**
    * Set node mode
    */
   setMode(mode: NodeMode): void {
     const previousMode = this.mode
     this.mode = mode
-    
+
     // Emit mode changed event
     emit(GraphEventTypes.NODE_MODE_CHANGED, {
       node: this,
@@ -1009,7 +1022,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: mode
     } as any)
   }
-  
+
   /**
    * Set node flag
    */
@@ -1022,7 +1035,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
       this.flags = (numFlags & ~numFlag) as any
     }
   }
-  
+
   /**
    * Check if node has flag
    */
@@ -1031,14 +1044,14 @@ export class ComfyGraphNode implements IComfyGraphNode {
     const numFlag = flag as any as number
     return (numFlags & numFlag) !== 0
   }
-  
+
   /**
    * Set node position
    */
   setPosition(x: number, y: number): void {
     const previousPos = [...this.pos] as [number, number]
     this.pos = [x, y]
-    
+
     // Emit position changed event
     emit(GraphEventTypes.NODE_MOVED, {
       node: this,
@@ -1046,14 +1059,14 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: this.pos
     } as any)
   }
-  
+
   /**
    * Set node size
    */
   setSize(width: number, height: number): void {
     const previousSize = [...this.size] as [number, number]
     this.size = [width, height]
-    
+
     // Emit size changed event
     emit(GraphEventTypes.NODE_RESIZED, {
       node: this,
@@ -1061,14 +1074,14 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: this.size
     } as any)
   }
-  
+
   /**
    * Set node title
    */
   setTitle(title: string): void {
     const previousTitle = this.title
     this.title = title
-    
+
     // Emit title changed event
     emit(GraphEventTypes.NODE_TITLE_CHANGED, {
       node: this,
@@ -1076,11 +1089,11 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: title
     } as any)
   }
-  
+
   // ============================================================================
   // Connection and Slot Methods
   // ============================================================================
-  
+
   /**
    * Check if connection to another node is valid
    */
@@ -1089,62 +1102,62 @@ export class ComfyGraphNode implements IComfyGraphNode {
     if (sourceSlot >= this.outputs.length || targetSlot >= targetNode.inputs.length) {
       return false
     }
-    
+
     // Don't allow self-connection
     if (this.id === targetNode.id) {
       return false
     }
-    
+
     const sourceOutput = this.outputs[sourceSlot]
     const targetInput = targetNode.inputs[targetSlot]
-    
+
     if (!sourceOutput || !targetInput) {
       return false
     }
-    
+
     // Check type compatibility
-    if (sourceOutput.type !== '*' && 
-        targetInput.type !== '*' && 
-        sourceOutput.type !== targetInput.type) {
+    if (sourceOutput.type !== '*' &&
+      targetInput.type !== '*' &&
+      sourceOutput.type !== targetInput.type) {
       return false
     }
-    
+
     // Check if target input is already connected
     if (targetInput.link !== null) {
       return false
     }
-    
+
     return true
   }
-  
+
   /**
    * Find input slot by name
    */
   findInputSlot(name: string): number {
     return this.inputs.findIndex(input => input.name === name)
   }
-  
+
   /**
    * Find output slot by name
    */
   findOutputSlot(name: string): number {
     return this.outputs.findIndex(output => output.name === name)
   }
-  
+
   /**
    * Find input slot by type
    */
   findInputSlotByType(type: string): number {
     return this.inputs.findIndex(input => input.type === type || input.type === '*')
   }
-  
+
   /**
    * Find output slot by type
    */
   findOutputSlotByType(type: string): number {
     return this.outputs.findIndex(output => output.type === type || output.type === '*')
   }
-  
+
   /**
    * Find widget by name
    */
@@ -1155,18 +1168,18 @@ export class ComfyGraphNode implements IComfyGraphNode {
     }
     return null
   }
-  
+
   /**
    * Find widget by type
    */
   findWidgetByType(type: string): IComfyWidget[] {
     return this._widgets.filter(w => w.type === type)
   }
-  
+
   // ============================================================================
   // Node State Management (Extended)
   // ============================================================================
-  
+
   /**
    * Set collapsed state
    */
@@ -1178,7 +1191,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
     } else {
       this.flags = (numFlags & ~COLLAPSED) as any
     }
-    
+
     // Emit collapsed state change event
     emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
       node: this,
@@ -1187,7 +1200,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: collapsed
     } as any)
   }
-  
+
   /**
    * Check if node is collapsed
    */
@@ -1196,7 +1209,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
     const COLLAPSED = 1 // NodeFlags.COLLAPSED value
     return (numFlags & COLLAPSED) !== 0
   }
-  
+
   /**
    * Set node color
    */
@@ -1204,10 +1217,10 @@ export class ComfyGraphNode implements IComfyGraphNode {
     if (!this.properties) {
       this.properties = {}
     }
-    
+
     const previousColor = this.properties.color
     this.properties.color = color
-    
+
     // Emit color change event
     emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
       node: this,
@@ -1216,14 +1229,14 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: color
     } as any)
   }
-  
+
   /**
    * Get node color
    */
   getColor(): string | undefined {
     return this.properties?.color
   }
-  
+
   /**
    * Set background color
    */
@@ -1231,10 +1244,10 @@ export class ComfyGraphNode implements IComfyGraphNode {
     if (!this.properties) {
       this.properties = {}
     }
-    
+
     const previousColor = this.properties.bgcolor
     this.properties.bgcolor = color
-    
+
     emit(GraphEventTypes.NODE_PROPERTY_CHANGED, {
       node: this,
       property: 'bgcolor',
@@ -1242,18 +1255,18 @@ export class ComfyGraphNode implements IComfyGraphNode {
       newValue: color
     } as any)
   }
-  
+
   /**
    * Get background color
    */
   getBackgroundColor(): string | undefined {
     return this.properties?.bgcolor
   }
-  
+
   // ============================================================================
   // Event Handlers
   // ============================================================================
-  
+
   /**
    * Handle mouse down event
    */
@@ -1264,13 +1277,13 @@ export class ComfyGraphNode implements IComfyGraphNode {
       event,
       localPos
     } as any)
-    
+
     // Mark node as selected
     this.setFlag(2 as any, true) // NodeFlags.SELECTED = 2
-    
+
     return true // Event handled
   }
-  
+
   /**
    * Handle mouse up event
    */
@@ -1281,10 +1294,10 @@ export class ComfyGraphNode implements IComfyGraphNode {
       event,
       localPos
     } as any)
-    
+
     return true // Event handled
   }
-  
+
   /**
    * Handle mouse move event
    */
@@ -1295,51 +1308,51 @@ export class ComfyGraphNode implements IComfyGraphNode {
       event,
       localPos
     } as any)
-    
+
     return false // Allow other handlers
   }
-  
+
   /**
    * Handle double click event
    */
   onDoubleClick(event: MouseEvent, localPos: [number, number]): boolean {
     // Toggle collapsed state on double click
     this.setCollapsed(!this.isCollapsed())
-    
+
     // Emit double click event
     emit(GraphEventTypes.NODE_DOUBLE_CLICK, {
       node: this,
       event,
       localPos
     } as any)
-    
+
     return true // Event handled
   }
-  
+
   // ============================================================================
   // Node Validation
   // ============================================================================
-  
+
   /**
    * Validate node configuration
    */
   validate(): { isValid: boolean, errors: string[], warnings: string[] } {
     const errors: string[] = []
     const warnings: string[] = []
-    
+
     // Check basic properties
     if (!this.type || this.type.trim() === '') {
       errors.push('Node type is required')
     }
-    
+
     if (!this.comfyClass || this.comfyClass.trim() === '') {
       errors.push('ComfyUI class type is required')
     }
-    
+
     if (this.id === undefined || this.id === null) {
       errors.push('Node ID is required')
     }
-    
+
     // Validate inputs
     this.inputs.forEach((input, index) => {
       if (!input.name || (typeof input.name === 'string' && input.name.trim() === '')) {
@@ -1349,7 +1362,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
         errors.push(`Input ${index} missing type`)
       }
     })
-    
+
     // Validate outputs
     this.outputs.forEach((output, index) => {
       if (!output.name || (typeof output.name === 'string' && output.name.trim() === '')) {
@@ -1359,7 +1372,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
         errors.push(`Output ${index} missing type`)
       }
     })
-    
+
     // Validate widgets
     this._widgets.forEach((widget, index) => {
       if (!widget.name || widget.name.trim() === '') {
@@ -1369,32 +1382,32 @@ export class ComfyGraphNode implements IComfyGraphNode {
         warnings.push(`Widget ${index} missing type`)
       }
     })
-    
+
     // Check position and size
     if (this.pos[0] < 0 || this.pos[1] < 0) {
       warnings.push('Node position contains negative values')
     }
-    
+
     if (this.size[0] <= 0 || this.size[1] <= 0) {
       warnings.push('Node size should be positive')
     }
-    
+
     // Check widget values length
     if (this.widgets_values.length !== this._widgets.length) {
       warnings.push('Widget values count does not match widget count')
     }
-    
+
     return {
       isValid: errors.length === 0,
       errors,
       warnings
     }
   }
-  
+
   // ============================================================================
   // Utility Methods
   // ============================================================================
-  
+
   /**
    * Get node bounds
    */
@@ -1406,18 +1419,18 @@ export class ComfyGraphNode implements IComfyGraphNode {
       height: this.size[1]
     }
   }
-  
+
   /**
    * Check if point is inside node bounds
    */
   isPointInside(x: number, y: number): boolean {
     const bounds = this.getBounds()
-    return x >= bounds.x && 
-           x <= bounds.x + bounds.width && 
-           y >= bounds.y && 
-           y <= bounds.y + bounds.height
+    return x >= bounds.x &&
+      x <= bounds.x + bounds.width &&
+      y >= bounds.y &&
+      y <= bounds.y + bounds.height
   }
-  
+
   /**
    * Get node center point
    */
@@ -1427,7 +1440,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
       this.pos[1] + this.size[1] / 2
     ]
   }
-  
+
   /**
    * Convert to ComfyNode format
    */
@@ -1446,7 +1459,7 @@ export class ComfyGraphNode implements IComfyGraphNode {
       //graph: this.graph
     }
   }
-  
+
   /**
    * Get debug information
    */

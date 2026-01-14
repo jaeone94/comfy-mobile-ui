@@ -23,6 +23,7 @@ interface WorkflowCanvasProps {
   onTouchStart: (e: React.TouchEvent<HTMLCanvasElement>) => void;
   onTouchMove: (e: React.TouchEvent<HTMLCanvasElement>) => void;
   onTouchEnd: (e: React.TouchEvent<HTMLCanvasElement>) => void;
+  onContextMenu: (e: React.MouseEvent<HTMLCanvasElement>) => void;
 }
 
 export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
@@ -37,6 +38,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
   onTouchStart,
   onTouchMove,
   onTouchEnd,
+  onContextMenu,
 }) => {
   return (
     <div
@@ -65,6 +67,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchEnd}
+        onContextMenu={onContextMenu}
       />
 
       {/* Long Press Progress Overlay */}

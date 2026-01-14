@@ -19,21 +19,21 @@ const STORAGE_KEY = 'comfyui_workflows'
  * Load all workflows from storage
  */
 export function loadAllWorkflows(): Workflow[] {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY)
-      if (!stored) return []
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY)
+    if (!stored) return []
 
-      const parsed = JSON.parse(stored)
-      return parsed.map((item: any) => ({
-        ...item,
-        createdAt: new Date(item.createdAt),
-        modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : undefined,
-      }))
-    } catch (error) {
-      console.error('Failed to load workflows from storage:', error)
-      return []
-    }
+    const parsed = JSON.parse(stored)
+    return parsed.map((item: any) => ({
+      ...item,
+      createdAt: new Date(item.createdAt),
+      modifiedAt: item.modifiedAt ? new Date(item.modifiedAt) : undefined,
+    }))
+  } catch (error) {
+    console.error('Failed to load workflows from storage:', error)
+    return []
   }
+}
 
 /**
  * Save workflows collection to storage
@@ -46,7 +46,7 @@ export function saveAllWorkflows(workflows: Workflow[]): void {
       createdAt: workflow.createdAt?.toISOString() || new Date().toISOString(),
       modifiedAt: workflow.modifiedAt?.toISOString(),
     }))
-    
+
     localStorage.setItem(STORAGE_KEY, JSON.stringify(serialized))
   } catch (error) {
     console.error('Failed to save workflows to storage:', error)
@@ -77,7 +77,7 @@ export function addWorkflow(workflow: Workflow): void {
 export function updateWorkflow(updatedWorkflow: Workflow): void {
   const workflows = loadAllWorkflows()
   const index = workflows.findIndex(w => w.id === updatedWorkflow.id)
-  
+
   if (index !== -1) {
     workflows[index] = {
       ...updatedWorkflow,
@@ -122,7 +122,7 @@ export function getWorkflowStats(): {
   newestWorkflow?: Date
 } {
   const workflows = loadAllWorkflows()
-  
+
   if (workflows.length === 0) {
     return {
       totalCount: 0,
@@ -168,21 +168,21 @@ export async function getStorageQuotaInfo(): Promise<{
   try {
     // Get current storage size
     const currentSize = getWorkflowStorageSize();
-    
+
     // Try to get storage quota (only available in some browsers)
     let quota = 5 * 1024 * 1024; // Default 5MB fallback
     let available = quota;
-    
+
     if ('storage' in navigator && 'estimate' in navigator.storage) {
       const estimate = await navigator.storage.estimate();
       quota = estimate.quota || quota;
       const used = estimate.usage || currentSize;
       available = quota - used;
     }
-    
+
     const usage = quota > 0 ? (currentSize / quota) * 100 : 0;
     const canAddWorkflow = available > (currentSize * 0.1); // Need at least 10% more space
-    
+
     return {
       used: currentSize,
       available,
@@ -234,7 +234,7 @@ export function exportWorkflows(): string {
 export function importWorkflows(jsonData: string): { success: boolean; imported: number; errors: string[] } {
   try {
     const importedWorkflows = JSON.parse(jsonData)
-    
+
     if (!Array.isArray(importedWorkflows)) {
       return { success: false, imported: 0, errors: ['Invalid format: expected array'] }
     }
@@ -265,10 +265,10 @@ export function importWorkflows(jsonData: string): { success: boolean; imported:
 
     return { success: errors.length === 0, imported, errors }
   } catch (error) {
-    return { 
-      success: false, 
-      imported: 0, 
-      errors: [`JSON parse error: ${error}`] 
+    return {
+      success: false,
+      imported: 0,
+      errors: [`JSON parse error: ${error}`]
     }
   }
 }

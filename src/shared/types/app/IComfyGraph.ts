@@ -57,6 +57,8 @@ export interface IComfyNodeInputSlot {
   type: string;
   link: number | null;
   widget?: any;
+  label?: string;
+  localized_name?: string;
 }
 
 export interface IComfyNodeOutputSlot {
@@ -64,6 +66,8 @@ export interface IComfyNodeOutputSlot {
   type: string;
   links: number[];
   slot_index?: number;
+  label?: string;
+  localized_name?: string;
 }
 
 export interface INodeFlags {

@@ -41,9 +41,22 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
     // Use setTimeout to allow UI to update with loading state
     const timer = setTimeout(() => {
       try {
-        const processed = JSON.stringify(data, null, 2);
+        // Safety check for circular references or massive objects
+        const cache = new Set();
+        const processed = JSON.stringify(data, (key, value) => {
+          if (typeof value === 'object' && value !== null) {
+            if (cache.has(value)) {
+              return '[Circular]';
+            }
+            cache.add(value);
+          }
+          return value;
+        }, 2);
+
         setJsonString(processed);
+        cache.clear();
       } catch (error) {
+        console.error('JSON serialization error:', error);
         setJsonString(JSON.stringify({
           error: t('jsonViewer.failedToSerialize'),
           details: String(error)

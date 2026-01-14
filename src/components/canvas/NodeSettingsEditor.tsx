@@ -21,14 +21,16 @@ interface NodeSettingsEditorProps {
 
 // Available node background colors (reduced similar colors)
 const NODE_COLORS = [
-  { name: 'Brown', value: '#593930' },
-  { name: 'Teal', value: '#3f5159' },
-  { name: 'Blue', value: '#29699c' },
-  { name: 'Purple', value: '#335' },
-  { name: 'Green', value: '#353' },
-  { name: 'Red', value: '#653' },
-  { name: 'Blue Gray', value: '#364254' },
-  { name: 'Black', value: '#000' }
+  { name: 'Brown', key: 'circularMenu.colors.brown', value: '#593930' },
+  { name: 'Teal', key: 'circularMenu.colors.teal', value: '#3f5159' },
+  { name: 'Blue', key: 'circularMenu.colors.blue', value: '#29699c' },
+  { name: 'Purple', key: 'circularMenu.colors.purple', value: '#335' },
+  { name: 'Green', key: 'circularMenu.colors.green', value: '#353' },
+  { name: 'Red', key: 'circularMenu.colors.red', value: '#653' },
+  { name: 'Blue Gray', key: 'circularMenu.colors.blueGray', value: '#364254' },
+  { name: 'Black', key: 'circularMenu.colors.black', value: '#000' },
+  { name: 'Slate', key: 'circularMenu.colors.slate', value: '#475569' },
+  { name: 'Default', key: 'circularMenu.colors.default', value: '' }
 ];
 
 export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
@@ -178,8 +180,8 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                   <button
                     onClick={() => handleColorChange('')}
                     className={`w-12 h-12 rounded-lg border-2 transition-all flex items-center justify-center ${isNoneSelected
-                        ? 'border-blue-500 scale-105 shadow-lg bg-slate-100 dark:bg-slate-800'
-                        : 'border-gray-300 dark:border-gray-600 hover:scale-105 bg-slate-50 dark:bg-slate-900'
+                      ? 'border-blue-500 scale-105 shadow-lg bg-slate-100 dark:bg-slate-800'
+                      : 'border-gray-300 dark:border-gray-600 hover:scale-105 bg-slate-50 dark:bg-slate-900'
                       }`}
                     title={t('node.clearColor')}
                   >
@@ -192,11 +194,11 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                       key={color.value}
                       onClick={() => handleColorChange(color.value)}
                       className={`w-12 h-12 rounded-lg border-2 transition-all shadow-sm ${selectedColor === color.value
-                          ? 'border-blue-500 scale-105 shadow-lg ring-2 ring-blue-200 dark:ring-blue-800'
-                          : 'border-gray-300 dark:border-gray-600 hover:scale-105 hover:shadow-md'
+                        ? 'border-blue-500 scale-105 shadow-lg ring-2 ring-blue-200 dark:ring-blue-800'
+                        : 'border-gray-300 dark:border-gray-600 hover:scale-105 hover:shadow-md'
                         }`}
                       style={{ backgroundColor: color.value }}
-                      title={color.name}
+                      title={t(color.key)}
                     />
                   ))}
 
@@ -244,8 +246,8 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                     </span>
                     {Math.abs(Number(widthChange)) > 0 && (
                       <span className={`text-xs font-medium min-w-[40px] text-right ${Number(widthChange) > 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
                         }`}>
                         {Number(widthChange) > 0 ? '+' : ''}{widthChange}%
                       </span>
@@ -273,8 +275,8 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                     </span>
                     {Math.abs(Number(heightChange)) > 0 && (
                       <span className={`text-xs font-medium min-w-[40px] text-right ${Number(heightChange) > 0
-                          ? 'text-green-600 dark:text-green-400'
-                          : 'text-red-600 dark:text-red-400'
+                        ? 'text-green-600 dark:text-green-400'
+                        : 'text-red-600 dark:text-red-400'
                         }`}>
                         {Number(heightChange) > 0 ? '+' : ''}{heightChange}%
                       </span>

@@ -29,9 +29,15 @@ export class ConnectionService {
     sourceSlot: number,
     targetSlot: number
   ): ConnectionServiceResult {
-    // Clone the data structures to avoid mutations
+    // Clone the workflow JSON (POJO) to avoid mutations
     const updatedWorkflowJson = JSON.parse(JSON.stringify(workflowJson)) as IComfyJson;
-    const updatedGraph = JSON.parse(JSON.stringify(graph)) as IComfyGraph;
+
+    // CRITICAL: Do NOT deep clone the graph using JSON methods as it destroys ComfyGraphNode instances (methods/widgets)
+    // We will mutate the graph structure cautiously or return the same graph instance with updates
+    // For this use case, since we want to preserve node instances, we'll treat 'graph' as the live graph 
+    // and mutate it (or its structure) directly, but robustly.
+    // However, to respect the "updatedGraph" contract, we can return the same reference if we mutate in place.
+    const updatedGraph = graph;
 
     // Generate new link ID
     const newLinkId = Math.max(
@@ -55,9 +61,9 @@ export class ConnectionService {
 
     // Handle existing connection removal
     this.removeExistingConnection(
-      updatedWorkflowJson, 
-      updatedGraph, 
-      targetJsonNode, 
+      updatedWorkflowJson,
+      updatedGraph,
+      targetJsonNode,
       targetSlot
     );
 
@@ -120,7 +126,7 @@ export class ConnectionService {
 
     // Remove from workflow_json.links array
     if (workflowJson.links) {
-      workflowJson.links = workflowJson.links.filter((link: any[]) => 
+      workflowJson.links = workflowJson.links.filter((link: any[]) =>
         link[0] !== existingLinkId
       );
     }

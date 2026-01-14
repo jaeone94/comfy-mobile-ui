@@ -531,7 +531,11 @@
             "red": "赤",
             "blueGray": "ブルーグレー",
             "black": "黒",
+            "slate": "スレート",
             "default": "デフォルト"
+        },
+        "subgraph": {
+            "edit": "編集"
         }
     },
     "gallery": {

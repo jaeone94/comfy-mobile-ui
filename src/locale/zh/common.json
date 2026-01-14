@@ -531,7 +531,11 @@
             "red": "红色",
             "blueGray": "蓝灰色",
             "black": "黑色",
+            "slate": "石板灰",
             "default": "默认"
+        },
+        "subgraph": {
+            "edit": "编辑"
         }
     },
     "gallery": {

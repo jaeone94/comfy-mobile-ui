@@ -12,6 +12,7 @@ import {
     Plus,
     Sliders,
     Copy,
+    Edit3,
     Minimize2,
     Maximize2,
     LucideIcon
@@ -19,6 +20,19 @@ import {
 import { NodeMode } from '../../shared/types/app/enums';
 import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
+
+export const NODE_COLORS = [
+    { name: 'Brown', key: 'circularMenu.colors.brown', value: '#593930' },
+    { name: 'Teal', key: 'circularMenu.colors.teal', value: '#3f5159' },
+    { name: 'Blue', key: 'circularMenu.colors.blue', value: '#29699c' },
+    { name: 'Purple', key: 'circularMenu.colors.purple', value: '#335' },
+    { name: 'Green', key: 'circularMenu.colors.green', value: '#353' },
+    { name: 'Red', key: 'circularMenu.colors.red', value: '#653' },
+    { name: 'Blue Gray', key: 'circularMenu.colors.blueGray', value: '#364254' },
+    { name: 'Black', key: 'circularMenu.colors.black', value: '#000' },
+    { name: 'Slate', key: 'circularMenu.colors.slate', value: '#475569' },
+    { name: 'Default', key: 'circularMenu.colors.default', value: '' } // Default/Reset
+];
 
 export interface CircularMenuOption {
     id: string;
@@ -56,6 +70,8 @@ interface UseCircularMenuOptionsProps {
     onCopyNode: (nodeId: number) => void;
     onAddNode: (position: { x: number; y: number }) => void;
     onNodeCollapseChange?: (nodeId: number, collapsed: boolean) => void;
+    onEnterSubgraph?: (nodeType: string, title: string) => void;
+    graph?: any;
 }
 
 export const useCircularMenuOptions = ({
@@ -72,6 +88,8 @@ export const useCircularMenuOptions = ({
     onCopyNode,
     onAddNode,
     onNodeCollapseChange,
+    onEnterSubgraph,
+    graph,
 }: UseCircularMenuOptionsProps) => {
     const { t } = useTranslation();
     const handleMenuReleaseRef = useRef<() => void>(() => { });
@@ -81,24 +99,16 @@ export const useCircularMenuOptions = ({
 
         // Helper to get current node state
         const getNode = () => {
-            if (!nodeId || !workflow?.graph?._nodes) return null;
-            return workflow.graph._nodes.find((n: any) => n.id === nodeId);
+            if (!nodeId) return null;
+            // Use provided graph (active session) or fallback to root workflow graph
+            const activeGraph = graph || workflow?.graph;
+            if (!activeGraph?._nodes) return null;
+            return activeGraph._nodes.find((n: any) => n.id === nodeId);
         };
 
         if (context === 'NODE_COLOR') {
             const node = getNode();
             const currentColor = (node?.bgcolor || node?.color || '').toLowerCase();
-            const NODE_COLORS = [
-                { name: 'Brown', key: 'circularMenu.colors.brown', value: '#593930' },
-                { name: 'Teal', key: 'circularMenu.colors.teal', value: '#3f5159' },
-                { name: 'Blue', key: 'circularMenu.colors.blue', value: '#29699c' },
-                { name: 'Purple', key: 'circularMenu.colors.purple', value: '#335' },
-                { name: 'Green', key: 'circularMenu.colors.green', value: '#353' },
-                { name: 'Red', key: 'circularMenu.colors.red', value: '#653' },
-                { name: 'Blue Gray', key: 'circularMenu.colors.blueGray', value: '#364254' },
-                { name: 'Black', key: 'circularMenu.colors.black', value: '#000' },
-                { name: 'Default', key: 'circularMenu.colors.default', value: '' } // Default/Reset
-            ];
 
             return NODE_COLORS.map((colorObj, i) => {
                 const isSelected = !!node && (
@@ -171,10 +181,25 @@ export const useCircularMenuOptions = ({
                 },
                 {
                     id: 'copy',
-                    label: t('circularMenu.node.copy'),
-                    icon: Copy,
+                    label: (() => {
+                        const node = getNode();
+                        const isSubgraph = node && graph?.subgraphs?.has(node.type);
+                        return isSubgraph ? t('circularMenu.subgraph.edit') || 'Edit' : t('circularMenu.node.copy');
+                    })(),
+                    icon: (() => {
+                        const node = getNode();
+                        const isSubgraph = node && graph?.subgraphs?.has(node.type);
+                        return isSubgraph ? Edit3 : Copy;
+                    })(),
                     action: () => {
-                        onCopyNode(nodeId);
+                        const node = getNode();
+                        const isSubgraph = node && graph?.subgraphs?.has(node.type);
+
+                        if (isSubgraph && onEnterSubgraph) {
+                            onEnterSubgraph(node.type, node.title || node.type);
+                        } else {
+                            onCopyNode(nodeId);
+                        }
                         setCircularMenuState(prev => ({ ...prev, isOpen: false }));
                     }
                 },

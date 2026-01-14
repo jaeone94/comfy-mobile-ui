@@ -125,7 +125,9 @@
   * {
     @apply border-border outline-ring/50;
   }
-  html, body {
+
+  html,
+  body {
     @apply bg-background text-foreground;
     height: 100%;
     width: 100%;
@@ -133,6 +135,7 @@
     overscroll-behavior: none;
     -webkit-overflow-scrolling: touch;
   }
+
   #root {
     height: 100%;
     width: 100%;
@@ -183,7 +186,7 @@ canvas {
   padding-right: env(safe-area-inset-right, 0);
 }
 
-/* PWA bottom panel - bottom safe area only */  
+/* PWA bottom panel - bottom safe area only */
 .pwa-bottom {
   padding-bottom: 0;
   padding-left: env(safe-area-inset-left, 0);
@@ -204,6 +207,19 @@ canvas {
   min-height: calc(100dvh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0));
   padding-left: env(safe-area-inset-left, 0);
   padding-right: env(safe-area-inset-right, 0);
+}
+
+
+
+/* Mask Gradients for Breadcrumbs */
+.mask-gradient-right {
+  mask-image: linear-gradient(to left, transparent, black 40px);
+  -webkit-mask-image: linear-gradient(to left, transparent, black 40px);
+}
+
+.mask-gradient-left {
+  mask-image: linear-gradient(to right, transparent, black 40px);
+  -webkit-mask-image: linear-gradient(to right, transparent, black 40px);
 }
 
 /* Prevent body scroll when modal is open */

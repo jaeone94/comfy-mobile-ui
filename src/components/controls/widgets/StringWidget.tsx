@@ -115,7 +115,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
-          {param.name}
+          {param.label || param.name}
         </label>
         <div className="flex space-x-2">
           <Button

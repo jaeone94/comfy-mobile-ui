@@ -25,6 +25,7 @@ export interface INumberConfig {
   step?: number;
   round?: number | boolean;
   control_after_generate?: boolean;
+  label?: string;
 }
 
 export interface IStringConfig {
@@ -32,11 +33,13 @@ export interface IStringConfig {
   multiline?: boolean;
   dynamicPrompts?: boolean;
   control_after_generate?: boolean;
+  label?: string;
 }
 
 export interface IComboConfig {
   default?: string | number;
   control_after_generate?: boolean;
+  label?: string;
 }
 
 export interface IBooleanConfig {
@@ -44,11 +47,13 @@ export interface IBooleanConfig {
   label_on?: string;
   label_off?: string;
   control_after_generate?: boolean;
+  label?: string;
 }
 
 export interface IImageConfig {
   default?: string;
   control_after_generate?: boolean;
+  label?: string;
 }
 
 // Generic parameter configuration
@@ -141,6 +146,7 @@ export interface IProcessedParameter {
     value: string;
     options: string[];
   };
+  label?: string; // User-friendly label for display
 }
 
 // Node with processed parameters

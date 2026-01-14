@@ -531,7 +531,11 @@
             "red": "Red",
             "blueGray": "Blue Gray",
             "black": "Black",
+            "slate": "Slate",
             "default": "Default"
+        },
+        "subgraph": {
+            "edit": "Edit"
         }
     },
     "gallery": {

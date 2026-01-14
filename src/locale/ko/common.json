@@ -531,7 +531,11 @@
             "red": "빨간색",
             "blueGray": "청회색",
             "black": "검정색",
+            "slate": "슬레이트",
             "default": "기본값"
+        },
+        "subgraph": {
+            "edit": "편집"
         }
     },
     "gallery": {

@@ -258,7 +258,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
   return (
     <div className="space-y-2">
       <label className="text-sm text-slate-600 dark:text-slate-400">
-        {param.name}
+        {param.label || param.name}
       </label>
       <div className="relative" ref={inputContainerRef}>
         <div className="flex">

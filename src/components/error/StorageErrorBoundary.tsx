@@ -12,8 +12,11 @@ import { withTranslation, WithTranslation } from 'react-i18next';
 
 interface StorageErrorBoundaryState {
   hasError: boolean;
-  errorInfo?: string;
+  error?: Error;
+  errorInfo?: React.ErrorInfo;
+  errorType?: string;
   isRecovering: boolean;
+  showDetails: boolean;
 }
 
 interface StorageErrorBoundaryProps extends WithTranslation {
@@ -28,11 +31,12 @@ class StorageErrorBoundary extends React.Component<
     super(props);
     this.state = {
       hasError: false,
-      isRecovering: false
+      isRecovering: false,
+      showDetails: false
     };
   }
 
-  static getDerivedStateFromError(error: Error): StorageErrorBoundaryState {
+  static getDerivedStateFromError(error: Error): Partial<StorageErrorBoundaryState> {
     // Check if this looks like a storage-related error
     const storageRelatedKeywords = [
       'localStorage',
@@ -49,20 +53,20 @@ class StorageErrorBoundary extends React.Component<
       error.stack?.toLowerCase().includes(keyword)
     );
 
-    // Note: We can't access 't' here easily as it's static, 
-    // so we set keys or simple strings that render will translate (or handle in render)
-    // For simplicity, we'll keep errorInfo as a key or status flag
-    // But since render reads it, we can just store the 'type' of error.
-
     return {
       hasError: true,
-      errorInfo: isStorageError ? 'storage' : 'unexpected',
+      error: error,
+      errorType: isStorageError ? 'storage' : 'unexpected',
       isRecovering: false
     };
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('💥 StorageErrorBoundary caught an error:', error, errorInfo);
+    this.setState({
+      error: error,
+      errorInfo: errorInfo
+    });
   }
 
   handleRecovery = async () => {
@@ -111,7 +115,7 @@ class StorageErrorBoundary extends React.Component<
     const { t } = this.props;
 
     if (this.state.hasError) {
-      const errorDescription = this.state.errorInfo === 'storage'
+      const errorDescription = this.state.errorType === 'storage'
         ? t('storageError.description')
         : t('storageError.unexpected');
 
@@ -153,6 +157,24 @@ class StorageErrorBoundary extends React.Component<
                   <div className="text-xs text-gray-400 pt-2">
                     <p>💡 {t('storageError.hint')}</p>
                     <p>{t('storageError.hintFail')}</p>
+                  </div>
+
+                  <div className="pt-4 border-t border-slate-700 mt-4">
+                    <button
+                      onClick={() => this.setState(s => ({ showDetails: !s.showDetails }))}
+                      className="text-xs text-gray-500 hover:text-gray-300 underline"
+                    >
+                      {this.state.showDetails ? 'Hide Error Details' : 'Show Error Details'}
+                    </button>
+
+                    {this.state.showDetails && (
+                      <div className="mt-2 text-left bg-black/50 p-2 rounded overflow-auto max-h-48 text-xs font-mono text-red-300 whitespace-pre-wrap">
+                        <p className="font-bold text-red-200 mb-1">
+                          {this.state.error?.toString()}
+                        </p>
+                        {this.state.errorInfo?.componentStack}
+                      </div>
+                    )}
                   </div>
                 </div>
               </>

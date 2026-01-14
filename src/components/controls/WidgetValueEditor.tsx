@@ -366,7 +366,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center space-x-2">
           <span className={`font-medium ${themeOverride?.label || 'text-slate-900 dark:text-slate-100'}`}>
-            {param.name}
+            {param.label || param.name}
           </span>
           {param.required && (
             <Badge variant="destructive" className="text-xs px-1.5 py-0.5">

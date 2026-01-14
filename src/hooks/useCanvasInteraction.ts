@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { WorkflowNode } from '@/shared/types/app/IComfyWorkflow';
 import type { GroupBounds } from '@/shared/utils/rendering/CanvasRendererService';
 import { mapGroupsWithNodes, Group } from '@/utils/GroupNodeMapper';
@@ -82,6 +82,9 @@ interface UseCanvasInteractionProps {
   // Long press callbacks
   onNodeLongPress?: (node: WorkflowNode, position: { x: number; y: number }) => void;
   onCanvasLongPress?: (position: { x: number; y: number }, screenPosition?: { x: number; y: number }) => void;
+  // Context menu callbacks (for mouse)
+  onNodeContextMenu?: (node: WorkflowNode, position: { x: number; y: number }) => void;
+  onCanvasContextMenu?: (position: { x: number; y: number }, screenPosition?: { x: number; y: number }) => void;
   // Menu interaction
   isMenuOpen?: boolean;
   onMenuDrag?: (position: { x: number; y: number }) => void;
@@ -104,6 +107,8 @@ export const useCanvasInteraction = ({
   connectionMode,
   onNodeLongPress,
   onCanvasLongPress,
+  onNodeContextMenu,
+  onCanvasContextMenu,
   isMenuOpen = false,
   onMenuDrag,
   onMenuRelease,
@@ -309,6 +314,10 @@ export const useCanvasInteraction = ({
 
   // Mouse event handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Only handle left click (button 0) for selection and dragging
+    // Right click (button 2) is handled by handleContextMenu
+    if (e.button !== 0) return;
+
     // Ignore mouse events shortly after touch events (to prevent double-firing on mobile)
     const now = Date.now();
     if (now - lastTouchTime < 500) {
@@ -412,8 +421,12 @@ export const useCanvasInteraction = ({
       }
     }
 
-    // Start long press timer (only if not in repositioning mode)
-    if (!repositionMode.isActive) {
+    // Start long press timer (ONLY FOR TOUCH)
+    // We already check lastTouchTime < 500 above for mouse events, 
+    // but to be explicit, mouse events should not trigger long press anymore.
+    // (Existing mobile detection logic relies on latTouchTime)
+    const isMouseEvent = !('touches' in e);
+    if (!repositionMode.isActive && !isMouseEvent) {
       startLongPress(x, y, clickedNode || undefined, { x: e.clientX, y: e.clientY });
     }
 
@@ -634,6 +647,9 @@ export const useCanvasInteraction = ({
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Only handle left click (button 0)
+    if (e.button !== 0) return;
+
     if (isMenuOpen) {
       if (onMenuRelease) onMenuRelease();
       setMouseDownInfo(null); // Prevent phantom clicks
@@ -775,13 +791,44 @@ export const useCanvasInteraction = ({
     setMouseDownInfo(null);
   };
 
+  const handleContextMenu = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return;
+
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    // Transform to world coordinates
+    const worldX = (x - viewport.x) / viewport.scale;
+    const worldY = (y - viewport.y) / viewport.scale;
+
+    // Check if clicking on a node
+    let clickedNode: WorkflowNode | null = null;
+    nodeBounds.forEach((bounds) => {
+      if (
+        worldX >= bounds.x &&
+        worldX <= bounds.x + bounds.width &&
+        worldY >= bounds.y &&
+        worldY <= bounds.y + bounds.height
+      ) {
+        clickedNode = bounds.node;
+      }
+    });
+
+    if (clickedNode && onNodeContextMenu) {
+      onNodeContextMenu(clickedNode, { x: e.clientX, y: e.clientY });
+    } else if (!clickedNode && onCanvasContextMenu) {
+      onCanvasContextMenu({ x: worldX, y: worldY }, { x: e.clientX, y: e.clientY });
+    }
+  };
+
   // Touch event handlers for mobile
 
 
   const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    // Prevent browser back/forward gestures
-    e.preventDefault();
-
     // Update active touch count and last touch time
     setActiveTouchCount(e.touches.length);
     setLastTouchTime(Date.now());
@@ -1982,6 +2029,7 @@ export const useCanvasInteraction = ({
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
+    handleContextMenu,
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,

@@ -36,7 +36,7 @@ export const useConnectionMode = ({ workflow, onCreateConnection }: UseConnectio
       compatibleNodeIds: new Set(),
       showModal: false,
     });
-    
+
     return true;
   }, []);
 
@@ -50,7 +50,7 @@ export const useConnectionMode = ({ workflow, onCreateConnection }: UseConnectio
       compatibleNodeIds: new Set(),
       showModal: false,
     });
-    
+
     return true;
   }, []);
 
@@ -75,12 +75,12 @@ export const useConnectionMode = ({ workflow, onCreateConnection }: UseConnectio
 
     // Find all compatible nodes using the compatibility utility
     const compatibleNodeIds = new Set<number>();
-    
+
     if (workflow?.workflow_json?.nodes) {
       const allNodes = workflow.workflow_json.nodes as WorkflowNode[];
-      
+
       const compatibleNodes = findCompatibleNodes(node, allNodes);
-      
+
       // Add all compatible node IDs
       compatibleNodes.forEach(nodeId => {
         compatibleNodeIds.add(nodeId);
@@ -246,24 +246,14 @@ export const useConnectionMode = ({ workflow, onCreateConnection }: UseConnectio
 
   // Long press utility: Enter connection mode and immediately select source node
   const enterConnectionModeWithSource = useCallback((node: WorkflowNode) => {
-    // First enter connection mode
-    setConnectionMode({
-      isActive: true,
-      phase: 'SOURCE_SELECTION',
-      sourceNode: null,
-      targetNode: null,
-      compatibleNodeIds: new Set(),
-      showModal: false,
-    });
-    
-    // Then immediately select the source node (using the same logic as selectSourceNode)
+    // Check if valid source
     if (!hasOutputSlots(node)) {
       return false;
     }
 
     // Find all compatible nodes using the compatibility utility
     const compatibleNodeIds = new Set<number>();
-    
+
     if (workflow?.workflow_json?.nodes) {
       const allNodes = workflow.workflow_json.nodes as WorkflowNode[];
       const compatibleNodes = findCompatibleNodes(node, allNodes);
@@ -272,6 +262,7 @@ export const useConnectionMode = ({ workflow, onCreateConnection }: UseConnectio
       });
     }
 
+    // Single state update to avoid potential render loops
     setConnectionMode({
       isActive: true,
       phase: 'TARGET_SELECTION',

@@ -1,4 +1,4 @@
-﻿/**
+/**
  * ComfyUI API Functions - Pure functional approach
  * All functions take serverUrl as parameter instead of using global state
  */
@@ -30,56 +30,56 @@ import type {
  * @returns The routed connection [nodeId, outputIndex] or null if no match
  */
 function routeBypassNode(bypassNode: any, outputSlot: number, graph: any): [string, number] | null {
-  console.log(` routeBypassNode: node ${bypassNode.id}, outputSlot ${outputSlot}`);
+  console.log(`🔍 routeBypassNode: node ${bypassNode.id}, outputSlot ${outputSlot}`);
 
   // Get the output definition for the requested slot
   const outputDef = bypassNode.outputs?.[outputSlot];
   if (!outputDef) {
-    console.log(` No output definition for slot ${outputSlot}`);
+    console.log(`🔍 No output definition for slot ${outputSlot}`);
     return null;
   }
 
   const requestedType = outputDef.type;
-  console.log(` Requested type: ${requestedType}`);
+  console.log(`🔍 Requested type: ${requestedType}`);
 
   // Create search order: [requested_slot, all_input_slots...]
   const inputSlots = bypassNode.inputs ? Array.from({ length: bypassNode.inputs.length }, (_, i) => i) : [];
   const searchOrder = [outputSlot, ...inputSlots];
-  console.log(` Search order: [${searchOrder.join(', ')}]`);
+  console.log(`🔍 Search order: [${searchOrder.join(', ')}]`);
 
   // Find matching input by type, prioritizing same position
   for (const inputIndex of searchOrder) {
     const input = bypassNode.inputs?.[inputIndex];
     if (!input) {
-      console.log(` No input at index ${inputIndex}`);
+      console.log(`🔍 No input at index ${inputIndex}`);
       continue;
     }
 
-    console.log(` Input ${inputIndex}: type=${input.type}, link=${input.link}, name=${input.name}`);
+    console.log(`🔍 Input ${inputIndex}: type=${input.type}, link=${input.link}, name=${input.name}`);
 
     // Check type match
     if (input.type === requestedType && input.link !== null && input.link !== undefined) {
-      console.log(` Type match found! Looking for sourceLink for link ${input.link}`);
+      console.log(`🔍 Type match found! Looking for sourceLink for link ${input.link}`);
       // Find the source of this input link
       const sourceLink = findSourceForLink(graph, input.link);
-      console.log(` SourceLink result:`, sourceLink);
+      console.log(`🔍 SourceLink result:`, sourceLink);
       if (sourceLink) {
         // Recursively resolve if source is also bypass
         const sourceNode = graph._nodes.find((n: any) => String(n.id) === String(sourceLink.sourceNodeId));
         if (sourceNode && sourceNode.mode === 4) {
-          console.log(` Source is bypass, recursing...`);
+          console.log(`🔍 Source is bypass, recursing...`);
           // Source is also bypass, recursively route
           return routeBypassNode(sourceNode, sourceLink.outputIndex, graph);
         }
 
-        console.log(` Found final route: [${sourceLink.sourceNodeId}, ${sourceLink.outputIndex}]`);
+        console.log(`🔍 Found final route: [${sourceLink.sourceNodeId}, ${sourceLink.outputIndex}]`);
         // Source is normal node, return connection
         return [String(sourceLink.sourceNodeId), sourceLink.outputIndex];
       }
     }
   }
 
-  console.log(` No route found for node ${bypassNode.id} output ${outputSlot}`);
+  console.log(`🔍 No route found for node ${bypassNode.id} output ${outputSlot}`);
   return null;
 }
 
@@ -90,21 +90,21 @@ function routeBypassNode(bypassNode: any, outputSlot: number, graph: any): [stri
  * @returns The routed connection [nodeId, outputIndex] or null if no connection
  */
 function routeRerouteNode(rerouteNode: any, graph: any): [string, number] | null {
-  console.log(` routeRerouteNode: node ${rerouteNode.id}`);
+  console.log(`🔍 routeRerouteNode: node ${rerouteNode.id}`);
 
   // Reroute nodes have exactly one input and one output
   if (!rerouteNode.inputs || rerouteNode.inputs.length === 0) {
-    console.log(` Reroute node ${rerouteNode.id} has no inputs`);
+    console.log(`🔍 Reroute node ${rerouteNode.id} has no inputs`);
     return null;
   }
 
   const input = rerouteNode.inputs[0];
   if (input.link === null || input.link === undefined) {
-    console.log(` Reroute node ${rerouteNode.id} input not connected`);
+    console.log(`🔍 Reroute node ${rerouteNode.id} input not connected`);
     return null;
   }
 
-  console.log(` Reroute node ${rerouteNode.id} input link: ${input.link}`);
+  console.log(`🔍 Reroute node ${rerouteNode.id} input link: ${input.link}`);
 
   // Find the source of this input link
   const sourceLink = findSourceForLink(graph, input.link);
@@ -112,15 +112,15 @@ function routeRerouteNode(rerouteNode: any, graph: any): [string, number] | null
     // Check if source is also a Reroute node - recursively resolve
     const sourceNode = graph._nodes.find((n: any) => String(n.id) === String(sourceLink.sourceNodeId));
     if (sourceNode && sourceNode.type === 'Reroute') {
-      console.log(` Source is also Reroute, recursing...`);
+      console.log(`🔍 Source is also Reroute, recursing...`);
       return routeRerouteNode(sourceNode, graph);
     }
 
-    console.log(` Reroute node ${rerouteNode.id} routes to: [${sourceLink.sourceNodeId}, ${sourceLink.outputIndex}]`);
+    console.log(`🔍 Reroute node ${rerouteNode.id} routes to: [${sourceLink.sourceNodeId}, ${sourceLink.outputIndex}]`);
     return [String(sourceLink.sourceNodeId), sourceLink.outputIndex];
   }
 
-  console.log(` No route found for Reroute node ${rerouteNode.id}`);
+  console.log(`🔍 No route found for Reroute node ${rerouteNode.id}`);
   return null;
 }
 
@@ -130,7 +130,7 @@ function routeRerouteNode(rerouteNode: any, graph: any): [string, number] | null
  * @returns Map of bypass routes: nodeId-outputSlot -> [sourceNodeId, sourceOutputSlot]
  */
 function buildBypassRoutingMap(graph: any): Map<string, [string, number] | null> {
-  console.log(` buildBypassRoutingMap received graph with:`, {
+  console.log(`🔍 buildBypassRoutingMap received graph with:`, {
     hasLinks: !!graph.links,
     has_links: !!graph._links,
     linksKeys: graph.links ? Object.keys(graph.links) : 'none',
@@ -142,22 +142,22 @@ function buildBypassRoutingMap(graph: any): Map<string, [string, number] | null>
 
   // Find all bypass nodes
   const bypassNodes = graph._nodes.filter((node: any) => node.mode === 4);
-  console.log(` Building bypass routing map: found ${bypassNodes.length} bypass nodes`);
+  console.log(`🔀 Building bypass routing map: found ${bypassNodes.length} bypass nodes`);
 
   for (const bypassNode of bypassNodes) {
-    console.log(` Processing bypass node ${bypassNode.id} (${bypassNode.type})`);
+    console.log(`🔀 Processing bypass node ${bypassNode.id} (${bypassNode.type})`);
     // Map each output slot of this bypass node
     if (bypassNode.outputs) {
       for (let outputIndex = 0; outputIndex < bypassNode.outputs.length; outputIndex++) {
         const routeKey = `${bypassNode.id}-${outputIndex}`;
         const route = routeBypassNode(bypassNode, outputIndex, graph);
-        console.log(` Route ${routeKey} -> ${route ? `[${route[0]}, ${route[1]}]` : 'null'}`);
+        console.log(`🔀 Route ${routeKey} -> ${route ? `[${route[0]}, ${route[1]}]` : 'null'}`);
         routingMap.set(routeKey, route);
       }
     }
   }
 
-  console.log(` Bypass routing map built with ${routingMap.size} routes`);
+  console.log(`🔀 Bypass routing map built with ${routingMap.size} routes`);
   return routingMap;
 }
 
@@ -167,22 +167,22 @@ function buildBypassRoutingMap(graph: any): Map<string, [string, number] | null>
  * @returns Map of Reroute routes: nodeId -> [sourceNodeId, sourceOutputSlot]
  */
 function buildRerouteRoutingMap(graph: any): Map<string, [string, number] | null> {
-  console.log(`Building Reroute routing map...`);
+  console.log(`🔄 Building Reroute routing map...`);
 
   const routingMap = new Map<string, [string, number] | null>();
 
   // Find all Reroute nodes
   const rerouteNodes = graph._nodes.filter((node: any) => node.type === 'Reroute');
-  console.log(`Building Reroute routing map: found ${rerouteNodes.length} Reroute nodes`);
+  console.log(`🔄 Building Reroute routing map: found ${rerouteNodes.length} Reroute nodes`);
 
   for (const rerouteNode of rerouteNodes) {
-    console.log(`Processing Reroute node ${rerouteNode.id}`);
+    console.log(`🔄 Processing Reroute node ${rerouteNode.id}`);
     const route = routeRerouteNode(rerouteNode, graph);
-    console.log(`Route ${rerouteNode.id} -> ${route ? `[${route[0]}, ${route[1]}]` : 'null'}`);
+    console.log(`🔄 Route ${rerouteNode.id} -> ${route ? `[${route[0]}, ${route[1]}]` : 'null'}`);
     routingMap.set(String(rerouteNode.id), route);
   }
 
-  console.log(`Reroute routing map built with ${routingMap.size} routes`);
+  console.log(`🔄 Reroute routing map built with ${routingMap.size} routes`);
   return routingMap;
 }
 
@@ -192,20 +192,20 @@ function buildRerouteRoutingMap(graph: any): Map<string, [string, number] | null
  * @param graph The complete graph for link resolution
  */
 function processPrimitiveNode(primitiveNode: any, graph: any): void {
-  console.log(` processPrimitiveNode: node ${primitiveNode.id}`);
+  console.log(`🔍 processPrimitiveNode: node ${primitiveNode.id}`);
 
   // PrimitiveNode should have a value in its widgets_values[0]
   if (!primitiveNode.widgets_values || primitiveNode.widgets_values.length === 0) {
-    console.log(` PrimitiveNode ${primitiveNode.id} has no widgets_values`);
+    console.log(`🔍 PrimitiveNode ${primitiveNode.id} has no widgets_values`);
     return;
   }
 
   const primitiveValue = primitiveNode.widgets_values[0];
-  console.log(` PrimitiveNode ${primitiveNode.id} value: ${primitiveValue}`);
+  console.log(`🔍 PrimitiveNode ${primitiveNode.id} value: ${primitiveValue}`);
 
   // Find all nodes that are connected to this PrimitiveNode's output
   if (!graph._links) {
-    console.log(` No links in graph for PrimitiveNode ${primitiveNode.id}`);
+    console.log(`🔍 No links in graph for PrimitiveNode ${primitiveNode.id}`);
     return;
   }
 
@@ -214,29 +214,29 @@ function processPrimitiveNode(primitiveNode: any, graph: any): void {
     String(link.origin_id) === String(primitiveNode.id)
   );
 
-  console.log(` PrimitiveNode ${primitiveNode.id} has ${outgoingLinks.length} outgoing links`);
+  console.log(`🔍 PrimitiveNode ${primitiveNode.id} has ${outgoingLinks.length} outgoing links`);
 
   for (const link of outgoingLinks) {
     const targetNodeId = String((link as any).target_id);
     const targetSlot = (link as any).target_slot;
 
-    console.log(` Processing link to node ${targetNodeId}, slot ${targetSlot}`);
+    console.log(`🔍 Processing link to node ${targetNodeId}, slot ${targetSlot}`);
 
     // Find the target node
     const targetNode = graph._nodes.find((n: any) => String(n.id) === targetNodeId);
     if (!targetNode) {
-      console.log(` Target node ${targetNodeId} not found`);
+      console.log(`🔍 Target node ${targetNodeId} not found`);
       continue;
     }
 
     // Find the input slot that corresponds to this link
     if (!targetNode.inputs || targetSlot >= targetNode.inputs.length) {
-      console.log(` Target node ${targetNodeId} invalid input slot ${targetSlot}`);
+      console.log(`🔍 Target node ${targetNodeId} invalid input slot ${targetSlot}`);
       continue;
     }
 
     const inputSlot = targetNode.inputs[targetSlot];
-    console.log(` Target input: ${inputSlot.name} on node ${targetNodeId}`);
+    console.log(`🔍 Target input: ${inputSlot.name} on node ${targetNodeId}`);
 
     // Update the target node's widget_values for this parameter
     // We need to find the widget index for this input parameter BEFORE unlinking
@@ -244,7 +244,7 @@ function processPrimitiveNode(primitiveNode: any, graph: any): void {
 
     // Set the input link to null since we're replacing it with the actual value
     inputSlot.link = null;
-    console.log(` Unlinked input ${inputSlot.name} on node ${targetNodeId} and set value to ${primitiveValue}`);
+    console.log(`🔍 Unlinked input ${inputSlot.name} on node ${targetNodeId} and set value to ${primitiveValue}`);
   }
 }
 
@@ -256,12 +256,12 @@ function processPrimitiveNode(primitiveNode: any, graph: any): void {
  * @param graph The complete graph for context
  */
 function updateNodeWidgetValue(node: any, paramName: string, value: any, graph: any): void {
-  console.log(` updateNodeWidgetValue: node ${node.id}, param ${paramName}, value ${value}`);
+  console.log(`🔍 updateNodeWidgetValue: node ${node.id}, param ${paramName}, value ${value}`);
 
   // Initialize widgets_values if it doesn't exist
   if (!node.widgets_values) {
     node.widgets_values = [];
-    console.log(` Initialized widgets_values for node ${node.id}`);
+    console.log(`🔍 Initialized widgets_values for node ${node.id}`);
   }
 
   // For array format widgets_values, we need to find the correct index
@@ -296,18 +296,18 @@ function updateNodeWidgetValue(node: any, paramName: string, value: any, graph: 
         }
 
         node.widgets_values[paramIndex] = value;
-        console.log(` Updated widgets_values[${paramIndex}] = ${value} for node ${node.id} (input: ${paramName})`);
+        console.log(`🔍 Updated widgets_values[${paramIndex}] = ${value} for node ${node.id} (input: ${paramName})`);
         return;
       } else {
-        console.log(` Input ${paramName} not found in node ${node.id} inputs`);
+        console.log(`🔍 Input ${paramName} not found in node ${node.id} inputs`);
       }
     }
 
-    console.log(` Could not determine parameter index for ${paramName} on node ${node.id}`);
+    console.log(`🔍 Could not determine parameter index for ${paramName} on node ${node.id}`);
   } else if (typeof node.widgets_values === 'object') {
     // Object format
     node.widgets_values[paramName] = value;
-    console.log(` Updated widgets_values.${paramName} = ${value} for node ${node.id}`);
+    console.log(`🔍 Updated widgets_values.${paramName} = ${value} for node ${node.id}`);
   }
 }
 
@@ -317,18 +317,18 @@ function updateNodeWidgetValue(node: any, paramName: string, value: any, graph: 
  * @returns void - PrimitiveNodes are processed in place
  */
 function processPrimitiveNodes(graph: any): void {
-  console.log(`Processing PrimitiveNodes...`);
+  console.log(`🔄 Processing PrimitiveNodes...`);
 
   // Find all PrimitiveNode nodes
   const primitiveNodes = graph._nodes.filter((node: any) => node.type === 'PrimitiveNode');
-  console.log(`Found ${primitiveNodes.length} PrimitiveNode nodes`);
+  console.log(`🔄 Found ${primitiveNodes.length} PrimitiveNode nodes`);
 
   for (const primitiveNode of primitiveNodes) {
-    console.log(`Processing PrimitiveNode ${primitiveNode.id}`);
+    console.log(`🔄 Processing PrimitiveNode ${primitiveNode.id}`);
     processPrimitiveNode(primitiveNode, graph);
   }
 
-  console.log(`PrimitiveNode processing complete`);
+  console.log(`🔄 PrimitiveNode processing complete`);
 }
 
 /**
@@ -345,29 +345,74 @@ function resolveConnection(
   outputIndex: number,
   graph: any,
   bypassRoutes: Map<string, [string, number] | null>,
-  rerouteRoutes: Map<string, [string, number] | null>,
-  depth: number = 0
+  rerouteRoutes: Map<string, [string, number] | null>
 ): [string, number] {
-  // Resolve connection through bypass and Reroute routing
-  // Added basic recursion limit to prevent infinite loops from circular references
-  if (depth > 50) {
-    console.error(`Link recursion depth exceeded at node ${nodeId}`);
-    return [nodeId, outputIndex];
-  }
+  console.log(`🔄 resolveConnection: ${nodeId}-${outputIndex}`);
 
-  // Bypass nodes (mode 4) and Reroute nodes are handled by their respective routing maps
-  const bypassRoute = bypassRoutes.get(`${nodeId}-${outputIndex}`);
+  // Check for bypass node routing first
+  const bypassRouteKey = `${nodeId}-${outputIndex}`;
+  const bypassRoute = bypassRoutes.get(bypassRouteKey);
+
   if (bypassRoute) {
-    const [targetNodeId, targetOutputIndex] = bypassRoute;
-    return resolveConnection(targetNodeId, targetOutputIndex, graph, bypassRoutes, rerouteRoutes, depth + 1);
+    console.log(`🔄 Found bypass route: ${nodeId}-${outputIndex} -> ${bypassRoute[0]}-${bypassRoute[1]}`);
+    // Recursively resolve in case the bypass target is also a virtual node
+    return resolveConnection(bypassRoute[0], bypassRoute[1], graph, bypassRoutes, rerouteRoutes);
   }
 
+  // Check for Reroute node routing  
   const rerouteRoute = rerouteRoutes.get(nodeId);
+
   if (rerouteRoute) {
-    const [targetNodeId, targetOutputIndex] = rerouteRoute;
-    return resolveConnection(targetNodeId, targetOutputIndex, graph, bypassRoutes, rerouteRoutes, depth + 1);
+    console.log(`🔄 Found reroute route: ${nodeId} -> ${rerouteRoute[0]}-${rerouteRoute[1]}`);
+    // Recursively resolve in case the reroute target is also a virtual node
+    return resolveConnection(rerouteRoute[0], rerouteRoute[1], graph, bypassRoutes, rerouteRoutes);
   }
 
+  console.log(`🔄 Final resolution: ${nodeId}-${outputIndex}`);
+
+  // Check if this is a subgraph node that needs descending
+  // We need to look up the node in the graph passed in
+  if (graph && graph._nodes) {
+    const node = graph._nodes.find((n: any) => String(n.id) === nodeId);
+    if (node && node.subgraphDefinition) {
+      const subgraph = node.subgraphDefinition; // as IComfySubgraph
+
+      // The output slot index on the Subgraph Node corresponds to the input slot index on the Subgraph Output Node
+      // We need to find what flows INTO the Subgraph Output Node at that slot.
+      if (subgraph.outputNode && subgraph.outputNode.inputs) {
+        // Find the input on the output node that corresponds to this slot
+        // Typically, the inputs on the output node are ordered and correspond to the outputs of the subgraph node
+
+        // Note: We access by index because the subgraph outputs are strictly ordered
+        // But we should verify. subgraph.outputs definition on the subgraph node matches the outputNode inputs order ?? 
+        // ComfyUI usually maps these 1-to-1.
+
+        const internalInput = subgraph.outputNode.inputs[outputIndex];
+
+        if (internalInput && internalInput.link !== null) {
+          // Find the internal link
+          const internalLink = subgraph.links.find((l: any) => l.id === internalInput.link);
+          if (internalLink) {
+            const internalSourceId = internalLink.origin_id;
+            const internalSourceSlot = internalLink.origin_slot;
+
+            console.log(`🔄 Descending into subgraph: ${nodeId} -> ${nodeId}:${internalSourceId}-${internalSourceSlot}`);
+
+            // Recursive call to resolve potential inner bypasses/reroutes?
+            // Since we don't have a bypass map for the subgraph readily available here (it's global),
+            // we assume the internal source is a real node OR we would need global maps to include internal nodes.
+            // For now, returning the flattened ID is the critical step to prevent "orphan connection" removal.
+
+            // IMPORTANT: The internal node ID must be flattened!
+            const flattenedId = `${nodeId}:${internalSourceId}`;
+            return [flattenedId, internalSourceSlot];
+          }
+        }
+      }
+    }
+  }
+
+  // Not a bypass or reroute connection, return as-is
   return [nodeId, outputIndex];
 }
 
@@ -387,7 +432,7 @@ function processDateFormatString(input: string): string {
     try {
       return formatDate(currentDate, format);
     } catch (error) {
-      console.warn(`?좑 Failed to format date with pattern "${format}": ${error}`);
+      console.warn(`⚠️ Failed to format date with pattern "${format}": ${error}`);
       return match; // Return original if formatting fails
     }
   });
@@ -480,7 +525,7 @@ function preprocessGraphWidgets(graph: any): void {
         if (typeof widget.value === 'string' && widget.value.includes('%date:')) {
           const processedValue = processDateFormatString(widget.value);
           if (widget.value !== processedValue) {
-            console.log(`Converting date format in widget "${widget.name}": "${widget.value}" -> "${processedValue}"`);
+            console.log(`📅 Converting date format in widget "${widget.name}": "${widget.value}" -> "${processedValue}"`);
             widget.value = processedValue;
           }
         }
@@ -601,26 +646,26 @@ export const convertJsonToAPI = async (
   const { timeout = 5000 } = config;
 
   try {
-    console.log(' convertJsonToAPI: Starting workflow JSON to API conversion...');
+    console.log('🚀 convertJsonToAPI: Starting workflow JSON to API conversion...');
 
     // Step 1: Get object info from server
-    console.log(' Fetching object_info from server...');
+    console.log('📡 Fetching object_info from server...');
     const response = await axios.get(`${serverUrl}/object_info`, { timeout });
     const objectInfo = response.data;
 
     // Step 2: Convert JSON to Graph (disable preprocessing to avoid custom node mapping dependency)
-    console.log('Converting JSON to Graph...');
+    console.log('🔄 Converting JSON to Graph...');
     const graph = await loadWorkflowToGraph(workflowJson, objectInfo, true, false);
 
     // Step 3: Convert Graph to API format
-    console.log('Converting Graph to API format...');
+    console.log('🔧 Converting Graph to API format...');
     const result = convertGraphToAPI(graph);
 
-    console.log('convertJsonToAPI: Conversion complete');
+    console.log('✅ convertJsonToAPI: Conversion complete');
     return result;
 
   } catch (error) {
-    console.error('convertJsonToAPI failed:', error);
+    console.error('❌ convertJsonToAPI failed:', error);
     throw new Error(`Failed to convert workflow JSON to API format: ${error instanceof Error ? error.message : String(error)}`);
   }
 };
@@ -671,12 +716,6 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Links object is duplicated to prevent reference sharing
    */
   let workingGraph = deepCopyGraph(graph);
-
-  // STEP 1.5: Flatten Subgraphs (Pre-processing)
-  // This recursively expands all subgraphs into the main graph context
-  // BEFORE any other processing happens.
-  console.log('Step 1.5: Flattening subgraphs...');
-  flattenSubgraphs(workingGraph);
 
   /* =========================================================================
    * STEP 2-4: Preprocess Variables and SetNode Registration
@@ -932,7 +971,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Bypass connections resolved through routing map
    * - Muted nodes (mode === 2) are skipped
    */
-  console.log(` Step 7: Starting API conversion with ${workingGraph._nodes.length} nodes`);
+  console.log(`🚀 Step 7: Starting API conversion with ${workingGraph._nodes.length} nodes`);
   let { apiWorkflow, nodeCount } = transformGraphNodesToApiFormat(workingGraph, bypassRoutingMap, rerouteRoutingMap);
 
   /* =========================================================================
@@ -975,7 +1014,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Removes connections to non-existent nodes
    * - Leaves widget values and valid connections unchanged
    */
-  console.log(' Step 8: Cleaning up broken connections...');
+  console.log('🚀 Step 8: Cleaning up broken connections...');
   apiWorkflow = removeOrphanedConnections(apiWorkflow);
 
   /* =========================================================================
@@ -990,7 +1029,7 @@ export const convertGraphToAPI = (graph: any): { apiWorkflow: any; nodeCount: nu
    * - Reserved for transformations that can only happen after API conversion
    * - Currently no active custom node processing needed
    */
-  console.log(' Step 9: Applying API-stage custom node processing...');
+  console.log('🚀 Step 9: Applying API-stage custom node processing...');
   // Currently no custom node processing needed at API stage
   // processCustomNodes(apiWorkflow); // Reserved for future API-specific transformations
 
@@ -1080,15 +1119,15 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
             for (const input of targetNode.inputs) {
               if (input.link !== null) {
                 const link = workingGraph._links[input.link];
-                if (link && String(link.origin_id) === String(node.id)) { // This input connects to our GetNode
+                if (link && link.origin_id === node.id) { // This input connects to our GetNode
 
                   // Create new direct connection from variable source to target
                   const [sourceNodeId, sourceSlot] = variable.value;
                   const newLink = {
                     id: nextLinkId,
-                    origin_id: String(sourceNodeId) as any,
+                    origin_id: Number(sourceNodeId),
                     origin_slot: sourceSlot,
-                    target_id: String(targetNode.id) as any,
+                    target_id: targetNode.id,
                     target_slot: input.slot_index,
                     type: variable.dataType
                   };
@@ -1125,7 +1164,7 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
 
     // Validate essential node properties
     if (!nodeType) {
-      console.error(`Node ${nodeId} is missing type property:`, node);
+      console.error(`❌ Node ${nodeId} is missing type property:`, node);
       throw new Error(`Node ${nodeId} is missing type property`);
     }
 
@@ -1248,318 +1287,121 @@ export const convertGraphToAPI_old = (graph: any): { apiWorkflow: any; nodeCount
 };
 
 /**
- * Helper to check if a node is a subgraph node
+ * Helper to process subgraph nodes recursively
  */
-function isSubgraphNode(node: any): boolean {
-  if (!node) return false;
-  // Case 1: Has explicit subgraph definition attached
-  if (node.subgraphDefinition) return true;
-  // Case 2: Node type is a UUID string (typical for subgraph instances)
-  const type = node.type;
-  if (!type || typeof type !== 'string') return false;
-  // Simple UUID check: 36 chars with 4 dashes
-  if (type.length === 36 && (type.split('-').length === 5)) {
-    return true;
-  }
-  return false;
-}
+function processSubgraph(
+  parentNode: any,
+  subgraph: any, // IComfySubgraph
+  apiWorkflow: any,
+  nodeCount: number,
+  parentInputValues: Record<string, any>,
+  bypassRoutes: Map<string, [string, number] | null>, // Global map (might not cover internal)
+  rerouteRoutes: Map<string, [string, number] | null> // Global map
+): number {
+  const parentId = String(parentNode.id);
 
-/**
- * Step 0: Recursively flatten all subgraphs into the main graph
- * This converts nested subgraph structures into a single flat list of real nodes.
- */
-function flattenSubgraphs(graph: any) {
-  let hasSubgraphs = true;
-  let iterationLimit = 50; // Safety for nested subgraphs
-  let subgraphOffsetBase = 10000;
-  let subgraphIndex = 0;
+  // Recursively process nodes in the subgraph
+  for (const node of subgraph.nodes) {
+    // Skip virtual nodes (input/output/reroute inside subgraph mainly)
+    // Note: Reroutes inside subgraphs might need handling if we map them. 
+    // For now, filtering standard virtual nodes.
+    const isVirtual = node.id === -1 || node.id === -10 || node.id === -20; // -10 input, -20 output
+    if (isVirtual) continue;
 
-  while (hasSubgraphs && iterationLimit > 0) {
-    hasSubgraphs = false;
-    iterationLimit--;
+    // Construct flattened ID
+    const flattenedId = `${parentId}:${node.id}`;
 
-    const nodesToReplace: any[] = [];
-    if (graph._nodes) {
-      for (const node of graph._nodes) {
-        if (isSubgraphNode(node)) {
-          nodesToReplace.push(node);
-        }
-      }
-    }
+    const inputs: Record<string, any> = {};
 
-    if (nodesToReplace.length === 0) break;
+    // Process inputs
+    if (node.inputs) {
+      for (const input of node.inputs) {
+        if (input.link !== null) { // Check for explicit link
+          // Find link in subgraph definition
+          const link = subgraph.links.find((l: any) => l.id === input.link);
+          if (link) {
+            // Check if connected to Subgraph Input Node (-10)
+            if (link.origin_id === subgraph.inputNode.id) {
+              // This is an external connection!
+              // Find which "External Input" slot this corresponds to
+              // subgraph.inputNode outputs: index matches subgraph.inputs index
+              const slotIndex = link.origin_slot;
+              const externalInputDef = subgraph.inputs[slotIndex];
 
-    hasSubgraphs = true;
-    for (const subgraphNode of nodesToReplace) {
-      subgraphIndex++;
-      const currentOffset = subgraphIndex * subgraphOffsetBase;
-      expandSubgraph(graph, subgraphNode, currentOffset);
-    }
-  }
+              if (externalInputDef) {
+                const parentInputName = externalInputDef.name;
+                // Get the value connected to the PARENT node's input
+                const parentValue = parentInputValues[parentInputName];
 
-  if (iterationLimit === 0 && hasSubgraphs) {
-    console.error('MAX SUBGRAPH DEPTH REACHED! Possible infinite subgraph recursion.');
-  }
-}
-
-/**
- * Expand a single subgraph node into its internal components
- * Maps external connections to internal nodes/slots.
- */
-function expandSubgraph(graph: any, subgraphNode: any, offset: number) {
-  let subgraphData = subgraphNode.subgraphDefinition;
-
-  // Fallback: Check if definition is in the global graph subgraphs map or definitions
-  if (!subgraphData) {
-    const type = subgraphNode.type;
-    const subgraphs = graph.subgraphs || graph.definitions?.subgraphs;
-    if (subgraphs) {
-      subgraphData = subgraphs instanceof Map ? subgraphs.get(type) : subgraphs[type];
-
-      // If still not found and it's an array (typical for definitions.subgraphs)
-      if (!subgraphData && Array.isArray(subgraphs)) {
-        subgraphData = subgraphs.find((s: any) => s.id === type || s.name === type);
-      }
-    }
-  }
-
-  // If we still don't have data, we can't expand, but we MUST still remove the node
-  // to prevent sending an unrecognized UUID node to ComfyUI.
-  if (!subgraphData || !subgraphData.nodes) {
-    console.warn(`Could not find definition for subgraph node ${subgraphNode.id} (${subgraphNode.type}). Removing node.`);
-    graph._nodes = graph._nodes.filter((n: any) => String(n.id) !== String(subgraphNode.id));
-    return;
-  }
-
-  // CRITICAL: Deep copy the subgraph definition to prevent mutation of the original definition object
-  // which might be shared among multiple nodes or sessions.
-  subgraphData = JSON.parse(JSON.stringify(subgraphData));
-
-  const internalNodes = subgraphData.nodes;
-  const internalLinks = subgraphData.links || [];
-  let nextLinkId = Math.max(0, ...Object.keys(graph._links).map(Number)) + 1;
-
-  // Track ID mapping for this expansion
-  const idMap: Record<number, number> = {};
-  // Track external link IDs that have already been remapped to handle fan-out
-  const remappedExternalLinks = new Set<number>();
-
-  // 1. Assign new string IDs to internal nodes (parent:child format)
-  for (const node of internalNodes) {
-    if (node.id === -1 || node.id === -10 || node.id === -20) continue;
-    idMap[node.id] = `${subgraphNode.id}:${node.id}` as any;
-  }
-
-  // 2. Process internal nodes
-  for (const node of internalNodes) {
-    // Skip virtual input/output nodes of the subgraph itself
-    if (node.id === -1 || node.id === -10 || node.id === -20) continue;
-
-    const flattenedId = idMap[node.id];
-    const newNode = {
-      ...node,
-      id: flattenedId,
-      _subgraph_parent: subgraphNode.id,
-      // Deep copy inputs and outputs to be extra safe against mutation
-      inputs: node.inputs ? node.inputs.map((i: any) => ({ ...i })) : undefined,
-      outputs: node.outputs ? node.outputs.map((o: any) => ({
-        ...o,
-        links: o.links ? [...o.links] : []
-      })) : undefined
-    };
-
-    // Remap internal links for this node
-    if (newNode.inputs) {
-      for (const input of newNode.inputs) {
-        if (input.link !== null && input.link !== undefined) {
-          let internalLink = internalLinks.find((l: any) =>
-            (Array.isArray(l) ? l[0] === input.link : l.id === input.link)
-          );
-
-          // FALLBACK: If link is missing from internalLinks array, try to discover its origin by scanning node outputs
-          if (!internalLink) {
-            console.log(`[Subgraph] Link ${input.link} not found in internalLinks array. Attempting discovery...`);
-            for (const internalNode of internalNodes) {
-              if (internalNode.outputs) {
-                for (const output of internalNode.outputs) {
-                  if (Array.isArray(output.links) && output.links.includes(input.link)) {
-                    internalLink = {
-                      id: input.link,
-                      origin_id: internalNode.id,
-                      origin_slot: output.slot_index || 0,
-                      target_id: node.id,
-                      target_slot: input.slot_index,
-                      type: output.type
-                    };
-                    console.log(`[Subgraph] Discovered link ${input.link} origin: Node ${internalNode.id} slot ${output.slot_index}`);
-                    break;
-                  }
+                if (parentValue !== undefined) {
+                  inputs[input.name] = parentValue;
                 }
-              }
-              if (internalLink) break;
-            }
-
-            // Also check subgraph input definitions (ID -10)
-            if (!internalLink && subgraphData.inputs) {
-              for (let i = 0; i < subgraphData.inputs.length; i++) {
-                const inputDef = subgraphData.inputs[i];
-                if (Array.isArray(inputDef.linkIds) && inputDef.linkIds.includes(input.link)) {
-                  internalLink = {
-                    id: input.link,
-                    origin_id: -10,
-                    origin_slot: i,
-                    target_id: node.id,
-                    target_slot: input.slot_index,
-                    type: inputDef.type
-                  };
-                  console.log(`[Subgraph] Discovered link ${input.link} origin: Subgraph Input slot ${i}`);
-                  break;
-                }
-              }
-            }
-          }
-
-          if (internalLink) {
-            const originId = Array.isArray(internalLink) ? internalLink[1] : internalLink.origin_id;
-
-            if (originId === -10) {
-              const originSlot = Array.isArray(internalLink) ? internalLink[2] : internalLink.origin_slot;
-              const subgraphInputDef = subgraphData.inputs[originSlot];
-              if (subgraphInputDef) {
-                // Find corresponding input on the subgraph node (the parent)
-                // We match by name as indices might differ
-                const parentInput = subgraphNode.inputs?.find((i: any) => i.name === subgraphInputDef.name);
-
-                if (parentInput && parentInput.link !== null) {
-                  // External connection from outside the subgraph
-                  const extLinkId = parentInput.link;
-                  if (remappedExternalLinks.has(extLinkId)) {
-                    // This external link already points to an internal node.
-                    // Duplicate it for this additional internal consumer (Fan-out).
-                    const copyLinkId = nextLinkId++;
-                    const originalLink = graph._links[String(extLinkId)];
-                    if (originalLink) {
-                      graph._links[String(copyLinkId)] = {
-                        ...originalLink,
-                        id: copyLinkId,
-                        target_id: flattenedId as any, // Use string ID
-                        target_slot: input.slot_index
-                      };
-                      input.link = copyLinkId;
-                      console.log(` Fan-out: Duplicated link ${extLinkId} to ${copyLinkId} for node ${flattenedId}`);
-                    }
-                  } else {
-                    // First time remapping this external link.
-                    input.link = extLinkId;
-                    const globalLink = graph._links[String(extLinkId)];
-                    if (globalLink) {
-                      globalLink.target_id = flattenedId as any; // Use string ID
-                      globalLink.target_slot = input.slot_index;
-                      remappedExternalLinks.add(extLinkId);
-                      console.log(` Linked external link ${extLinkId} to node ${flattenedId}`);
-                    }
-                  }
-                } else if (parentInput && parentInput.link === null) {
-                  // PROXY WIDGET VALUE: If no external link, check if it's a promoted widget.
-                  if (parentInput.widget) {
-                    let val: any = undefined;
-                    if (typeof subgraphNode.getWidget === 'function') {
-                      val = subgraphNode.getWidget(subgraphInputDef.name)?.value;
-                    } else if (subgraphNode.widgets) {
-                      val = subgraphNode.widgets.find((w: any) => w.name === subgraphInputDef.name)?.value;
-                    } else if (subgraphNode.widgets_values) {
-                      const widgets = subgraphNode.inputs?.filter((i: any) => !!i.widget);
-                      const widgetIdx = widgets?.findIndex((i: any) => i.name === subgraphInputDef.name);
-                      if (widgetIdx !== -1 && widgetIdx !== undefined) {
-                        val = subgraphNode.widgets_values[widgetIdx];
-                      }
-                    }
-
-                    if (val !== undefined) {
-                      console.log(`[Subgraph] Proxy Widget: Passing value "${val}" from subgraph ${subgraphNode.id} to internal node ${flattenedId} input "${input.name}"`);
-                      if (!newNode.widget_proxies) newNode.widget_proxies = {};
-                      newNode.widget_proxies[input.name] = val;
-                    }
-                  }
-                  input.link = null;
-                } else {
-                  input.link = null;
-                }
-              } else {
-                input.link = null;
               }
             } else {
-              // INTERNAL LINK within the subgraph
-              const linkId = nextLinkId++;
-              const originSlot = Array.isArray(internalLink) ? internalLink[2] : internalLink.origin_slot;
-              const targetSlot = Array.isArray(internalLink) ? internalLink[4] : (internalLink as any).target_slot;
-
-              const newGlobalLink = {
-                id: linkId,
-                origin_id: idMap[originId] as any, // Use string ID
-                origin_slot: originSlot,
-                target_id: flattenedId as any, // Use string ID
-                target_slot: targetSlot,
-                type: Array.isArray(internalLink) ? internalLink[5] : internalLink.type
-              };
-
-              graph._links[String(linkId)] = newGlobalLink;
-              input.link = linkId;
+              // Internal connection
+              // Recursive flattened ID for origin
+              inputs[input.name] = [`${parentId}:${link.origin_id}`, link.origin_slot];
             }
-          } else {
-            input.link = null;
           }
+        } else if (input.widget) {
+          // Handle widget value (subgraph internal widget)
+          // Simple fallback mechanism for now - assuming widgets_values in subgraph node
+          // Real logic might need to match widget_values index like in main graph
+          // For now, simpler approach or relying on stored values if any
+
+          // TODO: Extract widget value from subgraph internal node widgets_values
+          // This is complex as it requires the same logic as main graph (index matching)
+          // For strict correctness we should duplicate the widget logic here.
+          // Leaving simplified for Phase 1.
         }
       }
     }
 
-    if (newNode.outputs) {
-      for (const output of newNode.outputs) {
-        if (!output.links) continue;
-
-        const newGlobalLinks = [];
-        for (const linkId of output.links) {
-          const internalLink = internalLinks.find((l: any) =>
-            (Array.isArray(l) ? l[0] === linkId : l.id === linkId)
-          );
-
-          if (internalLink) {
-            const targetId = Array.isArray(internalLink) ? internalLink[3] : internalLink.target_id;
-            const targetSlot = Array.isArray(internalLink) ? internalLink[4] : internalLink.target_slot;
-
-            if (targetId === -20) {
-              const subgraphOutputDef = subgraphData.outputs[targetSlot];
-              if (subgraphOutputDef) {
-                const parentOutput = subgraphNode.outputs?.find((o: any) => o.name === subgraphOutputDef.name);
-                if (parentOutput && parentOutput.links) {
-                  for (const extLinkId of parentOutput.links) {
-                    const globalLink = graph._links[String(extLinkId)];
-                    if (globalLink) {
-                      globalLink.origin_id = flattenedId as any; // Use string ID
-                      globalLink.origin_slot = output.slot_index || 0;
-                      newGlobalLinks.push(extLinkId);
-                    }
-                  }
-                }
+    // Add widget values (flattened) logic if needed
+    // Using a simplified widget processing for internal nodes for now
+    if (node.widgets_values) {
+      if (Array.isArray(node.widgets_values)) {
+        // ... similar logic to main graph ...
+        let wIdx = 0;
+        if (node.inputs) {
+          for (const inp of node.inputs) {
+            if (inp.widget && !inp.link) {
+              if (wIdx < node.widgets_values.length) {
+                inputs[inp.name] = node.widgets_values[wIdx];
+                wIdx++;
               }
+            } else if (inp.widget && inp.link) {
+              wIdx++; // Skip connected
             }
           }
+        }
+        while (wIdx < node.widgets_values.length) {
+          const paramName = `param_${wIdx}`; // Placeholder
+          // Real comfy logic uses specific names, but this might suffice for many custom nodes
+          // Better: iterating node.inputs again or knowing the widget names
         }
       }
     }
 
-    graph._nodes.push(newNode);
+
+    apiWorkflow[flattenedId] = {
+      inputs,
+      class_type: node.type,
+      _meta: {
+        title: node.title || node.type
+      }
+    };
+    nodeCount++;
   }
 
-  // Remove the expanded subgraph node itself
-  graph._nodes = graph._nodes.filter((n: any) => String(n.id) !== String(subgraphNode.id));
+  return nodeCount;
 }
 
 /**
  * Step 8: Clean up inputs connected to removed/non-existent nodes
  */
 function removeOrphanedConnections(apiWorkflow: any): any {
-  console.log('Cleaning up broken input connections...');
+  console.log('🧹 Cleaning up broken input connections...');
 
   for (const [nodeId, nodeData] of Object.entries(apiWorkflow)) {
     const node = nodeData as any;
@@ -1574,7 +1416,7 @@ function removeOrphanedConnections(apiWorkflow: any): any {
 
         // If connected node doesn't exist in API workflow, mark for removal
         if (!apiWorkflow[connectedNodeId]) {
-          console.log(`Removing broken connection: ${nodeId}.${inputName} -> ${connectedNodeId} (node not found)`);
+          console.log(`🧹 Removing broken connection: ${nodeId}.${inputName} -> ${connectedNodeId} (node not found)`);
           inputsToRemove.push(inputName);
         }
       }
@@ -1596,7 +1438,7 @@ function removeOrphanedConnections(apiWorkflow: any): any {
  * Step 1: Create deep copy of graph to avoid mutating the original
  */
 function deepCopyGraph(graph: any) {
-  console.log('Step 1: Creating deep copy of graph...');
+  console.log('🔄 Step 1: Creating deep copy of graph...');
   const workingGraph = {
     ...graph,
     _nodes: [...graph._nodes.map((node: any) => ({
@@ -1612,34 +1454,10 @@ function deepCopyGraph(graph: any) {
       // EXPLICITLY copy subgraphDefinition as it might be lost during spread if not enumerable/own (though it should be)
       subgraphDefinition: node.subgraphDefinition
     }))],
-    // Deep copy links to prevent original graph modification
-    _links: (() => {
-      const linksCopy: Record<string, any> = {};
-      if (graph._links) {
-        for (const [key, link] of Object.entries(graph._links)) {
-          linksCopy[key] = { ...(link as any) };
-        }
-      }
-      return linksCopy;
-    })(),
-    subgraphs: (() => {
-      const subgraphs = graph.subgraphs || graph.definitions?.subgraphs;
-      if (!subgraphs) return undefined;
-
-      // DEEP CLONE all subgraph definitions to prevent cross-contamination
-      if (subgraphs instanceof Map) {
-        const newMap = new Map();
-        subgraphs.forEach((val, key) => {
-          newMap.set(key, JSON.parse(JSON.stringify(val)));
-        });
-        return newMap;
-      } else {
-        return JSON.parse(JSON.stringify(subgraphs));
-      }
-    })()
+    _links: { ...graph._links }
   };
 
-  console.log(`Deep copy created: ${workingGraph._nodes.length} nodes, ${Object.keys(workingGraph._links).length} links`);
+  console.log(`✅ Deep copy created: ${workingGraph._nodes.length} nodes, ${Object.keys(workingGraph._links).length} links`);
   return workingGraph;
 }
 
@@ -1647,7 +1465,7 @@ function deepCopyGraph(graph: any) {
  * Step 2-4: Process variables (SetNode/GetNode logic)
  */
 function preprocessVariablesAndSetNodes(workingGraph: any) {
-  console.log('Step 2-4: Processing variables...');
+  console.log('🔄 Step 2-4: Processing variables...');
 
   // Step 2: Preprocess working graph widget values (not original graph!)
   preprocessGraphWidgets(workingGraph);
@@ -1660,43 +1478,31 @@ function preprocessVariablesAndSetNodes(workingGraph: any) {
     const nodeId = String(node.id);
     const nodeType = node.type;
 
-    if (nodeType === 'SetNode' || nodeType === 'easy setNode' || nodeType === 'SetNode (rgthree)') {
-      console.log(`[Variable] Found SetNode: ${nodeId} (${nodeType})`);
-      // Extract variable name robustly
-      let variableName = '';
-      if (Array.isArray(node.widgets_values)) {
-        variableName = node.widgets_values[0] ? String(node.widgets_values[0]) : '';
-      } else if (node.widgets_values && typeof node.widgets_values === 'object') {
-        variableName = String(node.widgets_values['constant_name'] || node.widgets_values['key'] || node.widgets_values['any'] || Object.values(node.widgets_values)[0] || '');
-      }
-
-      console.log(`[Variable] SetNode ${nodeId} name: "${variableName}"`);
+    if (nodeType === 'SetNode' || nodeType === 'easy setNode') {
+      // Extract variable name from widgets_values[0]
+      const variableName = node.widgets_values && node.widgets_values[0] ? String(node.widgets_values[0]) : '';
 
       if (variableName) {
+        // Get the input connection for the data value
         let dataValue: any = null;
         let dataType = 'UNKNOWN';
 
+        // Check if SetNode has input connections
         if (node.inputs && node.inputs.length > 0) {
-          const dataInput = node.inputs.find((i: any) => i.name === 'value' || i.name === 'any') || node.inputs[0];
-          console.log(`[Variable] SetNode ${nodeId} checking input pin "${dataInput.name}" with link ${dataInput.link}`);
-          if (dataInput.link !== null && dataInput.link !== undefined) {
+          const dataInput = node.inputs[0]; // Usually the first input is the data
+          if (dataInput.link !== null) {
+            // Find the source connection
             const sourceLink = findSourceForLink(workingGraph, dataInput.link);
             if (sourceLink) {
-              dataValue = [String(sourceLink.sourceNodeId), sourceLink.outputIndex];
+              dataValue = [sourceLink.sourceNodeId.toString(), sourceLink.outputIndex];
               dataType = dataInput.type || 'UNKNOWN';
-              console.log(`[Variable] SetNode ${nodeId} ("${variableName}") resolved to source node ${sourceLink.sourceNodeId}, slot ${sourceLink.outputIndex}`);
-            } else {
-              console.warn(`[Variable] SetNode ${nodeId} ("${variableName}") could not find source for link ${dataInput.link}`);
             }
-          } else {
-            console.log(`[Variable] SetNode ${nodeId} ("${variableName}") has no input link.`);
           }
-        } else {
-          console.log(`[Variable] SetNode ${nodeId} ("${variableName}") has no inputs.`);
         }
 
+        // Store the variable information
         variableStore[variableName] = {
-          sourceNodeId: String(node.id),
+          sourceNodeId: nodeId,
           dataType,
           value: dataValue
         };
@@ -1704,7 +1510,7 @@ function preprocessVariablesAndSetNodes(workingGraph: any) {
     }
   }
 
-  console.log(`Variable processing complete: ${Object.keys(variableStore).length} variables`);
+  console.log(`✅ Variable processing complete: ${Object.keys(variableStore).length} variables`);
   return { workingGraph, variableStore };
 }
 
@@ -1712,55 +1518,43 @@ function preprocessVariablesAndSetNodes(workingGraph: any) {
  * Step 5: Process GetNode connections and SetNode output bypass
  */
 function resolveGetNodeConnections(workingGraph: any, variableStore: Record<string, any>) {
-  console.log('Step 5: Processing GetNode connections and SetNode output bypass...');
+  console.log('🔄 Step 5: Processing GetNode connections and SetNode output bypass...');
 
   const newLinks: Record<number, any> = { ...workingGraph._links };
-  let nextLinkId = Math.max(0, ...Object.keys(newLinks).map(Number)) + 1;
+  let nextLinkId = Math.max(...Object.keys(newLinks).map(Number)) + 1;
 
   // Process GetNode connections (variable references)
   for (const node of workingGraph._nodes as any[]) {
-    if (node.type === 'GetNode' || node.type === 'easy getNode' || node.type === 'GetNode (rgthree)') {
-      let variableName = '';
-      if (Array.isArray(node.widgets_values)) {
-        variableName = node.widgets_values[0] ? String(node.widgets_values[0]) : '';
-      } else if (node.widgets_values && typeof node.widgets_values === 'object') {
-        variableName = String(node.widgets_values['constant_name'] || node.widgets_values['key'] || node.widgets_values['any'] || Object.values(node.widgets_values)[0] || '');
-      }
+    if (node.type === 'GetNode' || node.type === 'easy getNode') {
+      const variableName = Array.isArray(node.widgets_values) && node.widgets_values[0]
+        ? String(node.widgets_values[0])
+        : '';
       const variable = variableStore[variableName];
-      console.log(`[Variable] Resolving GetNode ${node.id} for "${variableName}": ${variable ? 'Variable found' : 'Variable NOT found'}`);
 
       if (variable && variable.value) {
-        let replacementCount = 0;
         for (const targetNode of workingGraph._nodes) {
           if (targetNode.inputs) {
             for (const input of targetNode.inputs) {
-              if (input.link !== null && input.link !== undefined) {
-                const link = workingGraph._links[String(input.link)];
-                if (link && String(link.origin_id) === String(node.id)) {
+              if (input.link !== null) {
+                const link = workingGraph._links[input.link];
+                if (link && link.origin_id === node.id) {
                   const [sourceNodeId, sourceSlot] = variable.value;
                   const newLink = {
                     id: nextLinkId,
-                    origin_id: String(sourceNodeId) as any,
+                    origin_id: Number(sourceNodeId),
                     origin_slot: sourceSlot,
-                    target_id: String(targetNode.id) as any,
+                    target_id: targetNode.id,
                     target_slot: input.slot_index,
                     type: variable.dataType
                   };
                   newLinks[nextLinkId] = newLink;
                   input.link = nextLinkId;
                   nextLinkId++;
-                  replacementCount++;
-                  console.log(`[Variable] GetNode ${node.id} replaced link ${link.id} with ${newLink.id} (points to source node ${sourceNodeId}) on target node ${targetNode.id} pin ${input.name}`);
                 }
               }
             }
           }
         }
-        if (replacementCount === 0) {
-          console.warn(`[Variable] GetNode ${node.id} ("${variableName}") had no targets connected to its output.`);
-        }
-      } else if (variable) {
-        console.warn(`[Variable] GetNode ${node.id} ("${variableName}") found variable but it has no resolved source value.`);
       }
     }
   }
@@ -1785,7 +1579,7 @@ function resolveGetNodeConnections(workingGraph: any, variableStore: Record<stri
       const sourceNodeId = inputLink.origin_id;
       const sourceSlot = inputLink.origin_slot;
 
-      const sourceNode = workingGraph._nodes.find((n: any) => String(n.id) === String(sourceNodeId));
+      const sourceNode = workingGraph._nodes.find((n: any) => n.id === sourceNodeId);
       if (!sourceNode || !sourceNode.outputs || !sourceNode.outputs[sourceSlot]) {
         continue;
       }
@@ -1832,7 +1626,7 @@ function resolveGetNodeConnections(workingGraph: any, variableStore: Record<stri
  * Resulting graph shape: { _nodes: [actual processing nodes], _links: {...} }
  */
 function filterOutVirtualNodes(workingGraph: any) {
-  console.log('Step 6: Removing virtual nodes...');
+  console.log('🔄 Step 6: Removing virtual nodes...');
 
   const originalCount = workingGraph._nodes.length;
   const beforeNodes = workingGraph._nodes.map((n: any) => `${n.id}(${n.type})`);
@@ -1842,7 +1636,7 @@ function filterOutVirtualNodes(workingGraph: any) {
   const afterNodes = workingGraph._nodes.map((n: any) => `${n.id}(${n.type})`);
   const removedCount = originalCount - workingGraph._nodes.length;
 
-  console.log(`Virtual nodes removed: ${removedCount} removed, ${workingGraph._nodes.length} remaining`);
+  console.log(`✅ Virtual nodes removed: ${removedCount} removed, ${workingGraph._nodes.length} remaining`);
   console.log(`   Before: [${beforeNodes.join(', ')}]`);
   console.log(`   After:  [${afterNodes.join(', ')}]`);
   console.log(`   Graph shape: { _nodes: [${afterNodes.join(', ')}], _links: ${Object.keys(workingGraph._links).length} links }`);
@@ -1867,7 +1661,7 @@ function processNodeWidgetInputs(node: any, apiNodeInputs: Record<string, any>):
   // NEW APPROACH (2025-09-22): Use _widgets for direct widget name -> value mapping
   // This avoids complex index calculations and connected input edge cases
   if (node._widgets && Array.isArray(node._widgets)) {
-    console.log(`Using _widgets approach for node ${node.id} (${node.type})`);
+    console.log(`🔧 Using _widgets approach for node ${node.id} (${node.type})`);
 
     for (const widget of node._widgets) {
       // Check if this widget corresponds to a connected input
@@ -1882,14 +1676,14 @@ function processNodeWidgetInputs(node: any, apiNodeInputs: Record<string, any>):
         if (typeof widget.value === 'string' && widget.value.includes('%date:')) {
           finalValue = processDateFormatString(widget.value);
           if (finalValue !== widget.value) {
-            console.log(`  Converted date format in widget "${widget.name}": "${widget.value}" -> "${finalValue}"`);
+            console.log(`  📅 Converted date format in widget "${widget.name}": "${widget.value}" -> "${finalValue}"`);
           }
         }
 
         apiNodeInputs[widget.name] = finalValue;
-        console.log(`  Widget ${widget.name} = ${finalValue} (disconnected)`);
+        console.log(`  ✅ Widget ${widget.name} = ${finalValue} (disconnected)`);
       } else {
-        console.log(`  Widget ${widget.name} skipped (input connected to link ${correspondingInput.link})`);
+        console.log(`  ⏭️ Widget ${widget.name} skipped (input connected to link ${correspondingInput.link})`);
       }
     }
     return;
@@ -1897,7 +1691,7 @@ function processNodeWidgetInputs(node: any, apiNodeInputs: Record<string, any>):
 
   // FALLBACK: Old widgets_values array approach (keep for compatibility)
   // Issue: Complex index mapping can fail with certain node configurations
-  console.log(`Using widgets_values fallback for node ${node.id} (${node.type})`);
+  console.log(`🔧 Using widgets_values fallback for node ${node.id} (${node.type})`);
 
   if (!node.widgets_values || !Array.isArray(node.widgets_values)) {
     return;
@@ -2004,7 +1798,7 @@ function transformGraphNodesToApiFormat(
   bypassRoutingMap: Map<string, [string, number] | null>,
   rerouteRoutingMap: Map<string, [string, number] | null>
 ) {
-  console.log('Step 7: Converting nodes to API format...');
+  console.log('🔄 Step 7: Converting nodes to API format...');
 
   const apiWorkflow: Record<string, any> = {};
   let nodeCount = 0;
@@ -2015,17 +1809,17 @@ function transformGraphNodesToApiFormat(
 
     // Skip bypass nodes (mode 4) in API output
     if (node.mode === 4) {
-      console.log(` Skipping bypass node: ${nodeId} (${node.type})`);
+      console.log(`⏭️ Skipping bypass node: ${nodeId} (${node.type})`);
       continue;
     }
 
     // Skip muted nodes (mode 2) in API output  
     if (node.mode === 2) {
-      console.log(` Skipping muted node: ${nodeId} (${node.type})`);
+      console.log(`🔇 Skipping muted node: ${nodeId} (${node.type})`);
       continue;
     }
 
-    console.log(`Processing node: ${nodeId} (${node.type})`);
+    console.log(`🔄 Processing node: ${nodeId} (${node.type})`);
 
     // Create API node structure
     const apiNode: any = {
@@ -2047,7 +1841,7 @@ function transformGraphNodesToApiFormat(
           const link = workingGraph._links[input.link];
           if (link) {
             // Resolve connection through bypass and Reroute routing if needed
-            console.log(` Processing connection: ${link.origin_id}-${link.origin_slot} -> ${node.id}-${input.slot_index} (${input.name})`);
+            console.log(`🔗 Processing connection: ${link.origin_id}-${link.origin_slot} -> ${node.id}-${input.slot_index} (${input.name})`);
             const [finalNodeId, finalOutputIndex] = resolveConnection(
               String(link.origin_id),
               link.origin_slot,
@@ -2055,7 +1849,7 @@ function transformGraphNodesToApiFormat(
               bypassRoutingMap,
               rerouteRoutingMap
             );
-            console.log(` Resolved to: ${finalNodeId}-${finalOutputIndex}`);
+            console.log(`🔗 Resolved to: ${finalNodeId}-${finalOutputIndex}`);
             apiNode.inputs[input.name] = [finalNodeId, finalOutputIndex];
           }
         }
@@ -2068,40 +1862,43 @@ function transformGraphNodesToApiFormat(
     // Step 3: Handle object-format widgets_values (newer ComfyUI extension format)
     processNodeWidgetObject(node, apiNode.inputs);
 
-    // Handle widget proxies from subgraph expansion
-    if ((node as any).widget_proxies) {
-      const proxies = (node as any).widget_proxies;
-      for (const [name, val] of Object.entries(proxies)) {
-        // Only set widget value if input doesn't already have a connection
-        if (!apiNode.inputs[name]) {
-          apiNode.inputs[name] = val;
-        }
-      }
+    // 🔗 Check if this is a subgraph node
+    if (node.subgraphDefinition) {
+      console.log(`🔗 Recursively processing subgraph for node: ${nodeId}`);
+      nodeCount = processSubgraph(
+        node,
+        node.subgraphDefinition,
+        apiWorkflow,
+        nodeCount,
+        apiNode.inputs,
+        bypassRoutingMap,
+        rerouteRoutingMap
+      );
+      // Do NOT add the parent node itself to apiWorkflow
+    } else {
+      apiWorkflow[nodeId] = apiNode;
+      nodeCount++;
     }
-
-    apiWorkflow[nodeId] = apiNode;
-    nodeCount++;
   }
 
-  console.log(`API conversion complete: ${nodeCount} nodes processed`);
+  console.log(`✅ API conversion complete: ${nodeCount} nodes processed`);
   return { apiWorkflow, nodeCount };
 }
 
 /**
  * Helper function to find source for a given link (Graph structure)
  */
-function findSourceForLink(graph: any, linkId: number): { sourceNodeId: string; outputIndex: number } | null {
+function findSourceForLink(graph: any, linkId: number): { sourceNodeId: number; outputIndex: number } | null {
   // Use graph._links (structured object: {"1": {...}, "2": {...}})
   const link = graph._links?.[linkId.toString()];
   if (!link) {
-    console.log(` findSourceForLink: No link found for ID ${linkId} in graph._links`);
+    console.log(`🔍 findSourceForLink: No link found for ID ${linkId} in graph._links`);
     return null;
   }
 
-  console.log(` findSourceForLink: Found link {id: ${link.id}, origin: ${link.origin_id}-${link.origin_slot}, target: ${link.target_id}-${link.target_slot}}`);
-  // Ensure sourceNodeId is always a string
+  console.log(`🔍 findSourceForLink: Found link {id: ${link.id}, origin: ${link.origin_id}-${link.origin_slot}, target: ${link.target_id}-${link.target_slot}}`);
   return {
-    sourceNodeId: String(link.origin_id),
+    sourceNodeId: link.origin_id,
     outputIndex: link.origin_slot
   };
 }
@@ -2117,10 +1914,8 @@ function isVirtualNode(node: any): boolean {
     'PrimitiveNode',
     'SetNode',
     'easy setNode',
-    'SetNode (rgthree)',
     'GetNode',
     'easy getNode',
-    'GetNode (rgthree)',
     // rgthree extension nodes
     'Fast Groups Bypasser (rgthree)',
     'Fast Groups Muter (rgthree)',
@@ -2137,16 +1932,7 @@ function isVirtualNode(node: any): boolean {
     'Mute / Bypass Repeater (rgthree)',     // Mute / Bypass control
   ]);
 
-  if (virtualNodeTypes.has(node.type)) return true;
-
-  // Also treat subgraph UUIDs as virtual if they survived flattening
-  // This prevents unrecognized node types from being sent to the server
-  const type = node.type;
-  if (type && typeof type === 'string' && type.length === 36 && (type.split('-').length === 5)) {
-    return true;
-  }
-
-  return false;
+  return virtualNodeTypes.has(node.type);
 }
 
 /**
@@ -2261,7 +2047,7 @@ async function monitorExecution(
     };
 
   } catch (error) {
-    console.error(`Failed to monitor execution:`, error);
+    console.error(`❌ Failed to monitor execution:`, error);
     return {
       success: false,
       error: 'Failed to monitor execution'
@@ -2346,11 +2132,11 @@ export const rebootServer = async (
     if (response.status === 200) {
       return true;
     } else {
-      console.error('Server reboot failed:', response.status, response.statusText);
+      console.error('❌ Server reboot failed:', response.status, response.statusText);
       return false;
     }
   } catch (error) {
-    console.error('?뮙 Server reboot error:', error);
+    console.error('💥 Server reboot error:', error);
     return false;
   }
 };

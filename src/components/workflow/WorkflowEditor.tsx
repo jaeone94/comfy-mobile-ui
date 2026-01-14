@@ -17,6 +17,7 @@ import { ConnectionService } from '@/services/ConnectionService';
 import { detectMissingWorkflowNodes, MissingWorkflowNode, resolveMissingNodePackages } from '@/services/MissingNodesService';
 import { detectMissingModels, formatMissingModelsMessage, getUniqueMissingModels } from '@/services/MissingModelsService';
 import { ComfyGraph } from '@/core/domain/ComfyGraph';
+import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 
 // Infrastructure Services
 import { getWorkflow, updateWorkflow, loadAllWorkflows, saveAllWorkflows } from '@/infrastructure/storage/IndexedDBWorkflowService';
@@ -42,6 +43,7 @@ import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
 import { RepositionActionBar } from '@/components/controls/RepositionActionBar';
 import { CircularMenu, CircularMenuRef } from '@/components/canvas/CircularMenu';
+import { WorkflowContextMenu } from '@/components/canvas/WorkflowContextMenu';
 import { ConnectionBar } from '@/components/canvas/ConnectionBar';
 import { ConnectionModal } from '@/components/canvas/ConnectionModal';
 import { FilePreviewModal } from '@/components/modals/FilePreviewModal';
@@ -60,6 +62,8 @@ import { useFileOperations } from '@/hooks/useFileOperations';
 import { useMobileOptimizations } from '@/hooks/useMobileOptimizations';
 import { useWorkflowStorage } from '@/hooks/useWorkflowStorage';
 import { useConnectionMode } from '@/hooks/useConnectionMode';
+
+import { DEFAULT_CANVAS_CONFIG } from '@/config/canvasConfig';
 
 // Stores
 import { useConnectionStore } from '@/ui/store/connectionStore';
@@ -94,7 +98,20 @@ const WorkflowEditor: React.FC = () => {
   const comfyGraphRef = useRef<any | null>(null);
 
   // Global store (for current workflow tracking)
-  const { setWorkflow: setGlobalWorkflow } = useGlobalStore();
+  const {
+    setWorkflow: setGlobalWorkflow,
+    syncWorkflow,
+    updateWorkflowJson,
+    sessionStack,
+    pushSession,
+    popSession,
+    jumpToSession,
+    updateCurrentSessionValues,
+    getSelectedGraph,
+    getSelectedSubgraphId
+  } = useGlobalStore();
+
+  const currentGraph = getSelectedGraph(); // Get current graph from session stack or workflow
 
   // Workflow state
   const [workflow, setWorkflow] = useState<IComfyWorkflow | null>(null);
@@ -108,9 +125,6 @@ const WorkflowEditor: React.FC = () => {
   const [groupBounds, setGroupBounds] = useState<GroupBounds[]>([]);
   const [canvasUpdateTrigger, setCanvasUpdateTrigger] = useState(0); // Trigger for canvas-only updates
 
-  // Auto-fit tracking
-  const [hasAutoFitted, setHasAutoFitted] = useState(false);
-
   // Metadata
   const [nodeMetadata, setNodeMetadata] = useState<Map<number, INodeWithMetadata>>(new Map());
   const [metadataLoading, setMetadataLoading] = useState<boolean>(false);
@@ -119,6 +133,7 @@ const WorkflowEditor: React.FC = () => {
   const [missingNodeIds, setMissingNodeIds] = useState<Set<number>>(new Set());
   const [missingWorkflowNodes, setMissingWorkflowNodes] = useState<MissingWorkflowNode[]>([]);
   const [isMissingNodeModalOpen, setIsMissingNodeModalOpen] = useState(false);
+  const lastFittedSubgraphIdRef = useRef<string | null>(null);
   const [installablePackageCount, setInstallablePackageCount] = useState<number>(0);
   const [missingModels, setMissingModels] = useState<ReturnType<typeof detectMissingModels>>([]);
   const [isMissingModelModalOpen, setIsMissingModelModalOpen] = useState(false);
@@ -136,11 +151,18 @@ const WorkflowEditor: React.FC = () => {
   // Queue refresh trigger
   const [queueRefreshTrigger, setQueueRefreshTrigger] = useState<number>(0);
   const [uploadState, setUploadState] = useState<any>({ isUploading: false });
-  const [renderTrigger, setRenderTrigger] = useState(0);
+  const [renderTrigger, setRenderTrigger] = useState(0); // State to force re-renders
+
+  // Force re-render utility (moved up for hoisting)
+  const forceRender = useCallback(() => {
+    setRenderTrigger(prev => prev + 1);
+  }, []);
   const [nodeIdToDelete, setNodeIdToDelete] = useState<number | null>(null);
 
+  const [isContextMenuOpen, setIsContextMenuOpen] = useState(false); // Internal state for DropdownMenu component sync
 
-  // Circular Menu State
+
+  // Circular Menu State (For Touch)
   const [circularMenuState, setCircularMenuState] = useState<{
     isOpen: boolean;
     center: { x: number; y: number };
@@ -157,28 +179,43 @@ const WorkflowEditor: React.FC = () => {
     nodeId: null,
   });
 
+  // Context Menu State (For Mouse)
+  const [contextMenuState, setContextMenuState] = useState<{
+    isOpen: boolean;
+    x: number;
+    y: number;
+    context: 'CANVAS' | 'NODE';
+    nodeId: number | null;
+  }>({
+    isOpen: false,
+    x: 0,
+    y: 0,
+    context: 'CANVAS',
+    nodeId: null,
+  });
+
   // Connection state
   const { url: serverUrl, isConnected } = useConnectionStore();
 
   // Get groups with mapped nodes
   const workflowGroups = useMemo((): Group[] => {
-    if (!workflow?.graph?._groups || !workflow?.graph?._nodes) {
+    if (!currentGraph?._groups || !currentGraph?._nodes) {
       return [];
     }
-    return mapGroupsWithNodes(workflow.graph._groups, workflow.graph._nodes);
-  }, [workflow?.graph?._groups, workflow?.graph?._nodes]);
+    return mapGroupsWithNodes(currentGraph._groups, currentGraph._nodes);
+  }, [currentGraph?._groups, currentGraph?._nodes]);
 
   // Get searchable nodes for advanced search
   const searchableNodes = useMemo(() => {
-    if (!workflow?.graph?._nodes) {
+    if (!currentGraph?._nodes) {
       return [];
     }
-    return workflow.graph._nodes.map(node => ({
+    return currentGraph._nodes.map((node: any) => ({
       id: node.id,
       type: node.type,
       title: node.title
     }));
-  }, [workflow?.graph?._nodes]);
+  }, [currentGraph?._nodes]);
 
   // #region Hooks
 
@@ -191,6 +228,249 @@ const WorkflowEditor: React.FC = () => {
   // Widget value editor hook
   const widgetEditor = useWidgetValueEditor();
 
+  // Sync comfyGraphRef and WidgetEditor with current session
+  useEffect(() => {
+    comfyGraphRef.current = currentGraph;
+
+    // Recalculate and update bounds for the new graph (Main or Subgraph)
+    // This ensures the renderer draws the correct nodes/groups for the active session
+    if (currentGraph && currentGraph._nodes) {
+      const { nodeBounds: newBounds, groupBounds: newGroupBounds } = calculateAllBounds(
+        currentGraph._nodes,
+        currentGraph._groups,
+        DEFAULT_CANVAS_CONFIG
+      );
+      setNodeBounds(newBounds);
+      setGroupBounds(newGroupBounds);
+    }
+
+    // Update widget editor state from current session
+    const currentSession = sessionStack[sessionStack.length - 1];
+    if (currentSession) {
+      // Only update if we are essentially initializing or switching contexts
+
+      // We perform this sync ONLY if the graph reference changed.
+      // Since this effect depends on [currentGraph], it runs when graph ref changes.
+
+      widgetEditor.setModifiedWidgetValues(currentSession.modifiedWidgetValues);
+
+      // Force render to update canvas with new graph
+      setCanvasUpdateTrigger(prev => prev + 1);
+      // setRenderTrigger(prev => prev + 1); // Removed to prevent infinite loop (renderTrigger is a dependency)
+    }
+  }, [currentGraph, renderTrigger]); // CRITICAL: Added renderTrigger for no-reload updates
+
+  // Sync back to store when widget values change
+  useEffect(() => {
+    updateCurrentSessionValues(widgetEditor.modifiedWidgetValues);
+  }, [widgetEditor.modifiedWidgetValues, updateCurrentSessionValues]);
+
+  // Handle Enter Subgraph
+  const handleEnterSubgraph = useCallback(async (nodeType: string, title: string) => {
+    // 🔍 1. Resolve Definition: Search session stack from top to bottom for the most recent definition
+    let subgraphDef: any = null;
+    const state = useGlobalStore.getState();
+
+    // Search from most recent session's graph back to root
+    for (let i = state.sessionStack.length - 1; i >= 0; i--) {
+      const sessionGraph = state.sessionStack[i].graph;
+      if (sessionGraph && sessionGraph.subgraphs?.has(nodeType)) {
+        subgraphDef = sessionGraph.subgraphs.get(nodeType);
+        break;
+      }
+    }
+
+    // Fallback to latest workflow_json if not found in graphs
+    if (!subgraphDef) {
+      const latestWorkflow = state.workflow || workflow;
+      if (latestWorkflow?.workflow_json) {
+        const json = latestWorkflow.workflow_json as any;
+        const definitions = json.definitions;
+        if (definitions && definitions.subgraphs) {
+          if (Array.isArray(definitions.subgraphs)) {
+            subgraphDef = definitions.subgraphs.find((s: any) => s.id === nodeType || s.name === nodeType);
+          } else {
+            subgraphDef = definitions.subgraphs[nodeType];
+          }
+        }
+        if (!subgraphDef && Array.isArray(json.subgraphs)) {
+          subgraphDef = json.subgraphs.find((s: any) => s.id === nodeType || s.name === nodeType);
+        }
+      }
+    }
+
+    if (subgraphDef) {
+      // Create new ComfyGraph instance
+      const newGraph = new ComfyGraph();
+      if (objectInfo) {
+        newGraph.setMetadata(objectInfo);
+      }
+
+      // 🔗 IMPORTANT: Propagate ALL known subgraph definitions to the new graph
+      // This allows the new graph to correctly identify its OWN nested subgraph nodes
+      const allKnownSubgraphs = new Map<string, any>();
+
+      // Collect from root JSON first
+      const rootJson = state.workflow?.workflow_json as any;
+      if (rootJson) {
+        const rootDefs = rootJson.definitions?.subgraphs || rootJson.subgraphs;
+        if (Array.isArray(rootDefs)) {
+          rootDefs.forEach(d => allKnownSubgraphs.set(d.id || d.name, d));
+        } else if (typeof rootDefs === 'object') {
+          Object.entries(rootDefs).forEach(([k, d]) => allKnownSubgraphs.set(k, d));
+        }
+      }
+
+      // Override with definitions from the session stack (more recent)
+      state.sessionStack.forEach(session => {
+        if (session.graph?.subgraphs) {
+          session.graph.subgraphs.forEach((def, key) => {
+            allKnownSubgraphs.set(key, def);
+          });
+        }
+      });
+
+      // Set collected subgraphs to the new graph
+      newGraph.subgraphs = allKnownSubgraphs;
+      newGraph.name = subgraphDef.name || title;
+      newGraph.id = subgraphDef.id || nodeType;
+
+      // Ensure nodes property exists
+      if (!subgraphDef.nodes) subgraphDef.nodes = [];
+      if (!subgraphDef.links) subgraphDef.links = [];
+      if (!subgraphDef.groups) subgraphDef.groups = [];
+
+      // Configure it with subgraph data
+      const graphData: IComfyJson = {
+        id: newGraph.id,
+        name: newGraph.name,
+        nodes: subgraphDef.nodes,
+        links: subgraphDef.links,
+        groups: subgraphDef.groups,
+        subgraphs: Array.from(allKnownSubgraphs.values()), // 🔗 Pass ALL known subgraphs to configure for nested recognition
+        config: {},
+        extra: {},
+        version: 0.4
+      } as any;
+
+      await newGraph.configure(graphData);
+
+      // Verify and find/inject virtual GraphInput/GraphOutput nodes
+      const inputNode = newGraph._nodes.find(n => n.type === 'GraphInput');
+      const outputNode = newGraph._nodes.find(n => n.type === 'GraphOutput');
+
+      const inputId = inputNode ? inputNode.id : -10;
+      const outputId = outputNode ? outputNode.id : -20;
+
+      if (!inputNode) {
+        // Inject virtual GraphInput node if missing
+        const inputBounding = subgraphDef.inputNode?.bounding;
+        const pos = inputBounding ? [inputBounding[0], inputBounding[1]] : [-300, 200];
+        const size = inputBounding ? [inputBounding[2], inputBounding[3]] : [200, 300];
+
+        newGraph._nodes.push({
+          id: inputId,
+          type: 'GraphInput',
+          title: 'Input',
+          pos: pos,
+          size: size,
+          flags: {},
+          inputs: [],
+          outputs: subgraphDef.inputs?.map((input: any, index: number) => ({
+            name: input.name,
+            type: input.type,
+            links: input.linkIds || [],
+            slot_index: index
+          })) || [],
+          mode: 0,
+        } as any);
+      } else {
+        // Sync slots for existing input node
+        inputNode.outputs = subgraphDef.inputs?.map((input: any, index: number) => ({
+          name: input.name,
+          type: input.type,
+          links: input.linkIds || [],
+          slot_index: index
+        })) || [];
+      }
+
+      if (!outputNode) {
+        // Inject virtual GraphOutput node if missing
+        const outputBounding = subgraphDef.outputNode?.bounding;
+        const pos = outputBounding ? [outputBounding[0], outputBounding[1]] : [1200, 200];
+        const size = outputBounding ? [outputBounding[2], outputBounding[3]] : [200, 300];
+
+        newGraph._nodes.push({
+          id: outputId,
+          type: 'GraphOutput',
+          title: 'Output',
+          pos: pos,
+          size: size,
+          flags: {},
+          inputs: subgraphDef.outputs?.map((output: any, index: number) => ({
+            name: output.name,
+            type: output.type,
+            link: output.linkIds?.[0] || null,
+            slot_index: index
+          })) || [],
+          outputs: [],
+          mode: 0,
+        } as any);
+      } else {
+        // Sync slots for existing output node
+        outputNode.inputs = subgraphDef.outputs?.map((output: any, index: number) => ({
+          name: output.name,
+          type: output.type,
+          link: output.linkIds?.[0] || null,
+          slot_index: index
+        })) || [];
+      }
+
+      // 🔗 3b. Subgraph Link Normalization
+      // Force all internal links to point to the correct virtual node slots
+      subgraphDef.inputs?.forEach((input: any, index: number) => {
+        input.linkIds?.forEach((linkId: number) => {
+          const link = newGraph._links[linkId];
+          if (link) {
+            link.origin_id = inputId;
+            link.origin_slot = index;
+          }
+        });
+      });
+
+      subgraphDef.outputs?.forEach((output: any, index: number) => {
+        output.linkIds?.forEach((linkId: number) => {
+          const link = newGraph._links[linkId];
+          if (link) {
+            link.target_id = outputId;
+            link.target_slot = index;
+          }
+        });
+      });
+
+      // Push to stack
+      pushSession({
+        graph: newGraph,
+        modifiedWidgetValues: new Map(),
+        subgraphId: nodeType,
+        title: title
+      });
+
+      toast.success(`Entered subgraph: ${title}`);
+    } else {
+      // If not found in JSON, fallback to comfyGraphRef (legacy fallback)
+      const defs = comfyGraphRef.current?.subgraphs;
+      const legacyDef = defs?.get(nodeType);
+
+      if (legacyDef) {
+        console.warn("Subgraph found in Graph but NOT in JSON. Using legacy fallback.");
+        // ... (Same logic for legacy if desired, but for now just error to force JSON structure correctness)
+        toast.error("Subgraph definition desync - Please reload workflow");
+      } else {
+        toast.error("Subgraph definition not found");
+      }
+    }
+  }, [pushSession, workflow]);
   // Handle create connection - add new link between nodes using ConnectionService
   const handleCreateConnection = useCallback(async (
     sourceNodeId: number,
@@ -205,13 +485,16 @@ const WorkflowEditor: React.FC = () => {
     try {
       // Get current workflow_json and graph
       const currentWorkflowJson = workflow.workflow_json;
-      const currentGraph = workflow.graph;
+      const currentGraph = comfyGraphRef.current; // Use ref instead of state for latest graph
 
       if (!currentWorkflowJson || !currentGraph) {
         return;
       }
 
       // Use ConnectionService to create the connection
+      // Note: createConnection usually returns a new graph or mutated copy.
+      // We need to verify if it mutates in place or returns new. 
+      // Assuming it returns updated structures.
       const { updatedWorkflowJson, updatedGraph, newLinkId } = ConnectionService.createConnection(
         currentWorkflowJson,
         currentGraph,
@@ -220,6 +503,25 @@ const WorkflowEditor: React.FC = () => {
         sourceSlot,
         targetSlot
       );
+
+      // Update refs immediately
+      comfyGraphRef.current = updatedGraph;
+
+      // Update nodeBounds with new node references (crucial for CanvasRenderer to see updated slots)
+      setNodeBounds(prev => {
+        const newMap = new Map(prev);
+        // Update source node ref
+        const newSourceNode = updatedGraph._nodes.find((n: any) => n.id === sourceNodeId);
+        if (newSourceNode && newMap.has(sourceNodeId)) {
+          newMap.set(sourceNodeId, { ...newMap.get(sourceNodeId)!, node: newSourceNode });
+        }
+        // Update target node ref
+        const newTargetNode = updatedGraph._nodes.find((n: any) => n.id === targetNodeId);
+        if (newTargetNode && newMap.has(targetNodeId)) {
+          newMap.set(targetNodeId, { ...newMap.get(targetNodeId)!, node: newTargetNode });
+        }
+        return newMap;
+      });
 
       // Save the updated workflow
       const updatedWorkflow = {
@@ -234,13 +536,26 @@ const WorkflowEditor: React.FC = () => {
       // Update local workflow state
       setWorkflow(updatedWorkflow);
 
-      // Reload the workflow using the same logic as initial app entry
-      await loadWorkflow();
+      // CRITICAL: Use syncWorkflow instead of loadWorkflow(true) to avoid flicker
+      syncWorkflow(updatedWorkflow);
+
+      // Force render 
+      forceRender();
+
+      // Viewport Hack: Trigger canvas redraw by imperceptibly changing viewport
+      // This forces the CanvasRenderer to re-evaluate the graph immediately
+      setViewport(prev => ({ ...prev, scale: prev.scale + 0.00001 }));
+      setTimeout(() => {
+        setViewport(prev => ({ ...prev, scale: prev.scale - 0.00001 }));
+      }, 10);
+
+      // Play sound or feedback?
+      // toast.success("Connected"); 
 
     } catch (error) {
       console.error('Error creating connection:', error);
     }
-  }, [id, workflow]);
+  }, [id, workflow, syncWorkflow, forceRender]);
 
   // Connection mode hook
   const connectionMode = useConnectionMode({
@@ -306,6 +621,27 @@ const WorkflowEditor: React.FC = () => {
         });
       }
     },
+    // Context Menu Callbacks (Mouse)
+    onNodeContextMenu: (node: any, position: { x: number; y: number }) => {
+      setContextMenuState({
+        isOpen: true,
+        x: position.x,
+        y: position.y,
+        context: 'NODE',
+        nodeId: typeof node.id === 'string' ? parseInt(node.id) : node.id
+      });
+    },
+    onCanvasContextMenu: (worldPos: { x: number; y: number }, screenPos?: { x: number; y: number }) => {
+      if (screenPos) {
+        setContextMenuState({
+          isOpen: true,
+          x: screenPos.x,
+          y: screenPos.y,
+          context: 'CANVAS',
+          nodeId: null
+        });
+      }
+    },
     // Menu interaction callbacks
     isMenuOpen: circularMenuState.isOpen,
     onMenuDrag: (position: { x: number; y: number }) => {
@@ -316,11 +652,76 @@ const WorkflowEditor: React.FC = () => {
     }
   });
 
+  // Normalize subgraph definitions to Map for consistent access
+  const subgraphDefinitionsMap = useMemo(() => {
+    const map = new Map<string, any>();
+
+    // 1. Start with definitions from root JSON
+    const rawDefs = (workflow?.workflow_json as any)?.extra_info?.extra_pnginfo?.workflow?.subgraphs ||
+      (workflow?.workflow_json as any)?.subgraphs ||
+      (workflow?.workflow_json as any)?.definitions?.subgraphs;
+
+    if (rawDefs) {
+      if (Array.isArray(rawDefs)) {
+        rawDefs.forEach((def: any) => {
+          if (def && (def.id || def.name)) {
+            map.set(def.id || def.name, def);
+          }
+        });
+      } else if (typeof rawDefs === 'object') {
+        Object.entries(rawDefs).forEach(([key, def]: [string, any]) => {
+          map.set(key, def);
+        });
+      }
+    }
+
+    // 2. Override with definitions from the current session stack (more recent)
+    // This is crucial for nested subgraphs where internal changes haven't reached root JSON yet
+    sessionStack.forEach(session => {
+      if (session.graph?.subgraphs) {
+        session.graph.subgraphs.forEach((def, key) => {
+          map.set(key, def);
+        });
+      }
+    });
+
+    return map;
+  }, [workflow?.workflow_json, sessionStack]);
+
   // Canvas renderer hook
   useCanvasRenderer({
     canvasRef,
     containerRef,
-    workflow,
+    // Pass a derived workflow object that uses currentGraph (from session stack)
+    // This ensures the renderer shows the correct graph (root or subgraph)
+    workflow: useMemo(() => {
+      if (!workflow || !currentGraph) return workflow;
+
+      // Map ComfyGraph links (Object) to array format expected by renderer
+      const linksArray = currentGraph._links
+        ? (Array.isArray(currentGraph._links)
+          ? currentGraph._links
+          : Object.values(currentGraph._links))
+        : [];
+
+      return {
+        ...workflow,
+        graph: {
+          ...workflow.graph,
+          _nodes: currentGraph._nodes || [],
+          _links: linksArray.reduce((acc: any, link: any) => {
+            // Map back to Record<number, any> if needed by renderer or just pass array if supported
+            // The renderer likely expects the format we initialized with.
+            // Let's stick to the structure we saw in loadWorkflow:
+            // Record<number, LinkData>
+            if (link && link.id) acc[link.id] = link;
+            return acc;
+          }, {}),
+          // ... group mapping omitted for brevity if unchanged ...
+          _groups: currentGraph._groups || []
+        }
+      } as any;
+    }, [workflow, currentGraph]),
     viewport,
     nodeBounds,
     groupBounds,
@@ -340,7 +741,8 @@ const WorkflowEditor: React.FC = () => {
       compatibleNodeIds: connectionMode.connectionMode.compatibleNodeIds
     },
     missingNodeIds,
-    longPressState: canvasInteraction.longPressState
+    longPressState: canvasInteraction.longPressState,
+    subgraphDefinitions: subgraphDefinitionsMap
   });
 
   // #endregion Hooks
@@ -358,11 +760,19 @@ const WorkflowEditor: React.FC = () => {
     loadWorkflow();
   }, [id]);
 
+  // Load node metadata when connection is established (recovers from direct refresh load skip)
+  useEffect(() => {
+    if (isConnected && workflow?.graph?._nodes && nodeMetadata.size === 0 && !metadataLoading) {
+      console.log('Connection established, loading node metadata...');
+      loadNodeMetadata(workflow.graph._nodes);
+    }
+  }, [isConnected, workflow?.graph?._nodes, nodeMetadata.size, metadataLoading]);
+
   // #endregion useEffects
 
   // #region workflow storage actions
   // Load workflow from storage
-  const loadWorkflow = async () => {
+  const loadWorkflow = async (isReload: boolean = false) => {
     if (!id) return;
 
     setIsLoading(true);
@@ -516,7 +926,12 @@ const WorkflowEditor: React.FC = () => {
       setWorkflow(workflow);
 
       // Update global store with current workflow for message filtering
-      setGlobalWorkflow(workflow);
+      // Pass the instantiated graph so session stack works with class methods (serialize etc)
+      if (isReload) {
+        syncWorkflow(workflow);
+      } else {
+        setGlobalWorkflow(workflow, graph);
+      }
 
       // Create NodeBounds from ComfyGraphNode structure
       const calculatedNodeBounds = new Map<number, NodeBounds>();
@@ -662,17 +1077,23 @@ const WorkflowEditor: React.FC = () => {
 
     try {
 
-      // Use ComfyGraph instance (serialize() method available)
-      const currentGraph = comfyGraphRef.current;
-      if (!currentGraph) {
-        throw new Error('No ComfyGraph instance available');
+      // Use ROOT Graph instance for serialization to prevent overwriting main workflow with subgraph
+      // We must always save the entire project structure from the root
+      const rootSession = sessionStack[0];
+      const rootGraph = rootSession?.graph || comfyGraphRef.current;
+
+      if (!rootGraph) {
+        throw new Error('No Root Graph instance available');
       }
 
-      // Apply changes to Graph
+      // Apply changes to CURRENT Graph (which might be a subgraph)
+      // The changes made to the subgraph object will be reflected in the root graph 
+      // because subgraphs are referenced within the root graph structure
+      const currentGraph = comfyGraphRef.current;
       const modifiedValues = widgetEditor.modifiedWidgetValues;
 
       // createModifiedGraph returns a copy, so we need to apply changes directly to the original Graph
-      if (modifiedValues.size > 0) {
+      if (modifiedValues.size > 0 && currentGraph) {
 
         modifiedValues.forEach((nodeModifications, nodeId) => {
           const graphNode = currentGraph._nodes?.find((n: any) => Number(n.id) === nodeId);
@@ -747,8 +1168,8 @@ const WorkflowEditor: React.FC = () => {
 
       }
 
-      // serialize
-      const serializedData = currentGraph.serialize();
+      // serialize ROOT graph
+      const serializedData = rootGraph.serialize();
 
       // Update workflow_json
       const updatedWorkflowJson = serializedData;
@@ -1056,17 +1477,24 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [id, workflow, widgetEditor, loadWorkflow]);
 
-  // Auto-fit on initial load only (defined after canvasInteraction)
+  // Auto-fit ONLY on session transitions (initial load, enter subgraph, exit subgraph)
+  const currentSubgraphId = getSelectedSubgraphId();
   useEffect(() => {
-    if (nodeBounds.size > 0 && canvasRef.current && !hasAutoFitted) {
-      // Small delay to ensure canvas is properly sized
-      const timer = setTimeout(() => {
-        canvasInteraction.handleZoomFit();
-        setHasAutoFitted(true);
-      }, 100);
-      return () => clearTimeout(timer);
+    // Only attempt fit if we have nodes and canvas interaction is ready
+    if (nodeBounds.size > 0 && canvasRef.current && canvasInteraction) {
+      // Check if this graph has already been fitted in this session instance
+      if (currentSubgraphId !== lastFittedSubgraphIdRef.current) {
+        // Small delay to ensure canvas is properly sized and nodes are laid out
+        const timer = setTimeout(() => {
+          canvasInteraction.handleZoomFit();
+          lastFittedSubgraphIdRef.current = currentSubgraphId;
+        }, 300);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [nodeBounds, canvasInteraction.handleZoomFit, hasAutoFitted]);
+    // Dependency on nodeBounds is required to wait for initial results, 
+    // but the ref check prevents re-triggering on node movement.
+  }, [nodeBounds, currentSubgraphId, canvasInteraction]);
 
   // Handle node search using shared navigation logic (defined after canvasInteraction)
   const handleSearchNode = useCallback((nodeId: string) => {
@@ -1182,6 +1610,145 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [viewport, canvasInteraction]);
 
+  /**
+   * Helper function to find and update a node in the correct session (root or subgraph)
+   */
+  const updateNodeInWorkflow = useCallback((workflowJson: IComfyJson, nodeId: number, updateFn: (node: any) => any): IComfyJson => {
+    const currentSubgraphId = getSelectedSubgraphId();
+    const isRoot = !currentSubgraphId || currentSubgraphId === id;
+
+    // PERFORM DEEP COPY to ensure absolute immutability
+    const updatedWorkflow = JSON.parse(JSON.stringify(workflowJson));
+
+    if (isRoot) {
+      if (updatedWorkflow.nodes) {
+        updatedWorkflow.nodes = updatedWorkflow.nodes.map((node: any) =>
+          node.id === nodeId ? updateFn(node) : node
+        );
+      }
+    } else {
+      // Find the subgraph definition
+      let subgraphs = updatedWorkflow.subgraphs;
+      let usingDefinitions = false;
+      if (updatedWorkflow.definitions?.subgraphs) {
+        subgraphs = updatedWorkflow.definitions.subgraphs;
+        usingDefinitions = true;
+      }
+
+      if (Array.isArray(subgraphs)) {
+        const subgraph = subgraphs.find((s: any) => s.id === currentSubgraphId);
+        if (subgraph && subgraph.nodes) {
+          subgraph.nodes = subgraph.nodes.map((node: any) =>
+            node.id === nodeId ? updateFn(node) : node
+          );
+        }
+      }
+    }
+
+    return updatedWorkflow;
+  }, [id, getSelectedSubgraphId]);
+
+  /**
+   * Helper to apply bulk repositioning changes to the correct session in workflow_json
+   */
+  const applyRepositioningToSession = useCallback((workflowJson: IComfyJson, changes: any): IComfyJson => {
+    const currentSubgraphId = getSelectedSubgraphId();
+    const isRoot = !currentSubgraphId || currentSubgraphId === id;
+
+    // Deep copy
+    const updatedWorkflow = JSON.parse(JSON.stringify(workflowJson));
+
+    // Determine targeting container
+    let container: any = updatedWorkflow;
+    if (!isRoot) {
+      let subgraphs = updatedWorkflow.subgraphs;
+      if (updatedWorkflow.definitions?.subgraphs) {
+        subgraphs = updatedWorkflow.definitions.subgraphs;
+      }
+
+      if (Array.isArray(subgraphs)) {
+        container = subgraphs.find((s: any) => s.id === currentSubgraphId);
+      }
+    }
+
+    if (!container) return updatedWorkflow;
+
+    // 1. Update node positions
+    if (changes.nodeChanges && Array.isArray(container.nodes)) {
+      changes.nodeChanges.forEach((change: any) => {
+        const node = container.nodes.find((n: any) => n.id === change.nodeId);
+        if (node) {
+          node.pos = change.newPosition;
+        }
+      });
+    }
+
+    // 2. Update group positions
+    if (changes.groupChanges) {
+      const updateGroup = (group: any, change: any) => {
+        if (group && Array.isArray(group.bounding) && group.bounding.length >= 4) {
+          group.bounding[0] = change.newPosition[0];
+          group.bounding[1] = change.newPosition[1];
+        }
+      };
+
+      if (Array.isArray(container.groups)) {
+        changes.groupChanges.forEach((change: any) => {
+          const group = container.groups.find((g: any) => g.id === change.groupId);
+          updateGroup(group, change);
+        });
+      } else if (container.groups && typeof container.groups === 'object') {
+        changes.groupChanges.forEach((change: any) => {
+          updateGroup(container.groups[change.groupId.toString()], change);
+        });
+      }
+
+      // Also update extra.ds.groups if in root
+      if (isRoot && updatedWorkflow.extra?.ds?.groups && Array.isArray(updatedWorkflow.extra.ds.groups)) {
+        changes.groupChanges.forEach((change: any) => {
+          const group = updatedWorkflow.extra.ds.groups.find((g: any) => g.id === change.groupId);
+          updateGroup(group, change);
+        });
+      }
+    }
+
+    // 3. Update resize changes
+    if (changes.resizeChanges) {
+      changes.resizeChanges.forEach((change: any) => {
+        if (change.nodeId && Array.isArray(container.nodes)) {
+          const node = container.nodes.find((n: any) => n.id === change.nodeId);
+          if (node) {
+            node.size = change.newSize;
+            node.pos = change.newPosition;
+          }
+        } else if (change.groupId) {
+          const updateGroupResize = (group: any) => {
+            if (group) {
+              group.bounding = [
+                change.newPosition[0],
+                change.newPosition[1],
+                change.newSize[0],
+                change.newSize[1]
+              ];
+            }
+          };
+
+          if (Array.isArray(container.groups)) {
+            updateGroupResize(container.groups.find((g: any) => g.id === change.groupId));
+          } else if (container.groups && typeof container.groups === 'object') {
+            updateGroupResize(container.groups[change.groupId.toString()]);
+          }
+
+          if (isRoot && updatedWorkflow.extra?.ds?.groups && Array.isArray(updatedWorkflow.extra.ds.groups)) {
+            updateGroupResize(updatedWorkflow.extra.ds.groups.find((g: any) => g.id === change.groupId));
+          }
+        }
+      });
+    }
+
+    return updatedWorkflow;
+  }, [id, getSelectedSubgraphId]);
+
   // Handle add node - add new node to workflow_json and reload
   const handleAddNode = useCallback(async (nodeType: string, nodeMetadata: any, position: { worldX: number; worldY: number }, initialValues?: Record<string, any>, size?: number[], title?: string) => {
     if (!workflow) {
@@ -1191,25 +1758,99 @@ const WorkflowEditor: React.FC = () => {
 
     try {
       // Get current workflow_json
-      const currentWorkflowJson = workflow.workflow_json;
-      if (!currentWorkflowJson) {
-        toast.error(t('workflow.noJson'));
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      if (!latestWorkflow?.workflow_json) {
+        console.warn('No workflow_json available for adding node');
         return;
       }
+      const currentWorkflowJson = latestWorkflow.workflow_json;
 
-      // Add node to workflow JSON using WorkflowGraphService
-      const updatedWorkflowJson = addNodeToWorkflow(
-        currentWorkflowJson,
-        nodeType,
-        [position.worldX, position.worldY],
-        nodeMetadata,
-        initialValues,
-        size
-      );
+      const currentSubgraphId = getSelectedSubgraphId();
+      const isRoot = !currentSubgraphId || currentSubgraphId === id;
+
+      let updatedWorkflowJson = JSON.parse(JSON.stringify(currentWorkflowJson)); // Deep copy to ensure no reference issues
+      let updatedSubgraphRes: any = null;
+
+      // CRITICAL: Always use the ref to get the live graph, preventing stale closure issues
+      const currentGraph = comfyGraphRef.current;
+
+      if (isRoot) {
+        // Root addition
+        updatedWorkflowJson = addNodeToWorkflow(
+          currentWorkflowJson,
+          nodeType,
+          [position.worldX, position.worldY],
+          nodeMetadata,
+          initialValues,
+          size,
+          title
+        );
+      } else {
+        // Subgraph addition: deep copy to update definition
+        updatedWorkflowJson = JSON.parse(JSON.stringify(currentWorkflowJson));
+
+        let subgraphs = updatedWorkflowJson.subgraphs;
+        let usingDefinitions = false;
+        if (updatedWorkflowJson.definitions?.subgraphs) {
+          subgraphs = updatedWorkflowJson.definitions.subgraphs;
+          usingDefinitions = true;
+        }
+
+        if (Array.isArray(subgraphs)) {
+          const subgraphIdx = subgraphs.findIndex((s: any) => s.id === currentSubgraphId);
+          if (subgraphIdx !== -1) {
+            const subgraph = subgraphs[subgraphIdx];
+
+            // Map subgraph-specific lastNodeId if available, otherwise let it fallback to Math.max(nodes)
+            const subgraphProxy = {
+              ...subgraph,
+              last_node_id: subgraph.state?.lastNodeId
+            } as any;
+
+            updatedSubgraphRes = addNodeToWorkflow(
+              subgraphProxy,
+              nodeType,
+              [position.worldX, position.worldY],
+              nodeMetadata,
+              initialValues,
+              size,
+              title
+            );
+
+            // Update subgraph in collection
+            subgraphs[subgraphIdx].nodes = updatedSubgraphRes.nodes;
+
+            // Sync back the local last_node_id to the subgraph's state
+            // Ensure state object exists if it's the first node
+            if (!subgraphs[subgraphIdx].state) {
+              subgraphs[subgraphIdx].state = { lastNodeId: updatedSubgraphRes.last_node_id };
+            } else {
+              subgraphs[subgraphIdx].state.lastNodeId = updatedSubgraphRes.last_node_id;
+            }
+
+            // Merge metadata if present
+            if (updatedSubgraphRes.mobile_ui_metadata?.control_after_generate) {
+              if (!updatedWorkflowJson.mobile_ui_metadata) {
+                updatedWorkflowJson.mobile_ui_metadata = updatedSubgraphRes.mobile_ui_metadata;
+              } else {
+                updatedWorkflowJson.mobile_ui_metadata.control_after_generate = {
+                  ...updatedWorkflowJson.mobile_ui_metadata.control_after_generate,
+                  ...updatedSubgraphRes.mobile_ui_metadata.control_after_generate
+                };
+              }
+            }
+          } else {
+            // Fallback if subgraph not found in either location
+            updatedWorkflowJson = addNodeToWorkflow(currentWorkflowJson, nodeType, [position.worldX, position.worldY], nodeMetadata, initialValues, size, title);
+          }
+        } else {
+          updatedWorkflowJson = addNodeToWorkflow(currentWorkflowJson, nodeType, [position.worldX, position.worldY], nodeMetadata, initialValues, size, title);
+        }
+      }
 
       // Update the workflow with new workflow_json
       const updatedWorkflow = {
-        ...workflow,
+        ...(latestWorkflow || workflow)!,
         workflow_json: updatedWorkflowJson,
         nodeCount: updatedWorkflowJson.nodes?.length || 0,
         modifiedAt: new Date()
@@ -1221,15 +1862,99 @@ const WorkflowEditor: React.FC = () => {
       // Update local workflow state
       setWorkflow(updatedWorkflow);
 
-      // Reload the workflow using the same logic as initial app entry
-      await loadWorkflow();
+      // NO-RELOAD OPTIMIZATION: Manually update graph and bounds
+      // 1. Identify the new node
+      const newNodeId = updatedSubgraphRes ? updatedSubgraphRes.last_node_id : updatedWorkflowJson.last_node_id;
+
+      // Find node data in the relevant source (root vs subgraph)
+      let newNodeData: any;
+      if (isRoot) {
+        newNodeData = updatedWorkflowJson.nodes.find((n: { id: any; }) => n.id === newNodeId);
+      } else if (updatedSubgraphRes?.nodes) {
+        newNodeData = updatedSubgraphRes.nodes.find((n: IComfyGraphNode) => n.id === newNodeId);
+        // Fallback: If ID lookup fails (rare ID mismatch), take the last node if count matches
+        if (!newNodeData && updatedSubgraphRes.nodes.length > 0) {
+          console.warn('handleAddNode: ID lookup failed, using last node in subgraph result');
+          newNodeData = updatedSubgraphRes.nodes[updatedSubgraphRes.nodes.length - 1];
+        }
+      }
+
+      if (newNodeData && currentGraph) {
+        // 2. Create ComfyGraphNode instance
+        const newNode = new ComfyGraphNode(newNodeId, nodeType, newNodeData);
+
+        // FIX: Force widget initialization for new nodes to prevent visible "hollow" state
+        if (typeof (newNode as any).initializeWidgets === 'function') {
+          // We might not have updatedWorkflowJson in scope with the correct metadata if it was modified in subgraph
+          // But 'updatedWorkflow' has the latest workflow_json.mobile_ui_metadata
+          // Actually 'updatedWorkflowJson' in this scope IS the latest for this operation.
+          // However, mobile_ui_metadata is at the root of workflow_json.
+          const metadata = updatedWorkflowJson.mobile_ui_metadata ||
+            (workflow?.workflow_json?.mobile_ui_metadata);
+
+          (newNode as any).initializeWidgets(
+            initialValues || newNodeData.widgets_values || [], // Use initial values or node's default widget values
+            nodeMetadata,
+            metadata
+          );
+        }
+
+        // 3. Add to live graph
+        currentGraph._nodes.push(newNode);
+        // Sync graph last_node_id
+        currentGraph.last_node_id = newNodeId;
+
+        // 4. Update bounds
+        setNodeBounds(prev => {
+          const newMap = new Map(prev);
+          const isCollapsed = newNodeData.flags?.collapsed === true;
+          newMap.set(newNodeId, {
+            x: newNodeData.pos[0],
+            y: newNodeData.pos[1],
+            width: isCollapsed ? 80 : (newNodeData.size[0] || 200),
+            height: isCollapsed ? 30 : (newNodeData.size[1] || 100),
+            node: newNodeData
+          });
+          return newMap;
+        });
+
+        // 5. Update nodeMetadata Map for immediate UI feedback (category badge etc)
+        // Note: nodeMetadata (arg) is the type-level objectInfo from the server
+        setNodeMetadata(prev => {
+          const newMap = new Map(prev);
+          const newNodeMetadataEntry: INodeWithMetadata = {
+            nodeId: Number(newNodeId),
+            nodeType: nodeType,
+            displayName: title || nodeMetadata.display_name || nodeType,
+            category: nodeMetadata.category || 'Unknown',
+            inputParameters: [],
+            widgetParameters: (newNode as any).widgets?.map((w: any) => ({
+              name: w.name,
+              type: w.type || 'STRING',
+              config: w.options || {},
+              required: false,
+              value: w.value
+            })) || [],
+            parameters: [],
+            outputs: []
+          };
+          newMap.set(Number(newNodeId), newNodeMetadataEntry);
+          return newMap;
+        });
+      }
+
+      // Sync with global store while preserving stack
+      syncWorkflow(updatedWorkflow);
+
+      // Force render
+      forceRender();
 
       toast.success(t('workflow.nodeAdded', { type: nodeMetadata.display_name || nodeType }));
     } catch (error) {
       console.error('Failed to add node:', error);
       toast.error(t('workflow.nodeAddFailed'));
     }
-  }, [id, workflow, loadWorkflow]);
+  }, [id, workflow, handleEnterSubgraph]);
 
   // Handle node copy to clipboard
   const handleNodeCopy = useCallback((nodeId: number) => {
@@ -1271,10 +1996,7 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [t]);
 
-  // Force re-render utility
-  const forceRender = useCallback(() => {
-    setRenderTrigger(prev => prev + 1);
-  }, []);
+
 
   // handleSearchNode will be defined after canvasInteraction
 
@@ -1317,16 +2039,172 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [workflow, nodeMetadata, widgetEditor.getWidgetValue, widgetEditor.setWidgetValue, forceRender]);
 
+  const handleNodeModeChange = useCallback(async (nodeId: number, mode: number) => {
+    if (!workflow || !currentGraph) return;
+
+    try {
+      console.log('Updating node mode:', { nodeId, mode });
+
+      // Find the node in the CURRENT graph session
+      const node = currentGraph.getNodeById(nodeId);
+      if (!node) {
+        console.error('Node not found in current session:', nodeId);
+        return;
+      }
+
+      // Update the node's mode immediately for real-time canvas update
+      node.mode = mode;
+
+      // Update workflow_json for persistence
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      const currentWorkflowJson = latestWorkflow?.workflow_json || workflow?.workflow_json;
+
+      if (!currentWorkflowJson) {
+        console.warn('No workflow_json available for update');
+        return;
+      }
+
+      const updatedWorkflowJson = updateNodeInWorkflow(currentWorkflowJson, nodeId, (node: any) => ({
+        ...node,
+        mode: mode
+      }));
+
+      // Update local workflow state immediately for UI responsiveness
+      const updatedWorkflow: IComfyWorkflow = {
+        ...(latestWorkflow || workflow)!,
+        workflow_json: updatedWorkflowJson,
+        modifiedAt: new Date()
+      };
+
+      setWorkflow(updatedWorkflow);
+
+      // Save to backend
+      await updateWorkflow(updatedWorkflow);
+
+      // Sync with global store while preserving stack
+      syncWorkflow(updatedWorkflow);
+
+      // Update nodeBounds for immediate canvas rendering with new mode
+      setNodeBounds(prevBounds => {
+        const newBounds = new Map(prevBounds);
+        const existingBounds = newBounds.get(nodeId);
+        if (existingBounds) {
+          newBounds.set(nodeId, {
+            ...existingBounds,
+            node: node as any
+          });
+        }
+        return newBounds;
+      });
+
+      // Update selected node to reflect changes in UI immediately
+      if (selectedNode && selectedNode.id === nodeId) {
+        setSelectedNode(node as any);
+      }
+
+      console.log('Node mode updated successfully in session');
+    } catch (error) {
+      console.error('Failed to update node mode:', error);
+      toast.error(t('workflow.modeUpdateFailed'));
+    }
+  }, [workflow, currentGraph, syncWorkflow, selectedNode, t]);
+
+  const handleNodeModeChangeBatch = useCallback(async (modifications: { nodeId: number, mode: number }[]) => {
+    if (!workflow || !currentGraph) return;
+
+    try {
+      console.log('Updating node mode batch:', modifications);
+
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      const currentWorkflowJson = latestWorkflow?.workflow_json || workflow?.workflow_json;
+
+      if (!currentWorkflowJson) {
+        console.warn('No workflow_json available for batch update');
+        return;
+      }
+
+      // Clone current JSON once for efficient batch updates
+      const updatedWorkflowJson: IComfyJson = JSON.parse(JSON.stringify(currentWorkflowJson));
+      const nodes = updatedWorkflowJson.nodes || [];
+
+      // 1. Apply updates to Live Graph and cloned JSON
+      const affectedNodeIds = new Set<number>();
+
+      for (const { nodeId, mode } of modifications) {
+        // Live Graph Update
+        const node = currentGraph.getNodeById(nodeId);
+        if (node) {
+          node.mode = mode;
+          affectedNodeIds.add(nodeId);
+        }
+
+        // JSON Update
+        const jsonNodeIndex = nodes.findIndex((n: any) => n.id === nodeId);
+        if (jsonNodeIndex >= 0) {
+          nodes[jsonNodeIndex] = {
+            ...nodes[jsonNodeIndex],
+            mode: mode
+          };
+        }
+      }
+
+      // Update local workflow state immediately
+      const updatedWorkflow: IComfyWorkflow = {
+        ...(latestWorkflow || workflow)!,
+        workflow_json: updatedWorkflowJson,
+        modifiedAt: new Date()
+      };
+
+      setWorkflow(updatedWorkflow);
+
+      // Save to backend
+      await updateWorkflow(updatedWorkflow);
+
+      // Sync with global store while preserving stack
+      syncWorkflow(updatedWorkflow);
+
+      // Update nodeBounds for immediate canvas rendering
+      setNodeBounds(prevBounds => {
+        const newBounds = new Map(prevBounds);
+        for (const nodeId of affectedNodeIds) {
+          const existingBounds = newBounds.get(nodeId);
+          const node = currentGraph.getNodeById(nodeId);
+          if (existingBounds && node) {
+            newBounds.set(nodeId, {
+              ...existingBounds,
+              node: node as any
+            });
+          }
+        }
+        return newBounds;
+      });
+
+      // Update selected node if it was affected
+      const selectedNodeId = selectedNode ? (typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : (selectedNode.id as number)) : null;
+      if (selectedNodeId !== null && affectedNodeIds.has(selectedNodeId)) {
+        const updatedNode = currentGraph.getNodeById(selectedNodeId);
+        if (updatedNode) setSelectedNode(updatedNode as any);
+      }
+
+      console.log('Batch node mode updated successfully in session');
+    } catch (error) {
+      console.error('Failed to update batch node mode:', error);
+      toast.error(t('workflow.modeUpdateFailed'));
+    }
+  }, [workflow, currentGraph, syncWorkflow, selectedNode, t]);
+
 
   // Handle group mode change
-  const handleGroupModeChange = useCallback((groupId: number, mode: NodeMode) => {
+  const handleGroupModeChange = useCallback(async (groupId: number, mode: NodeMode) => {
     const group = workflowGroups.find(g => g.id === groupId);
     if (!group) return;
 
-    // Apply mode to all nodes in the group
-    group.nodeIds.forEach(nodeId => {
-      widgetEditor.setNodeMode(nodeId, mode);
-    });
+    const modifications = group.nodeIds.map(nodeId => ({
+      nodeId,
+      mode
+    }));
+
+    await handleNodeModeChangeBatch(modifications);
 
     const modeNames: Record<NodeMode, string> = {
       [NodeMode.ALWAYS]: 'Always',
@@ -1341,81 +2219,58 @@ const WorkflowEditor: React.FC = () => {
       count: group.nodeIds.length,
       title: group.title
     }));
-    forceRender();
-  }, [workflowGroups, widgetEditor, forceRender]);
+  }, [workflowGroups, handleNodeModeChangeBatch, t]);
 
   const handleNodeColorChange = async (nodeId: number, bgcolor: string) => {
     // Update node bgcolor in both workflow_json and ComfyGraph
-    if (!workflow?.workflow_json || !comfyGraphRef.current) {
-      console.warn('No workflow_json or ComfyGraph available');
+    if (!workflow?.workflow_json || !currentGraph) {
+      console.warn('No workflow_json or currentGraph available');
       return;
     }
 
     try {
       // 1. Update ComfyGraph node immediately (for instant visual feedback)
-      const comfyNode = comfyGraphRef.current.getNodeById(nodeId);
+      const comfyNode = currentGraph.getNodeById(nodeId);
       if (comfyNode) {
         if (bgcolor === '') {
           delete comfyNode.bgcolor;
         } else {
           comfyNode.bgcolor = bgcolor;
         }
-        console.log(`Updated ComfyGraph node ${nodeId} bgcolor immediately:`, {
+        console.log(`Updated ComfyGraph node ${nodeId} bgcolor immediately in session:`, {
           nodeId,
           newBgcolor: bgcolor === '' ? 'cleared' : bgcolor
         });
 
         // Update selectedNode state if it's the same node for UI refresh
         if (selectedNode && selectedNode.id === nodeId) {
-          // Update the bgcolor property directly on the original instance
-          // instead of creating a shallow copy that loses internal state
           if (bgcolor === '') {
             delete (selectedNode as any).bgcolor;
           } else {
             (selectedNode as any).bgcolor = bgcolor;
           }
-
-          // The color change will be reflected through the ComfyGraph rendering
-          // No need to trigger React re-render since NodeInspector should remain stable
         }
       }
 
       // 2. Update workflow_json for persistence
-      const updatedWorkflowJson = JSON.parse(JSON.stringify(workflow.workflow_json));
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      const currentWorkflowJson = latestWorkflow?.workflow_json || workflow?.workflow_json;
 
-      // Update node bgcolor in workflow_json nodes array
-      if (updatedWorkflowJson.nodes && Array.isArray(updatedWorkflowJson.nodes)) {
-        const nodeIndex = updatedWorkflowJson.nodes.findIndex((node: any) => node.id === nodeId);
-        if (nodeIndex !== -1) {
-          // If bgcolor is empty string, delete the property; otherwise set it
-          if (bgcolor === '') {
-            delete updatedWorkflowJson.nodes[nodeIndex].bgcolor;
-          } else {
-            updatedWorkflowJson.nodes[nodeIndex].bgcolor = bgcolor;
-          }
-        } else {
-          console.warn(`Node ${nodeId} not found in workflow_json.nodes array`);
-          return;
-        }
-      } else if (updatedWorkflowJson.nodes && typeof updatedWorkflowJson.nodes === 'object') {
-        // Handle object format (alternative format)
-        const nodeKey = nodeId.toString();
-        if (updatedWorkflowJson.nodes[nodeKey]) {
-          if (bgcolor === '') {
-            delete updatedWorkflowJson.nodes[nodeKey].bgcolor;
-          } else {
-            updatedWorkflowJson.nodes[nodeKey].bgcolor = bgcolor;
-          }
-        } else {
-          console.warn(`Node ${nodeId} not found in workflow_json.nodes object`);
-          return;
-        }
+      if (!currentWorkflowJson) {
+        console.warn('No workflow_json available for update');
+        return;
       }
 
+      const updatedWorkflowJson = updateNodeInWorkflow(currentWorkflowJson, nodeId, (node: any) => ({
+        ...node,
+        bgcolor: bgcolor === '' ? undefined : bgcolor
+      }));
+
       // Create updated workflow with new workflow_json
-      const updatedWorkflow = {
+      const updatedWorkflow: IComfyWorkflow = {
         ...workflow,
-        workflow_json: updatedWorkflowJson
+        workflow_json: updatedWorkflowJson,
+        modifiedAt: new Date()
       };
 
       // Save updated workflow to IndexedDB
@@ -1424,11 +2279,15 @@ const WorkflowEditor: React.FC = () => {
       // Update local workflow state
       setWorkflow(updatedWorkflow);
 
+      // Force graph update in global store for all session-aware components
+      // Use syncWorkflow to preserve the session stack!
+      syncWorkflow(updatedWorkflow);
 
+      console.log('Node color updated successfully in session');
     } catch (error) {
       console.error('Failed to update node color:', error);
     }
-  }
+  };
 
   const handleNodeDelete = async (nodeId: number) => {
     // Close circular menu first
@@ -1445,21 +2304,88 @@ const WorkflowEditor: React.FC = () => {
     setNodeIdToDelete(null);
 
     // Delete node and its links from both workflow_json and ComfyGraph
-    if (!workflow?.workflow_json || !comfyGraphRef.current) {
+    const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+    if (!latestWorkflow?.workflow_json || !comfyGraphRef.current) {
       console.warn('No workflow_json or ComfyGraph available');
       return;
     }
 
     try {
-      // 1. Use WorkflowGraphService to remove node and links
-      const { workflowJson: updatedWorkflowJson, comfyGraph: updatedComfyGraph } = removeNodeWithLinks(
-        workflow.workflow_json,
-        comfyGraphRef.current,
+      const currentSubgraphId = getSelectedSubgraphId();
+      const isRoot = !currentSubgraphId || currentSubgraphId === id;
+
+      let updatedWorkflowJson: IComfyJson;
+      let updatedComfyGraph: ComfyGraph | undefined = comfyGraphRef.current; // Initialize with current graph
+
+      if (isRoot) {
+        // 1. Use WorkflowGraphService to remove node and links from root
+        const result = removeNodeWithLinks(
+          latestWorkflow.workflow_json,
+          comfyGraphRef.current,
+          nodeId
+        );
+        updatedWorkflowJson = result.workflowJson;
+        // updatedComfyGraph = result.comfyGraph; // Unused, we mutate below
+      } else {
+        // Subgraph deletion: deep copy to update definition
+        updatedWorkflowJson = JSON.parse(JSON.stringify(latestWorkflow.workflow_json));
+        const subgraphs = updatedWorkflowJson.subgraphs || (updatedWorkflowJson as any).definitions?.subgraphs;
+
+        if (Array.isArray(subgraphs)) {
+          const subgraphIdx = subgraphs.findIndex((s: any) => s.id === currentSubgraphId);
+          if (subgraphIdx !== -1) {
+            // Treat subgraph as a partial IComfyJson for removal logic
+            const { workflowJson: updatedSubgraph } = removeNodeWithLinks(
+              subgraphs[subgraphIdx] as IComfyJson,
+              comfyGraphRef.current,
+              nodeId
+            );
+
+            // Update record in collection
+            subgraphs[subgraphIdx].nodes = updatedSubgraph.nodes;
+            subgraphs[subgraphIdx].links = updatedSubgraph.links;
+            // updatedComfyGraph = newSubGraph; // Unused
+
+            // Cleanup metadata for the deleted node
+            if (updatedWorkflowJson.mobile_ui_metadata?.control_after_generate) {
+              delete updatedWorkflowJson.mobile_ui_metadata.control_after_generate[nodeId];
+            }
+          } else {
+            const result = removeNodeWithLinks(latestWorkflow.workflow_json, comfyGraphRef.current, nodeId);
+            updatedWorkflowJson = result.workflowJson;
+          }
+        } else {
+          // Fallback
+          const result = removeNodeWithLinks(latestWorkflow.workflow_json, comfyGraphRef.current, nodeId);
+          updatedWorkflowJson = result.workflowJson;
+        }
+      }
+
+      // 2. Update the refs immediately for instant visual feedback (IN-PLACE MUTATION)
+      // Use existing collectNodeLinkIds to identify what to remove from graph
+      const linkIdsToRemove = WorkflowGraphService.collectNodeLinkIds(
+        isRoot ? latestWorkflow.workflow_json : (updatedWorkflowJson as any),
         nodeId
       );
 
-      // 2. Update the refs immediately for instant visual feedback
-      comfyGraphRef.current = updatedComfyGraph;
+      const liveGraph = comfyGraphRef.current;
+
+      // Remove links from ComfyGraph._links
+      linkIdsToRemove.forEach(linkId => {
+        if (liveGraph._links[linkId]) {
+          delete liveGraph._links[linkId];
+        }
+      });
+
+      // Remove the node from ComfyGraph._nodes
+      if (liveGraph._nodes) {
+        liveGraph._nodes = liveGraph._nodes.filter((n: any) => {
+          const nId = typeof n.id === 'string' ? parseInt(n.id) : n.id;
+          return nId !== nodeId;
+        });
+      }
+
+      updatedComfyGraph = liveGraph; // Keep reference the same
 
       // 3. Clear selected node if it's the deleted one
       if (selectedNode && (typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id) === nodeId) {
@@ -1467,10 +2393,18 @@ const WorkflowEditor: React.FC = () => {
         setIsNodePanelVisible(false);
       }
 
-      // 4. Update and save the workflow
+      // 4. Update nodeBounds manually (No-Reload Optimization)
+      setNodeBounds(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(nodeId);
+        return newMap;
+      });
+
+      // 5. Update and save the workflow
       const updatedWorkflow = {
-        ...workflow,
+        ...(latestWorkflow || workflow)!,
         workflow_json: updatedWorkflowJson,
+        graph: updatedComfyGraph, // CRITICAL: Update the live graph in the store object
         nodeCount: updatedWorkflowJson.nodes?.length || 0
       };
 
@@ -1479,16 +2413,20 @@ const WorkflowEditor: React.FC = () => {
       // Update local workflow state
       setWorkflow(updatedWorkflow);
 
-      // Reload the workflow using the same logic as initial app entry
-      await loadWorkflow();
+      // Sync with global store while preserving stack
+      syncWorkflow(updatedWorkflow);
 
+      // Reload removed (No-Reload Optimization)
+      // await loadWorkflow(true);
+
+      // If we were in a subgraph, re-enter it -> Not needed if we don't reload
       toast.success(t('workflow.nodeDeleted', { id: nodeId }));
 
     } catch (error) {
       console.error('Failed to delete node:', error);
       toast.error(t('workflow.nodeDeleteFailed'));
     }
-  }
+  };
 
   const handleGroupDelete = async (groupId: number) => {
     // Delete group from both workflow_json and ComfyGraph
@@ -1634,13 +2572,19 @@ const WorkflowEditor: React.FC = () => {
       }
 
       // 4. Use the directly modified workflow for backend save
-      const updatedWorkflow = workflow; // Already modified in-place
+      // Create shallow copy to trigger React updates
+      const updatedWorkflow = { ...workflow };
 
       // Save to backend asynchronously without updating React state
       updateWorkflow(updatedWorkflow).catch(error => {
         console.error('Failed to save workflow:', error);
         toast.error(t('workflow.updateError'));
       });
+
+      // Update local state and sync
+      setWorkflow(updatedWorkflow);
+      syncWorkflow(updatedWorkflow);
+      forceRender();
 
       // Trigger canvas redraw with imperceptible viewport change
       setViewport(prev => ({ ...prev, scale: prev.scale + 0.00001 }));
@@ -1750,13 +2694,19 @@ const WorkflowEditor: React.FC = () => {
       }
 
       // 4. Use the directly modified workflow for backend save
-      const updatedWorkflow = workflow; // Already modified in-place
+      // Create shallow copy to trigger React updates
+      const updatedWorkflow = { ...workflow };
 
       // Save to backend asynchronously without updating React state
       updateWorkflow(updatedWorkflow).catch(error => {
         console.error('Failed to save workflow:', error);
         toast.error(t('workflow.updateError'));
       });
+
+      // Update local state and sync
+      setWorkflow(updatedWorkflow);
+      syncWorkflow(updatedWorkflow);
+      forceRender();
 
       // Trigger canvas redraw with imperceptible viewport change
       setViewport(prev => ({ ...prev, scale: prev.scale + 0.00001 }));
@@ -1773,10 +2723,10 @@ const WorkflowEditor: React.FC = () => {
   };
 
   // Refresh node slots function - supports both single node and full workflow refresh
-  const refreshNodeSlots = async (nodeIds?: number[]) => {
+  const refreshNodeSlots = async (nodeIds?: number[], silent: boolean = false) => {
     if (!workflow?.workflow_json || !comfyGraphRef.current || !objectInfo) {
       console.warn('No workflow, ComfyGraph, or objectInfo available');
-      toast.error(t('workflow.refreshFailed'));
+      if (!silent) toast.error(t('workflow.refreshFailed'));
       return;
     }
 
@@ -1791,7 +2741,7 @@ const WorkflowEditor: React.FC = () => {
       }
 
       if (targetNodeIds.length === 0) {
-        toast.info(t('workflow.noNodesToRefresh'));
+        if (!silent) toast.info(t('workflow.noNodesToRefresh'));
         return;
       }
 
@@ -1824,8 +2774,10 @@ const WorkflowEditor: React.FC = () => {
         }
 
         // Get existing slots to preserve connections
-        const existingInputs = currentNode.inputs || [];
-        const existingOutputs = currentNode.outputs || [];
+        // FIX: Use live graph data if available to prevent reverting converted widgets (Bug 3)
+        const liveGraphNode = comfyGraphRef.current._nodes?.find((n: any) => n.id === nodeId);
+        const existingInputs = liveGraphNode?.inputs || currentNode.inputs || [];
+        const existingOutputs = liveGraphNode?.outputs || currentNode.outputs || [];
 
         // Create fresh template slots from metadata
         const templateInputs = createInputSlots(nodeMetadata.input || {}, nodeMetadata.input_order);
@@ -1835,13 +2787,13 @@ const WorkflowEditor: React.FC = () => {
         );
 
         // merge: preserve all existing slots and add new template slots
-        const existingInputsByName = new Map(existingInputs.map(slot => [slot.name, slot]));
-        const existingOutputsByName = new Map(existingOutputs.map(slot => [slot.name, slot]));
-        const templateInputsByName = new Map(templateInputs.map(slot => [slot.name, slot]));
-        const templateOutputsByName = new Map(templateOutputs.map(slot => [slot.name, slot]));
+        const existingInputsByName = new Map(existingInputs.map((slot: any) => [slot.name, slot]));
+        const existingOutputsByName = new Map(existingOutputs.map((slot: any) => [slot.name, slot]));
+        const templateInputsByName = new Map(templateInputs.map((slot: any) => [slot.name, slot]));
+        const templateOutputsByName = new Map(templateOutputs.map((slot: any) => [slot.name, slot]));
 
         // Start with existing inputs and add new template inputs
-        const mergedInputs = existingInputs.map(slot => {
+        const mergedInputs = existingInputs.map((slot: any) => {
           // Ensure widget slots have link: null property
           if (slot.widget && slot.link === undefined) {
             return { ...slot, link: null };
@@ -1880,6 +2832,17 @@ const WorkflowEditor: React.FC = () => {
         if (graphNode) {
           graphNode.inputs = mergedInputs;
           graphNode.outputs = mergedOutputs;
+
+          // FIX: Re-initialize widgets to ensure they match inputs/metadata
+          // This is critical for "hollow" nodes that might have failed initial widget creation
+          if (typeof (graphNode as any).initializeWidgets === 'function') {
+            // Pass widget values (or empty array if new/hollow), server metadata, and workflow metadata
+            (graphNode as any).initializeWidgets(
+              currentNode.widgets_values || [],
+              nodeMetadata,
+              workflow.workflow_json.mobile_ui_metadata
+            );
+          }
         }
       }
 
@@ -1896,39 +2859,60 @@ const WorkflowEditor: React.FC = () => {
       };
 
       await updateWorkflow(updatedWorkflow);
-      setWorkflow(updatedWorkflow);
+
+      // CRITICAL FIX: Use syncWorkflow instead of setWorkflow
+      // setWorkflow(updatedWorkflow) resets the session stack!
+      syncWorkflow(updatedWorkflow);
+      // setWorkflow(updatedWorkflow); // DISABLED to prevent stack reset
 
       // Close node panel if it was a single node refresh
       if (nodeIds && nodeIds.length === 1) {
+        // Only if we want to close it? User might want to keep it open?
+        // Original code closed it. Let's keep it closed or refresh selectedNode?
+        // If we keep it open, we must ensure selectedNode is updated.
+        // Let's close it for safety as original logic did, or refresh it.
+        // Re-selecting the node from the graph is safer.
+        const nodeId = nodeIds[0];
+        const refreshedNode = comfyGraphRef.current._nodes?.find((n: any) => n.id === nodeId);
+        if (refreshedNode) {
+          console.log('Refreshed node logic: updating selectedNode');
+          setSelectedNode(refreshedNode);
+        }
+        // setIsNodePanelVisible(false); // Let's try keeping it open if it's just a refresh!
+      } else {
         setIsNodePanelVisible(false);
         setSelectedNode(null);
       }
 
-      // Reload the workflow to ensure all systems are synchronized
-      await loadWorkflow();
+      // Reload the workflow to ensure all systems are synchronized, preserving session
+      // await loadWorkflow(true); // DISABLED: loadWorkflow reverts changes if DB is async laggy OR resets stack.
+      // We already updated the graph manually above.
+      forceRender(); // Ensure UI updates
 
-      // Show appropriate success message
-      if (nodeIds && nodeIds.length === 1) {
-        toast.success(t('workflow.nodeRefreshed', { id: nodeIds[0] }));
-      } else {
-        toast.success(t('workflow.workflowRefreshed', { refreshedCount }) +
-          (skippedCount > 0 ? t('workflow.nodesSkipped', { count: skippedCount }) : ''));
+      if (!silent) {
+        // Show appropriate success message
+        if (nodeIds && nodeIds.length === 1) {
+          toast.success(t('workflow.nodeRefreshed', { id: nodeIds[0] }));
+        } else {
+          toast.success(t('workflow.workflowRefreshed', { refreshedCount }) +
+            (skippedCount > 0 ? t('workflow.nodesSkipped', { count: skippedCount }) : ''));
+        }
       }
 
     } catch (error) {
       console.error('Failed to refresh node slots:', error);
-      toast.error(t('workflow.refreshFailed'));
+      if (!silent) toast.error(t('workflow.refreshFailed'));
     }
   };
 
-  const handleNodeRefresh = async (nodeId: number) => {
-    await refreshNodeSlots([nodeId]);
+  const handleNodeRefresh = async (nodeId: number, silent: boolean = false) => {
+    await refreshNodeSlots([nodeId], silent);
   };
 
   const handleNodeTitleChange = async (nodeId: number, title: string) => {
     // Update node title in both workflow_json and ComfyGraph
-    if (!workflow?.workflow_json || !comfyGraphRef.current) {
-      console.warn('No workflow_json or ComfyGraph available');
+    if (!workflow?.workflow_json || !currentGraph) {
+      console.warn('No workflow_json or currentGraph available');
       return;
     }
 
@@ -1936,73 +2920,48 @@ const WorkflowEditor: React.FC = () => {
       console.log('Updating node title:', { nodeId, title });
 
       // 1. Update ComfyGraph node immediately (for instant visual feedback)
-      const comfyNode = comfyGraphRef.current.getNodeById(nodeId);
+      const comfyNode = currentGraph.getNodeById(nodeId);
       if (comfyNode) {
-        // Update the node title using ComfyGraphNode's setTitle method
-        if (typeof (comfyNode as any).setTitle === 'function') {
-          (comfyNode as any).setTitle(title);
-          console.log('Used setTitle method on ComfyGraph node');
-        } else {
-          // Fallback: set title directly
-          (comfyNode as any).title = title;
-          console.log('Set title directly on ComfyGraph node');
-        }
-        console.log(`Updated ComfyGraph node ${nodeId} title immediately:`, title);
+        // Update the node title
+        (comfyNode as any).title = title;
+        console.log(`Updated ComfyGraph node ${nodeId} title immediately in session:`, title);
       }
 
-      // Also find in workflow.graph for consistency
-      if (workflow.graph) {
-        const node = workflow.graph._nodes?.find(n => n.id === nodeId);
-        if (node) {
-          if (typeof (node as any).setTitle === 'function') {
-            (node as any).setTitle(title);
-          } else {
-            (node as any).title = title;
-          }
-        }
+      // Update workflow_json for persistence
+      // Update workflow_json for persistence
+      // FIX: Use latest workflow from store to prevent race conditions
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      const currentWorkflowJson = latestWorkflow?.workflow_json || workflow?.workflow_json;
+
+      if (!currentWorkflowJson) {
+        console.warn('No workflow_json available for update');
+        return;
       }
 
-      // Update workflow_json for persistence - SHALLOW copy to preserve references
-      const updatedWorkflowJson = {
-        ...workflow.workflow_json,
-        nodes: workflow.workflow_json.nodes ? [...workflow.workflow_json.nodes] : []
-      };
-
-      // Update only the specific node's title in workflow_json
-      if (Array.isArray(updatedWorkflowJson.nodes)) {
-        const nodeIndex = updatedWorkflowJson.nodes.findIndex((n: any) => n.id === nodeId);
-        if (nodeIndex !== -1) {
-          // Shallow copy the node and update only the title
-          updatedWorkflowJson.nodes[nodeIndex] = {
-            ...updatedWorkflowJson.nodes[nodeIndex],
-            title: title
-          };
-          console.log('Updated title in nodes array');
-        }
-      }
+      const updatedWorkflowJson = updateNodeInWorkflow(currentWorkflowJson, nodeId, (node) => ({
+        ...node,
+        title: title
+      }));
 
       // Save to backend
-      const updatedWorkflow = {
-        ...workflow,
+      const updatedWorkflow: IComfyWorkflow = {
+        ...(latestWorkflow || workflow)!,
         workflow_json: updatedWorkflowJson,
-        modified_at: new Date().toISOString()
+        modifiedAt: new Date()
       };
 
       await updateWorkflow(updatedWorkflow);
+
+      // Sync with global store while preserving stack
+      syncWorkflow(updatedWorkflow);
 
       // Update local workflow state without full reload
       setWorkflow(updatedWorkflow);
 
       // Update selected node to reflect changes in UI
       if (selectedNode && selectedNode.id === nodeId) {
-        const updatedNode = comfyGraphRef.current?.getNodeById(nodeId);
-        if (updatedNode) {
-          // Force React to detect the change by clearing and resetting
-          setSelectedNode(null);
-          setTimeout(() => {
-            setSelectedNode(updatedNode as any);
-          }, 0);
-        }
+        // Fix: Do not spread the node object as it strips methods (like getWidgets)
+        setSelectedNode(comfyNode);
       }
 
       toast.success(t('workflow.titleUpdated'));
@@ -2012,135 +2971,60 @@ const WorkflowEditor: React.FC = () => {
     }
   };
 
-  const handleNodeSizeChange = (nodeId: number, width: number, height: number) => {
-    if (!workflow?.graph) return;
+  const handleNodeSizeChange = async (nodeId: number, width: number, height: number) => {
+    if (!workflow || !currentGraph) return;
 
     try {
       console.log('Updating node size:', { nodeId, width, height });
 
-      // Find the node in the graph
-      const node = workflow.graph._nodes?.find(n => n.id === nodeId);
+      // Find the node in the CURRENT graph session
+      const node = currentGraph.getNodeById(nodeId);
       if (!node) {
-        console.error('Node not found:', nodeId);
+        console.error('Node not found in current session:', nodeId);
         return;
       }
 
       // Update the node's size immediately for real-time canvas update
       (node as any).size = [width, height];
 
-      // Update workflow_json for persistence - SHALLOW copy to preserve references
-      const updatedWorkflowJson = {
-        ...workflow.workflow_json,
-        nodes: workflow.workflow_json.nodes ? [...workflow.workflow_json.nodes] : []
-      };
+      // Update workflow_json for persistence
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      const currentWorkflowJson = latestWorkflow?.workflow_json || workflow?.workflow_json;
 
-      // Update only the specific node's size in workflow_json
-      if (Array.isArray(updatedWorkflowJson.nodes)) {
-        const nodeIndex = updatedWorkflowJson.nodes.findIndex((n: any) => n.id === nodeId);
-        if (nodeIndex !== -1) {
-          // Shallow copy the node and update only the size
-          updatedWorkflowJson.nodes[nodeIndex] = {
-            ...updatedWorkflowJson.nodes[nodeIndex],
-            size: [width, height]
-          };
-        }
+      if (!currentWorkflowJson) {
+        console.warn('No workflow_json available for update');
+        return;
       }
 
+      const updatedWorkflowJson = updateNodeInWorkflow(currentWorkflowJson, nodeId, (node: any) => ({
+        ...node,
+        size: [width, height]
+      }));
+
       // Update local workflow state immediately for UI responsiveness
-      const updatedWorkflow = {
-        ...workflow,
+      const updatedWorkflow: IComfyWorkflow = {
+        ...(latestWorkflow || workflow)!,
         workflow_json: updatedWorkflowJson,
-        modified_at: new Date().toISOString()
+        modifiedAt: new Date()
       };
 
       setWorkflow(updatedWorkflow);
+
+      // Save to backend
+      await updateWorkflow(updatedWorkflow);
+
+      // Sync with global store while preserving stack
+      syncWorkflow(updatedWorkflow);
 
       // Update nodeBounds for immediate canvas rendering
       setNodeBounds(prevBounds => {
         const newBounds = new Map(prevBounds);
         const existingBounds = newBounds.get(nodeId);
         if (existingBounds) {
-          // Update the size on the actual graph node (already done above)
-          // Just update the bounds size for rendering, keep the original node reference
           newBounds.set(nodeId, {
             ...existingBounds,
             width,
             height,
-            node: node as any // Use the actual updated graph node reference
-          });
-        }
-        return newBounds;
-      });
-
-      // Update selected node to reflect changes in UI immediately
-      if (selectedNode && selectedNode.id === nodeId) {
-        setSelectedNode(node as any);
-      }
-
-      // Save to backend asynchronously (don't await)
-      updateWorkflow(updatedWorkflow).catch(error => {
-        console.error('Failed to save node size to backend:', error);
-        // Don't show error toast for background saves to avoid interrupting user experience
-      });
-
-      console.log('Node size updated successfully');
-    } catch (error) {
-      console.error('Failed to update node size:', error);
-      toast.error(t('workflow.sizeUpdateFailed'));
-    }
-  };
-
-  const handleNodeModeChange = (nodeId: number, mode: number) => {
-    if (!workflow?.graph) return;
-
-    try {
-      console.log('Updating node mode:', { nodeId, mode });
-
-      // Find the node in the graph
-      const node = workflow.graph._nodes?.find(n => n.id === nodeId);
-      if (!node) {
-        console.error('Node not found:', nodeId);
-        return;
-      }
-
-      // Update the node's mode immediately for real-time canvas update
-      node.mode = mode;
-
-      // Update workflow_json for persistence - SHALLOW copy to preserve references
-      const updatedWorkflowJson = {
-        ...workflow.workflow_json,
-        nodes: workflow.workflow_json.nodes ? [...workflow.workflow_json.nodes] : []
-      };
-
-      // Update only the specific node's mode in workflow_json
-      if (Array.isArray(updatedWorkflowJson.nodes)) {
-        const nodeIndex = updatedWorkflowJson.nodes.findIndex((n: any) => n.id === nodeId);
-        if (nodeIndex !== -1) {
-          // Shallow copy the node and update only the mode
-          updatedWorkflowJson.nodes[nodeIndex] = {
-            ...updatedWorkflowJson.nodes[nodeIndex],
-            mode: mode
-          };
-        }
-      }
-
-      // Update local workflow state immediately for UI responsiveness
-      const updatedWorkflow = {
-        ...workflow,
-        workflow_json: updatedWorkflowJson,
-        modified_at: new Date().toISOString()
-      };
-
-      setWorkflow(updatedWorkflow);
-
-      // Update nodeBounds for immediate canvas rendering with new mode
-      setNodeBounds(prevBounds => {
-        const newBounds = new Map(prevBounds);
-        const existingBounds = newBounds.get(nodeId);
-        if (existingBounds) {
-          // Redraw with the updated node reference to reflect mode change (visual status)
-          newBounds.set(nodeId, {
-            ...existingBounds,
             node: node as any
           });
         }
@@ -2152,28 +3036,24 @@ const WorkflowEditor: React.FC = () => {
         setSelectedNode(node as any);
       }
 
-      // Save to backend asynchronously (don't await)
-      updateWorkflow(updatedWorkflow).catch(error => {
-        console.error('Failed to save node mode to backend:', error);
-      });
-
-      console.log('Node mode updated successfully');
+      console.log('Node size updated successfully in session');
     } catch (error) {
-      console.error('Failed to update node mode:', error);
-      toast.error(t('workflow.modeUpdateFailed'));
+      console.error('Failed to update node size:', error);
+      toast.error(t('workflow.sizeUpdateFailed'));
     }
   };
 
-  const handleNodeCollapseChange = (nodeId: number, collapsed: boolean) => {
-    if (!workflow?.graph) return;
+
+  const handleNodeCollapseChange = async (nodeId: number, collapsed: boolean) => {
+    if (!workflow || !currentGraph) return;
 
     try {
       console.log('Updating node collapse:', { nodeId, collapsed });
 
-      // Find the node in the graph
-      const node = workflow.graph._nodes?.find(n => n.id === nodeId);
+      // Find the node in the CURRENT graph session
+      const node = currentGraph.getNodeById(nodeId);
       if (!node) {
-        console.error('Node not found:', nodeId);
+        console.error('Node not found in current session:', nodeId);
         return;
       }
 
@@ -2183,49 +3063,51 @@ const WorkflowEditor: React.FC = () => {
       }
       (node as any).flags.collapsed = collapsed;
 
-      // Update workflow_json for persistence - SHALLOW copy to preserve references
-      const updatedWorkflowJson = {
-        ...workflow.workflow_json,
-        nodes: workflow.workflow_json.nodes ? [...workflow.workflow_json.nodes] : []
-      };
+      // Update workflow_json for persistence
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      const currentWorkflowJson = latestWorkflow?.workflow_json || workflow?.workflow_json;
 
-      // Update only the specific node's flags in workflow_json
-      if (Array.isArray(updatedWorkflowJson.nodes)) {
-        const nodeIndex = updatedWorkflowJson.nodes.findIndex((n: any) => n.id === nodeId);
-        if (nodeIndex !== -1) {
-          // Shallow copy the node and update only the flags
-          updatedWorkflowJson.nodes[nodeIndex] = {
-            ...updatedWorkflowJson.nodes[nodeIndex],
-            flags: {
-              ...updatedWorkflowJson.nodes[nodeIndex].flags,
-              collapsed: collapsed
-            }
-          };
-        }
+      if (!currentWorkflowJson) {
+        console.warn('No workflow_json available for update');
+        return;
       }
 
+      const updatedWorkflowJson = updateNodeInWorkflow(currentWorkflowJson, nodeId, (node: any) => {
+        const updated = {
+          ...node,
+          flags: {
+            ...node.flags,
+            collapsed: collapsed
+          }
+        };
+        return updated;
+      });
+
       // Update local workflow state immediately for UI responsiveness
-      const updatedWorkflow = {
-        ...workflow,
+      const updatedWorkflow: IComfyWorkflow = {
+        ...(latestWorkflow || workflow)!,
         workflow_json: updatedWorkflowJson,
-        modified_at: new Date().toISOString()
+        modifiedAt: new Date()
       };
 
       setWorkflow(updatedWorkflow);
+
+      // Save to backend
+      await updateWorkflow(updatedWorkflow);
+
+      // Sync with global store while preserving stack
+      syncWorkflow(updatedWorkflow);
 
       // Update nodeBounds for immediate canvas rendering with collapse state
       setNodeBounds(prevBounds => {
         const newBounds = new Map(prevBounds);
         const existingBounds = newBounds.get(nodeId);
         if (existingBounds) {
-          // Update the flags on the actual graph node (already done above)
-          // Just update the bounds size for rendering, keep the original node reference
           newBounds.set(nodeId, {
             ...existingBounds,
-            // Apply collapsed size if collapsed, otherwise keep original size
-            width: collapsed ? 80 : (existingBounds.node.size?.[0] || 200),
-            height: collapsed ? 30 : (existingBounds.node.size?.[1] || 100),
-            node: node as any // Use the actual updated graph node reference
+            width: collapsed ? 80 : (node.size?.[0] || 200),
+            height: collapsed ? 30 : (node.size?.[1] || 100),
+            node: node as any
           });
         }
         return newBounds;
@@ -2236,13 +3118,7 @@ const WorkflowEditor: React.FC = () => {
         setSelectedNode(node as any);
       }
 
-      // Save to backend asynchronously (don't await)
-      updateWorkflow(updatedWorkflow).catch(error => {
-        console.error('Failed to save node collapse to backend:', error);
-        // Don't show error toast for background saves to avoid interrupting user experience
-      });
-
-      console.log('Node collapse updated successfully');
+      console.log('Node collapse updated successfully in session');
     } catch (error) {
       console.error('Failed to update node collapse:', error);
       toast.error(t('workflow.collapseUpdateFailed'));
@@ -2392,7 +3268,15 @@ const WorkflowEditor: React.FC = () => {
         hasUnsavedChanges={widgetEditor.hasModifications()}
         isSaving={isSaving}
         saveSucceeded={saveSucceeded}
+        sessionStack={sessionStack}
+        onNavigateBreadcrumb={jumpToSession}
         onNavigateBack={() => {
+          // Check if we are in a subgraph session
+          if (sessionStack.length > 1) {
+            popSession();
+            return;
+          }
+
           // If NodeInspector or GroupInspector is open, close it first
           if (isNodePanelVisible) {
             // Clear image cache for the node when inspector closes
@@ -2428,6 +3312,7 @@ const WorkflowEditor: React.FC = () => {
         onTouchStart={canvasInteraction.handleTouchStart}
         onTouchMove={canvasInteraction.handleTouchMove}
         onTouchEnd={canvasInteraction.handleTouchEnd}
+        onContextMenu={canvasInteraction.handleContextMenu}
       />
 
       {/* Floating Control Panel - Hidden during repositioning and connection mode */}
@@ -2449,181 +3334,164 @@ const WorkflowEditor: React.FC = () => {
         onCancel={canvasInteraction.cancelReposition}
         onApply={async () => {
           const changes = canvasInteraction.applyReposition();
-          if (changes) { // Temporarily remove length check to debug
+          if (changes) {
             try {
-              // Get current workflow_json
-              const currentWorkflowJson = workflow?.workflow_json;
-              if (!currentWorkflowJson) {
-                return;
-              }
+              const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+              if (!latestWorkflow?.workflow_json) return;
 
-              // Create a deep copy of workflow_json to avoid mutation
-              const updatedWorkflowJson = JSON.parse(JSON.stringify(currentWorkflowJson));
+              // Apply all changes using the session-aware helper
+              const updatedWorkflowJson = applyRepositioningToSession(latestWorkflow.workflow_json, changes);
 
-              // Update node positions directly in workflow_json nodes array
-              if (changes.nodeChanges && changes.nodeChanges.length > 0) {
-                if (updatedWorkflowJson.nodes && Array.isArray(updatedWorkflowJson.nodes)) {
-                  changes.nodeChanges.forEach(change => {
-                    const nodeIndex = updatedWorkflowJson.nodes.findIndex((node: any) => node.id === change.nodeId);
-                    if (nodeIndex !== -1) {
-                      // Update pos property directly in the workflow JSON
-                      updatedWorkflowJson.nodes[nodeIndex].pos = change.newPosition;
-                    } else {
-                      console.warn(`Node ${change.nodeId} not found in workflow_json.nodes array`);
-                    }
-                  });
-                }
-              }
-
-              // Update group positions in workflow_json groups array
-              // ComfyUI groups use 'bounding' array: [x, y, width, height]
-              if (changes.groupChanges && changes.groupChanges.length > 0 && updatedWorkflowJson.groups) {
-                if (Array.isArray(updatedWorkflowJson.groups)) {
-                  changes.groupChanges.forEach(change => {
-                    const groupIndex = updatedWorkflowJson.groups.findIndex((group: any) => group.id === change.groupId);
-                    if (groupIndex !== -1) {
-                      // Update bounding array [x, y, width, height] - only modify x and y (indices 0 and 1)
-                      const currentBounding = updatedWorkflowJson.groups[groupIndex].bounding;
-                      if (Array.isArray(currentBounding) && currentBounding.length >= 4) {
-                        updatedWorkflowJson.groups[groupIndex].bounding = [
-                          change.newPosition[0], // x
-                          change.newPosition[1], // y
-                          currentBounding[2],    // width (unchanged)
-                          currentBounding[3]     // height (unchanged)
-                        ];
-                      } else {
-                        console.warn(`Group ${change.groupId} has invalid bounding format:`, currentBounding);
-                      }
-                    } else {
-                      console.warn(`Group ${change.groupId} not found in workflow_json.groups array`);
-                    }
-                  });
-                } else if (typeof updatedWorkflowJson.groups === 'object') {
-                  // Handle object format (alternative format)
-                  changes.groupChanges.forEach(change => {
-                    const groupKey = change.groupId.toString();
-                    if (updatedWorkflowJson.groups[groupKey]) {
-                      const currentBounding = updatedWorkflowJson.groups[groupKey].bounding;
-                      if (Array.isArray(currentBounding) && currentBounding.length >= 4) {
-                        updatedWorkflowJson.groups[groupKey].bounding = [
-                          change.newPosition[0], // x
-                          change.newPosition[1], // y
-                          currentBounding[2],    // width (unchanged)
-                          currentBounding[3]     // height (unchanged)
-                        ];
-                      } else {
-                        console.warn(`Group ${change.groupId} has invalid bounding format:`, currentBounding);
-                      }
-                    } else {
-                      console.warn(`Group ${change.groupId} not found in workflow_json.groups object`);
-                    }
-                  });
-                }
-              }
-
-              // Also check extra.ds.groups for group positions (ComfyUI format)
-              if (changes.groupChanges && changes.groupChanges.length > 0 && updatedWorkflowJson.extra?.ds?.groups) {
-                if (Array.isArray(updatedWorkflowJson.extra.ds.groups)) {
-                  changes.groupChanges.forEach(change => {
-                    const groupIndex = updatedWorkflowJson.extra.ds.groups.findIndex((group: any) => group.id === change.groupId);
-                    if (groupIndex !== -1) {
-                      // Update bounding array [x, y, width, height] - only modify x and y
-                      const currentBounding = updatedWorkflowJson.extra.ds.groups[groupIndex].bounding;
-                      if (Array.isArray(currentBounding) && currentBounding.length >= 4) {
-                        updatedWorkflowJson.extra.ds.groups[groupIndex].bounding = [
-                          change.newPosition[0], // x
-                          change.newPosition[1], // y
-                          currentBounding[2],    // width (unchanged)
-                          currentBounding[3]     // height (unchanged)
-                        ];
-                      }
-                    }
-                  });
-                }
-              }
-
-              // Update resize changes (both node sizes and group sizes)
-              if (changes.resizeChanges && changes.resizeChanges.length > 0) {
-                changes.resizeChanges.forEach(change => {
-                  if (change.nodeId) {
-                    // Update node size
-                    if (updatedWorkflowJson.nodes && Array.isArray(updatedWorkflowJson.nodes)) {
-                      const nodeIndex = updatedWorkflowJson.nodes.findIndex((node: any) => node.id === change.nodeId);
-                      if (nodeIndex !== -1) {
-                        // Update size property directly in the workflow JSON
-                        updatedWorkflowJson.nodes[nodeIndex].size = change.newSize;
-                        // Also update position if it changed during resize
-                        updatedWorkflowJson.nodes[nodeIndex].pos = change.newPosition;
-                        console.log(`Updated node ${change.nodeId} size to [${change.newSize[0]}, ${change.newSize[1]}] and position to [${change.newPosition[0]}, ${change.newPosition[1]}]`);
-                      } else {
-                        console.warn(`Node ${change.nodeId} not found in workflow_json.nodes array for resize`);
-                      }
-                    }
-                  } else if (change.groupId) {
-                    // Update group size and position
-                    if (updatedWorkflowJson.groups && Array.isArray(updatedWorkflowJson.groups)) {
-                      const groupIndex = updatedWorkflowJson.groups.findIndex((group: any) => group.id === change.groupId);
-                      if (groupIndex !== -1) {
-                        // Update bounding array [x, y, width, height] with new values
-                        updatedWorkflowJson.groups[groupIndex].bounding = [
-                          change.newPosition[0], // x
-                          change.newPosition[1], // y
-                          change.newSize[0],     // width
-                          change.newSize[1]      // height
-                        ];
-                        console.log(`Updated group ${change.groupId} size to [${change.newSize[0]}, ${change.newSize[1]}] and position to [${change.newPosition[0]}, ${change.newPosition[1]}]`);
-                      } else {
-                        console.warn(`Group ${change.groupId} not found in workflow_json.groups array for resize`);
-                      }
-                    } else if (typeof updatedWorkflowJson.groups === 'object') {
-                      // Handle object format (alternative format)
-                      const groupKey = change.groupId.toString();
-                      if (updatedWorkflowJson.groups[groupKey]) {
-                        updatedWorkflowJson.groups[groupKey].bounding = [
-                          change.newPosition[0], // x
-                          change.newPosition[1], // y
-                          change.newSize[0],     // width
-                          change.newSize[1]      // height
-                        ];
-                        console.log(`Updated group ${change.groupId} (object format) size to [${change.newSize[0]}, ${change.newSize[1]}] and position to [${change.newPosition[0]}, ${change.newPosition[1]}]`);
-                      } else {
-                        console.warn(`Group ${change.groupId} not found in workflow_json.groups object for resize`);
-                      }
-                    }
-
-                    // Also update extra.ds.groups if it exists (ComfyUI format)
-                    if (updatedWorkflowJson.extra?.ds?.groups && Array.isArray(updatedWorkflowJson.extra.ds.groups)) {
-                      const groupIndex = updatedWorkflowJson.extra.ds.groups.findIndex((group: any) => group.id === change.groupId);
-                      if (groupIndex !== -1) {
-                        updatedWorkflowJson.extra.ds.groups[groupIndex].bounding = [
-                          change.newPosition[0], // x
-                          change.newPosition[1], // y
-                          change.newSize[0],     // width
-                          change.newSize[1]      // height
-                        ];
-                      }
-                    }
-                  }
-                });
-              }
-
-              // Update the workflow with modified workflow_json
-              const updatedWorkflow = {
-                ...workflow!,
+              // Update the workflow state
+              // Ensure we preserve the graph instance from the latest workflow
+              const updatedWorkflow: IComfyWorkflow = {
+                ...latestWorkflow,
                 workflow_json: updatedWorkflowJson,
+                // Explicitly preserve graph reference just in case spreading behaves unexpectedly
+                graph: latestWorkflow.graph,
                 modifiedAt: new Date()
               };
 
-              // Save updated workflow to IndexedDB
-              await updateWorkflow(updatedWorkflow);
+              console.log('RepositionActionBar: Syncing workflow', {
+                hasGraph: !!updatedWorkflow.graph,
+                isComfyGraph: updatedWorkflow.graph instanceof ComfyGraph,
+                // Check if graph has nodes instances
+                hasNodeInstances: updatedWorkflow.graph?._nodes?.[0] instanceof ComfyGraphNode
+              });
 
-              // Update local workflow state
-              setWorkflow(updatedWorkflow);
+              // Save to backend and state
+              console.log('RepositionActionBar: Saving workflow_json', {
+                nodeCount: updatedWorkflowJson.nodes?.length,
+                sampleNodePos: updatedWorkflowJson.nodes?.find(n => n.id === changes.nodeChanges?.[0]?.nodeId)?.pos
+              });
+              await updateWorkflow(updatedWorkflow);
+              // CRITICAL FIX: Use syncWorkflow instead of setWorkflow to avoid resetting the session stack
+              // setWorkflow(updatedWorkflow) resets sessionStack to [root], killing the active subgraph session
+              syncWorkflow(updatedWorkflow);
 
               const totalChanges = (changes.nodeChanges?.length || 0) + (changes.groupChanges?.length || 0) + (changes.resizeChanges?.length || 0);
-              console.log(`Repositioning applied successfully: ${changes.nodeChanges?.length || 0} nodes, ${changes.groupChanges?.length || 0} groups, and ${changes.resizeChanges?.length || 0} resize changes updated (${totalChanges} total)`);
+              console.log(`Repositioning applied to session: ${totalChanges} changes`);
 
-              await loadWorkflow();
+              // NO-RELOAD OPTIMIZATION: Manually update graph and bounds
+              // CRITICAL: Always use the ref to get the live graph
+              const liveGraph = comfyGraphRef.current;
+
+              if (liveGraph) {
+                // 1. Update Nodes
+                if (changes.nodeChanges) {
+                  changes.nodeChanges.forEach(change => {
+                    const node = liveGraph.getNodeById(change.nodeId);
+                    if (node) {
+                      console.log(`[Reposition Debug] Updating node ${node.id} pos. Widgets check:`, {
+                        hasWidgetsProp: 'widgets' in node,
+                        widgetsLength: (node as any).widgets?.length,
+                        underscoreWidgets: (node as any)._widgets,
+                        isInstance: node instanceof ComfyGraphNode
+                      });
+                      node.pos = [...change.newPosition];
+                      // Preserve widgets? They should be preserved as we just updated pos.
+
+                      // Force refresh selectedNode if it matches
+                      if (selectedNode && (selectedNode.id === node.id || parseInt(selectedNode.id as any) === node.id)) {
+                        console.log('[Reposition Debug] Refreshed selectedNode reference');
+                        setSelectedNode(node);
+                      }
+                    }
+                  });
+                }
+
+                // 2. Update Groups
+                if (changes.groupChanges && liveGraph._groups) {
+                  changes.groupChanges.forEach(change => {
+                    const group = liveGraph._groups.find((g: any) => g.id === change.groupId);
+                    if (group) {
+                      if (change.newPosition) {
+                        group.pos = [...change.newPosition];
+                        // FIX: Update bounding as well because CanvasRendererService uses it
+                        if (group.bounding && Array.isArray(group.bounding) && group.bounding.length >= 2) {
+                          group.bounding[0] = change.newPosition[0];
+                          group.bounding[1] = change.newPosition[1];
+                        }
+                        if (group._bounding && Array.isArray(group._bounding) && group._bounding.length >= 2) {
+                          group._bounding[0] = change.newPosition[0];
+                          group._bounding[1] = change.newPosition[1];
+                        }
+                      }
+                    }
+                  });
+                }
+
+                // 3. Update Resizes
+                if (changes.resizeChanges) {
+                  changes.resizeChanges.forEach(change => {
+                    if (change.nodeId) {
+                      const node = liveGraph.getNodeById(change.nodeId);
+                      if (node && change.newSize) {
+                        node.size = [...change.newSize];
+                      }
+                    } else if (change.groupId && liveGraph._groups) {
+                      const group = liveGraph._groups.find((g: any) => g.id === change.groupId);
+                      if (group && change.newSize) {
+                        group.size = [...change.newSize];
+                      }
+                    }
+                  });
+                }
+              }
+
+              // 4. Update Bounds State
+              setNodeBounds(prev => {
+                const newMap = new Map(prev);
+                if (changes.nodeChanges) {
+                  changes.nodeChanges.forEach(change => {
+                    const existing = newMap.get(change.nodeId);
+                    if (existing) {
+                      newMap.set(change.nodeId, { ...existing, x: change.newPosition[0], y: change.newPosition[1] });
+                    }
+                  });
+                }
+                if (changes.resizeChanges) {
+                  changes.resizeChanges.forEach(change => {
+                    if (change.nodeId) {
+                      const existing = newMap.get(change.nodeId);
+                      if (existing) {
+                        newMap.set(change.nodeId, { ...existing, width: change.newSize[0], height: change.newSize[1] });
+                      }
+                    }
+                  });
+                }
+                return newMap;
+              });
+
+              // Update Group Bounds if needed
+              if (changes.groupChanges || changes.resizeChanges) {
+                setGroupBounds(prev => {
+                  // prev is an array, we need to map over it or recreate it
+                  // Actually setGroupBounds expects GroupBounds[]
+                  // So we map the array
+                  return prev.map(existing => {
+                    // Check for position change
+                    const posChange = changes.groupChanges?.find(c => c.groupId === existing.id);
+                    // Check for resize change
+                    const resizeChange = changes.resizeChanges?.find(c => c.groupId === existing.id);
+
+                    if (!posChange && !resizeChange) return existing;
+
+                    return {
+                      ...existing,
+                      x: posChange ? posChange.newPosition[0] : existing.x,
+                      y: posChange ? posChange.newPosition[1] : existing.y,
+                      width: resizeChange ? resizeChange.newSize[0] : existing.width,
+                      height: resizeChange ? resizeChange.newSize[1] : existing.height
+                    };
+                  });
+                });
+              }
+
+              // Refresh UI preserving session
+              // await loadWorkflow(true);
+              // syncWorkflow(updatedWorkflow); // Already synced above
+              forceRender();
 
             } catch (error) {
               console.error('Failed to apply repositioning:', error);
@@ -2749,12 +3617,16 @@ const WorkflowEditor: React.FC = () => {
           onNodeDelete={handleNodeDelete}
           onGroupDelete={handleGroupDelete}
           onNodeRefresh={handleNodeRefresh}
+          onAutoRefreshNode={(nodeId: number) => handleNodeRefresh(nodeId, true)}
           onNodeTitleChange={handleNodeTitleChange}
           onNodeSizeChange={handleNodeSizeChange}
           onNodeCollapseChange={handleNodeCollapseChange}
           onGroupSizeChange={handleGroupSizeChange}
           onDisconnectInput={handleDisconnectInput}
           onDisconnectOutput={handleDisconnectOutput}
+          onEnterSubgraph={handleEnterSubgraph}
+          subgraphDefinition={subgraphDefinitionsMap.get(selectedNode.type)}
+          onNodeModeChangeBatch={handleNodeModeChangeBatch}
         />
       )}
 
@@ -2828,7 +3700,7 @@ const WorkflowEditor: React.FC = () => {
       <NodeAddModal
         isOpen={canvasInteraction.isNodeAddModalOpen}
         onClose={() => canvasInteraction.setIsNodeAddModalOpen(false)}
-        graph={comfyGraphRef.current}
+        graph={currentGraph}
         position={canvasInteraction.nodeAddPosition}
         onNodeAdd={handleAddNode}
       />
@@ -2846,6 +3718,7 @@ const WorkflowEditor: React.FC = () => {
         circularMenuState={circularMenuState}
         setCircularMenuState={setCircularMenuState}
         workflow={workflow}
+        graph={currentGraph} // Pass the active session graph
         onNodeColorChange={handleNodeColorChange}
         onNodeModeChange={handleNodeModeChange}
         onNodeDelete={handleNodeDelete}
@@ -2863,8 +3736,33 @@ const WorkflowEditor: React.FC = () => {
         onEnterRepositionMode={(nodeId?: number) => canvasInteraction.enterRepositionMode(nodeId)}
         onCopyNode={handleNodeCopy}
         onNodeCollapseChange={handleNodeCollapseChange}
+        onEnterSubgraph={handleEnterSubgraph}
         onAddNode={handleAddNodeFromMenu}
         onClose={() => setCircularMenuState(prev => ({ ...prev, isOpen: false }))}
+      />
+
+      <WorkflowContextMenu
+        state={contextMenuState}
+        onClose={() => setContextMenuState(prev => ({ ...prev, isOpen: false }))}
+        graph={currentGraph} // Pass the active session graph
+        onNodeColorChange={handleNodeColorChange}
+        onNodeModeChange={handleNodeModeChange}
+        onNodeDelete={handleNodeDelete}
+        onEnterConnectionModeWithSource={(nodeId: number) => {
+          const node = comfyGraphRef.current?.getNodeById(nodeId);
+          if (node) {
+            connectionMode.enterConnectionModeWithSource(node);
+          }
+        }}
+        onEnterRepositionMode={(nodeId?: number) => canvasInteraction.enterRepositionMode(nodeId)}
+        onCopyNode={handleNodeCopy}
+        onAddNode={handleAddNodeFromMenu}
+        onToggleConnectionMode={connectionMode.toggleConnectionMode}
+        onNodeCollapseChange={handleNodeCollapseChange}
+        onEnterSubgraph={handleEnterSubgraph}
+        getNodeFlags={(nodeId: number) => {
+          return currentGraph?.getNodeById(nodeId)?.flags || {};
+        }}
       />
 
       <SimpleConfirmDialog

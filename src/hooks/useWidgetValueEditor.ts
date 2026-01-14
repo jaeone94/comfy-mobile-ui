@@ -25,7 +25,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     if (nodeValues && paramName in nodeValues) {
       return nodeValues[paramName];
     }
-    
+
     if (options?.processor) {
       // Get current value from ComfyGraphProcessor
       const processorValue = options.processor.getWidgetValue?.(nodeId, paramName);
@@ -46,10 +46,10 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    
+
     setEditingParam(null);
     setEditingValue(null);
-    
+
     // Force a small delay to ensure DOM updates
     setTimeout(() => {
       // Re-enable touch events on document if they were disabled
@@ -61,14 +61,14 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
   // Save edited parameter value - Enhanced with local state management
   const saveEditingParam = () => {
     if (!editingParam) return;
-    
+
     // Force blur any focused input elements
     if (document.activeElement instanceof HTMLElement) {
       document.activeElement.blur();
     }
-    
+
     const { nodeId, paramName } = editingParam;
-    
+
     // Save to local state
     setModifiedWidgetValues(prev => {
       const newMap = new Map(prev);
@@ -77,7 +77,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
       newMap.set(nodeId, nodeValues);
       return newMap;
     });
-    
+
     // Also save to ComfyGraphProcessor if available
     if (options?.processor) {
       // 🔧 GraphChangeLogger: This will be caught by ComfyGraphNode.setWidgetValue
@@ -94,17 +94,17 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
         source: 'useWidgetValueEditor.saveEditingParam'
       });
     }
-    
-    
+
+
     // Clear editing state
     setEditingParam(null);
     setEditingValue(null);
-    
+
     // Call edit complete callback if provided (for closing panels, etc.)
     if (options?.onEditComplete) {
       options.onEditComplete();
     }
-    
+
     // Force a small delay to ensure DOM updates
     setTimeout(() => {
       // Re-enable touch events on document if they were disabled
@@ -128,7 +128,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
       newMap.set(nodeId, nodeValues);
       return newMap;
     });
-    
+
     // Also save to ComfyGraphProcessor if available
     if (options?.processor) {
       // 🔧 GraphChangeLogger: This will be caught by ComfyGraphNode.setWidgetValue
@@ -147,33 +147,72 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     }
   };
 
-  // Set node mode (bypass state) - Store in modifiedWidgetValues
-  const setNodeMode = (nodeId: number, mode: number) => {
-    // Store node mode in local state using a special key
-    setModifiedWidgetValues(prev => {
-      const newMap = new Map(prev);
-      const nodeValues = newMap.get(nodeId) || {};
-      nodeValues['_node_mode'] = mode; // Special key for node mode
-      newMap.set(nodeId, nodeValues);
-      return newMap;
-    });
-    
-    // Log the change
-    graphChangeLogger.logChange({
-      nodeId,
-      nodeType: 'unknown',
-      changeType: 'node_property',
-      path: 'mode',
-      oldValue: undefined, // We don't have the old value in this context
-      newValue: mode,
-      source: 'useWidgetValueEditor.setNodeMode'
-    });
-    
-    // Also update processor if available (for backward compatibility)
-    if (options?.processor) {
-      options.processor.setNodeMode?.(nodeId, mode);
-    }
-  };
+  // // Set node mode (bypass state) - Store in modifiedWidgetValues
+  // const setNodeMode = (nodeId: number, mode: number) => {
+  //   // Store node mode in local state using a special key
+  //   setModifiedWidgetValues(prev => {
+  //     const newMap = new Map(prev);
+  //     const nodeValues = newMap.get(nodeId) || {};
+  //     nodeValues['_node_mode'] = mode; // Special key for node mode
+  //     newMap.set(nodeId, nodeValues);
+  //     return newMap;
+  //   });
+
+  //   // Log the change
+  //   graphChangeLogger.logChange({
+  //     nodeId,
+  //     nodeType: 'unknown',
+  //     changeType: 'node_property',
+  //     path: 'mode',
+  //     oldValue: undefined, // We don't have the old value in this context
+  //     newValue: mode,
+  //     source: 'useWidgetValueEditor.setNodeMode'
+  //   });
+
+  //   // Also update processor if available (for backward compatibility)
+  //   if (options?.processor) {
+  //     options.processor.setNodeMode?.(nodeId, mode);
+  //   }
+  // };
+
+  // // Batch set node modes
+  // const setNodeModeBatch = (modifications: { nodeId: number, mode: number }[]) => {
+  //   // 1. Update local state in one go
+  //   setModifiedWidgetValues(prev => {
+  //     const newMap = new Map(prev);
+  //     modifications.forEach(({ nodeId, mode }) => {
+  //       const nodeValues = newMap.get(nodeId) || {};
+  //       nodeValues['_node_mode'] = mode;
+  //       newMap.set(nodeId, nodeValues);
+  //     });
+  //     return newMap;
+  //   });
+
+  //   // 2. Log changes
+  //   modifications.forEach(({ nodeId, mode }) => {
+  //     graphChangeLogger.logChange({
+  //       nodeId,
+  //       nodeType: 'unknown',
+  //       changeType: 'node_property',
+  //       path: 'mode',
+  //       oldValue: undefined,
+  //       newValue: mode,
+  //       source: 'useWidgetValueEditor.setNodeModeBatch'
+  //     });
+  //   });
+
+  //   // 3. Update processor via batch method if available, fallback to loop
+  //   if (options?.processor) {
+  //     if (options.processor.setNodeModeBatch) {
+  //       options.processor.setNodeModeBatch(modifications);
+  //     } else {
+  //       // Fallback calling singular if batch not supported
+  //       modifications.forEach(({ nodeId, mode }) => {
+  //         options.processor.setNodeMode?.(nodeId, mode);
+  //       });
+  //     }
+  //   }
+  // };
 
   // Get node mode - check modifiedWidgetValues first, then processor, then original
   const getNodeMode = (nodeId: number, originalMode: number) => {
@@ -182,7 +221,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     if (nodeValues && '_node_mode' in nodeValues) {
       return nodeValues['_node_mode'];
     }
-    
+
     if (options?.processor) {
       const processorMode = options.processor.getNodeMode?.(nodeId);
       return processorMode !== undefined ? processorMode : originalMode;
@@ -235,7 +274,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     if (modifiedWidgetValues.size > 0) {
       return true;
     }
-    
+
     if (options?.processor) {
       return options.processor.hasUnsavedChanges?.() || false;
     }
@@ -247,7 +286,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     editingParam,
     editingValue,
     modifiedWidgetValues, // Real state now
-    
+
     // Functions
     getWidgetValue,
     getNodeMode,
@@ -256,11 +295,12 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     saveEditingParam,
     updateEditingValue,
     setWidgetValue,
-    setNodeMode,
+    // setNodeMode,
+    // setNodeModeBatch,
     clearModifications,
     setModifiedWidgetValue,
     hasModifications,
-    
+
     // Direct state setter for advanced use cases (like snapshot loading)
     setModifiedWidgetValues,
   };
