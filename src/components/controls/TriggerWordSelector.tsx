@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Search, Copy, Loader2, Hash, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { Search, Copy, Loader2, Hash, X, ChevronDown, ChevronRight, Layers, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 import { motion, AnimatePresence } from 'framer-motion';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
@@ -45,21 +45,31 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
   const [touchStartY, setTouchStartY] = useState<number | null>(null);
   const [copiedWord, setCopiedWord] = useState<string | null>(null);
 
+  // Header State (Always compact for this modal)
+  const [isHeaderCompact] = useState(true);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
+      loadTriggerWords();
+    }
+  }, [isOpen, serverUrl]);
+
   // Helper function to clean lora names (remove extensions)
   const cleanLoraName = (loraName: string): string => {
-    // Remove common model file extensions
     return loraName.replace(/\.(safetensors|ckpt|pt|pth|bin|pkl)$/i, '');
   };
 
-  // Clipboard helper function with fallback (from StringWidget.tsx)
   const copyToClipboard = async (text: string): Promise<boolean> => {
     try {
       if (navigator.clipboard && window.isSecureContext) {
-        // using HTTPS
         await navigator.clipboard.writeText(text);
         return true;
       } else {
-        // HTTP fallback
         const textArea = document.createElement('textarea');
         textArea.value = text;
         textArea.style.position = 'fixed';
@@ -83,7 +93,6 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
     if (success) {
       setCopiedWord(triggerWord);
       toast.success(t('menu.copiedToClipboard', { word: triggerWord }));
-      // Reset copied state after animation
       setTimeout(() => setCopiedWord(null), 2000);
     } else {
       toast.error(t('menu.failedToCopy'));
@@ -98,8 +107,6 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
     if (touchStartY !== null) {
       const touchEndY = e.changedTouches[0].clientY;
       const touchDistance = Math.abs(touchEndY - touchStartY);
-
-      // Only copy if touch distance is minimal (not scrolling)
       if (touchDistance < 10) {
         handleCopyTriggerWord(word);
       }
@@ -107,13 +114,10 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
     }
   };
 
-  // Load trigger words and LoRA list from server
   const loadTriggerWords = async () => {
     if (!serverUrl) return;
-
     setIsLoading(true);
     try {
-      // Load both trigger words and LoRA list in parallel
       const [triggerWordsResponse, loraListResponse] = await Promise.all([
         ComfyUIService.getTriggerWords(),
         ComfyUIService.getLoraList()
@@ -127,19 +131,15 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
 
       if (loraListResponse.success) {
         const loraModels = loraListResponse.models || loraListResponse.loras || [];
-
-        // Filter LoRAs that are 1MB or larger (1,048,576 bytes)
-        const MIN_FILE_SIZE = 1024 * 1024; // 1MB in bytes
+        const MIN_FILE_SIZE = 1024 * 1024;
         const filteredLoras = loraModels
           .filter(lora => lora.size >= MIN_FILE_SIZE)
           .map(lora => ({
             name: lora.name,
             size: lora.size
           }));
-
         setLoraList(filteredLoras);
       } else {
-        console.warn('Failed to load LoRA list:', loraListResponse.error);
         setLoraList([]);
       }
     } catch (error) {
@@ -150,28 +150,21 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
     }
   };
 
-  // Load data when component opens
   useEffect(() => {
     if (isOpen) {
       loadTriggerWords();
     }
   }, [isOpen, serverUrl]);
 
-  // Filter and group trigger words based on search query and LoRA size
   const filteredGroups = useMemo(() => {
     const groups: LoRAGroup[] = [];
     const query = searchQuery.toLowerCase().trim();
-
-    // Create a set for quick LoRA name lookup (only 1MB+ LoRAs)
     const validLoraNames = new Set(loraList.map(lora => lora.name));
 
     Object.entries(triggerWordsData.trigger_words).forEach(([loraName, triggerWords]) => {
       if (!triggerWords || triggerWords.length === 0) return;
+      if (!validLoraNames.has(loraName)) return;
 
-      // Check if this LoRA is in our filtered list (1MB+)
-      if (!validLoraNames.has(loraName)) return; // Skip if not found in LoRA list (means it's < 1MB)
-
-      // Filter by search query (LoRA name or trigger word)
       if (query) {
         const loraMatches = loraName.toLowerCase().includes(query);
         const triggerWordMatches = triggerWords.some(word =>
@@ -180,7 +173,6 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
 
         if (!loraMatches && !triggerWordMatches) return;
 
-        // If searching, filter trigger words that match
         if (!loraMatches && triggerWordMatches) {
           const matchingWords = triggerWords.filter(word =>
             word.toLowerCase().includes(query)
@@ -237,82 +229,100 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
 
   if (!isOpen) return null;
 
+  const baseTitleSize = '1.875rem';
+
   return createPortal(
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-purple-900/40 backdrop-blur-md"
-        onClick={onClose}
-      >
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+        />
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed inset-0 pwa-modal flex items-center justify-center"
+          exit={{ opacity: 0, scale: 0.96, y: 15 }}
+          transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
+          className="relative w-[80vw] h-[75vh] pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 w-full h-full flex flex-col overflow-hidden">
-            {/* Gradient Overlay for Enhanced Glass Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-            {/* Glassmorphism Header */}
-            <div className="relative p-6 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <Hash className="w-6 h-6 text-violet-400 drop-shadow-sm" />
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white drop-shadow-sm">
+          {/* Main Card */}
+          <div
+            style={{ backgroundColor: '#374151' }}
+            className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
+          >
+            {/* Always Compact Sticky Header */}
+            <div
+              className="absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] pt-2 pb-[13px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10"
+            >
+              {/* Floating Close Button */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex-shrink-0 scale-75">
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full bg-black/20 text-white hover:bg-black/40 transition-all pointer-events-auto"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex flex-col justify-center flex-1 min-w-0 pointer-events-none">
+                <div className="flex items-center space-x-2 mb-1 scale-90 origin-left">
+                  <Badge variant="secondary" className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/20 text-white/80 border-transparent">
+                    LORAS
+                  </Badge>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                    {t('menu.triggerWords')}
+                  </span>
+                </div>
+
+                <div className="flex items-center min-w-0 h-[13px]">
+                  <h2
+                    style={{
+                      fontSize: baseTitleSize,
+                      lineHeight: '1',
+                      transform: `scale(${0.8125 / 1.875})`,
+                      transformOrigin: 'left center',
+                    }}
+                    className="font-extrabold tracking-tight leading-tight text-white/95 transition-transform duration-300 will-change-transform truncate pr-4"
+                  >
                     {t('menu.triggerWords')}
                   </h2>
                 </div>
-                <Button
-                  onClick={onClose}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
               </div>
+            </div>
 
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t('menu.triggerWordsSearchPlaceholder')}
-                  className="pl-10 pr-10 bg-white/50 backdrop-blur-sm border-slate-200/50 dark:bg-slate-800/50 dark:border-slate-600/50 h-10"
-                />
-                {searchQuery && (
-                  <Button
-                    onClick={clearSearch}
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
-              </div>
-
-              {/* Stats and Controls */}
-              <div className="flex items-center justify-between mt-4">
-                <div className="flex items-center space-x-4">
-                  <Badge variant="secondary" className="bg-white/50 dark:bg-slate-800/50">
-                    {t('menu.lorasCount', { count: Object.keys(triggerWordsData.trigger_words).length })}
-                  </Badge>
-                  <Badge variant="secondary" className="bg-white/50 dark:bg-slate-800/50">
-                    {t('menu.triggerWordsCount', { count: totalTriggerWords })}
-                  </Badge>
+            {/* Persistent Search & Controls Bar - Slightly detached from header */}
+            <div
+              className="absolute left-0 w-full z-20 px-8 top-[68px]"
+            >
+              <div className="flex items-center gap-3 bg-[#374151]/80 backdrop-blur-md py-3 rounded-2xl border border-white/5 shadow-lg px-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder={t('menu.triggerWordsSearchPlaceholder')}
+                    className="w-full bg-black/20 border-white/10 text-xs text-white/90 placeholder:text-white/20 h-9 pl-9 pr-8 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/20 transition-all duration-300 border shadow-inner"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={clearSearch}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+                    >
+                      <X className="w-3 h-3 text-white/40" />
+                    </button>
+                  )}
                 </div>
-                <div className="flex items-center space-x-2">
+                <div className="flex gap-1">
                   <Button
                     onClick={expandAll}
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-xs text-slate-600 dark:text-slate-400"
+                    className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-xl transition-all"
                   >
                     {t('menu.expandAll')}
                   </Button>
@@ -320,7 +330,7 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                     onClick={collapseAll}
                     variant="ghost"
                     size="sm"
-                    className="h-8 text-xs text-slate-600 dark:text-slate-400"
+                    className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-xl transition-all"
                   >
                     {t('menu.collapseAll')}
                   </Button>
@@ -328,131 +338,164 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
               </div>
             </div>
 
-            {/* Content */}
-            <div className="flex-1 overflow-hidden">
-              {isLoading ? (
-                <div className="flex flex-col items-center justify-center h-full space-y-3">
-                  <Loader2 className="h-8 w-8 animate-spin text-violet-500" />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('menu.loadingTriggerWords')}</p>
-                </div>
-              ) : filteredGroups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full space-y-3">
-                  <Hash className="h-8 w-8 text-slate-400" />
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {searchQuery ? t('menu.noTriggerWordsFound') : t('menu.noTriggerWordsAvailable')}
-                  </p>
-                  {searchQuery && (
-                    <Button
-                      onClick={clearSearch}
-                      variant="outline"
-                      size="sm"
-                      className="bg-white/50 dark:bg-slate-800/50"
-                    >
-                      {t('menu.clearSearch')}
-                    </Button>
-                  )}
-                </div>
-              ) : (
-                <ScrollArea className="h-full">
-                  <div className="p-6 space-y-3">
-                    {filteredGroups.map((group) => (
-                      <div
-                        key={group.loraName}
-                        className="bg-white/30 dark:bg-slate-800/30 rounded-lg border border-slate-200/50 dark:border-slate-700/50 overflow-hidden"
-                      >
-                        {/* LoRA Header */}
-                        <button
-                          onClick={() => toggleLoraExpansion(group.loraName)}
-                          className="w-full px-4 py-3 flex items-center justify-between hover:bg-white/20 dark:hover:bg-slate-700/20 transition-colors"
-                        >
-                          <div className="flex items-center space-x-3 min-w-0 flex-1">
-                            {group.isExpanded ? (
-                              <ChevronDown className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                            ) : (
-                              <ChevronRight className="h-4 w-4 text-slate-500 flex-shrink-0" />
-                            )}
-                            <span
-                              className="font-medium text-slate-900 dark:text-slate-100 text-left truncate"
-                              title={cleanLoraName(group.loraName)}
-                            >
-                              {cleanLoraName(group.loraName)}
-                            </span>
-                          </div>
-                          <Badge variant="secondary" className="bg-white/50 dark:bg-slate-800/50 text-xs ml-2 flex-shrink-0">
-                            {group.triggerWords.length}
-                          </Badge>
-                        </button>
+            {/* Content Area */}
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+              {/* Static Top Bumper - Adjusted for fixed header + search bar + gap */}
+              <div className="h-[160px] relative pointer-events-none">
+                <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
+              </div>
 
-                        {/* Trigger Words */}
-                        <AnimatePresence>
-                          {group.isExpanded && (
-                            <motion.div
-                              initial={{ height: 0, opacity: 0 }}
-                              animate={{ height: 'auto', opacity: 1 }}
-                              exit={{ height: 0, opacity: 0 }}
-                              transition={{ duration: 0.2 }}
-                              className="border-t border-slate-200/50 dark:border-slate-700/50"
-                            >
-                              <div className="p-4 space-y-2">
-                                {group.triggerWords.map((word, index) => {
-                                  const isCopied = copiedWord === word;
-                                  return (
-                                    <motion.button
-                                      key={`${group.loraName}-${index}`}
-                                      onClick={() => handleCopyTriggerWord(word)}
-                                      onTouchStart={handleTouchStart}
-                                      onTouchEnd={(e) => handleTouchEnd(e, word)}
-                                      className={`w-full p-3 rounded-md transition-all duration-200 cursor-pointer select-none relative overflow-hidden border shadow-sm ${isCopied
-                                        ? 'bg-green-500/20 dark:bg-green-400/20 border-green-400/30 dark:border-green-500/30 shadow-green-400/20'
-                                        : 'bg-white/20 dark:bg-slate-700/20 hover:bg-white/30 dark:hover:bg-slate-700/30 active:bg-white/40 dark:active:bg-slate-700/40 border-white/20 dark:border-slate-600/20 hover:border-violet-400/30 dark:hover:border-violet-500/30 hover:shadow-md hover:shadow-violet-400/10'
-                                        }`}
-                                      title={t('node.tapToCopy', { word })}
-                                      animate={isCopied ? { scale: [1, 1.02, 1] } : {}}
-                                      transition={{ duration: 0.3 }}
-                                    >
-                                      <div className="flex items-center justify-between">
-                                        <span className={`text-sm font-mono break-words leading-relaxed text-left flex-1 ${isCopied
-                                          ? 'text-green-700 dark:text-green-300'
-                                          : 'text-slate-700 dark:text-slate-300'
-                                          }`}>
-                                          {word}
-                                        </span>
-
-                                        <div className="ml-2 flex-shrink-0">
-                                          <div className={`transition-colors duration-200 ${isCopied
-                                            ? 'text-green-500 dark:text-green-400'
-                                            : 'text-slate-400 dark:text-slate-500 opacity-40 hover:opacity-80'
-                                            }`}>
-                                            <Copy className="h-4 w-4" />
-                                          </div>
-                                        </div>
-                                      </div>
-
-                                      {/* Success ripple effect */}
-                                      {isCopied && (
-                                        <motion.div
-                                          initial={{ scale: 0, opacity: 0.5 }}
-                                          animate={{ scale: 2, opacity: 0 }}
-                                          transition={{ duration: 0.6 }}
-                                          className="absolute inset-0 bg-green-400/20 rounded-md pointer-events-none"
-                                        />
-                                      )}
-                                    </motion.button>
-                                  );
-                                })}
-                              </div>
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
-                    ))}
+              <div className="px-6 pb-6 sm:px-8">
+                {isLoading ? (
+                  <div className="flex flex-col items-center justify-center py-20 space-y-4">
+                    <div className="relative">
+                      <Loader2 className="h-10 w-10 animate-spin text-white/20" />
+                      <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-violet-400/50 animate-pulse" />
+                    </div>
+                    <p className="text-xs font-medium tracking-wide text-white/40 uppercase">{t('menu.loadingTriggerWords')}</p>
                   </div>
-                </ScrollArea>
-              )}
+                ) : filteredGroups.length === 0 ? (
+                  <div className="text-center py-12 rounded-3xl bg-black/20 border border-dashed border-white/10">
+                    <Hash className="h-10 w-10 text-white/10 mx-auto mb-3" />
+                    <p className="text-white/40 text-sm font-medium">
+                      {searchQuery ? t('menu.noTriggerWordsFound') : t('menu.noTriggerWordsAvailable')}
+                    </p>
+                    {searchQuery && (
+                      <Button
+                        onClick={clearSearch}
+                        variant="ghost"
+                        size="sm"
+                        className="mt-4 text-xs bg-white/5 hover:bg-white/10 text-white/60 rounded-xl"
+                      >
+                        {t('menu.clearSearch')}
+                      </Button>
+                    )}
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Category Header */}
+                    <div className="flex items-center justify-between mb-2 p-1">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-white/50" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                          {t('menu.lorasCount', { count: filteredGroups.length })}
+                        </span>
+                      </div>
+                      <Badge variant="secondary" className="bg-white/5 text-white/40 border-white/5 font-mono text-[9px]">
+                        {t('menu.triggerWordsCount', { count: filteredGroups.reduce((acc, g) => acc + g.triggerWords.length, 0) })}
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1 gap-4">
+                      {filteredGroups.map((group) => (
+                        <div
+                          key={group.loraName}
+                          className="group relative rounded-3xl bg-black/10 border border-white/5 hover:bg-black/20 hover:border-white/10 transition-all overflow-hidden"
+                        >
+                          {/* LoRA Header Card */}
+                          <button
+                            onClick={() => toggleLoraExpansion(group.loraName)}
+                            className="w-full px-5 py-4 flex items-center justify-between text-left transition-all"
+                          >
+                            <div className="flex items-center space-x-4 min-w-0">
+                              <div className={`p-2 rounded-2xl bg-black/20 border border-white/5 transition-transform duration-300 ${group.isExpanded ? 'rotate-180 bg-violet-500/10 border-violet-500/20' : ''}`}>
+                                <ChevronDown className={`w-4 h-4 ${group.isExpanded ? 'text-violet-400' : 'text-white/40'}`} />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-white/90 truncate text-sm tracking-tight" title={cleanLoraName(group.loraName)}>
+                                  {cleanLoraName(group.loraName)}
+                                </span>
+                                <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
+                                  {group.triggerWords.length} Words
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex-shrink-0 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center border border-white/10">
+                                <ChevronRight className="h-4 w-4 text-white/40" />
+                              </div>
+                            </div>
+                          </button>
+
+                          {/* Trigger Words Grid */}
+                          <AnimatePresence>
+                            {group.isExpanded && (
+                              <motion.div
+                                initial={{ height: 0, opacity: 0 }}
+                                animate={{ height: 'auto', opacity: 1 }}
+                                exit={{ height: 0, opacity: 0 }}
+                                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                              >
+                                <div className="px-5 pb-5 pt-1 space-y-2">
+                                  <div className="grid grid-cols-1 gap-2">
+                                    {group.triggerWords.map((word, index) => {
+                                      const isCopied = copiedWord === word;
+                                      return (
+                                        <motion.div
+                                          key={`${group.loraName}-${index}`}
+                                          className={`w-full p-4 rounded-2xl transition-all duration-300 relative overflow-hidden group/word flex items-center justify-between border ${isCopied
+                                            ? 'bg-green-500/10 border-green-500/30 text-green-300 shadow-[0_0_20px_rgba(34,197,94,0.1)]'
+                                            : 'bg-black/20 border-white/5 hover:border-white/10 text-white/60 hover:text-white/90'
+                                            }`}
+                                        >
+                                          <div className="flex flex-col items-start min-w-0 select-text cursor-text">
+                                            <span className="text-xs font-mono break-all leading-normal text-left pr-4">
+                                              {word}
+                                            </span>
+                                          </div>
+
+                                          <button
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleCopyTriggerWord(word);
+                                            }}
+                                            onTouchStart={handleTouchStart}
+                                            onTouchEnd={(e) => {
+                                              e.stopPropagation();
+                                              handleTouchEnd(e, word);
+                                            }}
+                                            className={`flex-shrink-0 p-2 rounded-xl transition-all duration-300 relative z-10 
+                                            ${isCopied
+                                                ? 'bg-green-500/20 scale-110'
+                                                : 'bg-white/5 hover:bg-white/10 opacity-40 group-hover/word:opacity-100 hover:scale-110 active:scale-90'
+                                              }`}
+                                          >
+                                            {isCopied ? (
+                                              <Sparkles className="h-4 w-4 text-green-400" />
+                                            ) : (
+                                              <Copy className="h-4 w-4" />
+                                            )}
+                                          </button>
+
+                                          {/* Copied Flash Effect */}
+                                          <AnimatePresence>
+                                            {isCopied && (
+                                              <motion.div
+                                                initial={{ opacity: 0, scale: 0.8 }}
+                                                animate={{ opacity: 1, scale: 1.5 }}
+                                                exit={{ opacity: 0 }}
+                                                className="absolute inset-0 bg-green-500/10 pointer-events-none blur-xl"
+                                              />
+                                            )}
+                                          </AnimatePresence>
+                                        </motion.div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </motion.div>
+                            )}
+                          </AnimatePresence>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </motion.div>
-      </motion.div>
+      </div>
     </AnimatePresence>,
     document.body
   );

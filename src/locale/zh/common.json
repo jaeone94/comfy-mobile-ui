@@ -428,6 +428,9 @@
         "toggleGridSnap": "切换网格吸附 (20px)",
         "cancelRepositioning": "取消重新定位",
         "applyChanges": "应用更改",
+        "sourceOutputs": "输出",
+        "targetInputs": "输入",
+        "tapCableToDisconnect": "点击连线断开连接",
         "groupSize": "组大小",
         "nodesCount": "{{count}} 个节点",
         "groupSettings": "组设置",
@@ -503,7 +506,11 @@
             "bypass": "旁路"
         },
         "group": {
-            "noGroups": "在此工作流中未找到组。"
+            "noGroups": "在此工作流中未找到组。",
+            "batch": "批量控制",
+            "title": "组控制",
+            "totalGroups": "{{count}}个组处于活动状态",
+            "availableGroups": "可用组"
         }
     },
     "circularMenu": {

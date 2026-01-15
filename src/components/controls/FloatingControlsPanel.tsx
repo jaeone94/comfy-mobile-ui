@@ -7,7 +7,7 @@ import { usePromptHistoryStore } from '@/ui/store/promptHistoryStore';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import TriggerWordSelector from './TriggerWordSelector';
-import { SettingsDropdown } from './SettingsDropdown';
+import { SettingsDropdownContent } from './SettingsDropdown';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import type { LogEntry, LogsWsMessage } from '@/core/domain';
 import type { MissingModelInfo } from '@/services/MissingModelsService';
@@ -77,7 +77,6 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
 }) => {
   const [isClearingVRAM, setIsClearingVRAM] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
-  const [isExecuting, setIsExecuting] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [searchValue, setSearchValue] = useState('');
   const [searchResults, setSearchResults] = useState<SearchableNode[]>([]);
@@ -155,80 +154,6 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
     setSearchResults(results);
     setSelectedResultIndex(-1);
   }, [searchValue, nodes]);
-
-  // Subscribe to execution events from GlobalWebSocketService - using App.tsx pattern
-  useEffect(() => {
-    // 🎯 Check current execution state from persistent buffer (works for navigation & refresh)
-    setTimeout(() => {
-      const currentState = globalWebSocketService.getCurrentExecutionState();
-      if (currentState.isExecuting) {
-        setIsExecuting(true);
-      } else {
-        setIsExecuting(false);
-      }
-    }, 100); // Later than ExecutionProgressBar to ensure consistency
-    const handleExecuting = (event: any) => {
-      const { data } = event;
-      if (data.node === null) {
-        // Execution completed
-        setIsExecuting(false);
-      } else if (data.node) {
-        // Node execution started
-        setIsExecuting(true);
-      }
-    };
-
-    const handleExecutionSuccess = (event: any) => {
-      setIsExecuting(false);
-    };
-
-    const handleExecutionError = (event: any) => {
-      setIsExecuting(false);
-    };
-
-    const handleExecutionInterrupted = (event: any) => {
-      setIsExecuting(false);
-    };
-
-    // Handle progress_state messages to match ExecutionProgressBar behavior
-    const handleProgressState = (event: any) => {
-      const { data } = event;
-
-      if (data.nodes) {
-        const nodes = data.nodes;
-        let hasRunningNodes = false;
-
-        // Check if any node is in running state
-        Object.keys(nodes).forEach(nodeId => {
-          const nodeData = nodes[nodeId];
-          if (nodeData.state === 'running') {
-            hasRunningNodes = true;
-          }
-        });
-
-        // Update execution state based on running nodes
-        setIsExecuting(hasRunningNodes);
-      }
-    };
-
-    // ✅ Subscribe to raw ComfyUI events
-    const listenerIds = [
-      globalWebSocketService.on('executing', handleExecuting),
-      globalWebSocketService.on('execution_success', handleExecutionSuccess),
-      globalWebSocketService.on('execution_error', handleExecutionError),
-      globalWebSocketService.on('execution_interrupted', handleExecutionInterrupted),
-      globalWebSocketService.on('progress_state', handleProgressState)
-    ];
-
-    return () => {
-      // Cleanup event listeners using IDs
-      globalWebSocketService.offById('executing', listenerIds[0]);
-      globalWebSocketService.offById('execution_success', listenerIds[1]);
-      globalWebSocketService.offById('execution_error', listenerIds[2]);
-      globalWebSocketService.offById('execution_interrupted', listenerIds[3]);
-      globalWebSocketService.offById('progress_state', listenerIds[4]);
-    };
-  }, []); // No dependencies needed
 
   // Close dropdowns when clicking/touching outside
   useEffect(() => {
@@ -517,17 +442,15 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
 
   return (
     <div
-      key={`floating-controls-${isExecuting ? 'executing' : 'idle'}`} // Force re-render on state change
-      className="fixed right-4 z-40 pwa-header"
+      className="fixed right-3 z-40 pwa-header"
       style={{
-        top: isExecuting ? '195px' : '107px'
+        top: '50%',
+        transform: 'translateY(-50%)'
       }}
     >
-      <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-xl shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 border border-white/20 dark:border-slate-600/20 p-2 relative">
-        {/* Gradient Overlay for Enhanced Glass Effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none rounded-xl" />
+      <div className="bg-slate-600/40 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-1 relative overflow-hidden">
         {/* Workflow Controls Container */}
-        <div className="flex items-center space-x-1 relative z-10">
+        <div className="flex flex-col items-center space-y-1 relative z-10">
 
           {/* Search Node Button */}
           <div className="relative" ref={searchRef}>
@@ -535,7 +458,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleSearchToggle}
               variant="ghost"
               size="sm"
-              className={`h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60 ${isSearchOpen ? 'bg-white/60 dark:bg-slate-700/60' : ''
+              className={`h-8 w-8 p-0 rounded-lg hover:bg-white/20 transition-all ${isSearchOpen ? 'bg-white/20 text-white' : 'text-slate-100 hover:text-white'
                 }`}
               title={t('workflow.searchNode')}
             >
@@ -545,7 +468,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+          <div className="h-px w-6 bg-white/10 mx-1" />
 
           {/* Refresh Workflow Button */}
           {onRefreshWorkflow && (
@@ -553,7 +476,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={onRefreshWorkflow}
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
+              className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
               title={t('workflow.refreshSlots')}
             >
               <RefreshCw className="h-4 w-4" />
@@ -561,7 +484,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           )}
 
           {/* Divider */}
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+          <div className="h-px w-6 bg-white/10 mx-1" />
 
           {/* Fit to Screen Button */}
           {onZoomFit && (
@@ -570,7 +493,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                 onClick={onZoomFit}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
+                className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
                 title={t('workflow.fitToScreen')}
               >
                 <Maximize2 className="h-4 w-4" />
@@ -579,21 +502,21 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           )}
 
           {/* Divider */}
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+          <div className="h-px w-6 bg-white/10 mx-1" />
 
           {/* Queue Button */}
           <Button
             onClick={handleShowPromptHistory}
             variant="ghost"
             size="sm"
-            className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
+            className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
             title={t('workflow.queue')}
           >
             <Clock className="h-4 w-4" />
           </Button>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+          <div className="h-px w-6 bg-white/10 mx-1" />
 
           {/* Console Button */}
           <div className="relative" ref={consoleRef}>
@@ -601,7 +524,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleConsoleToggle}
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
+              className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
               title={t('workflow.console')}
             >
               <Terminal className="h-4 w-4" />
@@ -609,7 +532,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1" />
+          <div className="h-px w-6 bg-white/10 mx-1" />
 
           {/* Settings Button with Dropdown */}
           <div className="relative" ref={settingsRef}>
@@ -623,7 +546,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               }}
               variant="ghost"
               size="sm"
-              className="relative h-8 w-8 p-0 hover:bg-white/60 dark:hover:bg-slate-700/60"
+              className="relative h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
               title={t('common.settings')}
             >
               <Settings
@@ -642,39 +565,54 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       </div>
 
 
-      {/* Settings Dropdown - Outside parent container to avoid backdrop-filter conflict */}
-      <SettingsDropdown
-        ref={settingsDropdownRef}
-        isOpen={isSettingsOpen}
-        isClearingVRAM={isClearingVRAM}
-        isExecuting={isExecuting}
-        onShowGroupModer={handleShowGroupModer}
-        onRandomizeSeeds={onRandomizeSeeds}
-        onShowTriggerWordSelector={handleShowTriggerWordSelector}
-        onShowWorkflowJson={handleShowWorkflowJson}
-        onShowObjectInfo={handleShowObjectInfo}
-        onShowWorkflowSnapshots={handleShowWorkflowSnapshots}
-        onClearVRAM={handleClearVRAM}
-        repositionMode={repositionMode}
-        onToggleRepositionMode={onToggleRepositionMode}
-        connectionMode={connectionMode}
-        onToggleConnectionMode={onToggleConnectionMode}
-        missingNodesCount={missingNodesCount}
-        installablePackageCount={installablePackageCount}
-        onShowMissingNodeInstaller={onShowMissingNodeInstaller}
-        missingModels={missingModels}
-        onOpenMissingModelDetector={onOpenMissingModelDetector}
-      />
+      {/* Settings Side Panel */}
+      <AnimatePresence>
+        {isSettingsOpen && (
+          <motion.div
+            ref={settingsDropdownRef}
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute right-full top-0 mr-3 w-64 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden z-50"
+          >
+            {/* Subtle Inner Glow */}
+            <div className="absolute inset-0 bg-white/5 pointer-events-none" />
+
+            <div className="relative z-10 max-h-[80vh] overflow-y-auto custom-scrollbar">
+              <SettingsDropdownContent
+                isClearingVRAM={isClearingVRAM}
+                onShowGroupModer={handleShowGroupModer}
+                onRandomizeSeeds={onRandomizeSeeds}
+                onShowTriggerWordSelector={handleShowTriggerWordSelector}
+                onShowWorkflowJson={handleShowWorkflowJson}
+                onShowObjectInfo={handleShowObjectInfo}
+                onShowWorkflowSnapshots={handleShowWorkflowSnapshots}
+                onClearVRAM={handleClearVRAM}
+                repositionMode={repositionMode}
+                onToggleRepositionMode={onToggleRepositionMode}
+                connectionMode={connectionMode}
+                onToggleConnectionMode={onToggleConnectionMode}
+                missingNodesCount={missingNodesCount}
+                installablePackageCount={installablePackageCount}
+                onShowMissingNodeInstaller={onShowMissingNodeInstaller}
+                missingModels={missingModels}
+                onOpenMissingModelDetector={onOpenMissingModelDetector}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Search Panel - Independent container below main controls */}
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute top-full mt-2 right-0 w-80 bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-xl shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 border border-white/20 dark:border-slate-600/20 p-3 z-50"
+            className="absolute right-full top-0 mr-3 w-80 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden"
             data-search-panel
             style={{
               touchAction: 'pan-y pinch-zoom',
@@ -690,8 +628,8 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               e.stopPropagation();
             }}
           >
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none rounded-xl" />
+            {/* Subtle Inner Glow */}
+            <div className="absolute inset-0 bg-white/5 pointer-events-none rounded-xl" />
 
             <div className="relative z-10">
               {/* Search Input */}
@@ -781,11 +719,11 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       <AnimatePresence>
         {isConsoleOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute top-full mt-2 right-0 w-96 bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-xl shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 border border-white/20 dark:border-slate-600/20 p-3 z-50"
+            className="absolute right-full top-0 mr-3 w-96 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden"
             data-console-panel
             style={{
               touchAction: 'pan-y pinch-zoom',
@@ -801,8 +739,8 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               e.stopPropagation();
             }}
           >
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none rounded-xl" />
+            {/* Subtle Inner Glow */}
+            <div className="absolute inset-0 bg-white/5 pointer-events-none rounded-xl" />
 
             <div className="relative z-10">
               {/* Console Header */}

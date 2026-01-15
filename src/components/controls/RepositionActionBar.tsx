@@ -29,29 +29,26 @@ export const RepositionActionBar: React.FC<RepositionActionBarProps> = ({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="fixed left-6 bottom-3 z-40"
+        className="fixed right-6 bottom-4 z-40"
       >
-        <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 border border-white/20 dark:border-slate-600/20 p-3 relative overflow-hidden">
-          {/* Gradient Overlay for Enhanced Glass Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-
+        <div className="bg-slate-600/40 backdrop-blur-3xl rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-4 relative overflow-hidden">
           <div className="relative z-10">
             {/* Title */}
-            <div className="text-sm font-semibold text-slate-700 dark:text-slate-300 text-left mb-3">
+            <div className="text-sm font-bold text-white/90 text-left mb-3 tracking-tight">
               {t('node.repositioning')}
             </div>
 
             {/* Button Group */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {/* Grid Snap Toggle */}
               <Button
                 onClick={onToggleGridSnap}
                 size="lg"
                 variant="outline"
-                className={`h-11 px-4 rounded-xl bg-transparent border transition-all duration-150 font-medium active:translate-y-px active:scale-95 ${gridSnapEnabled
-                  ? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 hover:bg-green-100 dark:hover:bg-green-950/50 hover:border-green-300 dark:hover:border-green-700 active:text-green-800 dark:active:text-green-200 active:border-green-400 dark:active:border-green-600'
-                  : 'border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800/30 hover:border-slate-300 dark:hover:border-slate-600 hover:text-slate-700 dark:hover:text-slate-300'
-                  } shadow-none hover:shadow-sm active:shadow-none`}
+                className={`h-11 px-5 rounded-[22px] bg-white/10 dark:bg-white/10 border transition-all duration-150 font-bold active:scale-95 ${gridSnapEnabled
+                  ? 'border-green-500/40 text-green-400 bg-green-500/20 hover:bg-green-500/30 hover:text-green-300'
+                  : 'border-white/10 text-white/50 hover:bg-white/20 hover:text-white'
+                  } shadow-none`}
                 title={t('node.toggleGridSnap')}
               >
                 <Grid3X3 className="w-4 h-4 mr-2" />
@@ -63,7 +60,7 @@ export const RepositionActionBar: React.FC<RepositionActionBarProps> = ({
                 onClick={onCancel}
                 size="lg"
                 variant="outline"
-                className="h-11 px-4 rounded-xl bg-transparent border transition-all duration-150 font-medium active:translate-y-px active:scale-95 border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-950/30 hover:border-red-300 dark:hover:border-red-700 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 active:text-red-800 dark:active:text-red-200 active:border-red-400 dark:active:border-red-600 shadow-none hover:shadow-sm active:shadow-none"
+                className="h-11 px-5 rounded-[22px] bg-white/10 dark:bg-white/10 border transition-all duration-150 font-bold active:scale-95 border-red-500/40 text-red-400 hover:bg-red-500/30 hover:text-red-300 shadow-none"
                 title={t('node.cancelRepositioning')}
               >
                 <X className="w-4 h-4 mr-2" />
@@ -75,7 +72,7 @@ export const RepositionActionBar: React.FC<RepositionActionBarProps> = ({
                 onClick={onApply}
                 size="lg"
                 variant="outline"
-                className="h-11 px-4 rounded-xl bg-transparent border transition-all duration-150 font-medium active:translate-y-px active:scale-95 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-950/50 hover:border-blue-300 dark:hover:border-blue-700 hover:text-blue-700 dark:hover:text-blue-300 active:text-blue-800 dark:active:text-blue-200 active:border-blue-400 dark:active:border-blue-600 shadow-none hover:shadow-sm active:shadow-none"
+                className="h-11 px-6 rounded-[22px] bg-blue-500/20 border-blue-500/40 transition-all duration-150 font-bold active:scale-95 text-blue-400 hover:bg-blue-500/30 hover:text-blue-300 shadow-none"
                 title={t('node.applyChanges')}
               >
                 <Check className="w-4 h-4 mr-2" />

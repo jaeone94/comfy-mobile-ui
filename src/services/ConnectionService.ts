@@ -34,9 +34,6 @@ export class ConnectionService {
 
     // CRITICAL: Do NOT deep clone the graph using JSON methods as it destroys ComfyGraphNode instances (methods/widgets)
     // We will mutate the graph structure cautiously or return the same graph instance with updates
-    // For this use case, since we want to preserve node instances, we'll treat 'graph' as the live graph 
-    // and mutate it (or its structure) directly, but robustly.
-    // However, to respect the "updatedGraph" contract, we can return the same reference if we mutate in place.
     const updatedGraph = graph;
 
     // Generate new link ID
@@ -123,22 +120,7 @@ export class ConnectionService {
     if (!targetInputSlot?.link) return;
 
     const existingLinkId = targetInputSlot.link;
-
-    // Remove from workflow_json.links array
-    if (workflowJson.links) {
-      workflowJson.links = workflowJson.links.filter((link: any[]) =>
-        link[0] !== existingLinkId
-      );
-    }
-
-    // Remove from graph._links object
-    if (graph._links && graph._links[existingLinkId]) {
-      delete graph._links[existingLinkId];
-    }
-
-    // Remove from all source nodes' output links arrays
-    this.removeFromSourceOutputs(workflowJson.nodes, existingLinkId);
-    this.removeFromSourceOutputs(graph._nodes, existingLinkId);
+    this.removeConnection(workflowJson, graph, existingLinkId);
   }
 
   /**
@@ -163,7 +145,7 @@ export class ConnectionService {
     targetJsonNode: any,
     targetGraphNode: any,
     targetSlot: number,
-    newLinkId: number
+    newLinkId: number | null
   ) {
     // Initialize inputs array if needed
     if (!targetJsonNode.inputs) targetJsonNode.inputs = [];
@@ -218,5 +200,102 @@ export class ConnectionService {
     if (!sourceGraphNode.outputs[sourceSlot].links.includes(newLinkId)) {
       sourceGraphNode.outputs[sourceSlot].links.push(newLinkId);
     }
+  }
+
+  /**
+   * Removes a connection by link ID
+   */
+  static removeConnection(
+    workflowJson: IComfyJson,
+    graph: IComfyGraph,
+    linkId: number
+  ) {
+    const link = workflowJson.links?.find(l => l[0] === linkId);
+    if (!link) {
+      // If not in JSON, try to find in Graph links (safety fallback)
+      if (graph._links && graph._links[linkId]) {
+        const gLink = graph._links[linkId];
+        this.disconnectNodes(workflowJson, graph, gLink.origin_id, gLink.origin_slot, gLink.target_id, gLink.target_slot, linkId);
+      }
+      return;
+    }
+
+    const [id, sourceNodeId, sourceSlot, targetNodeId, targetSlot] = link;
+    this.disconnectNodes(workflowJson, graph, sourceNodeId, sourceSlot, targetNodeId, targetSlot, linkId);
+  }
+
+  private static disconnectNodes(
+    workflowJson: IComfyJson,
+    graph: IComfyGraph,
+    sourceNodeId: number,
+    sourceSlot: number,
+    targetNodeId: number,
+    targetSlot: number,
+    linkId: number
+  ) {
+    // 1. Remove from workflow_json.links
+    if (workflowJson.links) {
+      workflowJson.links = workflowJson.links.filter(l => l[0] !== linkId);
+    }
+
+    // 2. Remove from graph._links
+    if (graph._links && graph._links[linkId]) {
+      delete graph._links[linkId];
+    }
+
+    // 3. Clear target input slot
+    const targetJsonNode = workflowJson.nodes.find(n => n.id === targetNodeId);
+    const targetGraphNode = graph._nodes.find(n => n.id === targetNodeId);
+    this.updateTargetInputSlot(targetJsonNode, targetGraphNode, targetSlot, null);
+
+    // 4. Remove from source output slot
+    const sourceJsonNode = workflowJson.nodes.find(n => n.id === sourceNodeId);
+    const sourceGraphNode = graph._nodes.find(n => n.id === sourceNodeId);
+    if (sourceJsonNode?.outputs?.[sourceSlot]?.links) {
+      sourceJsonNode.outputs[sourceSlot].links = sourceJsonNode.outputs[sourceSlot].links.filter((id: number) => id !== linkId);
+    }
+    if (sourceGraphNode?.outputs?.[sourceSlot]?.links) {
+      sourceGraphNode.outputs[sourceSlot].links = sourceGraphNode.outputs[sourceSlot].links.filter((id: number) => id !== linkId);
+    }
+
+    // Safety: check all source outputs just in case
+    this.removeFromSourceOutputs(workflowJson.nodes, linkId);
+    this.removeFromSourceOutputs(graph._nodes, linkId);
+  }
+
+  /**
+   * Applies a batch of connection changes
+   */
+  static applyBatchConnections(
+    workflowJson: IComfyJson,
+    graph: IComfyGraph,
+    updates: {
+      toAdd: { sourceNodeId: number, targetNodeId: number, sourceSlot: number, targetSlot: number }[],
+      toRemove: number[]
+    }
+  ): { updatedWorkflowJson: IComfyJson, updatedGraph: IComfyGraph } {
+    // Clone structures for safety
+    let currentWorkflowJson = JSON.parse(JSON.stringify(workflowJson)) as IComfyJson;
+    const updatedGraph = graph;
+
+    // 1. Remove connections
+    updates.toRemove.forEach(linkId => {
+      this.removeConnection(currentWorkflowJson, updatedGraph, linkId);
+    });
+
+    // 2. Add connections
+    updates.toAdd.forEach(newConn => {
+      const result = this.createConnection(
+        currentWorkflowJson,
+        updatedGraph,
+        newConn.sourceNodeId,
+        newConn.targetNodeId,
+        newConn.sourceSlot,
+        newConn.targetSlot
+      );
+      currentWorkflowJson = result.updatedWorkflowJson;
+    });
+
+    return { updatedWorkflowJson: currentWorkflowJson, updatedGraph };
   }
 }

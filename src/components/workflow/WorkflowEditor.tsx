@@ -46,6 +46,7 @@ import { CircularMenu, CircularMenuRef } from '@/components/canvas/CircularMenu'
 import { WorkflowContextMenu } from '@/components/canvas/WorkflowContextMenu';
 import { ConnectionBar } from '@/components/canvas/ConnectionBar';
 import { ConnectionModal } from '@/components/canvas/ConnectionModal';
+import { DirectConnectionPanel } from '@/components/canvas/DirectConnectionPanel';
 import { FilePreviewModal } from '@/components/modals/FilePreviewModal';
 import { GroupModeModal } from '@/components/ui/GroupModeModal';
 import { JsonViewerModal } from '@/components/modals/JsonViewerModal';
@@ -562,6 +563,61 @@ const WorkflowEditor: React.FC = () => {
     workflow,
     onCreateConnection: handleCreateConnection
   });
+
+  // Handle batch connection application from DirectConnectionPanel
+  const handleApplyBatchConnections = useCallback(async (updates: {
+    toAdd: { sourceNodeId: number, targetNodeId: number, sourceSlot: number, targetSlot: number }[],
+    toRemove: number[]
+  }) => {
+    if (!id || !workflow || !comfyGraphRef.current) return;
+
+    try {
+      const { updatedWorkflowJson, updatedGraph } = ConnectionService.applyBatchConnections(
+        workflow.workflow_json,
+        comfyGraphRef.current,
+        updates
+      );
+
+      // Same update logic as handleCreateConnection but for multiple changes
+      comfyGraphRef.current = updatedGraph;
+
+      // Update nodeBounds for all affected nodes
+      setNodeBounds(prev => {
+        const newMap = new Map(prev);
+        updatedGraph._nodes.forEach((node: any) => {
+          if (newMap.has(node.id)) {
+            newMap.set(node.id, { ...newMap.get(node.id)!, node });
+          }
+        });
+        return newMap;
+      });
+
+      const updatedWorkflow = {
+        ...workflow,
+        workflow_json: updatedWorkflowJson,
+        graph: updatedGraph,
+        modifiedAt: new Date()
+      };
+
+      await updateWorkflow(updatedWorkflow);
+      setWorkflow(updatedWorkflow);
+      syncWorkflow(updatedWorkflow);
+
+      // Cleanup connection mode state
+      connectionMode.clearNodesAndCloseModal();
+
+      forceRender();
+
+      // Flash viewport to force refresh connections
+      setViewport(prev => ({ ...prev, scale: prev.scale + 0.00001 }));
+      setTimeout(() => setViewport(prev => ({ ...prev, scale: prev.scale - 0.00001 })), 20);
+
+      toast.success(t('workflow.connectionBatchApplied'));
+    } catch (error) {
+      console.error('Error applying batch connections:', error);
+      toast.error(t('workflow.connectionBatchFailed'));
+    }
+  }, [id, workflow, connectionMode, syncWorkflow, forceRender, t]);
 
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
@@ -3512,12 +3568,13 @@ const WorkflowEditor: React.FC = () => {
       />
 
       {/* Connection Modal */}
-      <ConnectionModal
+      <DirectConnectionPanel
         isVisible={connectionMode.connectionMode.showModal}
         sourceNode={connectionMode.connectionMode.sourceNode}
         targetNode={connectionMode.connectionMode.targetNode}
+        workflow={workflow}
         onClose={connectionMode.clearNodesAndCloseModal}
-        onCreateConnection={connectionMode.handleCreateConnection}
+        onApply={handleApplyBatchConnections}
       />
 
       {/* Workflow Controls Panel (Right Top) - Hidden during repositioning and connection mode */}

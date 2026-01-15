@@ -428,6 +428,9 @@
         "toggleGridSnap": "グリッドスナップを切り替え (20px)",
         "cancelRepositioning": "再配置をキャンセル",
         "applyChanges": "変更を適用",
+        "sourceOutputs": "出力",
+        "targetInputs": "入力",
+        "tapCableToDisconnect": "線をタップして接続を解除",
         "groupSize": "グループサイズ",
         "nodesCount": "{{count}} 個のノード",
         "groupSettings": "グループ設定",
@@ -503,7 +506,11 @@
             "bypass": "バイパス"
         },
         "group": {
-            "noGroups": "このワークフローにグループが見つかりません。"
+            "noGroups": "このワークフローにグループが見つかりません。",
+            "batch": "一括制御",
+            "title": "グループ制御",
+            "totalGroups": "{{count}}個のグループが有効",
+            "availableGroups": "利用可能なグループ"
         }
     },
     "circularMenu": {

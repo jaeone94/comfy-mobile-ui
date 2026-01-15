@@ -280,7 +280,7 @@ export function darkenColor(color: string, amount: number): string {
 /**
  * Get color for a specific slot type
  */
-function getSlotColor(type: string | undefined): string {
+export function getSlotColor(type: string | undefined): string {
   if (!type || typeof type !== 'string') return '#10b981'; // Default Green for unknown/untyped
 
   // Normalize type

@@ -142,6 +142,8 @@
         "groupDeleteFailed": "그룹 삭제 실패",
         "disconnected": "연결 해제 성공",
         "disconnectFailed": "연결 해제 실패",
+        "connectionBatchApplied": "연결 일괄 적용 성공",
+        "connectionBatchFailed": "연결 일괄 적용 실패",
         "missingModels": "누락된 모델 감지됨",
         "missingModelsDesc": "다음 모델을 서버에서 사용할 수 없습니다:",
         "missingNodes": "누락된 노드 유형 감지됨",
@@ -428,6 +430,9 @@
         "toggleGridSnap": "그리드 스냅 토글 (20px)",
         "cancelRepositioning": "재배치 취소",
         "applyChanges": "변경 사항 적용",
+        "sourceOutputs": "Outputs",
+        "targetInputs": "Inputs",
+        "tapCableToDisconnect": "선을 터치하여 연결 해제",
         "groupSize": "그룹 크기",
         "nodesCount": "{{count}} 노드",
         "groupSettings": "그룹 설정",
@@ -503,7 +508,11 @@
             "bypass": "우회"
         },
         "group": {
-            "noGroups": "이 워크플로우에서 그룹을 찾을 수 없습니다."
+            "noGroups": "이 워크플로우에서 그룹을 찾을 수 없습니다.",
+            "batch": "일괄 제어",
+            "title": "그룹 제어",
+            "totalGroups": "{{count}}개의 그룹 활성화됨",
+            "availableGroups": "사용 가능한 그룹"
         }
     },
     "circularMenu": {

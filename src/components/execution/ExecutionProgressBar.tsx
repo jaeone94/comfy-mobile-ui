@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
 import { Progress } from '@/components/ui/progress';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import { useTranslation } from 'react-i18next';
+import { useGlobalStore } from '@/ui/store/globalStore';
 
 interface ExecutionProgressState {
   isExecuting: boolean;
@@ -23,6 +25,27 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
     nodeExecutionProgress: null,
     runningNodes: {}
   });
+
+  const sessionStack = useGlobalStore(state => state.sessionStack);
+  const rootWorkflowGraph = useGlobalStore(state => state.workflow?.graph);
+
+  // Memoize the executing node lookup from the current workflow/graph
+  const executingNode = React.useMemo(() => {
+    if (!state.executingNodeId) return null;
+
+    // 1. Check current session hierarchy
+    for (let i = sessionStack.length - 1; i >= 0; i--) {
+      const node = sessionStack[i].graph?._nodes?.find((n: any) => n.id?.toString() === state.executingNodeId);
+      if (node) return node;
+    }
+
+    // 2. Finally check root graph
+    if (rootWorkflowGraph?._nodes) {
+      return rootWorkflowGraph._nodes.find((n: any) => n.id?.toString() === state.executingNodeId) || null;
+    }
+
+    return null;
+  }, [state.executingNodeId, sessionStack, rootWorkflowGraph]);
 
   // Subscribe to execution events from the GlobalWebSocketService
   useEffect(() => {
@@ -263,40 +286,51 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
   }
 
   return (
-    <div className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-xl rounded-xl p-3 shadow-2xl border border-white/20 dark:border-slate-600/20 relative overflow-hidden">
-      {/* Gradient Overlay for Enhanced Glass Effect */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+    <div className="bg-emerald-500/10 dark:bg-emerald-500/10 backdrop-blur-xl rounded-xl p-3 shadow-2xl border border-emerald-500/30 dark:border-emerald-500/20 relative overflow-hidden">
+      {/* Subtle Green Glow Overlay */}
+      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-black/20 pointer-events-none" />
       <div className="flex items-center justify-between mb-2 relative z-10">
         <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
+          <span className="text-sm font-bold text-white dark:text-emerald-50 tracking-tight">
             {t('execution.title')}
           </span>
         </div>
-        <div className="flex items-center space-x-2 text-xs text-slate-500 dark:text-slate-400">
+        <div className="flex items-center space-x-2 text-[10px] font-medium text-white/70 dark:text-emerald-50/70">
           {state.currentPromptId && (
             <span>{t('execution.id', { id: state.currentPromptId.substring(0, 8) })}</span>
           )}
           {state.executingNodeId && (
-            <span>{t('execution.node', { nodeId: state.executingNodeId })}</span>
+            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-white dark:text-emerald-50">{t('execution.node', { nodeId: state.executingNodeId })}</span>
           )}
         </div>
       </div>
 
       {/* Overall Progress */}
-      <div className="space-y-1 relative z-10">
-        <Progress
-          value={state.nodeExecutionProgress?.progress || 0}
-          className="h-2"
-        />
-        <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
-          <span>
-            {state.nodeExecutionProgress ?
-              `${t('execution.node', { nodeId: '' })} ${Math.round(state.nodeExecutionProgress.progress)}%` :
-              t('execution.starting')
-            }
+      <div className="space-y-1.5 relative z-10">
+        <div className="relative h-2 w-full overflow-hidden rounded-full bg-black/40 border border-emerald-500/20">
+          <motion.div
+            initial={{ width: 0 }}
+            animate={{ width: `${state.nodeExecutionProgress?.progress || 0}%` }}
+            transition={{ duration: 0.5, ease: "easeOut" }}
+            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
+          />
+        </div>
+        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white">
+          <span className="flex items-center gap-1">
+            <span className="text-white">
+              {state.nodeExecutionProgress ? `${Math.round(state.nodeExecutionProgress.progress)}%` : '0%'}
+            </span>
+            <span className="text-white/80">
+              {state.nodeExecutionProgress ? t('execution.node', { nodeId: '' }).trim() : t('execution.starting')}
+              {executingNode?.type && (
+                <span className="ml-1 text-emerald-300 font-extrabold">
+                  {executingNode.type}
+                </span>
+              )}
+            </span>
           </span>
-          <span className="animate-pulse">
+          <span className="animate-pulse text-white">
             {t('execution.running')}
           </span>
         </div>

@@ -142,6 +142,8 @@
         "groupDeleteFailed": "Failed to delete group",
         "disconnected": "Connection disconnected successfully",
         "disconnectFailed": "Failed to disconnect connection",
+        "connectionBatchApplied": "Connection batch applied successfully",
+        "connectionBatchFailed": "Failed to apply connection batch",
         "missingModels": "Missing models detected",
         "missingModelsDesc": "The following models are not available on the server:",
         "missingNodes": "Missing node types detected",
@@ -428,6 +430,9 @@
         "toggleGridSnap": "Toggle Grid Snap (20px)",
         "cancelRepositioning": "Cancel Repositioning",
         "applyChanges": "Apply Changes",
+        "sourceOutputs": "Outputs",
+        "targetInputs": "Inputs",
+        "tapCableToDisconnect": "Tap cable to disconnect",
         "groupSize": "Group Size",
         "nodesCount": "{{count}} nodes",
         "groupSettings": "Group Settings",
@@ -503,7 +508,11 @@
             "bypass": "Bypass"
         },
         "group": {
-            "noGroups": "No groups found in this workflow."
+            "noGroups": "No groups found in this workflow.",
+            "batch": "BATCH",
+            "title": "Group Control",
+            "totalGroups": "{{count}} groups active",
+            "availableGroups": "Groups Available"
         }
     },
     "circularMenu": {

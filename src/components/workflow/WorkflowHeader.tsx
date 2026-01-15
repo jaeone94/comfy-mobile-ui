@@ -124,16 +124,16 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   }, [saveSucceeded]);
 
   return (
-    <header className="absolute top-0 left-0 right-0 z-10 p-4 pwa-header">
-      <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 border-b border-white/20 dark:border-slate-600/20 px-4 py-5 space-y-2 relative overflow-hidden">
-        <div className="flex items-center space-x-4">
+    <header className="absolute top-0 left-0 right-0 z-10 pwa-header">
+      <div className="bg-slate-600/20 backdrop-blur-3xl shadow-xl border-b border-white/30 px-4 py-5 space-y-2 relative overflow-hidden">
+        <div className="flex items-center space-x-4 relative z-10">
           <Button
             onClick={onNavigateBack}
-            variant="outline"
+            variant="ghost"
             size="sm"
-            className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0"
+            className="bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-xl"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5 text-white" />
           </Button>
 
           <div className="min-w-0 flex-1">
@@ -163,16 +163,16 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                 })}
               </div>
             ) : (
-              <h1 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
+              <h1 className="text-lg font-bold text-white tracking-tight truncate">
                 {workflow?.name || t('workflow.newWorkflowName')}
               </h1>
             )}
             <div className="flex items-center space-x-2 mt-1 flex-wrap">
-              <Badge variant="outline" className="text-xs bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 flex-shrink-0">
+              <Badge variant="outline" className="text-[10px] bg-white/10 text-white border-white/20 flex-shrink-0">
                 {workflow?.nodeCount || 0} {t('workflow.nodes')}
               </Badge>
               {selectedNode && (
-                <Badge className="text-xs bg-gradient-to-r from-blue-500/80 to-cyan-500/80 backdrop-blur-sm flex-shrink-0 border border-white/20">
+                <Badge className="text-[10px] bg-blue-500/30 text-blue-300 border-blue-500/40 flex-shrink-0">
                   {selectedNode.type}
                 </Badge>
               )}
