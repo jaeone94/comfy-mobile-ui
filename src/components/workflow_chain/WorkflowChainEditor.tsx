@@ -1164,6 +1164,7 @@ export const WorkflowChainEditor: React.FC = () => {
               widgetType: null
             })}
             selectionTitle={`Select ${fileSelectionState.widgetType === 'video' ? 'Video' : 'Image/Video'} for ${fileSelectionState.widgetName}`}
+            initialFolder="input"
           />
         </div>,
         document.body

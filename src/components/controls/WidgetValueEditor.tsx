@@ -595,6 +595,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
           <OutputsGallery
             isFileSelectionMode={true}
             {...getGalleryPermissions(param.name, currentValue, param.possibleValues)}
+            initialFolder="input"
             onFileSelect={(filename) => {
               // For IMAGE/VIDEO types, directly update widget value without editing mode
               // Start editing mode, set value, and save immediately

@@ -340,11 +340,10 @@ export const PointEditor: React.FC<PointEditorProps> = ({
   return (
     <>
       {/* Always show the button - matching other widget styles */}
-      <div className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-        isModified && modifiedHighlightClasses
+      <div className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${isModified && modifiedHighlightClasses
           ? modifiedHighlightClasses
           : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-      }`}>
+        }`}>
         <div
           onClick={() => setIsOpen(true)}
           className="w-full flex items-center justify-between"
@@ -540,6 +539,7 @@ export const PointEditor: React.FC<PointEditorProps> = ({
             onFileSelect={handleOutputsGallerySelect}
             onBackClick={() => setShowOutputsGallery(false)}
             selectionTitle="Select Background Image for Points Editor"
+            initialFolder="input"
           />
         </div>,
         document.body

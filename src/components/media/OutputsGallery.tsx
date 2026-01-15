@@ -308,6 +308,7 @@ interface OutputsGalleryProps {
   onFileSelect?: (filename: string) => void;
   onBackClick?: () => void;
   selectionTitle?: string;
+  initialFolder?: FolderType;
 }
 
 export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
@@ -316,13 +317,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   allowVideos = true,
   onFileSelect,
   onBackClick,
-  selectionTitle
+  selectionTitle,
+  initialFolder = 'output'
 }) => {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<TabType>(
     allowImages ? 'images' : allowVideos ? 'videos' : 'images'
   );
-  const [activeFolder, setActiveFolder] = useState<FolderType>('output');
+  const [activeFolder, setActiveFolder] = useState<FolderType>(initialFolder);
   const [headerHeight, setHeaderHeight] = useState(160); // Default fallback
   const headerRef = useRef<HTMLElement>(null);
   const [files, setFiles] = useState<{ images: IComfyFileInfo[]; videos: IComfyFileInfo[] }>({
