@@ -91,22 +91,23 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     return filename.split('.').pop()?.toUpperCase() || '';
   };
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     if (!url) return;
 
     setIsDownloading(true);
     try {
-      const response = await fetch(url);
-      const blob = await response.blob();
+      // Create a hidden link and trigger download directly via browser
+      // This avoids loading the entire file into memory (Blob)
+      const link = document.body.appendChild(document.createElement('a'));
 
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
+      // Add download attribute to suggest filename
       link.download = filename;
-      document.body.appendChild(link);
+      link.href = url;
+
+      // Important: for many browsers, cross-origin download attribute doesn't work 
+      // without server headers. But simple link navigation is safer for memory.
       link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
+      link.remove();
 
       toast.success(t('media.downloadStarted'), {
         description: t('media.downloadStartedDesc', { filename }),
@@ -323,8 +324,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                     </TransformWrapper>
                   ) : (
                     <video
-                      src={url}
+                      src={`${url}#t=0.001`}
                       controls
+                      preload="auto"
                       className="content-fit rounded-xl shadow-lg"
                       onError={handleVideoError}
                     >

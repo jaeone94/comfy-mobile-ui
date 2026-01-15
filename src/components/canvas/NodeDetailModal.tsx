@@ -1225,7 +1225,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 allowVideos={fileSelectionState.paramType === 'VIDEO'}
                                 onFileSelect={handleFileSelect}
                                 onBackClick={() => setFileSelectionState({ isOpen: false, paramName: null, paramType: null })}
-                                selectionTitle={`Select ${fileSelectionState.paramType === 'IMAGE' ? 'Image' : 'Image/Video'} for ${fileSelectionState.paramName}`}
+                                selectionTitle={`Select ${fileSelectionState.paramType === 'IMAGE' ? 'Image' : 'Image/Video'}`}
                             />
                         </div>,
                         document.body
