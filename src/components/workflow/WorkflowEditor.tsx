@@ -1732,7 +1732,7 @@ const WorkflowEditor: React.FC = () => {
     // 1. Update node positions
     if (changes.nodeChanges && Array.isArray(container.nodes)) {
       changes.nodeChanges.forEach((change: any) => {
-        const node = container.nodes.find((n: any) => n.id === change.nodeId);
+        const node = container.nodes.find((n: any) => n.id == change.nodeId);
         if (node) {
           node.pos = change.newPosition;
         }
@@ -1750,7 +1750,7 @@ const WorkflowEditor: React.FC = () => {
 
       if (Array.isArray(container.groups)) {
         changes.groupChanges.forEach((change: any) => {
-          const group = container.groups.find((g: any) => g.id === change.groupId);
+          const group = container.groups.find((g: any) => g.id == change.groupId);
           updateGroup(group, change);
         });
       } else if (container.groups && typeof container.groups === 'object') {
@@ -1762,7 +1762,7 @@ const WorkflowEditor: React.FC = () => {
       // Also update extra.ds.groups if in root
       if (isRoot && updatedWorkflow.extra?.ds?.groups && Array.isArray(updatedWorkflow.extra.ds.groups)) {
         changes.groupChanges.forEach((change: any) => {
-          const group = updatedWorkflow.extra.ds.groups.find((g: any) => g.id === change.groupId);
+          const group = updatedWorkflow.extra.ds.groups.find((g: any) => g.id == change.groupId);
           updateGroup(group, change);
         });
       }
@@ -1771,13 +1771,13 @@ const WorkflowEditor: React.FC = () => {
     // 3. Update resize changes
     if (changes.resizeChanges) {
       changes.resizeChanges.forEach((change: any) => {
-        if (change.nodeId && Array.isArray(container.nodes)) {
-          const node = container.nodes.find((n: any) => n.id === change.nodeId);
+        if (change.nodeId !== undefined && change.nodeId !== null && Array.isArray(container.nodes)) {
+          const node = container.nodes.find((n: any) => n.id == change.nodeId);
           if (node) {
             node.size = change.newSize;
             node.pos = change.newPosition;
           }
-        } else if (change.groupId) {
+        } else if (change.groupId !== undefined && change.groupId !== null) {
           const updateGroupResize = (group: any) => {
             if (group) {
               group.bounding = [
@@ -1790,13 +1790,13 @@ const WorkflowEditor: React.FC = () => {
           };
 
           if (Array.isArray(container.groups)) {
-            updateGroupResize(container.groups.find((g: any) => g.id === change.groupId));
+            updateGroupResize(container.groups.find((g: any) => g.id == change.groupId));
           } else if (container.groups && typeof container.groups === 'object') {
             updateGroupResize(container.groups[change.groupId.toString()]);
           }
 
           if (isRoot && updatedWorkflow.extra?.ds?.groups && Array.isArray(updatedWorkflow.extra.ds.groups)) {
-            updateGroupResize(updatedWorkflow.extra.ds.groups.find((g: any) => g.id === change.groupId));
+            updateGroupResize(updatedWorkflow.extra.ds.groups.find((g: any) => g.id == change.groupId));
           }
         }
       });
@@ -3459,7 +3459,7 @@ const WorkflowEditor: React.FC = () => {
                 // 2. Update Groups
                 if (changes.groupChanges && liveGraph._groups) {
                   changes.groupChanges.forEach(change => {
-                    const group = liveGraph._groups.find((g: any) => g.id === change.groupId);
+                    const group = liveGraph._groups.find((g: any) => g.id == change.groupId);
                     if (group) {
                       if (change.newPosition) {
                         group.pos = [...change.newPosition];
@@ -3480,15 +3480,29 @@ const WorkflowEditor: React.FC = () => {
                 // 3. Update Resizes
                 if (changes.resizeChanges) {
                   changes.resizeChanges.forEach(change => {
-                    if (change.nodeId) {
+                    if (change.nodeId !== undefined && change.nodeId !== null) {
                       const node = liveGraph.getNodeById(change.nodeId);
                       if (node && change.newSize) {
                         node.size = [...change.newSize];
+                        if (change.newPosition) {
+                          node.pos = [...change.newPosition];
+                        }
                       }
-                    } else if (change.groupId && liveGraph._groups) {
-                      const group = liveGraph._groups.find((g: any) => g.id === change.groupId);
+                    } else if (change.groupId !== undefined && change.groupId !== null && liveGraph._groups) {
+                      const group = liveGraph._groups.find((g: any) => g.id == change.groupId);
                       if (group && change.newSize) {
                         group.size = [...change.newSize];
+
+                        // FIX: Update bounding as well because CanvasRendererService uses it for bounds calculation
+                        // Use newPosition if provided (it usually is for top/left resizes), else fall back to current
+                        const currentBounding = group._bounding || group.bounding || [0, 0, 0, 0];
+                        const posX = change.newPosition ? change.newPosition[0] : (group.pos ? group.pos[0] : currentBounding[0]);
+                        const posY = change.newPosition ? change.newPosition[1] : (group.pos ? group.pos[1] : currentBounding[1]);
+
+                        const newBounding = [posX, posY, change.newSize[0], change.newSize[1]];
+                        group.bounding = [...newBounding];
+                        if (group._bounding) group._bounding = [...newBounding];
+                        if (change.newPosition) group.pos = [...change.newPosition];
                       }
                     }
                   });
@@ -3511,7 +3525,13 @@ const WorkflowEditor: React.FC = () => {
                     if (change.nodeId) {
                       const existing = newMap.get(change.nodeId);
                       if (existing) {
-                        newMap.set(change.nodeId, { ...existing, width: change.newSize[0], height: change.newSize[1] });
+                        newMap.set(change.nodeId, {
+                          ...existing,
+                          width: change.newSize[0],
+                          height: change.newSize[1],
+                          x: change.newPosition ? change.newPosition[0] : existing.x,
+                          y: change.newPosition ? change.newPosition[1] : existing.y
+                        });
                       }
                     }
                   });
@@ -3527,16 +3547,16 @@ const WorkflowEditor: React.FC = () => {
                   // So we map the array
                   return prev.map(existing => {
                     // Check for position change
-                    const posChange = changes.groupChanges?.find(c => c.groupId === existing.id);
+                    const posChange = changes.groupChanges?.find(c => c.groupId == existing.id);
                     // Check for resize change
-                    const resizeChange = changes.resizeChanges?.find(c => c.groupId === existing.id);
+                    const resizeChange = changes.resizeChanges?.find(c => c.groupId == existing.id);
 
                     if (!posChange && !resizeChange) return existing;
 
                     return {
                       ...existing,
-                      x: posChange ? posChange.newPosition[0] : existing.x,
-                      y: posChange ? posChange.newPosition[1] : existing.y,
+                      x: posChange ? posChange.newPosition[0] : (resizeChange?.newPosition ? resizeChange.newPosition[0] : existing.x),
+                      y: posChange ? posChange.newPosition[1] : (resizeChange?.newPosition ? resizeChange.newPosition[1] : existing.y),
                       width: resizeChange ? resizeChange.newSize[0] : existing.width,
                       height: resizeChange ? resizeChange.newSize[1] : existing.height
                     };

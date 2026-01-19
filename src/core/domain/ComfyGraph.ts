@@ -218,7 +218,20 @@ export class ComfyGraph {
     }
 
     // Store groups if present, converting Float32Array to regular arrays
+    let maxGroupId = 0;
+    if (data.groups && Array.isArray(data.groups)) {
+      data.groups.forEach((g: any) => {
+        if (typeof g.id === 'number' && g.id > maxGroupId) maxGroupId = g.id;
+      });
+    }
+
     const processedGroups = (data.groups || []).map((group: any) => {
+      // Assign ID if missing (or handle 0 as a valid ID but potentially non-unique if others are missing)
+      if (group.id === undefined || group.id === null) {
+        maxGroupId++;
+        group.id = maxGroupId;
+      }
+
       if (group.bounding) {
         if (group.bounding instanceof Float32Array ||
           group.bounding instanceof Array ||

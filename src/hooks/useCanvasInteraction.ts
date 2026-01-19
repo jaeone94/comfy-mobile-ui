@@ -1528,7 +1528,7 @@ export const useCanvasInteraction = ({
       if (originalPos) {
         setNodeChanges(prev => {
           // remove existing changes for this node
-          const filtered = prev.filter(change => change.nodeId !== nodeId);
+          const filtered = prev.filter(change => change.nodeId != nodeId);
 
           // add only if position has changed
           if (Math.abs(x - originalPos![0]) > 0.1 || Math.abs(y - originalPos![1]) > 0.1) {
@@ -1670,7 +1670,7 @@ export const useCanvasInteraction = ({
     if (repositionMode.isActive && repositionMode.selectedGroupId === groupId && originalPos) {
       setGroupChanges(prev => {
         // remove existing changes for this group
-        const filtered = prev.filter(change => change.groupId !== groupId);
+        const filtered = prev.filter(change => change.groupId != groupId);
 
         // add only if position has changed
         if (Math.abs(x - originalPos[0]) > 0.1 || Math.abs(y - originalPos[1]) > 0.1) {

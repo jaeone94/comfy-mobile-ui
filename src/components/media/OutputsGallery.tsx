@@ -522,10 +522,26 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     setSelectedFiles(newSelected);
   };
 
-  const handleSelectAll = () => {
-    const allFiles = [...files.images, ...files.videos];
-    const allKeys = allFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
-    setSelectedFiles(new Set(allKeys));
+  const handleSelectAll = (visibleOnly: boolean = true) => {
+    if (visibleOnly) {
+      const visibleKeys = currentFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
+      const allVisibleSelected = visibleKeys.every(key => selectedFiles.has(key));
+
+      const newSelected = new Set(selectedFiles);
+      if (allVisibleSelected) {
+        // Deselect all visible
+        visibleKeys.forEach(key => newSelected.delete(key));
+      } else {
+        // Select all visible
+        visibleKeys.forEach(key => newSelected.add(key));
+      }
+      setSelectedFiles(newSelected);
+    } else {
+      // Legacy behavior: select everything (all images and all videos)
+      const allFilesList = [...files.images, ...files.videos];
+      const allKeys = allFilesList.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
+      setSelectedFiles(new Set(allKeys));
+    }
   };
 
   const handleDeselectAll = () => {
@@ -756,17 +772,52 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
               </h1>
             </div>
 
-            {/* Selection/X Button - Balanced Size */}
-            <button
-              onClick={toggleSelectionMode}
-              className={`w-14 h-14 flex items-center justify-center rounded-full border-2 transition-all duration-300 active:scale-90 shadow-2xl ${isSelectionMode
-                ? 'bg-white border-white text-black'
-                : 'bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-xl'
-                }`}
-              title={isSelectionMode ? t('gallery.exitSelectionMode') : t('gallery.enterSelectionMode')}
-            >
-              {isSelectionMode ? <X className="h-7 w-7" /> : <CheckSquare className="h-7 w-7" />}
-            </button>
+            <div className="flex items-center space-x-2">
+              {/* Refresh Button - Added per user request */}
+              <AnimatePresence>
+                {!isSelectionMode && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.5, x: 20 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, x: 20 }}
+                    onClick={loadFiles}
+                    disabled={loading}
+                    className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl disabled:opacity-50"
+                    title={t('gallery.refreshFiles')}
+                  >
+                    <RefreshCw className={`h-7 w-7 ${loading ? 'animate-spin' : ''}`} />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Select All Button - Added per user request */}
+              <AnimatePresence>
+                {isSelectionMode && (
+                  <motion.button
+                    initial={{ opacity: 0, scale: 0.5, x: 20 }}
+                    animate={{ opacity: 1, scale: 1, x: 0 }}
+                    exit={{ opacity: 0, scale: 0.5, x: 20 }}
+                    onClick={() => handleSelectAll(true)}
+                    className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl"
+                    title={t('gallery.selectAll')}
+                  >
+                    <CheckCircle className="h-7 w-7" />
+                  </motion.button>
+                )}
+              </AnimatePresence>
+
+              {/* Selection/X Button - Balanced Size */}
+              <button
+                onClick={toggleSelectionMode}
+                className={`w-14 h-14 flex items-center justify-center rounded-full border-2 transition-all duration-300 active:scale-90 shadow-2xl ${isSelectionMode
+                  ? 'bg-white border-white text-black'
+                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-xl'
+                  }`}
+                title={isSelectionMode ? t('gallery.exitSelectionMode') : t('gallery.enterSelectionMode')}
+              >
+                {isSelectionMode ? <X className="h-7 w-7" /> : <CheckSquare className="h-7 w-7" />}
+              </button>
+            </div>
           </div>
 
           {/* Row 2: Sub-label aligned with Title - Scaled Up & Solid White */}
