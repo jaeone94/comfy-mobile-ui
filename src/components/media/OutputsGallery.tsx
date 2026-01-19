@@ -53,21 +53,25 @@ const findMatchingImageFile = (
 interface LazyImageProps {
   file: IComfyFileInfo;
   onImageClick: (file: IComfyFileInfo) => void;
-  allFiles?: { images: IComfyFileInfo[]; videos: IComfyFileInfo[] }; // For finding matching thumbnails
   index?: number; // For initial loading optimization
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (file: IComfyFileInfo, selected: boolean) => void;
+  fileService: ComfyFileService;
+  videoLookupMap: Map<string, IComfyFileInfo>;
+  imageLookupMap: Map<string, IComfyFileInfo>;
 }
 
 const LazyImage: React.FC<LazyImageProps> = ({
   file,
   onImageClick,
-  allFiles,
   index = 0,
   isSelectionMode = false,
   isSelected = false,
-  onSelectionChange
+  onSelectionChange,
+  fileService,
+  videoLookupMap,
+  imageLookupMap
 }) => {
   const { t } = useTranslation();
   const [isLoaded, setIsLoaded] = useState(false);
@@ -77,7 +81,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
   const [matchingImageThumbnail, setMatchingImageThumbnail] = useState<string | null>(null);
   const imgRef = useRef<HTMLDivElement>(null);
   const { url: serverUrl } = useConnectionStore();
-  const comfyFileService = new ComfyFileService(serverUrl);
+  // Service is now passed via props
 
   // Intersection Observer for lazy loading (skip for first 12 items)
   useEffect(() => {
@@ -114,47 +118,28 @@ const LazyImage: React.FC<LazyImageProps> = ({
     return ['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext);
   };
 
-  // Find matching image thumbnail for video files
+  // Find matching image thumbnail for video files using the optimized map
   const findMatchingImageForVideo = (videoFilename: string): IComfyFileInfo | null => {
-    if (!allFiles?.images || !isVideoFile(videoFilename)) return null;
+    if (!isVideoFile(videoFilename)) return null;
 
-    return findMatchingImageFile(videoFilename, allFiles.images, file.subfolder, file.type);
-  };
-
-  // Check if an image file has a corresponding video (for filtering out thumbnails)
-  const hasCorrespondingVideo = (imageFile: IComfyFileInfo): boolean => {
-    if (!allFiles?.videos) return false;
-
-    // Get image filename without extension
-    const imgNameWithoutExt = imageFile.filename.substring(0, imageFile.filename.lastIndexOf('.'));
-
-    // Look for video with same name in the SAME subfolder and folder type
-    const videoExtensions = ['mp4', 'avi', 'mov', 'mkv', 'webm'];
-
-    for (const video of allFiles.videos) {
-      // Must match subfolder and folder type (input/output/temp) as well as filename
-      if (video.subfolder !== imageFile.subfolder || video.type !== imageFile.type) {
-        continue;
-      }
-
-      let videoNameWithoutExt = video.filename.substring(0, video.filename.lastIndexOf('.'));
-      const videoExt = video.filename.split('.').pop()?.toLowerCase() || '';
-
-      // Remove -audio suffix if present (e.g., "something-video-audio" -> "something-video")
-      if (videoNameWithoutExt.endsWith('-audio')) {
-        videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
-      }
-
-      if (imgNameWithoutExt === videoNameWithoutExt && videoExtensions.includes(videoExt)) {
-        return true; // Found corresponding video
-      }
+    let videoNameWithoutExt = videoFilename.substring(0, videoFilename.lastIndexOf('.'));
+    if (videoNameWithoutExt.endsWith('-audio')) {
+      videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
     }
 
-    return false;
+    const key = `${file.type}/${file.subfolder}/${videoNameWithoutExt}`;
+    return imageLookupMap.get(key) || null;
   };
 
+  // Check if an image file has a corresponding video (optimized O(1) lookup)
+  const hasCorrespondingVideo = useCallback((imageFile: IComfyFileInfo): boolean => {
+    const imgNameWithoutExt = imageFile.filename.substring(0, imageFile.filename.lastIndexOf('.'));
+    const key = `${imageFile.type}/${imageFile.subfolder}/${imgNameWithoutExt}`;
+    return videoLookupMap.has(key);
+  }, [videoLookupMap]);
+
   // Get thumbnail URL - only for images
-  const thumbnailUrl = isInView && !isVideoFile(file.filename) ? comfyFileService.createDownloadUrl({
+  const thumbnailUrl = isInView && !isVideoFile(file.filename) ? fileService.createDownloadUrl({
     filename: file.filename,
     subfolder: file.subfolder,
     type: file.type,
@@ -166,7 +151,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
     if (isInView && isVideoFile(file.filename) && !matchingImageThumbnail) {
       const matchingImage = findMatchingImageForVideo(file.filename);
       if (matchingImage) {
-        const imageUrl = comfyFileService.createDownloadUrl({
+        const imageUrl = fileService.createDownloadUrl({
           filename: matchingImage.filename,
           subfolder: matchingImage.subfolder,
           type: matchingImage.type,
@@ -177,7 +162,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
       }
       setIsLoaded(true);
     }
-  }, [isInView, file.filename, matchingImageThumbnail, allFiles]);
+  }, [isInView, file.filename, matchingImageThumbnail, imageLookupMap]);
 
   const handleClick = () => {
     if (isSelectionMode && onSelectionChange) {
@@ -578,13 +563,19 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       const videoExtensions = ['mp4', 'avi', 'mov', 'mkv', 'webm'];
 
       if (videoExtensions.includes(isVideo)) {
-        // This is a video file, find its matching thumbnail
-        const matchingThumbnail = findMatchingImageFile(file.filename, files.images, file.subfolder, file.type);
+        // This is a video file, find its matching thumbnail using optimized map
+        let videoNameWithoutExt = file.filename.substring(0, file.filename.lastIndexOf('.'));
+        if (videoNameWithoutExt.endsWith('-audio')) {
+          videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
+        }
+
+        const thumbnailKey = `${file.type}/${file.subfolder}/${videoNameWithoutExt}`;
+        const matchingThumbnail = imageLookupMap.get(thumbnailKey);
 
         if (matchingThumbnail) {
           // Check if the thumbnail is not already selected for deletion
-          const thumbnailKey = `${matchingThumbnail.filename}-${matchingThumbnail.subfolder}-${matchingThumbnail.type}`;
-          if (!selectedFiles.has(thumbnailKey)) {
+          const fullKey = `${matchingThumbnail.filename}-${matchingThumbnail.subfolder}-${matchingThumbnail.type}`;
+          if (!selectedFiles.has(fullKey)) {
             additionalThumbnailsToDelete.push({
               filename: matchingThumbnail.filename,
               subfolder: matchingThumbnail.subfolder,
@@ -692,37 +683,34 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     return ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext);
   };
 
-  // Helper function to check if image has corresponding video
-  const hasCorrespondingVideo = useCallback((imageFile: IComfyFileInfo): boolean => {
-    if (!files.videos || files.videos.length === 0) return false;
-
-    // Get image filename without extension
-    const imgNameWithoutExt = imageFile.filename.substring(0, imageFile.filename.lastIndexOf('.'));
-
-    // Look for video with same name in the SAME subfolder and folder type
-    const videoExtensions = ['mp4', 'avi', 'mov', 'mkv', 'webm'];
-
-    for (const video of files.videos) {
-      // Must match subfolder and folder type (input/output/temp) as well as filename
-      if (video.subfolder !== imageFile.subfolder || video.type !== imageFile.type) {
-        continue;
-      }
-
-      let videoNameWithoutExt = video.filename.substring(0, video.filename.lastIndexOf('.'));
-      const videoExt = video.filename.split('.').pop()?.toLowerCase() || '';
-
-      // Remove -audio suffix if present (e.g., "something-video-audio" -> "something-video")
-      if (videoNameWithoutExt.endsWith('-audio')) {
-        videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
-      }
-
-      if (imgNameWithoutExt === videoNameWithoutExt && videoExtensions.includes(videoExt)) {
-        return true; // Found corresponding video
-      }
-    }
-
-    return false;
+  // Create optimized lookup maps for images and videos to replace O(N^2) loops
+  const videoLookupMap = useMemo(() => {
+    const map = new Map<string, IComfyFileInfo>();
+    files.videos.forEach(video => {
+      let name = video.filename.substring(0, video.filename.lastIndexOf('.'));
+      if (name.endsWith('-audio')) name = name.substring(0, name.lastIndexOf('-audio'));
+      const key = `${video.type}/${video.subfolder}/${name}`;
+      map.set(key, video);
+    });
+    return map;
   }, [files.videos]);
+
+  const imageLookupMap = useMemo(() => {
+    const map = new Map<string, IComfyFileInfo>();
+    files.images.forEach(img => {
+      const name = img.filename.substring(0, img.filename.lastIndexOf('.'));
+      const key = `${img.type}/${img.subfolder}/${name}`;
+      map.set(key, img);
+    });
+    return map;
+  }, [files.images]);
+
+  // Check if an image file has a corresponding video (optimized O(1) lookup)
+  const hasCorrespondingVideo = useCallback((imageFile: IComfyFileInfo): boolean => {
+    const imgNameWithoutExt = imageFile.filename.substring(0, imageFile.filename.lastIndexOf('.'));
+    const key = `${imageFile.type}/${imageFile.subfolder}/${imgNameWithoutExt}`;
+    return videoLookupMap.has(key);
+  }, [videoLookupMap]);
 
   // Calculate filtered image count (excluding thumbnails)
   const filteredImageCount = useMemo(() => {
@@ -739,6 +727,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     // For videos tab, return all videos (no filtering needed)
     return files[activeTab];
   }, [files, activeTab, hasCorrespondingVideo]);
+
   const totalFiles = files.images.length + files.videos.length;
 
   return (
@@ -864,10 +853,12 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                 file={file}
                 index={index}
                 onImageClick={handleFileClick}
-                allFiles={activeTab === 'videos' ? files : undefined}
                 isSelectionMode={isSelectionMode}
                 isSelected={selectedFiles.has(`${file.filename}-${file.subfolder}-${file.type}`)}
                 onSelectionChange={handleSelectionChange}
+                fileService={comfyFileService}
+                videoLookupMap={videoLookupMap}
+                imageLookupMap={imageLookupMap}
               />
             ))}
           </div>

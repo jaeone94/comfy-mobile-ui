@@ -245,7 +245,9 @@
             "loadWarningCritical": "현재 저장되지 않은 변경 사항이 손실됩니다!",
             "loadAnyway": "그래도 로드",
             "deleteTitle": "스냅샷 삭제",
-            "deleteDesc": "이 스냅샷을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다."
+            "deleteDesc": "이 스냅샷을 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.",
+            "loadSuccess": "스냅샷을 성공적으로 불러왔습니다",
+            "deleteSuccess": "스냅샷이 삭제되었습니다"
         },
         "upload": {
             "title": "ComfyUI 서버로 업로드",
@@ -652,8 +654,12 @@
         "copying": "복사 중...",
         "searchPlaceholder": "검색어 입력 후 검색 클릭...",
         "search": "검색",
+        "searchDisabled": "파일이 너무 커서 검색을 사용할 수 없습니다",
         "matchCount": "{{total}}개 중 {{current}}",
-        "noMatches": "\"{{query}}\"에 대한 일치 항목 없음"
+        "noMatches": "\"{{query}}\"에 대한 일치 항목 없음",
+        "tooLargeTitle": "데이터가 너무 큽니다",
+        "tooLargeDescription": "이 JSON 데이터의 크기는 {{size}}MB입니다. 쾌적한 사용을 위해 브라우저 렌더링 대신 파일 다운로드 후 별도의 뷰어로 확인하시기를 권장합니다.",
+        "downloadToView": "다운로드하여 확인하기"
     },
     "missingModels": {
         "title": "누락된 모델 감지됨",

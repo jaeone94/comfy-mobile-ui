@@ -9,6 +9,7 @@ import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSock
 import TriggerWordSelector from './TriggerWordSelector';
 import { SettingsDropdownContent } from './SettingsDropdown';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
+import { PromptHistoryContent } from '@/components/history/PromptHistory';
 import type { LogEntry, LogsWsMessage } from '@/core/domain';
 import type { MissingModelInfo } from '@/services/MissingModelsService';
 
@@ -83,12 +84,14 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   const [selectedResultIndex, setSelectedResultIndex] = useState(-1);
   const [isTriggerWordSelectorOpen, setIsTriggerWordSelectorOpen] = useState(false);
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
   const [consoleLogs, setConsoleLogs] = useState<LogEntry[]>([]);
   const settingsRef = useRef<HTMLDivElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
+  const historyRef = useRef<HTMLDivElement>(null);
   const consoleContainerRef = useRef<HTMLDivElement>(null);
   const { openPromptHistory } = usePromptHistoryStore();
   const { url: serverUrl } = useConnectionStore();
@@ -160,9 +163,13 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
     const handleOutsideInteraction = (event: MouseEvent | TouchEvent) => {
       const target = event.target as Node;
 
-      // Check if click is outside both settings button AND settings dropdown
+      // Check if click is inside both settings button AND settings dropdown
       const isOutsideSettings = settingsRef.current && !settingsRef.current.contains(target);
       const isOutsideDropdown = settingsDropdownRef.current && !settingsDropdownRef.current.contains(target);
+
+      // Check for PWA modals or overlays to prevent closing panels when interacting with child modals
+      const modalElement = (target as HTMLElement).closest('.pwa-modal, [data-radix-portal], .radix-portal');
+      if (modalElement) return;
 
       if (isOutsideSettings && isOutsideDropdown) {
         setIsSettingsOpen(false);
@@ -188,9 +195,18 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       if (isOutsideConsoleButton && isOutsideConsolePanel) {
         setIsConsoleOpen(false);
       }
+
+      // For history, check both the history button and the history panel
+      const isOutsideHistoryButton = historyRef.current && !historyRef.current.contains(target);
+      const historyPanel = document.querySelector('[data-history-panel]');
+      const isOutsideHistoryPanel = historyPanel && !historyPanel.contains(target);
+
+      if (isOutsideHistoryButton && isOutsideHistoryPanel) {
+        setIsHistoryOpen(false);
+      }
     };
 
-    if (isSettingsOpen || isSearchOpen || isConsoleOpen) {
+    if (isSettingsOpen || isSearchOpen || isConsoleOpen || isHistoryOpen) {
       // Add both mouse and touch event listeners for better mobile support
       document.addEventListener('mousedown', handleOutsideInteraction);
       document.addEventListener('touchstart', handleOutsideInteraction);
@@ -200,7 +216,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
         document.removeEventListener('touchstart', handleOutsideInteraction);
       };
     }
-  }, [isSettingsOpen, isSearchOpen, isConsoleOpen]);
+  }, [isSettingsOpen, isSearchOpen, isConsoleOpen, isHistoryOpen]);
 
   // Focus search input when search opens
   useEffect(() => {
@@ -319,8 +335,12 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   };
 
   const handleShowPromptHistory = () => {
-    openPromptHistory();
-    setIsSettingsOpen(false);
+    setIsHistoryOpen(!isHistoryOpen);
+    if (!isHistoryOpen) {
+      setIsSearchOpen(false);
+      setIsConsoleOpen(false);
+      setIsSettingsOpen(false);
+    }
   };
 
   const handleShowWorkflowJson = () => {
@@ -349,9 +369,10 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       setSearchResults([]);
       setSelectedResultIndex(-1);
     }
-    // Close console when opening search
+    // Close console and history when opening search
     if (!isSearchOpen) {
       setIsConsoleOpen(false);
+      setIsHistoryOpen(false);
     }
   };
 
@@ -505,15 +526,18 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           <div className="h-px w-6 bg-white/10 mx-1" />
 
           {/* Queue Button */}
-          <Button
-            onClick={handleShowPromptHistory}
-            variant="ghost"
-            size="sm"
-            className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
-            title={t('workflow.queue')}
-          >
-            <Clock className="h-4 w-4" />
-          </Button>
+          <div className="relative" ref={historyRef}>
+            <Button
+              onClick={handleShowPromptHistory}
+              variant="ghost"
+              size="sm"
+              className={`h-8 w-8 p-0 transition-all rounded-lg ${isHistoryOpen ? 'bg-white/20 text-white' : 'text-slate-100 hover:text-white hover:bg-white/20'
+                }`}
+              title={t('workflow.queue')}
+            >
+              <Clock className="h-4 w-4" />
+            </Button>
+          </div>
 
           {/* Divider */}
           <div className="h-px w-6 bg-white/10 mx-1" />
@@ -524,7 +548,8 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleConsoleToggle}
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
+              className={`h-8 w-8 p-0 transition-all rounded-lg ${isConsoleOpen ? 'bg-white/20 text-white' : 'text-slate-100 hover:text-white hover:bg-white/20'
+                }`}
               title={t('workflow.console')}
             >
               <Terminal className="h-4 w-4" />
@@ -791,6 +816,34 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                   ))
                 )}
               </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* History Side Panel */}
+      <AnimatePresence>
+        {isHistoryOpen && (
+          <motion.div
+            initial={{ opacity: 0, x: 20, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: 20, scale: 0.95 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="absolute right-full top-0 mr-3 w-96 max-w-[calc(100vw-100px)] h-[480px] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden flex flex-col"
+            data-history-panel
+            style={{
+              touchAction: 'pan-y pinch-zoom',
+              overscrollBehaviorY: 'contain'
+            } as React.CSSProperties}
+          >
+            {/* Subtle Inner Glow */}
+            <div className="absolute inset-0 bg-white/5 pointer-events-none rounded-2xl" />
+
+            <div className="relative z-10 flex flex-col h-full">
+              <PromptHistoryContent
+                isEmbedded={true}
+                onClose={() => setIsHistoryOpen(false)}
+              />
             </div>
           </motion.div>
         )}

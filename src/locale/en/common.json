@@ -245,7 +245,9 @@
             "loadWarningCritical": "Your current uncaptured changes will be lost!",
             "loadAnyway": "Load Anyway",
             "deleteTitle": "Delete Snapshot",
-            "deleteDesc": "Are you sure you want to delete this snapshot? This action cannot be undone."
+            "deleteDesc": "Are you sure you want to delete this snapshot? This action cannot be undone.",
+            "loadSuccess": "Snapshot loaded successfully",
+            "deleteSuccess": "Snapshot deleted successfully"
         },
         "upload": {
             "title": "Upload to ComfyUI Server",
@@ -652,8 +654,12 @@
         "copying": "Copying...",
         "searchPlaceholder": "Enter search term and click Search...",
         "search": "Search",
+        "searchDisabled": "Search unavailable for massive files",
         "matchCount": "{{current}} of {{total}}",
-        "noMatches": "No matches for \"{{query}}\""
+        "noMatches": "No matches for \"{{query}}\"",
+        "tooLargeTitle": "Data is too large",
+        "tooLargeDescription": "This JSON data is {{size}}MB. To prevent browser freezing, we recommend downloading the file and opening it with a dedicated editor.",
+        "downloadToView": "Download to View"
     },
     "missingModels": {
         "title": "Missing Models Detected",

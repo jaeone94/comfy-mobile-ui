@@ -651,7 +651,7 @@ const WorkflowChainList: React.FC = () => {
                                   )}
                                 </div>
                                 <div className="text-sm text-slate-500 dark:text-slate-400">
-                                  {t('folder.nodesCount', { count: chain.nodes?.length || 0 })}
+                                  {t('workflowChain.editor.workflowsCount', { count: chain.nodes?.length || 0 })}
                                 </div>
                                 {chain.description && (
                                   <p className="text-sm text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">

@@ -22,6 +22,7 @@ interface FilePreviewModalProps {
   fileType?: string;
   dimensions?: { width: number; height: number };
   duration?: number;
+  isCompact?: boolean;
 }
 
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
@@ -38,6 +39,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   fileType,
   dimensions,
   duration,
+  isCompact = false
 }) => {
   const { t } = useTranslation();
   const [showInfo, setShowInfo] = useState(false);
@@ -128,7 +130,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     window.open(url, '_blank');
   };
 
-  return createPortal(
+  const content = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -136,95 +138,109 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed top-0 left-0 right-0 bottom-0 z-[99999] bg-white dark:bg-slate-900 flex flex-col pwa-modal"
+          className={`${isCompact ? 'absolute h-full' : 'fixed h-[100dvh]'} top-0 left-0 right-0 bottom-0 z-[99999] bg-white dark:bg-slate-900 flex flex-col ${isCompact ? 'px-0 pt-0 pb-0' : 'pwa-modal'} overflow-hidden`}
         >
-          {/* Enhanced Header */}
-          <div className="flex items-center justify-between p-4 md:p-6 border-b border-slate-200 dark:border-slate-700 gap-3 flex-shrink-0 bg-white dark:bg-slate-900">
-            <div className="flex items-center space-x-3 min-w-0 flex-1">
-              <div className={`p-2 rounded-xl flex-shrink-0 ${isImage ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
-                {isImage ? (
-                  <Image className="w-5 h-5" />
-                ) : (
-                  <Video className="w-5 h-5" />
-                )}
-              </div>
-              <div className="min-w-0 flex-1">
-                <h3 className="text-sm md:text-base font-semibold text-slate-800 dark:text-slate-100 truncate" title={filename}>
-                  {filename}
-                </h3>
-                <div className="flex items-center flex-wrap gap-1 mt-1">
-                  <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                    {getFileExtension(filename)}
-                  </Badge>
-                  {fileSize && (
-                    <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      {formatFileSize(fileSize)}
-                    </Badge>
-                  )}
-                  {dimensions && (
-                    <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      {dimensions.width}×{dimensions.height}
-                    </Badge>
-                  )}
-                  {duration && (
-                    <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                      {formatDuration(duration)}
-                    </Badge>
+          {/* Header (Hidden in Compact Mode to allow overlay button) */}
+          {!isCompact ? (
+            <div className="flex items-center justify-between gap-3 flex-shrink-0 bg-white dark:bg-slate-900 p-4 md:p-6 border-b border-slate-200 dark:border-slate-700">
+              <div className="flex items-center space-x-3 min-w-0 flex-1">
+                <div className={`p-2 rounded-xl flex-shrink-0 ${isImage ? 'bg-blue-500/20 text-blue-400' : 'bg-purple-500/20 text-purple-400'}`}>
+                  {isImage ? (
+                    <Image className="w-5 h-5" />
+                  ) : (
+                    <Video className="w-5 h-5" />
                   )}
                 </div>
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-sm md:text-base font-semibold text-slate-800 dark:text-slate-100 truncate" title={filename}>
+                    {filename}
+                  </h3>
+                  <div className="flex items-center flex-wrap gap-1 mt-1">
+                    <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                      {getFileExtension(filename)}
+                    </Badge>
+                    {fileSize && (
+                      <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {formatFileSize(fileSize)}
+                      </Badge>
+                    )}
+                    {dimensions && (
+                      <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {dimensions.width}×{dimensions.height}
+                      </Badge>
+                    )}
+                    {duration && (
+                      <Badge variant="secondary" className="text-xs bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
+                        {formatDuration(duration)}
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
+                {url && !loading && !error && (
+                  <>
+                    <Button
+                      onClick={() => setShowInfo(!showInfo)}
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                      title={t('media.showFileInfo')}
+                    >
+                      <Info className="w-4 h-4" />
+                    </Button>
+
+                    <Button
+                      onClick={handleOpenInNewTab}
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                      title={t('media.openInNewTab')}
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </Button>
+
+                    <Button
+                      onClick={handleDownload}
+                      disabled={isDownloading}
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 px-2 md:px-3 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-50"
+                      title={t('media.downloadFile')}
+                    >
+                      <Download className="w-4 h-4 md:mr-2" />
+                      <span className="hidden md:inline">{isDownloading ? t('media.downloading') : t('media.download')}</span>
+                    </Button>
+                  </>
+                )}
+
+                <Button
+                  onClick={onClose}
+                  variant="ghost"
+                  size="sm"
+                  className="h-9 px-2 md:px-3 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
+                  title={t('common.close')}
+                >
+                  <X className="w-4 h-4" />
+                  <span className="hidden md:inline ml-1">{t('common.close')}</span>
+                </Button>
               </div>
             </div>
-
-            <div className="flex items-center space-x-1 md:space-x-2 flex-shrink-0">
-              {/* Action Buttons */}
-              {url && !loading && !error && (
-                <>
-                  <Button
-                    onClick={() => setShowInfo(!showInfo)}
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    title={t('media.showFileInfo')}
-                  >
-                    <Info className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    onClick={handleOpenInNewTab}
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 w-9 p-0 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200"
-                    title={t('media.openInNewTab')}
-                  >
-                    <ExternalLink className="w-4 h-4" />
-                  </Button>
-
-                  <Button
-                    onClick={handleDownload}
-                    disabled={isDownloading}
-                    variant="ghost"
-                    size="sm"
-                    className="h-9 px-2 md:px-3 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 disabled:opacity-50"
-                    title={t('media.downloadFile')}
-                  >
-                    <Download className="w-4 h-4 md:mr-2" />
-                    <span className="hidden md:inline">{isDownloading ? t('media.downloading') : t('media.download')}</span>
-                  </Button>
-                </>
-              )}
-
+          ) : (
+            /* Compact Mode Close Overlay Button */
+            <div className="absolute top-4 right-4 z-[100001]">
               <Button
                 onClick={onClose}
                 variant="ghost"
                 size="sm"
-                className="h-9 px-2 md:px-3 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200 border border-slate-200 dark:border-slate-700"
+                className="h-10 w-10 p-0 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/20 text-white shadow-lg transition-all active:scale-90"
                 title={t('common.close')}
               >
-                <X className="w-4 h-4 md:mr-1" />
-                <span className="hidden md:inline">{t('common.close')}</span>
+                <X className="w-5 h-5" />
               </Button>
             </div>
-          </div>
+          )}
 
           {/* File Info Panel */}
           <AnimatePresence>
@@ -269,7 +285,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             )}
           </AnimatePresence>
 
-          {/* Enhanced Content */}
+          {/* Content */}
           <div className="flex-1 overflow-hidden flex flex-col min-h-0">
             {loading && (
               <div className="flex items-center justify-center flex-1">
@@ -301,7 +317,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
             )}
 
             {url && !loading && !error && (
-              <div className="flex-1 flex items-center justify-center min-h-0 p-6">
+              <div className={`flex-1 flex items-center justify-center min-h-0 ${isCompact ? 'p-0' : 'p-4 md:p-6'}`}>
                 <div className="w-full h-full flex items-center justify-center max-w-full max-h-full">
                   {isImage ? (
                     <TransformWrapper
@@ -317,7 +333,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                         <img
                           src={url}
                           alt={filename}
-                          className="max-w-full max-h-full object-contain rounded-xl shadow-lg"
+                          className="max-w-full max-h-full object-contain shadow-lg"
                           onError={handleImageError}
                         />
                       </TransformComponent>
@@ -327,8 +343,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       src={`${url}#t=0.001`}
                       controls
                       preload="auto"
-                      className="content-fit rounded-xl shadow-lg"
+                      className="max-w-full max-h-full object-contain shadow-lg"
                       onError={handleVideoError}
+                      {...(isCompact ? { playsInline: true, "webkit-playsinline": "true" } : {})}
                     >
                       {t('media.videoNotSupported')}
                     </video>
@@ -339,7 +356,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           </div>
         </motion.div>
       )}
-    </AnimatePresence>,
-    document.body
+    </AnimatePresence>
   );
+
+  if (isCompact) return content;
+  return createPortal(content, document.body);
 };

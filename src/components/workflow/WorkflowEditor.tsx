@@ -38,7 +38,7 @@ import { WorkflowHeader } from '@/components/workflow/WorkflowHeader';
 import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
 // import { NodeInspector } from '@/components/canvas/NodeInspector'; // Replaced
 import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
-import WorkflowSnapshots from '@/components/workflow/WorkflowSnapshots';
+import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
 import { RepositionActionBar } from '@/components/controls/RepositionActionBar';
@@ -1460,7 +1460,7 @@ const WorkflowEditor: React.FC = () => {
     } else {
       toast.error(t('workflow.noJson'));
     }
-  }, [workflow]);
+  }, [workflow, t]);
 
   const handleShowObjectInfo = useCallback(() => {
     if (objectInfo) {
@@ -3771,6 +3771,7 @@ const WorkflowEditor: React.FC = () => {
         onClose={() => setIsJsonViewerOpen(false)}
         title={jsonViewerData?.title || ''}
         data={jsonViewerData?.data || {}}
+        downloadFilename={jsonViewerData?.title === t('workflow.jsonTitle') ? workflow?.name : undefined}
       />
 
       {/* Node Add Modal */}

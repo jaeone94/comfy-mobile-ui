@@ -243,7 +243,9 @@
             "loadWarningCritical": "您当前未捕获的更改将会丢失！",
             "loadAnyway": "仍要加载",
             "deleteTitle": "删除快照",
-            "deleteDesc": "确定要删除此快照吗？此操作无法撤销。"
+            "deleteDesc": "确定要删除此快照吗？此操作无法撤销。",
+            "loadSuccess": "快照加载成功",
+            "deleteSuccess": "快照已删除"
         },
         "upload": {
             "title": "上传到 ComfyUI 服务器",
@@ -650,8 +652,12 @@
         "copying": "复制中...",
         "searchPlaceholder": "输入搜索词并点击搜索...",
         "search": "搜索",
+        "searchDisabled": "文件过大，无法搜索",
         "matchCount": "{{current}} / {{total}}",
-        "noMatches": "没有与“{{query}}”匹配的项"
+        "noMatches": "没有与“{{query}}”匹配的项",
+        "tooLargeTitle": "数据过大",
+        "tooLargeDescription": "此 JSON 数据大小为 {{size}}MB。为防止浏览器卡死，建议下载文件并使用专用编辑器查看。",
+        "downloadToView": "下载以查看"
     },
     "missingModels": {
         "title": "检测到缺失的模型",

@@ -243,7 +243,9 @@
             "loadWarningCritical": "現在の未保存の変更は失われます！",
             "loadAnyway": "とにかく読み込む",
             "deleteTitle": "スナップショットを削除",
-            "deleteDesc": "このスナップショットを削除してもよろしいですか？この操作は元に戻せません。"
+            "deleteDesc": "このスナップショットを削除してもよろしいですか？この操作は元に戻せません。",
+            "loadSuccess": "スナップショットを読み込みました",
+            "deleteSuccess": "スナップショットを削除しました"
         },
         "upload": {
             "title": "ComfyUIサーバーへアップロード",
@@ -650,8 +652,12 @@
         "copying": "コピー中...",
         "searchPlaceholder": "検索語を入力して検索をクリック...",
         "search": "検索",
+        "searchDisabled": "ファイルサイズが大きすぎるため、検索を利用できません",
         "matchCount": "{{current}} / {{total}}",
-        "noMatches": "\"{{query}}\" に一致するものはありません"
+        "noMatches": "\"{{query}}\" に一致するものはありません",
+        "tooLargeTitle": "データが大きすぎます",
+        "tooLargeDescription": "このJSONデータのサイズは {{size}}MB です。ブラウザのフリーズを防ぐため、ファイルをダウンロードして専用のエディタで確認することをお勧めします。",
+        "downloadToView": "ダウンロードして確認する"
     },
     "missingModels": {
         "title": "不足しているモデルを検出",
