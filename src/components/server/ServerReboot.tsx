@@ -39,22 +39,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
   }>({ available: false, running: false, restart_requested: false });
   const [isRebooting, setIsRebooting] = useState(false);
 
-  // Override WorkflowList's global scroll blocking
-  useEffect(() => {
-    // Reset any global scroll blocking from parent components
-    document.body.style.overflow = '';
-    document.body.style.touchAction = '';
-    document.documentElement.style.overflow = '';
-    document.documentElement.style.touchAction = '';
 
-    return () => {
-      // Clean up when component unmounts
-      document.body.style.overflow = '';
-      document.body.style.touchAction = '';
-      document.documentElement.style.overflow = '';
-      document.documentElement.style.touchAction = '';
-    };
-  }, []);
   const [rebootStatus, setRebootStatus] = useState<{
     phase: 'idle' | 'rebooting' | 'waiting' | 'success' | 'failed';
     message: string;
@@ -534,9 +519,9 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
   );
 
   return (
-    <div className="pwa-container bg-gradient-to-br from-slate-50 via-orange-50/30 to-red-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
+    <div className="pwa-container flex flex-col overflow-hidden bg-gradient-to-br from-slate-50 via-orange-50/30 to-red-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
       {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
+      <header className="shrink-0 z-50 bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
         {/* Gradient Overlay for Enhanced Glass Effect */}
         <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
         <div className="relative flex items-center space-x-4 p-4 z-10">
@@ -559,405 +544,407 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
         </div>
       </header>
 
-      {/* Content */}
-      <div className="container mx-auto px-6 py-8 max-w-2xl">
-        {/* Server Requirements Check */}
-        <div className="mb-6">
-          <Card className={`transition-all duration-500 ${isConnected && hasExtension
-            ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20'
-            : 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20'
-            }`}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2">
-                <Server className="h-5 w-5" />
-                <span>{t('serverReboot.cardTitle')}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {isCheckingExtension ? (
-                <div className="flex items-center space-x-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    {t('serverReboot.checking')}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  {/* Server Connection Status */}
+      {/* Content Area */}
+      <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="container mx-auto px-6 py-8 max-w-2xl">
+          {/* Server Requirements Check */}
+          <div className="mb-6">
+            <Card className={`transition-all duration-500 ${isConnected && hasExtension
+              ? 'border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/20'
+              : 'border-amber-200 dark:border-amber-800 bg-amber-50/50 dark:bg-amber-950/20'
+              }`}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center space-x-2">
+                  <Server className="h-5 w-5" />
+                  <span>{t('serverReboot.cardTitle')}</span>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {isCheckingExtension ? (
                   <div className="flex items-center space-x-3">
-                    {isConnected ? (
-                      <CheckCircle className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <AlertCircle className="h-4 w-4 text-red-500" />
-                    )}
-                    <span className="text-sm">
-                      {t('serverReboot.serverStatus')} {isConnected ? (
-                        <span className="text-green-600 dark:text-green-400 font-medium">{t('common.connected')}</span>
-                      ) : (
-                        <span className="text-red-600 dark:text-red-400 font-medium">{t('common.disconnected')}</span>
-                      )}
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {t('serverReboot.checking')}
                     </span>
                   </div>
-
-                  {/* API Extension Status - Only show when server is connected */}
-                  {isConnected && (
+                ) : (
+                  <>
+                    {/* Server Connection Status */}
                     <div className="flex items-center space-x-3">
-                      {hasExtension ? (
+                      {isConnected ? (
                         <CheckCircle className="h-4 w-4 text-green-500" />
                       ) : (
                         <AlertCircle className="h-4 w-4 text-red-500" />
                       )}
                       <span className="text-sm">
-                        {t('serverReboot.extensionStatus')} {hasExtension ? (
-                          <span className="text-green-600 dark:text-green-400 font-medium">{t('common.available')}</span>
+                        {t('serverReboot.serverStatus')} {isConnected ? (
+                          <span className="text-green-600 dark:text-green-400 font-medium">{t('common.connected')}</span>
                         ) : (
-                          <span className="text-red-600 dark:text-red-400 font-medium">{t('common.notFound')}</span>
+                          <span className="text-red-600 dark:text-red-400 font-medium">{t('common.disconnected')}</span>
                         )}
                       </span>
                     </div>
-                  )}
 
-                  {/* Server URL Info */}
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
-                    <strong>{t('serverReboot.serverUrl')}</strong> {url || t('common.notConfigured')}
-                  </div>
-
-                  {/* Status Summary - Show when all is good */}
-                  {isConnected && hasExtension && !error && !isRebooting && (
-                    <div className="mt-3">
-                      <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
-                        <div className="flex items-center space-x-2">
+                    {/* API Extension Status - Only show when server is connected */}
+                    {isConnected && (
+                      <div className="flex items-center space-x-3">
+                        {hasExtension ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
-                          <span className="text-sm font-medium text-green-800 dark:text-green-200">
-                            {t('serverReboot.ready')}
-                          </span>
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className="text-sm">
+                          {t('serverReboot.extensionStatus')} {hasExtension ? (
+                            <span className="text-green-600 dark:text-green-400 font-medium">{t('common.available')}</span>
+                          ) : (
+                            <span className="text-red-600 dark:text-red-400 font-medium">{t('common.notFound')}</span>
+                          )}
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Server URL Info */}
+                    <div className="text-xs text-slate-500 dark:text-slate-400 mt-2">
+                      <strong>{t('serverReboot.serverUrl')}</strong> {url || t('common.notConfigured')}
+                    </div>
+
+                    {/* Status Summary - Show when all is good */}
+                    {isConnected && hasExtension && !error && !isRebooting && (
+                      <div className="mt-3">
+                        <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
+                          <div className="flex items-center space-x-2">
+                            <CheckCircle className="h-4 w-4 text-green-500" />
+                            <span className="text-sm font-medium text-green-800 dark:text-green-200">
+                              {t('serverReboot.ready')}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  )}
-
-                  {/* Error Messages */}
-                  {(!isConnected || !hasExtension || error) && (
-                    <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
-                      <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">{t('serverReboot.issues')}</h4>
-                      <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
-                        {!isConnected && <li>• {t('serverReboot.issueConnection')}</li>}
-                        {isConnected && !hasExtension && <li>• {t('serverReboot.issueExtension')}</li>}
-                        {error && !isRebooting && <li>• {error}</li>}
-                      </ul>
-
-                      {!hasExtension && isConnected && (
-                        <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded">
-                          <p className="text-xs text-blue-700 dark:text-blue-300">
-                            <strong>To fix:</strong> {t('serverReboot.fixInstall')}
-                          </p>
-                          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
-                            {t('serverReboot.path')} <code>ComfyUI/custom_nodes/comfyui-mobile-ui-api-extension/</code>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Recheck Button */}
-                  <div className="flex justify-end mt-4">
-                    <Button
-                      onClick={() => {
-                        connect();
-                        checkExtension();
-                      }}
-                      variant="outline"
-                      size="sm"
-                      disabled={isCheckingExtension}
-                    >
-                      {isCheckingExtension ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4 mr-2" />
-                      )}
-                      {t('serverReboot.recheck')}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Watchdog Service - Independent Card */}
-        <div className="mb-8">
-          <Card className={`transition-all duration-500 ${watchdogStatus.available && watchdogStatus.running
-            ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20'
-            : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20'
-            }`}>
-            <CardHeader className="pb-3">
-              <CardTitle className="flex items-center space-x-2">
-                <AlertCircle className="h-5 w-5" />
-                <span>Watchdog Service</span>
-                <div className="ml-auto flex items-center space-x-2">
-                  {watchdogStatus.lastChecked && (
-                    <span className="text-xs text-slate-500 dark:text-slate-400">
-                      {t('serverReboot.checkedAgo', { seconds: Math.floor((Date.now() - watchdogStatus.lastChecked) / 1000) })}
-                    </span>
-                  )}
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {isCheckingWatchdog ? (
-                <div className="flex items-center space-x-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    {t('serverReboot.checkingWatchdog')}
-                  </span>
-                </div>
-              ) : (
-                <>
-                  {/* Watchdog Service Status */}
-                  <div className="flex items-center space-x-3">
-                    {watchdogStatus.available && watchdogStatus.running ? (
-                      <CheckCircle className="h-4 w-4 text-blue-500" />
-                    ) : watchdogStatus.available ? (
-                      <AlertCircle className="h-4 w-4 text-yellow-500" />
-                    ) : (
-                      <XCircle className="h-4 w-4 text-slate-500" />
                     )}
-                    <span className="text-sm">
-                      <strong>Watchdog Service:</strong> {
-                        watchdogStatus.available && watchdogStatus.running
-                          ? <span className="text-blue-600 dark:text-blue-400 font-medium">Active & Running</span>
-                          : watchdogStatus.available
-                            ? <span className="text-yellow-600 dark:text-yellow-400 font-medium">Available (Stopped)</span>
-                            : <span className="text-slate-600 dark:text-slate-400 font-medium">Not Available</span>
-                      }
+
+                    {/* Error Messages */}
+                    {(!isConnected || !hasExtension || error) && (
+                      <div className="mt-3 p-3 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg">
+                        <h4 className="text-sm font-medium text-red-800 dark:text-red-200 mb-2">{t('serverReboot.issues')}</h4>
+                        <ul className="text-sm text-red-700 dark:text-red-300 space-y-1">
+                          {!isConnected && <li>• {t('serverReboot.issueConnection')}</li>}
+                          {isConnected && !hasExtension && <li>• {t('serverReboot.issueExtension')}</li>}
+                          {error && !isRebooting && <li>• {error}</li>}
+                        </ul>
+
+                        {!hasExtension && isConnected && (
+                          <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded">
+                            <p className="text-xs text-blue-700 dark:text-blue-300">
+                              <strong>To fix:</strong> {t('serverReboot.fixInstall')}
+                            </p>
+                            <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                              {t('serverReboot.path')} <code>ComfyUI/custom_nodes/comfyui-mobile-ui-api-extension/</code>
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Recheck Button */}
+                    <div className="flex justify-end mt-4">
+                      <Button
+                        onClick={() => {
+                          connect();
+                          checkExtension();
+                        }}
+                        variant="outline"
+                        size="sm"
+                        disabled={isCheckingExtension}
+                      >
+                        {isCheckingExtension ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 mr-2" />
+                        )}
+                        {t('serverReboot.recheck')}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Watchdog Service - Independent Card */}
+          <div className="mb-8">
+            <Card className={`transition-all duration-500 ${watchdogStatus.available && watchdogStatus.running
+              ? 'border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20'
+              : 'border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/20'
+              }`}>
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center space-x-2">
+                  <AlertCircle className="h-5 w-5" />
+                  <span>Watchdog Service</span>
+                  <div className="ml-auto flex items-center space-x-2">
+                    {watchdogStatus.lastChecked && (
+                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                        {t('serverReboot.checkedAgo', { seconds: Math.floor((Date.now() - watchdogStatus.lastChecked) / 1000) })}
+                      </span>
+                    )}
+                  </div>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {isCheckingWatchdog ? (
+                  <div className="flex items-center space-x-3">
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-500" />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      {t('serverReboot.checkingWatchdog')}
                     </span>
                   </div>
-
-                  {/* ComfyUI Monitoring Status - Only show when watchdog is available */}
-                  {watchdogStatus.available && (
+                ) : (
+                  <>
+                    {/* Watchdog Service Status */}
                     <div className="flex items-center space-x-3">
-                      {watchdogStatus.comfyuiResponsive ? (
-                        <CheckCircle className="h-4 w-4 text-green-500" />
+                      {watchdogStatus.available && watchdogStatus.running ? (
+                        <CheckCircle className="h-4 w-4 text-blue-500" />
+                      ) : watchdogStatus.available ? (
+                        <AlertCircle className="h-4 w-4 text-yellow-500" />
                       ) : (
-                        <XCircle className="h-4 w-4 text-red-500" />
+                        <XCircle className="h-4 w-4 text-slate-500" />
                       )}
                       <span className="text-sm">
-                        <strong>{t('serverReboot.monitorStatus')}</strong> {
-                          watchdogStatus.comfyuiResponsive
-                            ? <span className="text-green-600 dark:text-green-400 font-medium">{t('serverReboot.responsive')}</span>
-                            : <span className="text-red-600 dark:text-red-400 font-medium">{t('serverReboot.notResponding')}</span>
+                        <strong>Watchdog Service:</strong> {
+                          watchdogStatus.available && watchdogStatus.running
+                            ? <span className="text-blue-600 dark:text-blue-400 font-medium">Active & Running</span>
+                            : watchdogStatus.available
+                              ? <span className="text-yellow-600 dark:text-yellow-400 font-medium">Available (Stopped)</span>
+                              : <span className="text-slate-600 dark:text-slate-400 font-medium">Not Available</span>
                         }
                       </span>
                     </div>
-                  )}
 
-                  {/* Restart Capability Info */}
-                  <div className={`p-3 border rounded-lg ${watchdogStatus.available
-                    ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
-                    : 'bg-slate-50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800'
-                    }`}>
-                    <div className="flex items-start space-x-2">
-                      {watchdogStatus.available ? (
-                        <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 text-slate-500 mt-0.5" />
-                      )}
-                      <div>
-                        <p className={`text-sm font-medium ${watchdogStatus.available && watchdogStatus.running
-                          ? 'text-blue-800 dark:text-blue-200'
-                          : 'text-slate-800 dark:text-slate-200'
-                          }`}>
-                          {
-                            watchdogStatus.available && watchdogStatus.running
-                              ? t('serverReboot.restartCapability.enhanced')
-                              : watchdogStatus.available
-                                ? t('serverReboot.restartCapability.watchdogOnly')
-                                : t('serverReboot.restartCapability.basic')
-                          }
-                        </p>
-                        <p className={`text-xs mt-1 ${watchdogStatus.available && watchdogStatus.running
-                          ? 'text-blue-600 dark:text-blue-400'
-                          : watchdogStatus.available
-                            ? 'text-yellow-600 dark:text-yellow-400'
-                            : 'text-slate-600 dark:text-slate-400'
-                          }`}>
-                          {
-                            watchdogStatus.available && watchdogStatus.running
-                              ? t('serverReboot.restartDesc.enhanced')
-                              : watchdogStatus.available
-                                ? t('serverReboot.restartDesc.watchdogOnly')
-                                : t('serverReboot.restartDesc.basic')
-                          }
-                        </p>
-                        {watchdogStatus.available && !watchdogStatus.comfyuiResponsive && (
-                          <p className="text-xs mt-1 text-orange-600 dark:text-orange-400">
-                            {t('serverReboot.downWarning')}
-                          </p>
+                    {/* ComfyUI Monitoring Status - Only show when watchdog is available */}
+                    {watchdogStatus.available && (
+                      <div className="flex items-center space-x-3">
+                        {watchdogStatus.comfyuiResponsive ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500" />
                         )}
+                        <span className="text-sm">
+                          <strong>{t('serverReboot.monitorStatus')}</strong> {
+                            watchdogStatus.comfyuiResponsive
+                              ? <span className="text-green-600 dark:text-green-400 font-medium">{t('serverReboot.responsive')}</span>
+                              : <span className="text-red-600 dark:text-red-400 font-medium">{t('serverReboot.notResponding')}</span>
+                          }
+                        </span>
+                      </div>
+                    )}
+
+                    {/* Restart Capability Info */}
+                    <div className={`p-3 border rounded-lg ${watchdogStatus.available
+                      ? 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'
+                      : 'bg-slate-50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800'
+                      }`}>
+                      <div className="flex items-start space-x-2">
+                        {watchdogStatus.available ? (
+                          <CheckCircle className="h-4 w-4 text-blue-500 mt-0.5" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 text-slate-500 mt-0.5" />
+                        )}
+                        <div>
+                          <p className={`text-sm font-medium ${watchdogStatus.available && watchdogStatus.running
+                            ? 'text-blue-800 dark:text-blue-200'
+                            : 'text-slate-800 dark:text-slate-200'
+                            }`}>
+                            {
+                              watchdogStatus.available && watchdogStatus.running
+                                ? t('serverReboot.restartCapability.enhanced')
+                                : watchdogStatus.available
+                                  ? t('serverReboot.restartCapability.watchdogOnly')
+                                  : t('serverReboot.restartCapability.basic')
+                            }
+                          </p>
+                          <p className={`text-xs mt-1 ${watchdogStatus.available && watchdogStatus.running
+                            ? 'text-blue-600 dark:text-blue-400'
+                            : watchdogStatus.available
+                              ? 'text-yellow-600 dark:text-yellow-400'
+                              : 'text-slate-600 dark:text-slate-400'
+                            }`}>
+                            {
+                              watchdogStatus.available && watchdogStatus.running
+                                ? t('serverReboot.restartDesc.enhanced')
+                                : watchdogStatus.available
+                                  ? t('serverReboot.restartDesc.watchdogOnly')
+                                  : t('serverReboot.restartDesc.basic')
+                            }
+                          </p>
+                          {watchdogStatus.available && !watchdogStatus.comfyuiResponsive && (
+                            <p className="text-xs mt-1 text-orange-600 dark:text-orange-400">
+                              {t('serverReboot.downWarning')}
+                            </p>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  {/* Connection Method Info */}
-                  <div className="text-xs text-slate-500 dark:text-slate-400">
-                    <div><strong>{t('serverReboot.watchdogTitle')}:</strong> {url ? `${new URL(url).hostname}:9188/status` : 'N/A'}</div>
-                  </div>
-
-                  {/* Recheck Watchdog Button */}
-                  <div className="flex justify-between mt-4">
-                    <Button
-                      onClick={async () => {
-                        const logs = await fetchWatchdogLogs();
-                        if (logs) {
-                          setRebootStatus({
-                            phase: 'idle',
-                            message: '',
-                            logs: logs.logs?.slice(-20) || []
-                          });
-                        }
-                      }}
-                      variant="ghost"
-                      size="sm"
-                      disabled={!watchdogStatus.available}
-                    >
-                      📋 {t('serverReboot.viewLogs')}
-                    </Button>
-
-                    <Button
-                      onClick={checkWatchdogStatus}
-                      variant="outline"
-                      size="sm"
-                      disabled={isCheckingWatchdog}
-                    >
-                      {isCheckingWatchdog ? (
-                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      ) : (
-                        <AlertCircle className="h-4 w-4 mr-2" />
-                      )}
-                      {t('serverReboot.checkWatchdog')}
-                    </Button>
-                  </div>
-                </>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Reboot Control */}
-        <div className="mb-8 p-6 bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-lg shadow-sm dark:bg-slate-900/70 dark:border-slate-700/50">
-          <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
-            {t('serverReboot.controlTitle')}
-          </h2>
-
-          {/* Reboot Status */}
-          {rebootStatus.phase !== 'idle' && (
-            <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-              <div className="flex items-center space-x-3 mb-2">
-                {getStatusIcon(rebootStatus.phase)}
-                <span className={`font-medium ${getStatusColor(rebootStatus.phase)}`}>
-                  {rebootStatus.message}
-                </span>
-              </div>
-              {rebootStatus.details && (
-                <p className="text-sm text-slate-600 dark:text-slate-400 ml-8">
-                  {rebootStatus.details}
-                </p>
-              )}
-
-              {/* Watchdog Logs - Show when available */}
-              {rebootStatus.logs && rebootStatus.logs.length > 0 && (
-                <div className="mt-4 ml-8">
-                  <details className="group">
-                    <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100">
-                      {t('serverReboot.recentLogs', { count: rebootStatus.logs.length })}
-                    </summary>
-                    <div className="mt-2 p-3 bg-slate-900 text-green-400 text-xs font-mono rounded border max-h-64 overflow-y-auto">
-                      {rebootStatus.logs.map((log: any, idx: number) => (
-                        <div key={idx} className="mb-1">
-                          <span className="text-slate-500">[{log.timestamp}]</span>{' '}
-                          <span className={`font-bold ${log.level === 'error' ? 'text-red-400' :
-                            log.level === 'warning' ? 'text-yellow-400' :
-                              log.level === 'success' ? 'text-green-400' :
-                                log.level === 'restart' ? 'text-blue-400' :
-                                  log.level === 'api' ? 'text-purple-400' :
-                                    'text-slate-400'
-                            }`}>
-                            [{log.level?.toUpperCase() || 'INFO'}]
-                          </span>{' '}
-                          <span className="text-slate-200">{log.message}</span>
-                        </div>
-                      ))}
+                    {/* Connection Method Info */}
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      <div><strong>{t('serverReboot.watchdogTitle')}:</strong> {url ? `${new URL(url).hostname}:9188/status` : 'N/A'}</div>
                     </div>
-                  </details>
+
+                    {/* Recheck Watchdog Button */}
+                    <div className="flex justify-between mt-4">
+                      <Button
+                        onClick={async () => {
+                          const logs = await fetchWatchdogLogs();
+                          if (logs) {
+                            setRebootStatus({
+                              phase: 'idle',
+                              message: '',
+                              logs: logs.logs?.slice(-20) || []
+                            });
+                          }
+                        }}
+                        variant="ghost"
+                        size="sm"
+                        disabled={!watchdogStatus.available}
+                      >
+                        📋 {t('serverReboot.viewLogs')}
+                      </Button>
+
+                      <Button
+                        onClick={checkWatchdogStatus}
+                        variant="outline"
+                        size="sm"
+                        disabled={isCheckingWatchdog}
+                      >
+                        {isCheckingWatchdog ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <AlertCircle className="h-4 w-4 mr-2" />
+                        )}
+                        {t('serverReboot.checkWatchdog')}
+                      </Button>
+                    </div>
+                  </>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Reboot Control */}
+          <div className="mb-8 p-6 bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-lg shadow-sm dark:bg-slate-900/70 dark:border-slate-700/50">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">
+              {t('serverReboot.controlTitle')}
+            </h2>
+
+            {/* Reboot Status */}
+            {rebootStatus.phase !== 'idle' && (
+              <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                <div className="flex items-center space-x-3 mb-2">
+                  {getStatusIcon(rebootStatus.phase)}
+                  <span className={`font-medium ${getStatusColor(rebootStatus.phase)}`}>
+                    {rebootStatus.message}
+                  </span>
+                </div>
+                {rebootStatus.details && (
+                  <p className="text-sm text-slate-600 dark:text-slate-400 ml-8">
+                    {rebootStatus.details}
+                  </p>
+                )}
+
+                {/* Watchdog Logs - Show when available */}
+                {rebootStatus.logs && rebootStatus.logs.length > 0 && (
+                  <div className="mt-4 ml-8">
+                    <details className="group">
+                      <summary className="cursor-pointer text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100">
+                        {t('serverReboot.recentLogs', { count: rebootStatus.logs.length })}
+                      </summary>
+                      <div className="mt-2 p-3 bg-slate-900 text-green-400 text-xs font-mono rounded border max-h-64 overflow-y-auto">
+                        {rebootStatus.logs.map((log: any, idx: number) => (
+                          <div key={idx} className="mb-1">
+                            <span className="text-slate-500">[{log.timestamp}]</span>{' '}
+                            <span className={`font-bold ${log.level === 'error' ? 'text-red-400' :
+                              log.level === 'warning' ? 'text-yellow-400' :
+                                log.level === 'success' ? 'text-green-400' :
+                                  log.level === 'restart' ? 'text-blue-400' :
+                                    log.level === 'api' ? 'text-purple-400' :
+                                      'text-slate-400'
+                              }`}>
+                              [{log.level?.toUpperCase() || 'INFO'}]
+                            </span>{' '}
+                            <span className="text-slate-200">{log.message}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </details>
+                  </div>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-4">
+              <p className="text-sm text-slate-600 dark:text-slate-400">
+                {t('serverReboot.confirmMessage')}
+              </p>
+              <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 ml-4">
+                <li>• {t('serverReboot.confirmList.interrupt')}</li>
+                <li>• {t('serverReboot.confirmList.reload')}</li>
+                <li>• {t('serverReboot.confirmList.clear')}</li>
+                <li>• {t('serverReboot.confirmList.time')}</li>
+              </ul>
+
+              <Button
+                onClick={handleReboot}
+                disabled={!canReboot}
+                className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white disabled:from-slate-300 disabled:to-slate-400"
+                size="lg"
+              >
+                {isRebooting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    {rebootStatus.phase === 'rebooting' ? 'Rebooting...' :
+                      rebootStatus.phase === 'waiting' ? t('serverReboot.waiting') :
+                        t('serverReboot.processing')}
+                  </>
+                ) : (
+                  <>
+                    <RotateCcw className="h-4 w-4 mr-2" />
+                    {t('serverReboot.button')}
+                  </>
+                )}
+              </Button>
+
+              {!canReboot && !isRebooting && (
+                <div className="text-sm text-slate-500 dark:text-slate-400 space-y-1">
+                  <p>{t('serverReboot.unavailableReasons.title')}</p>
+                  <div className="ml-2">
+                    {!(isConnected && hasExtension) &&
+                      !(watchdogStatus.available && watchdogStatus.running) && (
+                        <p>• {t('serverReboot.unavailableReasons.noService')}</p>
+                      )}
+                    {!isConnected && !hasExtension && (
+                      <p>• {t('serverReboot.unavailableReasons.disconnected')}</p>
+                    )}
+                    {isConnected && !hasExtension &&
+                      !(watchdogStatus.available && watchdogStatus.running) && (
+                        <p>• {t('serverReboot.unavailableReasons.noExtension')}</p>
+                      )}
+                  </div>
                 </div>
               )}
             </div>
-          )}
-
-          <div className="space-y-4">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              {t('serverReboot.confirmMessage')}
-            </p>
-            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1 ml-4">
-              <li>• {t('serverReboot.confirmList.interrupt')}</li>
-              <li>• {t('serverReboot.confirmList.reload')}</li>
-              <li>• {t('serverReboot.confirmList.clear')}</li>
-              <li>• {t('serverReboot.confirmList.time')}</li>
-            </ul>
-
-            <Button
-              onClick={handleReboot}
-              disabled={!canReboot}
-              className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white disabled:from-slate-300 disabled:to-slate-400"
-              size="lg"
-            >
-              {isRebooting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  {rebootStatus.phase === 'rebooting' ? 'Rebooting...' :
-                    rebootStatus.phase === 'waiting' ? t('serverReboot.waiting') :
-                      t('serverReboot.processing')}
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="h-4 w-4 mr-2" />
-                  {t('serverReboot.button')}
-                </>
-              )}
-            </Button>
-
-            {!canReboot && !isRebooting && (
-              <div className="text-sm text-slate-500 dark:text-slate-400 space-y-1">
-                <p>{t('serverReboot.unavailableReasons.title')}</p>
-                <div className="ml-2">
-                  {!(isConnected && hasExtension) &&
-                    !(watchdogStatus.available && watchdogStatus.running) && (
-                      <p>• {t('serverReboot.unavailableReasons.noService')}</p>
-                    )}
-                  {!isConnected && !hasExtension && (
-                    <p>• {t('serverReboot.unavailableReasons.disconnected')}</p>
-                  )}
-                  {isConnected && !hasExtension &&
-                    !(watchdogStatus.available && watchdogStatus.running) && (
-                      <p>• {t('serverReboot.unavailableReasons.noExtension')}</p>
-                    )}
-                </div>
-              </div>
-            )}
           </div>
-        </div>
 
-        {/* Help Information */}
-        <div className="p-6 bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-lg shadow-sm dark:bg-slate-900/70 dark:border-slate-700/50">
-          <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">
-            {t('serverReboot.helpTitle')}
-          </h3>
-          <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
-            <p>• {t('serverReboot.helpList.1')}</p>
-            <p>• {t('serverReboot.helpList.2')}</p>
-            <p>• {t('serverReboot.helpList.3')}</p>
-            <p>• {t('serverReboot.helpList.4')}</p>
-            <p>• {t('serverReboot.helpList.5')}</p>
+          {/* Help Information */}
+          <div className="p-6 bg-white/70 backdrop-blur-sm border border-slate-200/50 rounded-lg shadow-sm dark:bg-slate-900/70 dark:border-slate-700/50">
+            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-3">
+              {t('serverReboot.helpTitle')}
+            </h3>
+            <div className="space-y-2 text-sm text-slate-600 dark:text-slate-400">
+              <p>• {t('serverReboot.helpList.1')}</p>
+              <p>• {t('serverReboot.helpList.2')}</p>
+              <p>• {t('serverReboot.helpList.3')}</p>
+              <p>• {t('serverReboot.helpList.4')}</p>
+              <p>• {t('serverReboot.helpList.5')}</p>
+            </div>
           </div>
         </div>
       </div>
