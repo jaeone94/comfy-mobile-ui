@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Settings, Clock, Search, Maximize2, Move, RefreshCw, Terminal } from 'lucide-react';
+import { Settings, Clock, Search, Maximize2, Move, RefreshCw, Terminal, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePromptHistoryStore } from '@/ui/store/promptHistoryStore';
@@ -12,6 +12,7 @@ import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { PromptHistoryContent } from '@/components/history/PromptHistory';
 import type { LogEntry, LogsWsMessage } from '@/core/domain';
 import type { MissingModelInfo } from '@/services/MissingModelsService';
+import { useNavigate, useParams } from 'react-router-dom';
 
 
 interface SearchableNode {
@@ -93,9 +94,17 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   const consoleRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
   const consoleContainerRef = useRef<HTMLDivElement>(null);
+  const navigate = useNavigate();
   const { openPromptHistory } = usePromptHistoryStore();
+  const { id } = useParams<{ id: string }>();
   const { url: serverUrl } = useConnectionStore();
   const { t } = useTranslation();
+
+  const handleStackViewClick = () => {
+    if (id) {
+      navigate(`/workflow-stack/${id}`);
+    }
+  };
 
   // Advanced search function with scoring
   const searchNodes = (query: string): SearchableNode[] => {
@@ -553,6 +562,22 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               title={t('workflow.console')}
             >
               <Terminal className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px w-6 bg-white/10 mx-1" />
+
+          {/* Stack View Button */}
+          <div className="relative" ref={consoleRef}>
+            <Button
+              onClick={handleStackViewClick}
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0 transition-all rounded-lg text-slate-100 hover:text-white hover:bg-white/20"
+              title={t('menu.stackView')}
+            >
+              <Layers className="h-4 w-4" />
             </Button>
           </div>
 

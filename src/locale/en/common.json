@@ -56,7 +56,11 @@
         "serverSettings": "Server Settings",
         "edit": "Edit",
         "navigate": "Navigate",
-        "toggleMode": "Toggle Mode"
+        "toggleMode": "Toggle Mode",
+        "expand": "Expand",
+        "collapse": "Collapse",
+        "expandAll": "Expand All",
+        "collapseAll": "Collapse All"
     },
     "workflow": {
         "details": "Workflow Details",
@@ -108,6 +112,7 @@
         "thumbnailError": "Failed to regenerate thumbnail",
         "loading": "Loading workflow...",
         "loadFailed": "Failed to Load Workflow",
+        "saveFailed": "Failed to Save Workflow",
         "backToList": "Back to Workflows",
         "executionFailed": "Workflow execution failed",
         "submitFailed": "Failed to submit workflow for execution",
@@ -140,6 +145,15 @@
         "nodeDeleteFailed": "Failed to delete node",
         "groupDeleted": "Group {{id}} deleted successfully",
         "groupDeleteFailed": "Failed to delete group",
+        "groupingMode": {
+            "execution": "Execution Order Group",
+            "type": "Node Type Group"
+        },
+        "stackViewLabels": {
+            "viewSettings": "View Settings",
+            "nodesByCategory": "Nodes by Category",
+            "executionOrder": "Execution Order"
+        },
         "disconnected": "Connection disconnected successfully",
         "disconnectFailed": "Failed to disconnect connection",
         "connectionBatchApplied": "Connection batch applied successfully",
@@ -344,6 +358,9 @@
         "confirmClear": "Are you sure you want to clear all browser caches? This will remove all downloaded images, cached files, and temporary data.",
         "language": "Language",
         "serverConnection": "Server Connection",
+        "viewModes": "View Modes",
+        "stackView": "Stack View",
+        "graphView": "Graph View",
         "workflowTools": "Workflow Tools",
         "installMissingNodes": "Install Missing Nodes",
         "missingModelDetector": "Missing Model Detector",
@@ -508,6 +525,15 @@
             "always": "Always",
             "mute": "Mute",
             "bypass": "Bypass"
+        },
+        "category": {
+            "models_loras": "Models & LoRAs",
+            "loaders": "Loaders",
+            "inputs": "Image & Video",
+            "uncategorized": "Uncategorized",
+            "prompts": "Prompts",
+            "samplers": "Samplers",
+            "outputs": "Outputs"
         },
         "group": {
             "noGroups": "No groups found in this workflow.",

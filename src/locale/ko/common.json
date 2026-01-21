@@ -56,7 +56,11 @@
         "serverSettings": "서버 설정",
         "edit": "편집",
         "navigate": "이동",
-        "toggleMode": "모드 전환"
+        "toggleMode": "모드 전환",
+        "expand": "펼치기",
+        "collapse": "접기",
+        "expandAll": "모두 펼치기",
+        "collapseAll": "모두 접기"
     },
     "workflow": {
         "details": "워크플로우 상세",
@@ -108,6 +112,7 @@
         "thumbnailError": "썸네일 재생성 실패",
         "loading": "워크플로우 로딩 중...",
         "loadFailed": "워크플로우 로드 실패",
+        "saveFailed": "워크플로우 저장 실패",
         "backToList": "워크플로우 목록으로",
         "executionFailed": "워크플로우 실행 실패",
         "submitFailed": "실행을 위한 워크플로우 제출 실패",
@@ -140,6 +145,15 @@
         "nodeDeleteFailed": "노드 삭제 실패",
         "groupDeleted": "그룹 {{id}} 삭제 성공",
         "groupDeleteFailed": "그룹 삭제 실패",
+        "groupingMode": {
+            "execution": "실행 순서 그룹",
+            "type": "노드 유형 그룹"
+        },
+        "stackViewLabels": {
+            "viewSettings": "보기 설정",
+            "nodesByCategory": "카테고리별 노드",
+            "executionOrder": "실행 순서"
+        },
         "disconnected": "연결 해제 성공",
         "disconnectFailed": "연결 해제 실패",
         "connectionBatchApplied": "연결 일괄 적용 성공",
@@ -344,6 +358,9 @@
         "confirmClear": "모든 브라우저 캐시를 지우시겠습니까? 이 작업은 다운로드된 모든 이미지, 캐시된 파일 및 임시 데이터를 제거합니다.",
         "language": "언어",
         "serverConnection": "서버 연결",
+        "viewModes": "보기 모드",
+        "stackView": "스택 뷰",
+        "graphView": "그래프 뷰",
         "workflowTools": "워크플로우 도구",
         "installMissingNodes": "누락된 노드 설치",
         "missingModelDetector": "누락된 모델 감지기",
@@ -505,9 +522,18 @@
             "randomize": "무작위"
         },
         "mode": {
-            "always": "항상",
+            "always": "항상실행",
             "mute": "음소거",
             "bypass": "우회"
+        },
+        "category": {
+            "models_loras": "모델 & 로라",
+            "loaders": "로더",
+            "inputs": "이미지 & 비디오",
+            "uncategorized": "미분류",
+            "prompts": "프롬프트",
+            "samplers": "샘플러",
+            "outputs": "출력"
         },
         "group": {
             "noGroups": "이 워크플로우에서 그룹을 찾을 수 없습니다.",

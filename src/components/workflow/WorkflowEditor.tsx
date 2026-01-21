@@ -41,6 +41,7 @@ import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
 import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
+import { WorkflowSaveButton } from '@/components/workflow/WorkflowSaveButton';
 import { RepositionActionBar } from '@/components/controls/RepositionActionBar';
 import { CircularMenu, CircularMenuRef } from '@/components/canvas/CircularMenu';
 import { WorkflowContextMenu } from '@/components/canvas/WorkflowContextMenu';
@@ -3595,6 +3596,14 @@ const WorkflowEditor: React.FC = () => {
         workflow={workflow}
         onClose={connectionMode.clearNodesAndCloseModal}
         onApply={handleApplyBatchConnections}
+      />
+
+      {/* Workflow Save Button - Floating separately */}
+      <WorkflowSaveButton
+        hasUnsavedChanges={widgetEditor.hasModifications()}
+        isSaving={isSaving}
+        saveSucceeded={saveSucceeded}
+        onSaveChanges={handleSaveChanges}
       />
 
       {/* Workflow Controls Panel (Right Top) - Hidden during repositioning and connection mode */}

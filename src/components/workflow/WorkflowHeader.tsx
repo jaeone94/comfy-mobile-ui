@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, Loader2, ChevronRight, Home } from 'lucide-react';
+import { ArrowLeft, Loader2, ChevronRight, Home, Network } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -137,45 +137,41 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           </Button>
 
           <div className="min-w-0 flex-1">
-            {sessionStack && sessionStack.length > 1 ? (
-              <div
-                ref={breadcrumbRef}
-                className="flex items-center space-x-1 overflow-x-auto no-scrollbar mask-gradient-left"
-              >
-                {sessionStack.map((session, index) => {
-                  const isLast = index === sessionStack.length - 1;
-                  const isRoot = index === 0;
-                  return (
-                    <div key={index} className="flex items-center flex-shrink-0">
-                      {index > 0 && <ChevronRight className="w-4 h-4 text-slate-400 mx-1 flex-shrink-0" />}
-                      <button
-                        onClick={() => !isLast && onNavigateBreadcrumb?.(index)}
-                        disabled={isLast}
-                        className={`flex items-center space-x-1 font-bold truncate transition-colors ${isLast
-                          ? 'text-lg text-slate-900 dark:text-slate-100 cursor-default'
-                          : 'text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                          }`}
-                      >
-                        <span className="truncate max-w-[150px]">{session.title || (isRoot ? workflow?.name : 'Subgraph')}</span>
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <h1 className="text-lg font-bold text-white tracking-tight truncate">
-                {workflow?.name || t('workflow.newWorkflowName')}
-              </h1>
-            )}
-            <div className="flex items-center space-x-2 mt-1 flex-wrap">
-              <Badge variant="outline" className="text-[10px] bg-white/10 text-white border-white/20 flex-shrink-0">
-                {workflow?.nodeCount || 0} {t('workflow.nodes')}
-              </Badge>
-              {selectedNode && (
-                <Badge className="text-[10px] bg-blue-500/30 text-blue-300 border-blue-500/40 flex-shrink-0">
-                  {selectedNode.type}
-                </Badge>
+            <div className="flex items-center gap-2">
+              <Network className="h-4 w-4 text-blue-400 shrink-0" />
+              {sessionStack && sessionStack.length > 1 ? (
+                <div
+                  ref={breadcrumbRef}
+                  className="flex items-center space-x-1 overflow-x-auto no-scrollbar mask-gradient-left"
+                >
+                  {sessionStack.map((session, index) => {
+                    const isLast = index === sessionStack.length - 1;
+                    const isRoot = index === 0;
+                    return (
+                      <div key={index} className="flex items-center flex-shrink-0">
+                        {index > 0 && <ChevronRight className="w-4 h-4 text-slate-400 mx-1 flex-shrink-0" />}
+                        <button
+                          onClick={() => !isLast && onNavigateBreadcrumb?.(index)}
+                          disabled={isLast}
+                          className={`flex items-center space-x-1 font-bold truncate transition-colors ${isLast
+                            ? 'text-base text-slate-900 dark:text-slate-100 cursor-default'
+                            : 'text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
+                            }`}
+                        >
+                          <span className="truncate max-w-[300px]">{session.title || (isRoot ? workflow?.name : 'Subgraph')}</span>
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <h1 className="text-base font-bold text-white tracking-tight truncate">
+                  {workflow?.name || t('workflow.newWorkflowName')}
+                </h1>
               )}
+            </div>
+            <div className="text-[10px] text-white/40 font-medium uppercase tracking-widest mt-0.5">
+              {t('menu.graphView')}
             </div>
           </div>
 

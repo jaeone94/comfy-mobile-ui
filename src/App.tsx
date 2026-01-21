@@ -24,10 +24,11 @@ import { ExecutionErrorDisplay } from '@/components/execution/ErrorViewer';
 import { autoRecoverIfNeeded } from '@/utils/storageRecovery';
 import StorageErrorBoundary from '@/components/error/StorageErrorBoundary';
 import { PromptHistory } from '@/components/history/PromptHistory';
+import { WorkflowStackPage } from '@/components/workflow/WorkflowStackPage';
 
 const AppRouter: React.FC = () => {
   const tryAutoConnect = useConnectionStore((state) => state.tryAutoConnect);
-  
+
   // Global execution error state
   const [globalExecutionError, setGlobalExecutionError] = useState<any>(null);
   const [isRecovering, setIsRecovering] = useState(false);
@@ -46,7 +47,7 @@ const AppRouter: React.FC = () => {
 
     // Set dark theme color immediately
     setThemeColor('#0f172a');
-    
+
     // Also set for all theme-color variants
     const themeColorMetas = document.querySelectorAll('meta[name="theme-color"]');
     themeColorMetas.forEach(meta => {
@@ -62,27 +63,27 @@ const AppRouter: React.FC = () => {
         setIsRecovering(true);
         const recoveryPerformed = await autoRecoverIfNeeded();
         setIsRecovering(false);
-        
+
         if (recoveryPerformed) {
           // If recovery was performed, show additional info toast
           toast.info('✨ App will refresh automatically', {
             description: 'The app will reload once recovery is complete.',
             duration: 2000
           });
-          
+
           // Give user time to see the message, then refresh
           setTimeout(() => {
             window.location.reload();
           }, 2500);
           return;
         }
-        
+
         // Proceed with normal initialization if no recovery was needed
         await tryAutoConnect();
       } catch (error) {
         console.error('Failed to initialize connection:', error);
         setIsRecovering(false);
-        
+
         // If initialization fails completely, show helpful message
         toast.error('Error occurred during app initialization', {
           description: 'Please refresh the page or clear your browser data.',
@@ -97,7 +98,7 @@ const AppRouter: React.FC = () => {
 
     // Small delay to ensure store is hydrated from localStorage
     const timer = setTimeout(initializeConnection, 100);
-    
+
     return () => clearTimeout(timer);
   }, [tryAutoConnect]); // Remove navigation dependencies to prevent redirects
 
@@ -128,7 +129,7 @@ const AppRouter: React.FC = () => {
     // Handle execution errors globally - ALWAYS show raw server response
     const handleExecutionError = (event: ExecutionErrorEvent) => {
       console.error('🚨 GLOBAL EXECUTION ERROR:', event);
-      
+
       // Create a comprehensive error object with ALL available information
       const errorData = {
         timestamp: new Date().toISOString(),
@@ -148,11 +149,11 @@ const AppRouter: React.FC = () => {
           }
         }
       };
-      
+
       setGlobalExecutionError(errorData);
       console.log('🚨 Raw error set for display:', errorData);
     };
-    
+
     // Subscribe to execution completion and error events using GlobalWebSocketService
     const listenerIds = [
       globalWebSocketService.on('execution_complete', handleExecutionComplete),
@@ -178,7 +179,7 @@ const AppRouter: React.FC = () => {
             <p className="text-sm text-gray-400">Please wait a moment.</p>
           </div>
         </div>
-        <Toaster 
+        <Toaster
           position="bottom-center"
           duration={3000}
           richColors
@@ -193,6 +194,7 @@ const AppRouter: React.FC = () => {
       <Routes>
         <Route path="/" element={<WorkflowList />} />
         <Route path="/workflow/:id" element={<WorkflowEditor />} />
+        <Route path="/workflow-stack/:id" element={<WorkflowStackPage />} />
         <Route path="/chains" element={<WorkflowChainList />} />
         <Route path="/chains/create" element={<WorkflowChainEditor />} />
         <Route path="/chains/edit/:id" element={<WorkflowChainEditor />} />
@@ -208,13 +210,13 @@ const AppRouter: React.FC = () => {
         <Route path="/settings/widget-types" element={<CustomTypeManager />} />
         <Route path="/videos/download" element={<VideoDownloader />} />
       </Routes>
-      <Toaster 
+      <Toaster
         position="bottom-center"
         duration={3000}
         richColors
         closeButton={false}
       />
-      
+
       {/* Global Execution Error Display - Shows on ANY screen */}
       {globalExecutionError && (
         <ExecutionErrorDisplay
@@ -231,7 +233,7 @@ const AppRouter: React.FC = () => {
           }}
         />
       )}
-      
+
       {/* Global Prompt History Modal - Top-level component */}
       <PromptHistory />
     </>

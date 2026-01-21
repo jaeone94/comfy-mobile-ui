@@ -56,7 +56,11 @@
         "serverSettings": "服务器设置",
         "edit": "编辑",
         "navigate": "定位",
-        "toggleMode": "切换模式"
+        "toggleMode": "切换模式",
+        "expand": "展开",
+        "collapse": "折叠",
+        "expandAll": "全部展开",
+        "collapseAll": "全部折叠"
     },
     "workflow": {
         "details": "工作流详情",
@@ -108,6 +112,7 @@
         "thumbnailError": "缩略图重新生成失败",
         "loading": "正在加载工作流...",
         "loadFailed": "加载工作流失败",
+        "saveFailed": "工作流保存失败",
         "backToList": "返回工作流列表",
         "executionFailed": "工作流执行失败",
         "submitFailed": "提交工作流执行失败",
@@ -140,6 +145,15 @@
         "nodeDeleteFailed": "删除节点失败",
         "groupDeleted": "组 {{id}} 删除成功",
         "groupDeleteFailed": "删除组失败",
+        "groupingMode": {
+            "execution": "执行顺序组",
+            "type": "节点类型组"
+        },
+        "stackViewLabels": {
+            "viewSettings": "视图设置",
+            "nodesByCategory": "按类别节点",
+            "executionOrder": "执行顺序"
+        },
         "disconnected": "连接已成功断开",
         "disconnectFailed": "断开连接失败",
         "missingModels": "检测到缺失的模型",
@@ -342,6 +356,9 @@
         "confirmClear": "您确定要清除所有浏览器缓存吗？这将删除所有下载的图像、缓存文件和临时数据。",
         "language": "语言",
         "serverConnection": "服务器连接",
+        "viewModes": "视图模式",
+        "stackView": "堆栈视图",
+        "graphView": "图表视图",
         "workflowTools": "工作流工具",
         "installMissingNodes": "安装缺失的节点",
         "missingModelDetector": "缺失模型检测器",
@@ -503,9 +520,18 @@
             "randomize": "随机"
         },
         "mode": {
-            "always": "总是",
+            "always": "始终运行",
             "mute": "静音",
-            "bypass": "旁路"
+            "bypass": "绕过"
+        },
+        "category": {
+            "models_loras": "模型 & LoRA",
+            "loaders": "加载器",
+            "inputs": "输入",
+            "uncategorized": "未分类",
+            "prompts": "提示词",
+            "samplers": "采样器",
+            "outputs": "输出"
         },
         "group": {
             "noGroups": "在此工作流中未找到组。",
