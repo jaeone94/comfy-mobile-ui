@@ -831,7 +831,8 @@ export const WorkflowStackEditor: React.FC<WorkflowStackEditorProps> = ({ graph,
             }
 
             // (P4) Prompts
-            const isPromptType = type.includes('multiline') || type.includes('prompt') || type.includes('string');
+            const nodeTitle = (node.title || '').toLowerCase();
+            const isPromptType = type.includes('multiline') || type.includes('prompt') || type.includes('string') || nodeTitle.includes('prompt');
             const hasTextValueWidget = hasAnyWidget(['text', 'value']);
             const firstWidget = widgets[0];
             const singleWidgetIsPrompt = widgets.length === 1 &&
