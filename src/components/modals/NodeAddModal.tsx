@@ -40,6 +40,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
+  const [inputValue, setInputValue] = useState('');
   const [recentNodes, setRecentNodes] = useState<CopiedNode[]>([]);
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -49,11 +50,23 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       setRecentNodes(NodeClipboardService.getNodes());
+      setSearchTerm('');
+      setInputValue('');
       if (scrollContainerRef.current) {
         scrollContainerRef.current.scrollTop = 0;
       }
     }
   }, [isOpen]);
+
+  const handleSearch = useCallback((e?: React.FormEvent) => {
+    e?.preventDefault();
+    setSearchTerm(inputValue);
+  }, [inputValue]);
+
+  const handleClear = useCallback(() => {
+    setInputValue('');
+    setSearchTerm('');
+  }, []);
 
   // Extract node types from metadata
   const nodeTypes = useMemo(() => {
@@ -333,23 +346,38 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
             {/* Persistent Search Bar (Simplified) */}
             <div className="absolute left-0 w-full z-20 px-4 sm:px-8 top-[68px]">
               <div className="flex flex-col gap-3 bg-[#374151]/80 backdrop-blur-md p-3 rounded-2xl border border-white/5 shadow-lg">
-                <div className="relative w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
-                  <Input
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    placeholder={t('nodeAdd.searchPlaceholder')}
-                    className="w-full bg-black/20 border-white/10 text-xs text-white/90 placeholder:text-white/20 h-9 pl-9 pr-8 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/20 transition-all duration-300 border shadow-inner"
-                  />
-                  {searchTerm && (
-                    <button
-                      onClick={() => setSearchTerm('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
-                    >
-                      <X className="w-3 h-3 text-white/40" />
-                    </button>
-                  )}
-                </div>
+                <form onSubmit={handleSearch} className="relative w-full flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+                    <Input
+                      value={inputValue}
+                      onChange={(e) => setInputValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          handleSearch();
+                        }
+                      }}
+                      placeholder={t('nodeAdd.searchPlaceholder')}
+                      className="w-full bg-black/20 border-white/10 text-xs text-white/90 placeholder:text-white/20 h-9 pl-9 pr-10 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/20 transition-all duration-300 border shadow-inner"
+                    />
+                    {inputValue && (
+                      <button
+                        type="button"
+                        onClick={handleClear}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
+                      >
+                        <X className="w-3 h-3 text-white/40" />
+                      </button>
+                    )}
+                  </div>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    className="h-9 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg active:scale-95 transition-all flex-shrink-0"
+                  >
+                    <Search className="w-4 h-4" />
+                  </Button>
+                </form>
               </div>
             </div>
 
