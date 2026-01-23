@@ -282,7 +282,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/60 backdrop-blur-sm pwa-modal"
             onClick={onClose}
           />
 
@@ -291,12 +291,14 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 15 }}
             transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-            className={`relative ${isCompact ? 'w-full h-full sm:w-[90vw] sm:h-[90vh]' : 'w-[85vw] h-[80vh]'} pointer-events-auto flex flex-col`}
+            className={`relative pwa-modal ${isCompact ? 'w-[95vw] max-w-[384px] h-[85vh] max-h-[480px]' : 'w-[90vw] h-[85vh]'} pointer-events-auto flex flex-col`}
             onClick={(e) => e.stopPropagation()}
+            onPointerDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
           >
             <div
               style={{ backgroundColor: '#374151' }}
-              className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
+              className={`relative w-full h-full ${isCompact ? 'rounded-2xl' : 'rounded-[40px]'} shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white`}
             >
               <div className="absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] pt-2 pb-[13px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10">
                 <div className="absolute right-4 top-1/2 -translate-y-1/2 flex-shrink-0 scale-75">
@@ -376,8 +378,8 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
               </div>
 
               <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <div className="h-[150px] relative pointer-events-none" />
-                <div className="px-6 pb-8 sm:px-8">
+                <div className="h-[185px] relative pointer-events-none" />
+                <div className="px-5 pb-6 sm:px-6">
                   {isProcessing ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4">
                       <div className="relative">

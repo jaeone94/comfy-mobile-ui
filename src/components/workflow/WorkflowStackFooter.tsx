@@ -360,7 +360,7 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
                     </div>
 
                     {/* Right: Primary Actions (Shrink to content) */}
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2 shrink-0 pr-5">
                         <Button
                             onClick={onExecute}
                             size="icon"
