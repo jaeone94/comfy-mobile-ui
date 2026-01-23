@@ -27,7 +27,9 @@ import {
   FileArchive,
   Layers,
   Upload,
-  Loader2
+  Loader2,
+  ChevronDown,
+  ChevronRight
 } from 'lucide-react';
 import { Trans } from 'react-i18next';
 
@@ -110,6 +112,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
   const [uploadOverwrite, setUploadOverwrite] = useState<boolean>(true); // Always overwrite
   const [isUploading, setIsUploading] = useState<boolean>(false);
   const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({});
 
   // Partial uploads state
   const [partialUploads, setPartialUploads] = useState<Array<{
@@ -383,6 +386,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
     setIsUploadModalOpen(true);
   };
 
+  // Toggle group expansion
+  const toggleGroup = (groupName: string) => {
+    setExpandedGroups(prev => ({
+      ...prev,
+      [groupName]: !prev[groupName]
+    }));
+  };
+
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -492,11 +503,11 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
         touchAction: 'none'
       }}
     >
-      {/* Main Background with Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" />
+      {/* Main Background with Dark Theme */}
+      <div className="absolute inset-0 bg-[#374151]" />
 
       {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -510,69 +521,69 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
         }}
       >
         {/* Header */}
-        <div className="sticky top-0 z-50 pwa-header bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
-          {/* Gradient Overlay for Enhanced Glass Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+        <div className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
           <div className="relative z-10 p-4 space-y-3">
-            {/* First Row - Back Button and Title */}
-            <div className="flex items-center space-x-3">
-              <Button
-                onClick={handleBack}
-                variant="ghost"
-                size="sm"
-                className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
-              >
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  {t('modelBrowser.title')}
-                </h1>
-                <p className="text-slate-600 dark:text-slate-400">
-                  {t('modelBrowser.subtitle')}
-                </p>
+            {/* First Row - Back Button, Title, and Upload */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center space-x-3">
+                <Button
+                  onClick={handleBack}
+                  variant="ghost"
+                  size="sm"
+                  className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
+                >
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h1 className="text-lg font-bold text-white/95 leading-none">
+                    {t('modelBrowser.title')}
+                  </h1>
+                  <p className="text-[11px] text-white/40 mt-1">
+                    {t('modelBrowser.subtitle')}
+                  </p>
+                </div>
               </div>
+
+              <Button
+                onClick={openUploadModal}
+                variant="default"
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-9 w-9 p-0 rounded-lg flex items-center justify-center transition-transform active:scale-95"
+                title={t('modelBrowser.upload')}
+              >
+                <Upload className="h-4 w-4" />
+              </Button>
             </div>
 
             {/* Second Row - Search and Filter Controls */}
-            <div className="flex items-center space-x-3">
-              {/* Search */}
+            <div className="flex items-center space-x-2">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-3.5 w-3.5 text-white/30" />
                 <Input
                   placeholder={t('modelBrowser.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 bg-white dark:bg-slate-800"
+                  className="pl-9 h-9 bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl text-sm"
                 />
               </div>
               <Select value={selectedFolder} onValueChange={setSelectedFolder}>
-                <SelectTrigger className="w-48">
+                <SelectTrigger className="w-32 h-9 bg-black/20 border-white/10 text-white/90 rounded-xl text-sm">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">{t('modelBrowser.allFolders')}</SelectItem>
+                <SelectContent className="bg-[#1e293b] border-white/10 text-white">
+                  <SelectItem value="all text-xs">{t('modelBrowser.allFolders')}</SelectItem>
                   {folders.map((folder) => (
-                    <SelectItem key={folder.name} value={folder.name}>
+                    <SelectItem key={folder.name} value={folder.name} className="text-xs">
                       {folder.name} ({folder.file_count})
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <Button
-                onClick={openUploadModal}
-                variant="default"
-                size="sm"
-                className="bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg h-10 px-4"
-              >
-                <Upload className="h-4 w-4 mr-2" />
-                {t('modelBrowser.upload')}
-              </Button>
             </div>
 
             {/* Status */}
             {searchQuery && (
-              <div className="text-sm text-slate-600 dark:text-slate-400">
+              <div className="text-[10px] text-white/30 px-1 uppercase tracking-wider font-bold">
                 {isSearching ? t('modelBrowser.searching') : t('modelBrowser.found', { count: searchResults.length })}
               </div>
             )}
@@ -580,21 +591,22 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
         </div>
 
         {/* Content */}
-        <div className="container mx-auto px-4 py-0 max-w-6xl">
+        <div className="container mx-auto px-4 py-8 max-w-6xl">
           {/* Partial Uploads Banner */}
           {partialUploads.length > 0 && (
-            <div className="mb-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+            <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                  <h3 className="font-medium text-yellow-400 mb-2 flex items-center">
+                    <AlertTriangle className="h-4 w-4 mr-2" />
                     {t('modelBrowser.incompleteUploads', { count: partialUploads.length })}
                   </h3>
                   <div className="space-y-2">
                     {partialUploads.map((partial) => (
-                      <div key={partial.partial_filename} className="flex items-center justify-between bg-white dark:bg-slate-800 p-2 rounded">
+                      <div key={partial.partial_filename} className="flex items-center justify-between bg-black/20 p-2 rounded-xl border border-white/5">
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate">{partial.filename}</div>
-                          <div className="text-xs text-slate-500">
+                          <div className="font-medium text-sm truncate text-white/90">{partial.filename}</div>
+                          <div className="text-xs text-white/40">
                             {partial.size_mb} MB uploaded · {new Date(partial.modified_iso).toLocaleString()}
                           </div>
                         </div>
@@ -602,7 +614,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                           <Button
                             size="sm"
                             variant="default"
-                            className="text-xs"
+                            className="text-xs bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border-yellow-500/20 rounded-lg h-8"
                             onClick={() => {
                               // Pre-fill upload form with this file's info
                               setUploadFolder(selectedFolder !== 'all' ? selectedFolder : '');
@@ -615,7 +627,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-xs"
+                            className="text-xs text-white/40 hover:text-white/90 hover:bg-white/5 rounded-lg h-8 w-8 p-0"
                             onClick={() => deletePartial(partial.partial_filename)}
                           >
                             <X className="h-3 w-3" />
@@ -631,14 +643,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
 
           {/* Error Display */}
           {error && (
-            <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-              <div className="flex items-center space-x-2 text-red-600 dark:text-red-400">
-                <AlertTriangle className="h-4 w-4" />
+            <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
+              <div className="flex items-center space-x-2 text-red-400">
+                <AlertTriangle className="h-4 w-4 rotate-0" />
                 <span className="text-sm">{error}</span>
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0 ml-auto"
+                  className="h-6 w-6 p-0 ml-auto text-white/40 hover:text-white/90"
                   onClick={() => setError('')}
                 >
                   <X className="h-3 w-3" />
@@ -647,120 +659,153 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
             </div>
           )}
 
-          {/* Model List */}
+          {/* Model List - Grouped */}
           {isLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="flex flex-col items-center justify-center h-64 space-y-4">
+              <Loader2 className="h-10 w-10 text-indigo-400 animate-spin" />
+              <p className="text-white/20 text-sm animate-pulse">Loading Models...</p>
             </div>
           ) : displayModels.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-64 text-slate-500 dark:text-slate-400">
-              <File className="h-16 w-16 mb-4" />
-              <p className="text-lg">{searchQuery ? t('modelBrowser.noModels') : t('modelBrowser.noModelsFolder')}</p>
-              <p className="text-sm">{t('modelBrowser.tryAdjusting')}</p>
+            <div className="flex flex-col items-center justify-center h-64 text-white/20">
+              <File className="h-16 w-16 mb-4 opacity-10" />
+              <p className="text-lg font-medium">{searchQuery ? t('modelBrowser.noModels') : t('modelBrowser.noModelsFolder')}</p>
+              <p className="text-sm opacity-60">{t('modelBrowser.tryAdjusting')}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-3">
-              {displayModels.map((model, index) => (
-                <div key={`${model.relative_path}-${index}`} className="hover:shadow-lg transition-shadow border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm rounded-xl px-3 py-3 space-y-1.5">
-                  {/* Line 1: Title with File Icon and Date */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2 flex-1 min-w-0">
-                      {getFileIcon(model.extension)}
-                      <h3 className="font-medium text-slate-900 dark:text-slate-100 truncate">
-                        {model.filename}
-                      </h3>
+            <div className="space-y-6">
+              {Object.entries(
+                displayModels.reduce((acc, model) => {
+                  if (!acc[model.folder_type]) acc[model.folder_type] = [];
+                  acc[model.folder_type].push(model);
+                  return acc;
+                }, {} as Record<string, ModelFile[]>)
+              ).map(([folderName, folderModels]) => (
+                <div key={folderName} className="space-y-4">
+                  <div
+                    className="flex items-center space-x-3 px-1 cursor-pointer select-none active:opacity-70 transition-opacity"
+                    onClick={() => toggleGroup(folderName)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      {expandedGroups[folderName] ? (
+                        <ChevronDown className="h-3.5 w-3.5 text-white/40" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5 text-white/40" />
+                      )}
+                      <h2 className="text-[11px] font-black text-white/40 uppercase tracking-[0.2em]">{folderName}</h2>
                     </div>
-                    <span className="text-xs text-slate-500 dark:text-slate-400 flex-shrink-0 ml-2">
-                      {new Date(model.modified * 1000).toLocaleDateString()}
-                    </span>
-                  </div>
-
-                  {/* Line 2: Badges (Extension, Type, Folder, Size) */}
-                  <div className="flex items-center flex-wrap gap-1">
-                    <Badge variant="secondary" className="text-xs">
-                      {model.extension}
-                    </Badge>
-                    {model.folder_type === 'loras' && (
-                      <Badge variant="outline" className="text-xs">
-                        LoRA
-                      </Badge>
-                    )}
-                    <Badge variant="outline" className="text-xs">
-                      <FolderOpen className="h-2 w-2 mr-1" />
-                      {model.folder_type}{model.subfolder ? `/${model.subfolder}` : ''}
-                    </Badge>
-                    <Badge variant="outline" className="text-xs">
-                      {formatFileSize(model.size)}
+                    <div className="h-px flex-1 bg-white/5" />
+                    <Badge variant="outline" className="text-[10px] border-white/5 text-white/20 font-mono bg-white/5">
+                      {folderModels.length}
                     </Badge>
                   </div>
 
-                  {/* Trigger Words Count for LoRA (if exists) */}
-                  {model.folder_type === 'loras' && triggerWords && triggerWords[model.filename] && Array.isArray(triggerWords[model.filename]) && triggerWords[model.filename].length > 0 && (
-                    <div className="flex items-center gap-1">
-                      <Badge variant="outline" className="text-xs">
-                        <Zap className="h-2 w-2 mr-1" />
-                        {triggerWords[model.filename].length} trigger{triggerWords[model.filename].length === 1 ? '' : 's'}
-                      </Badge>
+                  {expandedGroups[folderName] && (
+                    <div className="grid grid-cols-1 gap-3">
+                      {folderModels.map((model, index) => (
+                        <div key={`${model.relative_path}-${index}`} className="hover:shadow-lg transition-all border border-white/5 bg-black/20 backdrop-blur-sm rounded-2xl px-4 py-4 space-y-2 group">
+                          {/* Line 1: Title with File Icon and Date */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center space-x-2 flex-1 min-w-0">
+                              {getFileIcon(model.extension)}
+                              <h3 className="font-medium text-white/95 truncate text-sm">
+                                {model.filename}
+                              </h3>
+                            </div>
+                            <span className="text-[10px] text-white/20 flex-shrink-0 ml-2 font-mono">
+                              {new Date(model.modified * 1000).toLocaleDateString()}
+                            </span>
+                          </div>
+
+                          {/* Line 2: Badges (Extension, Type, Folder, Size) */}
+                          <div className="flex items-center flex-wrap gap-1">
+                            <Badge variant="secondary" className="text-[9px] bg-white/5 text-white/60 border-white/5 uppercase font-mono py-0.5">
+                              {model.extension}
+                            </Badge>
+                            {model.folder_type === 'loras' && (
+                              <Badge variant="outline" className="text-[9px] bg-indigo-500/10 text-indigo-400 border-indigo-500/20 uppercase font-bold py-0.5">
+                                LoRA
+                              </Badge>
+                            )}
+                            <Badge variant="outline" className="text-[9px] border-white/5 text-white/40 uppercase py-0.5 bg-black/20">
+                              <FolderOpen className="h-2.5 w-2.5 mr-1" />
+                              {model.subfolder ? `${model.subfolder}` : 'Root'}
+                            </Badge>
+                            <Badge variant="outline" className="text-[9px] border-white/5 text-white/40 uppercase py-0.5 bg-black/20">
+                              {formatFileSize(model.size)}
+                            </Badge>
+                          </div>
+
+                          {/* Trigger Words Count for LoRA (if exists) */}
+                          {model.folder_type === 'loras' && triggerWords && triggerWords[model.filename] && Array.isArray(triggerWords[model.filename]) && triggerWords[model.filename].length > 0 && (
+                            <div className="flex items-center gap-1">
+                              <Badge variant="outline" className="text-[9px] bg-purple-500/10 text-purple-400 border-purple-500/20 font-bold py-0.5">
+                                <Zap className="h-2.5 w-2.5 mr-1" />
+                                {triggerWords[model.filename].length} WORD{triggerWords[model.filename].length === 1 ? '' : 'S'}
+                              </Badge>
+                            </div>
+                          )}
+
+                          {/* Action Buttons - 5 Equal Columns for Mobile Touch */}
+                          <div className="grid grid-cols-5 gap-1.5 pt-2 border-t border-white/5">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-white/30 hover:text-white/90 hover:bg-white/5 rounded-xl transition-all"
+                              onClick={() => openOperationModal('copy', model)}
+                              title={t('modelBrowser.actions.copy')}
+                            >
+                              <Copy className="h-4 w-4" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider">{t('modelBrowser.actions.copy')}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-white/30 hover:text-white/90 hover:bg-white/5 rounded-xl transition-all"
+                              onClick={() => openOperationModal('move', model)}
+                              title={t('modelBrowser.actions.move')}
+                            >
+                              <Move className="h-4 w-4" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider">{t('modelBrowser.actions.move')}</span>
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-white/30 hover:text-white/90 hover:bg-white/5 rounded-xl transition-all"
+                              onClick={() => openOperationModal('rename', model)}
+                              title={t('modelBrowser.actions.rename')}
+                            >
+                              <Edit className="h-4 w-4" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider">{t('modelBrowser.actions.rename')}</span>
+                            </Button>
+                            {model.folder_type === 'loras' ? (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-purple-400/60 hover:text-purple-300 hover:bg-purple-500/10 rounded-xl transition-all"
+                                onClick={() => openTriggerWordsModal(model.filename)}
+                                title={t('modelBrowser.actions.trigger')}
+                              >
+                                <Zap className="h-4 w-4" />
+                                <span className="text-[9px] font-bold uppercase tracking-wider">{t('modelBrowser.actions.trigger')}</span>
+                              </Button>
+                            ) : (
+                              <div className="h-12"></div>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-red-400/60 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all"
+                              onClick={() => openOperationModal('delete', model)}
+                              title={t('modelBrowser.actions.delete')}
+                            >
+                              <Trash2 className="h-4 w-4 text-red-400/80" />
+                              <span className="text-[9px] font-bold uppercase tracking-wider">{t('modelBrowser.actions.delete')}</span>
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
-
-                  {/* Action Buttons - 5 Equal Columns for Mobile Touch */}
-                  <div className="grid grid-cols-5 gap-1 pt-1">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-11 p-2 flex flex-col items-center justify-center space-y-0.5 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-                      onClick={() => openOperationModal('copy', model)}
-                      title={t('modelBrowser.actions.copy')}
-                    >
-                      <Copy className="h-4 w-4" />
-                      <span className="text-xs">{t('modelBrowser.actions.copy')}</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-11 p-2 flex flex-col items-center justify-center space-y-0.5 hover:bg-green-50 dark:hover:bg-green-900/20 rounded-lg"
-                      onClick={() => openOperationModal('move', model)}
-                      title={t('modelBrowser.actions.move')}
-                    >
-                      <Move className="h-4 w-4" />
-                      <span className="text-xs">{t('modelBrowser.actions.move')}</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-11 p-2 flex flex-col items-center justify-center space-y-0.5 hover:bg-amber-50 dark:hover:bg-amber-900/20 rounded-lg"
-                      onClick={() => openOperationModal('rename', model)}
-                      title={t('modelBrowser.actions.rename')}
-                    >
-                      <Edit className="h-4 w-4" />
-                      <span className="text-xs">{t('modelBrowser.actions.rename')}</span>
-                    </Button>
-                    {model.folder_type === 'loras' ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-11 p-2 flex flex-col items-center justify-center space-y-0.5 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg"
-                        onClick={() => openTriggerWordsModal(model.filename)}
-                        title={t('modelBrowser.actions.trigger')}
-                      >
-                        <Zap className="h-4 w-4" />
-                        <span className="text-xs">{t('modelBrowser.actions.trigger')}</span>
-                      </Button>
-                    ) : (
-                      <div className="h-11"></div>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-11 p-2 flex flex-col items-center justify-center space-y-0.5 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                      onClick={() => openOperationModal('delete', model)}
-                      title={t('modelBrowser.actions.delete')}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span className="text-xs">{t('modelBrowser.actions.delete')}</span>
-                    </Button>
-                  </div>
                 </div>
               ))}
             </div>

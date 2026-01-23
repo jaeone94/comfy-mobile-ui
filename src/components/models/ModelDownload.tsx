@@ -344,11 +344,11 @@ const ModelDownload: React.FC = () => {
         bottom: 0
       }}
     >
-      {/* Main Background with Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" />
+      {/* Main Background with Dark Theme */}
+      <div className="absolute inset-0 bg-[#374151]" />
 
       {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -360,24 +360,22 @@ const ModelDownload: React.FC = () => {
         }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-50 pwa-header bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
-          {/* Gradient Overlay for Enhanced Glass Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+        <header className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
           <div className="relative z-10 flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <Button
                 onClick={handleBack}
                 variant="ghost"
                 size="sm"
-                className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
+                className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
               >
-                <ArrowLeft className="h-5 w-5" />
+                <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                <h1 className="text-lg font-bold text-white/95 leading-none">
                   {t('modelDownload.title')}
                 </h1>
-                <p className="text-slate-600 dark:text-slate-400">
+                <p className="text-[11px] text-white/40 mt-1">
                   {t('modelDownload.subtitle')}
                 </p>
               </div>
@@ -386,34 +384,33 @@ const ModelDownload: React.FC = () => {
               onClick={() => navigate('/settings/api-keys')}
               variant="outline"
               size="sm"
-              className="flex items-center space-x-1"
+              className="border-white/10 text-white/60 hover:bg-white/10 hover:text-white h-9 w-9 p-0 rounded-lg flex items-center justify-center transition-transform active:scale-95"
               title={t('modelDownload.manageApiKeys')}
             >
               <Key className="h-4 w-4" />
-              <span className="hidden sm:inline">{t('modelDownload.manageApiKeys')}</span>
             </Button>
           </div>
         </header>
 
         <div className="container mx-auto px-6 py-8 max-w-4xl space-y-6">
           {/* Server Requirements Card */}
-          <Card className="border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
             <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <AlertTriangle className="h-5 w-5 text-amber-500" />
+              <CardTitle className="flex items-center space-x-2 text-white/90">
+                <AlertTriangle className="h-5 w-5 text-amber-400" />
                 <span>{t('modelDownload.serverRequirements')}</span>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="flex items-center justify-between">
-                <span className="font-medium">ComfyUI Server Connection</span>
+                <span className="font-medium text-white/70">ComfyUI Server Connection</span>
                 {isConnected ? (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Connected
                   </Badge>
                 ) : (
-                  <Badge variant="destructive">
+                  <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
                     <X className="w-3 h-3 mr-1" />
                     Disconnected
                   </Badge>
@@ -421,19 +418,19 @@ const ModelDownload: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="font-medium">Mobile UI API Extension</span>
+                <span className="font-medium text-white/70">Mobile UI API Extension</span>
                 {isCheckingExtension ? (
-                  <Badge variant="outline" className="animate-pulse">
+                  <Badge variant="outline" className="animate-pulse border-white/10 text-white/40">
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     Checking...
                   </Badge>
                 ) : hasExtension ? (
-                  <Badge className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400">
+                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     Available
                   </Badge>
                 ) : (
-                  <Badge variant="destructive">
+                  <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
                     <X className="w-3 h-3 mr-1" />
                     Not Available
                   </Badge>
@@ -441,8 +438,8 @@ const ModelDownload: React.FC = () => {
               </div>
 
               {!hasServerRequirements && (
-                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                  <p className="text-sm text-amber-700 dark:text-amber-300">
+                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
+                  <p className="text-sm text-amber-400">
                     {t('modelDownload.requirementsDesc')}
                   </p>
                 </div>
@@ -453,37 +450,37 @@ const ModelDownload: React.FC = () => {
           {hasServerRequirements && (
             <>
               {/* Download Form */}
-              <Card className="border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+              <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center space-x-2">
-                    <Download className="h-5 w-5 text-blue-500" />
+                  <CardTitle className="flex items-center space-x-2 text-white/90">
+                    <Download className="h-5 w-5 text-blue-400" />
                     <span>{t('modelDownload.startDownload')}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="download-url">{t('modelDownload.modelUrl')}</Label>
+                    <Label htmlFor="download-url" className="text-white/70">{t('modelDownload.modelUrl')}</Label>
                     <Input
                       id="download-url"
                       type="url"
                       placeholder={t('modelDownload.modelUrlPlaceholder')}
                       value={downloadUrl}
                       onChange={(e) => setDownloadUrl(e.target.value)}
-                      className="bg-white dark:bg-slate-800"
+                      className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
                     />
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="target-folder">{t('modelDownload.targetFolder')}</Label>
+                    <Label htmlFor="target-folder" className="text-white/70">{t('modelDownload.targetFolder')}</Label>
                     <Input
                       id="target-folder"
                       placeholder={t('modelDownload.targetFolderPlaceholder')}
                       value={targetFolder}
                       onChange={(e) => setTargetFolder(e.target.value)}
-                      className="bg-white dark:bg-slate-800"
+                      className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
                     />
                     {isLoadingFolders ? (
-                      <p className="text-sm text-slate-500">Loading folders...</p>
+                      <p className="text-sm text-white/40">Loading folders...</p>
                     ) : (
                       <div className="flex flex-wrap gap-2 mt-2">
                         {folders
@@ -499,9 +496,9 @@ const ModelDownload: React.FC = () => {
                             <Badge
                               key={folder.name}
                               variant="outline"
-                              className={`cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 ${folder.file_count > 0
-                                  ? 'border-blue-300 dark:border-blue-600 text-blue-700 dark:text-blue-300'
-                                  : 'border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400'
+                              className={`cursor-pointer border-white/10 bg-white/5 hover:bg-white/10 transition-all ${folder.file_count > 0
+                                ? 'text-blue-400 border-blue-500/20'
+                                : 'text-white/40'
                                 }`}
                               onClick={() => setTargetFolder(folder.name)}
                               title={t('modelDownload.filesTotal', { count: folder.file_count }) + (folder.has_subfolders ? ` ${t('modelDownload.subfolders', { count: folder.subfolder_count || 0 })}` : '')}
@@ -519,13 +516,13 @@ const ModelDownload: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="custom-filename">{t('modelDownload.customFilename')}</Label>
+                    <Label htmlFor="custom-filename" className="text-white/70">{t('modelDownload.customFilename')}</Label>
                     <Input
                       id="custom-filename"
                       placeholder={t('modelDownload.customFilenamePlaceholder')}
                       value={customFilename}
                       onChange={(e) => setCustomFilename(e.target.value)}
-                      className="bg-white dark:bg-slate-800"
+                      className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
                     />
                   </div>
 
@@ -535,9 +532,9 @@ const ModelDownload: React.FC = () => {
                       id="overwrite"
                       checked={overwrite}
                       onChange={(e) => setOverwrite(e.target.checked)}
-                      className="rounded"
+                      className="rounded bg-black/20 border-white/10"
                     />
-                    <Label htmlFor="overwrite" className="text-sm">
+                    <Label htmlFor="overwrite" className="text-sm text-white/70">
                       {t('modelDownload.overwrite')}
                     </Label>
                   </div>
@@ -563,11 +560,11 @@ const ModelDownload: React.FC = () => {
               </Card>
 
               {/* Downloads List */}
-              <Card className="border border-slate-200/50 dark:border-slate-700/50 bg-white/50 dark:bg-slate-900/50 backdrop-blur-sm">
+              <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
                 <CardHeader>
-                  <CardTitle className="flex items-center justify-between">
+                  <CardTitle className="flex items-center justify-between text-white/90">
                     <div className="flex items-center space-x-2">
-                      <Package className="h-5 w-5 text-purple-500" />
+                      <Package className="h-5 w-5 text-purple-400" />
                       <span>{t('modelDownload.activeDownloads')}</span>
                     </div>
                     <div className="flex items-center space-x-2">
@@ -576,7 +573,7 @@ const ModelDownload: React.FC = () => {
                           onClick={handleRetryAllFailed}
                           variant="ghost"
                           size="sm"
-                          className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 active:scale-95 active:bg-amber-100 dark:active:bg-amber-900/30 transition-transform duration-75"
+                          className="text-amber-400 hover:text-amber-300 hover:bg-white/5 active:scale-95 transition-all"
                         >
                           <RotateCcw className="w-4 h-4 mr-1" />
                           <span className="hidden sm:inline">{t('modelDownload.retryAll')}</span>
@@ -588,7 +585,7 @@ const ModelDownload: React.FC = () => {
                           variant="ghost"
                           size="sm"
                           disabled={isClearingHistory}
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 active:scale-95 active:bg-red-100 dark:active:bg-red-900/30 transition-transform duration-75"
+                          className="text-red-400 hover:text-red-300 hover:bg-white/5 active:scale-95 transition-all"
                         >
                           {isClearingHistory ? (
                             <Loader2 className="w-4 h-4 animate-spin" />
@@ -604,7 +601,7 @@ const ModelDownload: React.FC = () => {
                         onClick={loadDownloads}
                         variant="ghost"
                         size="sm"
-                        className="active:scale-95 active:bg-slate-200 dark:active:bg-slate-700 transition-transform duration-75"
+                        className="text-white/40 hover:text-white/90 hover:bg-white/5 active:scale-95 transition-all"
                       >
                         {t('modelDownload.refresh')}
                       </Button>
@@ -621,14 +618,14 @@ const ModelDownload: React.FC = () => {
                       {downloads.map((download) => (
                         <div
                           key={download.id}
-                          className="p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg space-y-3"
+                          className="p-4 bg-black/20 border border-white/5 rounded-2xl space-y-3"
                         >
                           <div className="flex items-center gap-2">
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+                              <p className="text-sm font-medium text-white/90 truncate">
                                 {download.filename}
                               </p>
-                              <p className="text-xs text-slate-500 truncate">
+                              <p className="text-xs text-white/40 truncate">
                                 → {download.target_folder}
                               </p>
                             </div>
@@ -636,22 +633,22 @@ const ModelDownload: React.FC = () => {
                               {/* Status Icon */}
                               <div className="flex items-center" title={`${download.status}${download.retry_count && download.retry_count > 0 ? ` (${download.retry_count}/${download.max_retries || 3})` : ''}`}>
                                 {download.status === 'completed' && (
-                                  <CheckCircle className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                  <CheckCircle className="h-5 w-5 text-green-400" />
                                 )}
                                 {download.status === 'error' && (
-                                  <AlertTriangle className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                  <AlertTriangle className="h-5 w-5 text-red-400" />
                                 )}
                                 {download.status === 'cancelled' && (
-                                  <XCircle className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                                  <XCircle className="h-5 w-5 text-white/20" />
                                 )}
                                 {['downloading', 'starting'].includes(download.status) && (
-                                  <Loader2 className="h-5 w-5 text-blue-600 dark:text-blue-400 animate-spin" />
+                                  <Loader2 className="h-5 w-5 text-blue-400 animate-spin" />
                                 )}
                                 {download.status === 'retrying' && (
                                   <div className="relative">
-                                    <Loader2 className="h-5 w-5 text-amber-600 dark:text-amber-400 animate-spin" />
+                                    <Loader2 className="h-5 w-5 text-amber-400 animate-spin" />
                                     {download.retry_count && download.retry_count > 0 && (
-                                      <div className="absolute -top-2 -right-1 bg-amber-600 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
+                                      <div className="absolute -top-2 -right-1 bg-amber-500 text-white text-[10px] rounded-full h-4 w-4 flex items-center justify-center font-bold">
                                         {download.retry_count}
                                       </div>
                                     )}
@@ -663,7 +660,7 @@ const ModelDownload: React.FC = () => {
                                   onClick={() => handleCancelDownload(download.id)}
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 flex-shrink-0 active:scale-90 active:bg-red-100 dark:active:bg-red-900/30 transition-transform duration-75"
+                                  className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-white/5 flex-shrink-0 active:scale-90 transition-all"
                                   title="Cancel download"
                                 >
                                   <X className="h-4 w-4" />
@@ -674,7 +671,7 @@ const ModelDownload: React.FC = () => {
                                   onClick={() => handleResumeDownload(download.id)}
                                   variant="ghost"
                                   size="sm"
-                                  className="h-8 w-8 p-0 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 flex-shrink-0 active:scale-90 active:bg-emerald-100 dark:active:bg-emerald-900/30 transition-transform duration-75"
+                                  className="h-8 w-8 p-0 text-emerald-400 hover:text-emerald-300 hover:bg-white/5 flex-shrink-0 active:scale-90 transition-all"
                                   title="Resume download"
                                 >
                                   <PlayCircle className="h-4 w-4" />
@@ -690,7 +687,7 @@ const ModelDownload: React.FC = () => {
                                 <span>
                                   {formatFileSize(download.downloaded_size)} / {formatFileSize(download.total_size)}
                                   {download.progress > 0 && (
-                                    <span className="ml-2 text-blue-600 dark:text-blue-400">
+                                    <span className="ml-2 text-blue-400">
                                       {download.progress.toFixed(1)}%
                                     </span>
                                   )}
@@ -705,7 +702,7 @@ const ModelDownload: React.FC = () => {
                                     </>
                                   )}
                                   {download.status === 'retrying' && (
-                                    <span className="text-amber-600 dark:text-amber-400 ml-2">
+                                    <span className="text-amber-400 ml-2">
                                       {t('modelDownload.status.retrying')}
                                     </span>
                                   )}
@@ -722,17 +719,17 @@ const ModelDownload: React.FC = () => {
                           {download.status === 'error' && (
                             <div className="space-y-2">
                               {download.error && (
-                                <div className="p-2 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded text-sm text-red-600 dark:text-red-400">
+                                <div className="p-2 bg-red-500/10 border border-red-500/20 rounded text-sm text-red-400">
                                   {download.error}
                                 </div>
                               )}
                               {download.can_resume && download.downloaded_size > 0 && (
-                                <div className="p-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded text-sm">
+                                <div className="p-2 bg-amber-500/10 border border-amber-500/20 rounded text-sm">
                                   <div className="flex items-center justify-between">
-                                    <span className="text-amber-700 dark:text-amber-300">
+                                    <span className="text-amber-400">
                                       {t('modelDownload.status.partial', { size: formatFileSize(download.downloaded_size) })}
                                     </span>
-                                    <span className="text-xs text-amber-600 dark:text-amber-400">
+                                    <span className="text-xs text-amber-300/70">
                                       {t('modelDownload.status.canResume')}
                                     </span>
                                   </div>
@@ -742,11 +739,11 @@ const ModelDownload: React.FC = () => {
                           )}
 
                           {download.status === 'cancelled' && download.downloaded_size > 0 && (
-                            <div className="p-2 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-sm text-slate-600 dark:text-slate-400">
+                            <div className="p-2 bg-white/5 border border-white/10 rounded text-sm text-white/40">
                               📁 Partial download saved: {formatFileSize(download.downloaded_size)}
                               {download.can_resume && (
-                                <span className="ml-2 text-emerald-600 dark:text-emerald-400">
-                                  • Can resume
+                                <span className="ml-2 text-emerald-400">
+                                  • {t('modelDownload.status.canResume')}
                                 </span>
                               )}
                             </div>

@@ -220,14 +220,15 @@ const WorkflowUpload: React.FC = () => {
         top: 0,
         left: 0,
         right: 0,
-        bottom: 0
+        bottom: 0,
+        touchAction: 'none'
       }}
     >
-      {/* Main Background with Gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" />
+      {/* Main Background with Dark Theme */}
+      <div className="absolute inset-0 bg-[#374151]" />
 
       {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -235,44 +236,33 @@ const WorkflowUpload: React.FC = () => {
         style={{
           overflowY: 'auto',
           overflowX: 'hidden',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+          position: 'absolute'
         }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-50 pwa-header bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
-          {/* Gradient Overlay for Enhanced Glass Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+        <header className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
           <div className="relative z-10 p-4">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <Button
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  console.log('Back button onClick triggered');
+                onClick={() => {
                   sessionStorage.setItem('app-navigation', 'true');
                   navigate('/', { replace: true });
                 }}
-                onTouchStart={(e) => {
-                  console.log('Back button onTouchStart');
-                }}
-                onTouchEnd={(e) => {
-                  console.log('Back button onTouchEnd');
-                  sessionStorage.setItem('app-navigation', 'true');
-                  navigate('/', { replace: true });
-                }}
-                variant="default"
+                variant="ghost"
                 size="sm"
-                className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
+                className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
                 style={{ touchAction: 'manipulation' }}
               >
-                <ArrowLeft className="w-4 h-4 text-white" />
+                <ArrowLeft className="w-4 h-4" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  Upload to ComfyUI Server
+                <h1 className="text-lg font-bold text-white/95 leading-none">
+                  {t('workflow.upload.title')}
                 </h1>
-                <p className="text-slate-500 dark:text-slate-400">
-                  Upload your workflows to ComfyUI server
+                <p className="text-[11px] text-white/40 mt-1">
+                  {t('workflow.upload.subtitle')}
                 </p>
               </div>
             </div>
@@ -284,17 +274,17 @@ const WorkflowUpload: React.FC = () => {
 
           {/* Server Requirements Check */}
           {(isCheckingExtension || !isConnected || !hasExtension) && (
-            <Card className="mb-6 bg-white/5 border-white/10">
+            <Card className="mb-6 border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
               <CardHeader>
-                <CardTitle className="text-white flex items-center gap-2">
-                  <Server className="h-5 w-5" />
+                <CardTitle className="text-white/90 flex items-center gap-2">
+                  <Server className="h-5 w-5 text-blue-400" />
                   {t('workflow.import.serverRequirements')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 {isCheckingExtension ? (
                   <div className="flex items-center space-x-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-purple-400" />
+                    <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                     <span className="text-white/70">
                       {t('workflow.import.checkingServer')}
                     </span>
@@ -303,44 +293,36 @@ const WorkflowUpload: React.FC = () => {
                   <>
                     {/* Server Connection Status */}
                     <div className="flex items-center justify-between">
-                      <span className="text-white/80">{t('workflow.import.serverConnection')}</span>
+                      <span className="text-white/70 font-medium">{t('workflow.import.serverConnection')}</span>
                       <div className="flex items-center gap-2">
                         {isConnected ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                            <Badge variant="outline" className="text-green-400 border-green-400/30">
-                              {t('common.connected')}
-                            </Badge>
-                          </>
+                          <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            {t('common.connected')}
+                          </Badge>
                         ) : (
-                          <>
-                            <AlertCircle className="h-4 w-4 text-red-400" />
-                            <Badge variant="outline" className="text-red-400 border-red-400/30">
-                              {t('common.notConnected')}
-                            </Badge>
-                          </>
+                          <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {t('common.notConnected')}
+                          </Badge>
                         )}
                       </div>
                     </div>
 
                     {/* Extension Status */}
                     <div className="flex items-center justify-between">
-                      <span className="text-white/80">{t('workflow.import.extension')}</span>
+                      <span className="text-white/70 font-medium">{t('workflow.import.extension')}</span>
                       <div className="flex items-center gap-2">
                         {hasExtension ? (
-                          <>
-                            <CheckCircle className="h-4 w-4 text-green-400" />
-                            <Badge variant="outline" className="text-green-400 border-green-400/30">
-                              {t('common.available')}
-                            </Badge>
-                          </>
+                          <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                            <CheckCircle className="h-3 w-3 mr-1" />
+                            {t('common.available')}
+                          </Badge>
                         ) : (
-                          <>
-                            <AlertCircle className="h-4 w-4 text-red-400" />
-                            <Badge variant="outline" className="text-red-400 border-red-400/30">
-                              {t('common.notFound')}
-                            </Badge>
-                          </>
+                          <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                            <AlertCircle className="h-3 w-3 mr-1" />
+                            {t('common.notFound')}
+                          </Badge>
                         )}
                       </div>
                     </div>
@@ -351,7 +333,7 @@ const WorkflowUpload: React.FC = () => {
                         {!serverUrl && (
                           <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
                             <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-red-200 text-sm">
+                            <span className="text-red-400 text-sm">
                               {t('workflow.import.noServerUrl')}
                             </span>
                           </div>
@@ -359,7 +341,7 @@ const WorkflowUpload: React.FC = () => {
                         {!isConnected && serverUrl && (
                           <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
                             <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-red-200 text-sm">
+                            <span className="text-red-400 text-sm">
                               {t('workflow.import.notConnected')}
                             </span>
                           </div>
@@ -367,7 +349,7 @@ const WorkflowUpload: React.FC = () => {
                         {isConnected && !hasExtension && (
                           <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
                             <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-red-200 text-sm">
+                            <span className="text-red-400 text-sm">
                               {t('workflow.import.extensionNotFound')}
                             </span>
                           </div>
@@ -376,14 +358,13 @@ const WorkflowUpload: React.FC = () => {
                     )}
 
                     {/* Action Buttons */}
-                    <div className="flex gap-2 pt-2 border-t border-white/10">
+                    <div className="flex gap-2 pt-2 border-t border-white/5">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={checkExtension}
                         disabled={isLoading}
-                        className="text-white/70 border-white/20 hover:bg-white/10 active:bg-white/20 touch-manipulation min-h-[44px] select-none"
-                        style={{ touchAction: 'manipulation' }}
+                        className="text-white border-white/10 hover:bg-white/10 active:bg-white/20 bg-white/5"
                       >
                         {isLoading ? (
                           <Loader2 className="h-3 w-3 mr-1 animate-spin" />
@@ -401,8 +382,7 @@ const WorkflowUpload: React.FC = () => {
                             sessionStorage.setItem('app-navigation', 'true');
                             navigate('/settings/server');
                           }}
-                          className="text-white/70 border-white/20 hover:bg-white/10 active:bg-white/20 touch-manipulation min-h-[44px] select-none"
-                          style={{ touchAction: 'manipulation' }}
+                          className="text-white border-white/10 hover:bg-white/10 active:bg-white/20 bg-white/5"
                         >
                           <ExternalLink className="h-3 w-3 mr-1" />
                           {t('common.serverSettings')}
@@ -419,7 +399,7 @@ const WorkflowUpload: React.FC = () => {
           {error && (
             <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
               <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-              <span className="text-red-200 text-sm">
+              <span className="text-red-400 text-sm">
                 {error}
               </span>
             </div>
@@ -429,7 +409,7 @@ const WorkflowUpload: React.FC = () => {
           {isLoading && (
             <div className="flex items-center justify-center min-h-[200px]">
               <div className="text-center">
-                <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-purple-400" />
+                <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-indigo-400" />
                 <p className="text-white/70">{t('workflow.upload.loadingLocal')}</p>
               </div>
             </div>
@@ -441,34 +421,34 @@ const WorkflowUpload: React.FC = () => {
               {/* Search Bar and Count */}
               <div className="space-y-3">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400 dark:text-slate-500" />
+                  <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
                   <input
                     type="text"
                     placeholder={t('common.searchWorkflows')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-10 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-900 dark:text-slate-100 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-600 focus:border-transparent transition-all"
+                    className="w-full pl-9 pr-9 py-2 bg-black/20 border border-white/10 rounded-xl text-white/90 placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all text-sm h-10"
                   />
                   {searchQuery && (
                     <button
                       onClick={() => setSearchQuery('')}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:text-slate-500 dark:hover:text-slate-300"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 text-white/40 hover:text-white"
                     >
                       <X className="h-4 w-4" />
                     </button>
                   )}
                 </div>
-                <div className="flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                <div className="flex items-center justify-between px-1">
+                  <h2 className="text-sm font-medium text-white/70">
                     {searchQuery ? t('workflow.upload.foundCount', { count: filteredWorkflows.length }) : t('workflow.upload.localWorkflows', { count: localWorkflows.length })}
                   </h2>
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
                     onClick={loadLocalWorkflows}
-                    className="text-slate-600 dark:text-slate-400 border-slate-300 dark:border-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                    className="h-8 px-2 text-white/60 hover:text-white hover:bg-white/10"
                   >
-                    <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <svg className="w-3.5 h-3.5 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
                     </svg>
                     {t('common.refresh')}
@@ -477,41 +457,41 @@ const WorkflowUpload: React.FC = () => {
               </div>
 
               {filteredWorkflows.length === 0 ? (
-                <Card className="bg-white/5 border-white/10">
+                <Card className="bg-black/20 border-white/5">
                   <CardContent className="py-12 text-center">
-                    <Upload className="h-12 w-12 mx-auto mb-4 text-white/40" />
+                    <Upload className="h-12 w-12 mx-auto mb-4 text-white/20" />
                     <p className="text-white/60">
                       {searchQuery ? t('workflow.upload.noResultsQuery') : t('workflow.upload.noWorkflowsAvailable')}
                     </p>
-                    <p className="text-white/40 text-sm mt-2">
+                    <p className="text-white/30 text-sm mt-2">
                       {searchQuery ? t('workflow.upload.tryDifferent') : t('workflow.upload.createFirst')}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-4">
+                <div className="grid gap-2">
                   {filteredWorkflows.map((workflow, index) => (
-                    <motion.div
+                    <div
                       key={workflow.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: index * 0.1 }}
+                      className="transition-all duration-300 ease-in-out"
                     >
-                      <Card className={`bg-white/5 border-white/10 hover:bg-white/10 transition-colors ${isUploading === workflow.id ? 'opacity-70 pointer-events-none' : ''
+                      <Card className={`border border-white/5 bg-black/20 backdrop-blur-sm hover:bg-white/5 transition-all group ${isUploading === workflow.id ? 'opacity-70 pointer-events-none' : ''
                         }`}>
-                        <CardContent className="p-4">
-                          <div className="flex gap-4 items-center w-full">
+                        <CardContent className="p-3">
+                          <div className="flex gap-3 items-center w-full">
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-white mb-2 break-all leading-tight">
+                              <h3 className="font-medium text-white/95 mb-1 break-all text-sm leading-tight">
                                 {workflow.name || t('workflow.newWorkflowName')}
                               </h3>
-                              <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 text-sm text-white/60">
-                                <span className="whitespace-nowrap">{formatFileSize(workflow.workflow_json)}</span>
-                                <span className="truncate">
-                                  {t('workflow.modified')}: {formatDate(workflow.modifiedAt || new Date())}
+                              <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/40 font-mono">
+                                <Badge variant="outline" className="bg-white/5 border-white/5 text-white/40 text-[10px] h-4 px-1.5 min-h-[16px] flex items-center">
+                                  {formatFileSize(workflow.workflow_json)}
+                                </Badge>
+                                <span className="truncate text-[10px]">
+                                  {formatDate(workflow.modifiedAt || new Date())}
                                 </span>
-                                <span className="text-xs text-blue-400 whitespace-nowrap">
-                                  {(workflow.workflow_json && typeof workflow.workflow_json === 'object' && 'nodes' in workflow.workflow_json && Array.isArray(workflow.workflow_json.nodes) ? workflow.workflow_json.nodes.length : 0)} {t('workflow.nodes')}
+                                <span className="text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded ml-1 text-[10px] h-4 flex items-center">
+                                  {(workflow.workflow_json && typeof workflow.workflow_json === 'object' && 'nodes' in workflow.workflow_json && Array.isArray(workflow.workflow_json.nodes) ? workflow.workflow_json.nodes.length : 0)} NODES
                                 </span>
                               </div>
                             </div>
@@ -520,25 +500,23 @@ const WorkflowUpload: React.FC = () => {
                               onClick={() => uploadWorkflow(workflow)}
                               disabled={isUploading === workflow.id || !isConnected || !hasExtension}
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 active:bg-blue-800 text-white disabled:opacity-70 whitespace-nowrap flex-shrink-0 touch-manipulation min-h-[38px] select-none shadow-sm hover:shadow-md transition-all"
+                              className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white disabled:opacity-70 whitespace-nowrap flex-shrink-0 touch-manipulation min-h-[32px] h-8 px-3 rounded-lg shadow-lg hover:shadow-indigo-500/20 transition-all"
                               style={{ touchAction: 'manipulation' }}
                             >
                               {isUploading === workflow.id ? (
                                 <>
-                                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                                  {t('workflow.upload.uploading')}
+                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
                                 </>
                               ) : (
                                 <>
-                                  <Upload className="h-4 w-4 mr-2" />
-                                  {t('workflow.upload.button')}
+                                  <Upload className="h-4 w-4" />
                                 </>
                               )}
                             </Button>
                           </div>
                         </CardContent>
                       </Card>
-                    </motion.div>
+                    </div>
                   ))}
                 </div>
               )}
