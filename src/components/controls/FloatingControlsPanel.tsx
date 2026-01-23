@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useLayoutEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Settings, Clock, Search, Maximize2, Move, RefreshCw, Terminal, Layers } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -90,10 +90,61 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   const settingsRef = useRef<HTMLDivElement>(null);
   const settingsDropdownRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-  const searchInputRef = useRef<HTMLInputElement>(null);
+  const searchPanelRef = useRef<HTMLDivElement>(null);
   const consoleRef = useRef<HTMLDivElement>(null);
+  const consolePanelRef = useRef<HTMLDivElement>(null);
   const historyRef = useRef<HTMLDivElement>(null);
+  const historyPanelRef = useRef<HTMLDivElement>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const consoleContainerRef = useRef<HTMLDivElement>(null);
+
+  const [panelYOffsets, setPanelYOffsets] = useState({
+    settings: 0,
+    search: 0,
+    console: 0,
+    history: 0
+  });
+  const [windowHeight, setWindowHeight] = useState(typeof window !== 'undefined' ? window.innerHeight : 0);
+
+  // Update window height on resize
+  useEffect(() => {
+    const handleResize = () => setWindowHeight(window.innerHeight);
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
+  // Smart positioning for side panels
+  useLayoutEffect(() => {
+    const adjustPanel = (isOpen: boolean, ref: React.RefObject<HTMLDivElement | null>, key: keyof typeof panelYOffsets) => {
+      if (isOpen && ref.current) {
+        // Measure the panel's current position
+        const rect = ref.current.getBoundingClientRect();
+        const padding = 16;
+        let offset = 0;
+
+        // If bottom overflows viewport
+        if (rect.bottom > windowHeight - padding) {
+          offset = -(rect.bottom - (windowHeight - padding));
+        }
+
+        // Ensure we don't push it above the top of the screen
+        if (rect.top + offset < padding) {
+          offset = padding - rect.top;
+        }
+
+        if (offset !== 0) {
+          setPanelYOffsets(prev => ({ ...prev, [key]: offset }));
+        }
+      } else {
+        setPanelYOffsets(prev => ({ ...prev, [key]: 0 }));
+      }
+    };
+
+    adjustPanel(isSettingsOpen, settingsDropdownRef, 'settings');
+    adjustPanel(isSearchOpen, searchPanelRef, 'search');
+    adjustPanel(isConsoleOpen, consolePanelRef, 'console');
+    adjustPanel(isHistoryOpen, historyPanelRef, 'history');
+  }, [isSettingsOpen, isSearchOpen, isConsoleOpen, isHistoryOpen, windowHeight]);
   const navigate = useNavigate();
   const { openPromptHistory } = usePromptHistoryStore();
   const { id } = useParams<{ id: string }>();
@@ -569,7 +620,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           <div className="h-px w-6 bg-white/10 mx-1" />
 
           {/* Stack View Button */}
-          <div className="relative" ref={consoleRef}>
+          <div className="relative">
             <Button
               onClick={handleStackViewClick}
               variant="ghost"
@@ -621,7 +672,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           <motion.div
             ref={settingsDropdownRef}
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
+            animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.settings }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute right-full top-0 mr-3 w-64 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden z-50"
@@ -658,8 +709,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       <AnimatePresence>
         {isSearchOpen && (
           <motion.div
+            ref={searchPanelRef}
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
+            animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.search }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute right-full top-0 mr-3 w-80 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden"
@@ -769,8 +821,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       <AnimatePresence>
         {isConsoleOpen && (
           <motion.div
+            ref={consolePanelRef}
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
+            animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.console }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute right-full top-0 mr-3 w-96 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden"
@@ -850,8 +903,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       <AnimatePresence>
         {isHistoryOpen && (
           <motion.div
+            ref={historyPanelRef}
             initial={{ opacity: 0, x: 20, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
+            animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.history }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="absolute right-full top-0 mr-3 w-96 max-w-[calc(100vw-100px)] h-[480px] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden flex flex-col"

@@ -722,6 +722,7 @@
         "install": "インストール",
         "installed": "インストール済み",
         "missing": "不足",
+        "disabled": "無効化済み",
         "updateAvailable": "更新あり",
         "source": "ソース：",
         "repository": "リポジトリ：",
@@ -740,6 +741,7 @@
         "queueCompleted": "インストールキューが完了しました。",
         "selectPackage": "インストールまたは更新するパッケージを選択してください。",
         "installAll": "すべてインストール",
+        "reinstall": "再インストール",
         "goToReboot": "再起動ページへ"
     },
     "nodeAdd": {

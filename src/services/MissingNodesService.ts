@@ -16,7 +16,7 @@ import type { IObjectInfo } from '@/shared/types/comfy/IComfyObjectInfo';
 export type MissingNodeSource = 'registry' | 'github' | 'unknown';
 
 export interface MissingWorkflowNode {
-  id: number;
+  id: number | string;
   type: string;
   properties?: Record<string, any> | null;
 }
@@ -34,6 +34,7 @@ export interface MissingNodePackage {
   isInstalled: boolean;
   isUpdateAvailable: boolean;
   isInstallable: boolean;
+  state?: string;
   channel?: string;
   mode?: string;
   files?: string[];
@@ -197,7 +198,8 @@ export async function resolveMissingNodePackages(
 
   for (const [packId, accumulator] of packageMap.entries()) {
     const managerPack = accumulator.managerPack;
-    const installedVersion = managerPack?.active_version ?? managerPack?.version;
+    const isInstalled = Boolean(managerPack && managerPack.state && managerPack.state !== 'not-installed');
+    const installedVersion = isInstalled ? (managerPack?.active_version ?? managerPack?.version) : undefined;
     const latestVersion = accumulator.detail?.latest_version?.version
       ?? accumulator.latestVersion
       ?? (managerPack?.cnr_latest as string | undefined);
@@ -218,13 +220,12 @@ export async function resolveMissingNodePackages(
 
     const versionComparison = installedVersion && latestVersion ? compareVersions(latestVersion, installedVersion) : 0;
     const isUpdateAvailable = Boolean(
-      installedVersion && latestVersion && (
+      isInstalled && installedVersion && latestVersion && (
         versionComparison > 0 || (versionComparison === 0 && latestVersion !== installedVersion)
       ),
     );
 
     const isInstallable = accumulator.source !== 'unknown' || Boolean(accumulator.repository);
-    const isInstalled = Boolean(managerPack && managerPack.state && managerPack.state !== 'not-installed');
 
     packages.push({
       packId,
@@ -241,6 +242,7 @@ export async function resolveMissingNodePackages(
       isInstalled,
       isUpdateAvailable,
       isInstallable,
+      state: managerPack?.state,
       channel: accumulator.channel ?? (managerPack?.channel as string | undefined),
       mode: accumulator.mode ?? (managerPack?.mode as string | undefined),
       files: Array.isArray(managerPack?.files)

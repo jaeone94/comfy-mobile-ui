@@ -1,10 +1,10 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Search, X, Plus, Hash, Copy, Clock } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { Search, X, Plus, Hash, Copy, Clock, Layers, ChevronDown, ChevronRight, Sparkles } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { motion, AnimatePresence } from 'framer-motion';
 import { NodeClipboardService, CopiedNode } from '@/services/NodeClipboardService';
 import { toast } from 'sonner';
@@ -13,6 +13,14 @@ interface NodeType {
   name: string;
   display_name: string;
   description: string;
+  category: string;
+}
+
+interface NodeTreeItem {
+  id: string; // full path
+  name: string; // display name for this label
+  nodes: NodeType[];
+  children: NodeTreeItem[];
 }
 
 interface NodeAddModalProps {
@@ -32,14 +40,18 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
 }) => {
   const { t } = useTranslation();
   const [searchTerm, setSearchTerm] = useState('');
-  const [displayCount, setDisplayCount] = useState(20); // Start with 20 items
   const [recentNodes, setRecentNodes] = useState<CopiedNode[]>([]);
-  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const baseTitleSize = '1.875rem';
 
   // Load recent nodes on mount
   useEffect(() => {
     if (isOpen) {
       setRecentNodes(NodeClipboardService.getNodes());
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
     }
   }, [isOpen]);
 
@@ -54,116 +66,68 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
       return {
         name: key,
         display_name: metadata.display_name || key,
-        description: metadata.description || 'No description available'
+        description: metadata.description || 'No description available',
+        category: metadata.category || 'uncategorized'
       } as NodeType;
     });
   }, [graph, graph?._metadata]);
 
-  // Filter nodes based on search term
-  const filteredNodes = useMemo(() => {
-    if (!searchTerm) return nodeTypes;
+  // Build hierarchical node tree
+  const nodeTree = useMemo(() => {
+    const root: NodeTreeItem[] = [];
+    const query = searchTerm.toLowerCase().trim();
 
-    const search = searchTerm.toLowerCase();
-    return nodeTypes.filter(node =>
-      node.name.toLowerCase().includes(search) ||
-      node.display_name.toLowerCase().includes(search)
-    );
+    // 1. Filter nodes first
+    const filteredNodes = nodeTypes.filter(node => {
+      const nameMatch = node.name.toLowerCase().includes(query);
+      const displayMatch = node.display_name.toLowerCase().includes(query);
+      const catMatch = node.category.toLowerCase().includes(query);
+      return !query || nameMatch || displayMatch || catMatch;
+    });
+
+    // 2. Build tree
+    filteredNodes.forEach(node => {
+      const parts = (node.category || 'uncategorized').split('/');
+      let currentLevel = root;
+      let currentPath = '';
+
+      parts.forEach((part, index) => {
+        currentPath = currentPath ? `${currentPath}/${part}` : part;
+        let item = currentLevel.find(i => i.name === part);
+        if (!item) {
+          item = { id: currentPath, name: part, nodes: [], children: [] };
+          currentLevel.push(item);
+        }
+
+        if (index === parts.length - 1) {
+          item.nodes.push(node);
+        }
+        currentLevel = item.children;
+      });
+    });
+
+    // Sort recursively
+    const sortTree = (items: NodeTreeItem[]) => {
+      items.sort((a, b) => a.name.localeCompare(b.name));
+      items.forEach(item => {
+        item.nodes.sort((a, b) => a.display_name.localeCompare(b.display_name));
+        if (item.children.length > 0) sortTree(item.children);
+      });
+    };
+    sortTree(root);
+
+    return root;
   }, [nodeTypes, searchTerm]);
 
-  // Get visible nodes (limited for performance)
-  const visibleNodes = useMemo(() => {
-    return filteredNodes.slice(0, displayCount);
-  }, [filteredNodes, displayCount]);
-
-  // Load more handler
-  const loadMore = useCallback(() => {
-    if (displayCount < filteredNodes.length) {
-      setDisplayCount(prev => Math.min(prev + 20, filteredNodes.length));
+  const toggleCategoryExpansion = (categoryId: string) => {
+    const newExpanded = new Set(expandedCategories);
+    if (newExpanded.has(categoryId)) {
+      newExpanded.delete(categoryId);
+    } else {
+      newExpanded.add(categoryId);
     }
-  }, [displayCount, filteredNodes.length]);
-
-  // Scroll handler for infinite loading
-  const handleScroll = useCallback((e: Event) => {
-    const target = e.target as HTMLElement;
-    if (target && filteredNodes.length > displayCount) {
-      const { scrollTop, scrollHeight, clientHeight } = target;
-
-      // Load more when near bottom (within 200px)
-      if (scrollHeight - scrollTop - clientHeight < 200) {
-        loadMore();
-      }
-    }
-  }, [filteredNodes.length, displayCount, loadMore]);
-
-  // Reset display count when search changes
-  useEffect(() => {
-    setDisplayCount(20);
-  }, [searchTerm]);
-
-  // Attach scroll listener with retry mechanism
-  useEffect(() => {
-    if (!isOpen) return;
-
-    let scrollElement: Element | null = null;
-    let timeoutId: NodeJS.Timeout | null = null;
-
-    const attachScrollListener = () => {
-      if (!scrollAreaRef.current) return false;
-
-      scrollElement =
-        scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]') ||
-        scrollAreaRef.current.querySelector('.scroll-area-viewport') ||
-        scrollAreaRef.current;
-
-      if (scrollElement) {
-        console.log('Scroll element found:', scrollElement);
-        scrollElement.addEventListener('scroll', handleScroll, { passive: true });
-        return true;
-      } else {
-        console.warn('Scroll element not found, will retry...');
-        return false;
-      }
-    };
-
-    // Try immediately
-    if (!attachScrollListener()) {
-      // If not found, retry multiple times with increasing delays
-      let retryCount = 0;
-      const maxRetries = 5;
-
-      const retry = () => {
-        if (retryCount < maxRetries && !attachScrollListener()) {
-          retryCount++;
-          timeoutId = setTimeout(retry, 100 * retryCount); // 100ms, 200ms, 300ms, etc.
-          console.log(`Retrying scroll listener attachment (attempt ${retryCount}/${maxRetries})`);
-        }
-      };
-
-      retry();
-    }
-
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-      if (scrollElement) {
-        scrollElement.removeEventListener('scroll', handleScroll);
-      }
-    };
-  }, [handleScroll, isOpen]);
-
-  // Debug modal state when it opens
-  useEffect(() => {
-    if (isOpen) {
-      console.log('NodeAddModal opened with:', {
-        graphAvailable: !!graph,
-        metadataAvailable: !!graph?._metadata,
-        nodeTypesCount: nodeTypes.length,
-        filteredNodesCount: filteredNodes.length,
-        visibleNodesCount: visibleNodes.length,
-        displayCount,
-        searchTerm
-      });
-    }
-  }, [isOpen, graph, nodeTypes.length, filteredNodes.length, visibleNodes.length, displayCount, searchTerm]);
+    setExpandedCategories(newExpanded);
+  };
 
   const handleNodeSelect = (node: NodeType) => {
     if (!position || !onNodeAdd) {
@@ -172,16 +136,12 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
       return;
     }
 
-    // Get node metadata from graph
     const nodeMetadata = graph?._metadata?.[node.name];
     if (!nodeMetadata) {
       console.error('Node metadata not found for:', node.name);
       return;
     }
 
-    console.log('Adding node:', node.name, 'at position:', position);
-
-    // Call the onNodeAdd callback
     onNodeAdd(node.name, nodeMetadata, {
       worldX: position.worldX,
       worldY: position.worldY
@@ -192,16 +152,11 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
 
   const handlePasteNode = (copiedNode: CopiedNode) => {
     if (!position || !onNodeAdd) {
-      console.log('Cannot add node: missing position or onNodeAdd callback');
       onClose();
       return;
     }
 
-    // Get node metadata from graph
     const nodeMetadata = graph?._metadata?.[copiedNode.type];
-
-    // Even if metadata is missing/renamed, we can try to add it if the system allows
-    // But ideally we should warn if type doesn't exist anymore
     if (!nodeMetadata) {
       toast.error(t('nodeAdd.nodeTypeNotFound', { type: copiedNode.type }));
       return;
@@ -218,235 +173,264 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
 
   if (!isOpen) return null;
 
-  return (
+  // Recursive Item Component
+  const TreeItemRenderer = ({ item, level }: { item: NodeTreeItem; level: number }) => {
+    const isExpanded = expandedCategories.has(item.id) || !!searchTerm;
+    const hasChildren = item.children.length > 0;
+    const hasNodes = item.nodes.length > 0;
+
+    return (
+      <div className={`mb-3 last:mb-0`}>
+        <div
+          className="group relative rounded-3xl bg-black/10 border border-white/5 hover:bg-black/20 hover:border-white/10 transition-all overflow-hidden"
+          style={{ marginLeft: level > 0 ? `${level * 12}px` : '0' }}
+        >
+          {/* Header */}
+          <button
+            onClick={() => toggleCategoryExpansion(item.id)}
+            className="w-full px-5 py-3 flex items-center justify-between text-left transition-all"
+          >
+            <div className="flex items-center space-x-3 min-w-0">
+              <div className={`p-1.5 rounded-xl bg-black/20 border border-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180 bg-blue-500/10 border-blue-500/20' : ''}`}>
+                <ChevronDown className={`w-3 h-3 ${isExpanded ? 'text-blue-400' : 'text-white/40'}`} />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="font-bold text-white/90 text-[11px] tracking-tight uppercase line-clamp-1 leading-snug">
+                  {item.name}
+                </span>
+                <span className="text-[8px] font-medium text-white/30 uppercase tracking-wider">
+                  {item.nodes.length + item.children.length} Items
+                </span>
+              </div>
+            </div>
+            <div className="flex-shrink-0 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
+              <div className="w-6 h-6 rounded-full bg-black/20 flex items-center justify-center border border-white/10">
+                <ChevronRight className="h-3 w-3 text-white/40" />
+              </div>
+            </div>
+          </button>
+
+          {/* Children / Nodes Area */}
+          <AnimatePresence>
+            {isExpanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                className="bg-black/5"
+              >
+                <div className="px-4 pb-4 pt-1 space-y-3">
+                  {/* Nodes at this level */}
+                  {hasNodes && (
+                    <div className="grid grid-cols-1 gap-2">
+                      {item.nodes.map((node) => (
+                        <button
+                          key={node.name}
+                          onClick={() => handleNodeSelect(node)}
+                          className="w-full p-3 rounded-2xl bg-black/20 border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 text-white/60 hover:text-white/90 transition-all duration-200 flex flex-col items-start text-left group/node"
+                        >
+                          <div className="flex items-center justify-between w-full mb-1">
+                            <span className="text-[11px] font-bold text-white/80 group-hover/node:text-white transition-colors line-clamp-2 leading-snug">
+                              {node.display_name}
+                            </span>
+                            <Plus className="w-3 h-3 opacity-0 group-hover/node:opacity-100 transition-opacity text-blue-400 flex-shrink-0 ml-2" />
+                          </div>
+                          {node.description && node.description !== 'No description available' && (
+                            <p className="text-[9px] text-white/30 line-clamp-2 leading-relaxed mb-1.5">
+                              {node.description}
+                            </p>
+                          )}
+                          <Badge variant="outline" className="text-[7px] px-1.5 py-0 border-white/5 bg-black/20 text-white/20 font-mono uppercase tracking-tighter">
+                            {node.name.split('.').pop()}
+                          </Badge>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Sub-categories */}
+                  {hasChildren && (
+                    <div className="space-y-2 mt-2">
+                      {item.children.map((child) => (
+                        <TreeItemRenderer key={child.id} item={child} level={0} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </div>
+    );
+  };
+
+  return createPortal(
     <AnimatePresence>
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-purple-900/40 backdrop-blur-md pwa-modal"
-        onClick={onClose}
-      >
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 overflow-hidden">
         <motion.div
-          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+        />
+
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed inset-0 flex items-center justify-center p-4 pwa-modal"
+          exit={{ opacity: 0, scale: 0.96, y: 15 }}
+          transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
+          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
-          <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 w-full max-w-4xl h-full max-h-[90vh] flex flex-col overflow-hidden">
-            {/* Gradient Overlay for Enhanced Glass Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+          {/* Main Card */}
+          <div
+            style={{ backgroundColor: '#374151' }}
+            className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
+          >
+            {/* Always Compact Sticky Header */}
+            <div
+              className="absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] pt-2 pb-[13px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10"
+            >
+              {/* Floating Close Button */}
+              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex-shrink-0 scale-75">
+                <button
+                  onClick={onClose}
+                  className="p-2 rounded-full bg-black/20 text-white hover:bg-black/40 transition-all pointer-events-auto"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
 
-            {/* Glassmorphism Header */}
-            <div className="relative p-6 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center space-x-3">
-                  <Plus className="w-6 h-6 text-blue-400 drop-shadow-sm" />
-                  <h2 className="text-xl font-bold text-slate-900 dark:text-white drop-shadow-sm">
+              <div className="flex flex-col justify-center flex-1 min-w-0 pointer-events-none">
+                <div className="flex items-center space-x-2 mb-1 scale-90 origin-left">
+                  <Badge variant="secondary" className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/20 text-white/80 border-transparent">
+                    NODES
+                  </Badge>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
+                    {t('nodeAdd.title')}
+                  </span>
+                </div>
+
+                <div className="flex items-center min-w-0 h-[13px]">
+                  <h2
+                    style={{
+                      fontSize: baseTitleSize,
+                      lineHeight: '1',
+                      transform: `scale(${0.8125 / 1.875})`,
+                      transformOrigin: 'left center',
+                    }}
+                    className="font-extrabold tracking-tight leading-tight text-white/95 transition-transform duration-300 will-change-transform truncate pr-4"
+                  >
                     {t('nodeAdd.title')}
                   </h2>
                 </div>
-                <Button
-                  onClick={onClose}
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </div>
-
-
-              {/* Search Bar */}
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
-                <Input
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  placeholder={t('nodeAdd.searchPlaceholder')}
-                  className="pl-10 pr-10 bg-white/50 backdrop-blur-sm border-slate-200/50 dark:bg-slate-800/50 dark:border-slate-600/50 h-10"
-                />
-                {searchTerm && (
-                  <Button
-                    onClick={() => setSearchTerm('')}
-                    variant="ghost"
-                    size="sm"
-                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-200/50 dark:hover:bg-slate-700/50"
-                  >
-                    <X className="h-3 w-3" />
-                  </Button>
-                )}
               </div>
             </div>
 
-            {/* Recent Copies Section */}
-            {recentNodes.length > 0 && !searchTerm && (
-              <div className="flex-shrink-0 px-6 pt-4 pb-2 border-b border-white/5 dark:border-slate-600/5">
-                <div className="flex items-center space-x-2 mb-3 text-slate-500 dark:text-slate-400">
-                  <Clock className="w-4 h-4" />
-                  <span className="text-xs font-medium uppercase tracking-wider">Recent Copies</span>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  {recentNodes.map((node) => (
-                    <motion.button
-                      key={node.id}
-                      onClick={() => handlePasteNode(node)}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                      className="flex flex-col text-left p-3 rounded-xl bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800/20 hover:bg-blue-100/50 dark:hover:bg-blue-900/20 transition-all"
+            {/* Persistent Search Bar (Simplified) */}
+            <div className="absolute left-0 w-full z-20 px-4 sm:px-8 top-[68px]">
+              <div className="flex flex-col gap-3 bg-[#374151]/80 backdrop-blur-md p-3 rounded-2xl border border-white/5 shadow-lg">
+                <div className="relative w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
+                  <Input
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    placeholder={t('nodeAdd.searchPlaceholder')}
+                    className="w-full bg-black/20 border-white/10 text-xs text-white/90 placeholder:text-white/20 h-9 pl-9 pr-8 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/20 transition-all duration-300 border shadow-inner"
+                  />
+                  {searchTerm && (
+                    <button
+                      onClick={() => setSearchTerm('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 h-5 w-5 rounded-full hover:bg-white/10 flex items-center justify-center transition-colors"
                     >
-                      <div className="flex items-start justify-between w-full mb-1">
-                        <span className="font-semibold text-sm text-slate-700 dark:text-slate-200 truncate pr-2">
-                          {node.title}
-                        </span>
-                        <Copy className="w-3 h-3 text-blue-400 flex-shrink-0 mt-1" />
-                      </div>
-                      <span className="text-xs text-slate-500 dark:text-slate-400 truncate">
-                        {node.type}
-                      </span>
-                    </motion.button>
-                  ))}
+                      <X className="w-3 h-3 text-white/40" />
+                    </button>
+                  )}
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Results Area with Virtual Scrolling */}
-            <div className="relative flex-1 overflow-hidden">
-              <ScrollArea ref={scrollAreaRef} className="h-full">
-                {filteredNodes.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Hash className="w-12 h-12 text-slate-400 mx-auto mb-4 opacity-50" />
-                    <p className="text-slate-600 dark:text-slate-400 text-lg">
-                      {nodeTypes.length === 0
-                        ? t('nodeAdd.noNodeTypes')
-                        : t('nodeAdd.noMatchingNodes', { query: searchTerm })
-                      }
+            {/* Content Area */}
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+              <div className="h-[145px]" /> {/* Adjusted top bumper since buttons are gone */}
+
+              <div className="px-5 pb-6 sm:px-6">
+                {/* Recent Copies Section */}
+                {recentNodes.length > 0 && !searchTerm && (
+                  <div className="mb-8 p-4 rounded-3xl bg-blue-500/5 border border-blue-500/10">
+                    <div className="flex items-center gap-2 mb-3 px-1">
+                      <Clock className="w-3.5 h-3.5 text-blue-400/60" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400/60">
+                        {t('nodeAdd.recentCopies')}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                      {recentNodes.slice(0, 6).map((node) => (
+                        <button
+                          key={node.id}
+                          onClick={() => handlePasteNode(node)}
+                          className="flex flex-col items-start p-2.5 rounded-xl bg-black/20 border border-white/5 hover:border-blue-400/30 hover:bg-blue-400/5 transition-all group/recent"
+                        >
+                          <span className="text-[10px] font-bold text-white/70 group-hover/recent:text-blue-400 line-clamp-1 mb-1">
+                            {node.title}
+                          </span>
+                          <span className="text-[8px] font-mono text-white/30 uppercase">
+                            {node.type.split('.').pop()}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {nodeTree.length === 0 ? (
+                  <div className="text-center py-12 rounded-3xl bg-black/20 border border-dashed border-white/10">
+                    <Hash className="h-10 w-10 text-white/10 mx-auto mb-3" />
+                    <p className="text-white/40 text-[11px] font-medium">
+                      {searchTerm ? t('nodeAdd.noMatchingNodes', { query: searchTerm }) : t('nodeAdd.noNodeTypes')}
                     </p>
                   </div>
                 ) : (
-                  <div className="p-6 space-y-3" style={{ width: '100%', maxWidth: '100%' }}>
-                    {visibleNodes.map((node, index) => (
-                      <motion.div
-                        key={node.name}
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: Math.min(index * 0.02, 0.3), duration: 0.2 }}
-                        onClick={() => handleNodeSelect(node)}
-                        className="group relative p-4 bg-white/30 dark:bg-slate-700/20 backdrop-blur-sm rounded-2xl border border-white/20 dark:border-slate-600/20 cursor-pointer transition-all duration-200 hover:bg-white/40 dark:hover:bg-slate-600/30 hover:border-white/30 dark:hover:border-slate-500/30 hover:scale-[1.01] hover:shadow-lg hover:shadow-slate-900/10"
-                        style={{
-                          width: '100% !important',
-                          maxWidth: '100% !important',
-                          minWidth: '0 !important',
-                          flex: 'none !important',
-                          flexShrink: '0 !important',
-                          flexGrow: '0 !important',
-                          boxSizing: 'border-box',
-                          overflow: 'hidden',
-                          display: 'block'
-                        }}
-                      >
-                        {/* Hover gradient overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-400/5 to-purple-400/5 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-
-                        <div className="relative" style={{
-                          display: 'table',
-                          width: '100%',
-                          maxWidth: '100%',
-                          tableLayout: 'fixed',
-                          overflow: 'hidden'
-                        }}>
-                          {/* Icon */}
-                          <div style={{
-                            display: 'table-cell',
-                            width: '50px',
-                            verticalAlign: 'middle'
-                          }}>
-                            <div className="w-10 h-10 bg-gradient-to-br from-blue-400 to-purple-500 rounded-xl flex items-center justify-center shadow-lg">
-                              <Hash className="w-5 h-5 text-white" />
-                            </div>
-                          </div>
-
-                          {/* Content */}
-                          <div style={{
-                            display: 'table-cell',
-                            verticalAlign: 'middle',
-                            paddingLeft: '6px',
-                            paddingRight: '32px',
-                            overflow: 'hidden'
-                          }}>
-                            <h3 className="font-semibold text-slate-900 dark:text-white text-base mb-1" style={{
-                              overflow: 'hidden',
-                              wordWrap: 'break-word',
-                              wordBreak: 'break-word',
-                              hyphens: 'auto',
-                              whiteSpace: 'normal'
-                            }}>
-                              {node.display_name}
-                            </h3>
-                            <Badge
-                              variant="secondary"
-                              className="text-xs bg-white/50 dark:bg-slate-800/50 text-slate-700 dark:text-slate-300 border border-white/30 dark:border-slate-600/30 backdrop-blur-sm mb-2"
-                            >
-                              {node.name}
-                            </Badge>
-                            {node.description && node.description !== 'No description available' && (
-                              <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed" style={{
-                                overflow: 'hidden',
-                                wordWrap: 'break-word',
-                                wordBreak: 'break-word',
-                                hyphens: 'auto',
-                                whiteSpace: 'normal'
-                              }}>
-                                {node.description}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Arrow indicator */}
-                          <div style={{
-                            display: 'table-cell',
-                            width: '30px',
-                            verticalAlign: 'middle',
-                            textAlign: 'center'
-                          }}>
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-                              <Plus className="w-4 h-4 text-slate-400 dark:text-slate-500" />
-                            </div>
-                          </div>
-                        </div>
-                      </motion.div>
-                    ))}
-
-                    {/* Load More Indicator */}
-                    {displayCount < filteredNodes.length && (
-                      <div className="text-center py-4">
-                        <div className="text-sm text-slate-500 dark:text-slate-400">
-                          {t('nodeAdd.showingNodes', { count: displayCount, total: filteredNodes.length })}
-                        </div>
-                        <div className="text-xs text-slate-400 mt-1">
-                          {t('nodeAdd.scrollMore')}
-                        </div>
+                  <div className="space-y-4">
+                    {/* Category Summary */}
+                    <div className="flex items-center justify-between mb-4 px-1">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-4 h-4 text-white/50" />
+                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                          {t('workflow.stackViewLabels.nodesByCategory', { count: nodeTree.length })}
+                        </span>
                       </div>
-                    )}
+                      <Badge variant="secondary" className="bg-white/5 text-white/40 border-white/5 font-mono text-[9px]">
+                        {nodeTypes.length} TYPES
+                      </Badge>
+                    </div>
+
+                    <div className="grid grid-cols-1">
+                      {nodeTree.map((item) => (
+                        <TreeItemRenderer key={item.id} item={item} level={0} />
+                      ))}
+                    </div>
                   </div>
                 )}
-              </ScrollArea>
+              </div>
             </div>
 
-            {/* Footer Info */}
-            <div className="relative p-4 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-t border-white/10 dark:border-slate-600/10">
-              <div className="text-sm text-slate-600 dark:text-slate-400">
-                {t('nodeAdd.availableTypes', { count: nodeTypes.length })}
-                {searchTerm && (
-                  <span className="ml-2">• {t('nodeAdd.matchingSearch', { count: filteredNodes.length })}</span>
-                )}
+            {/* Footer Status */}
+            <div className="px-8 py-4 bg-black/30 border-t border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                  {nodeTypes.length} Available Nodes
+                </span>
               </div>
             </div>
           </div>
         </motion.div>
-      </motion.div>
-    </AnimatePresence >
+      </div>
+    </AnimatePresence>,
+    document.body
   );
 };

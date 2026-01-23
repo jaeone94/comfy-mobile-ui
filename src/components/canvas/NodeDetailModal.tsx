@@ -1125,7 +1125,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
                             </div>
 
-                            <div className="px-8 py-6">
+                            <div className="px-5 py-6">
                                 {/* Extra top padding when header is NOT compact to avoid overlapping or awkward spacing if needed, 
                                    actually since it's NOT absolute but flex-col, it pushes down naturally. 
                                    We just removed the old identity header from here. */}

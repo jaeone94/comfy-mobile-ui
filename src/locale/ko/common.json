@@ -724,6 +724,7 @@
         "install": "설치",
         "installed": "설치됨",
         "missing": "누락됨",
+        "disabled": "비활성화됨",
         "updateAvailable": "업데이트 가능",
         "source": "소스:",
         "repository": "저장소:",
@@ -742,6 +743,7 @@
         "queueCompleted": "설치 대기열 완료.",
         "selectPackage": "설치 또는 업데이트할 패키지를 선택하세요.",
         "installAll": "모두 설치",
+        "reinstall": "재설치",
         "goToReboot": "재부팅 페이지로 이동"
     },
     "nodeAdd": {

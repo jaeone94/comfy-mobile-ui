@@ -362,21 +362,21 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   // Normal display mode
   return (
-    <div className={`p-3 rounded-lg ${themeOverride?.container || 'bg-slate-50 dark:bg-slate-800/50'}`}>
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center space-x-2">
-          <span className={`font-medium ${themeOverride?.label || 'text-slate-900 dark:text-slate-100'}`}>
+    <div className={`px-2.5 py-3 rounded-lg ${themeOverride?.container || 'bg-slate-50 dark:bg-slate-800/50'}`}>
+      <div className="flex items-start justify-between mb-2 gap-2">
+        <div className="flex flex-wrap items-center gap-2 min-w-0">
+          <span className={`font-medium break-words leading-tight ${themeOverride?.label || 'text-slate-900 dark:text-slate-100'}`}>
             {param.label || param.name}
           </span>
           {param.required && (
-            <Badge variant="destructive" className="text-xs px-1.5 py-0.5">
+            <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 flex-shrink-0">
               {t('node.required')}
             </Badge>
           )}
         </div>
         <Badge
           variant={hasCustomWidgetDefinition ? "secondary" : "outline"}
-          className={`text-xs ${hasCustomWidgetDefinition ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700' : ''}`}
+          className={`text-[10px] flex-shrink-0 ${hasCustomWidgetDefinition ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700' : ''}`}
         >
           {param.type}
           {hasCustomWidgetDefinition && (

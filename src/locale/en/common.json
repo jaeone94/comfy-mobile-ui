@@ -724,6 +724,7 @@
         "install": "Install",
         "installed": "Installed",
         "missing": "Missing",
+        "disabled": "Disabled",
         "updateAvailable": "Update available",
         "source": "Source:",
         "repository": "Repository:",
@@ -742,6 +743,7 @@
         "queueCompleted": "Installation queue completed.",
         "selectPackage": "Select a package to install or update.",
         "installAll": "Install All",
+        "reinstall": "Reinstall",
         "goToReboot": "Go to Reboot Page"
     },
     "nodeAdd": {

@@ -247,7 +247,7 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-          className="relative w-[80vw] h-[75vh] pointer-events-auto flex flex-col"
+          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Main Card */}
@@ -297,10 +297,10 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
 
             {/* Persistent Search & Controls Bar - Slightly detached from header */}
             <div
-              className="absolute left-0 w-full z-20 px-8 top-[68px]"
+              className="absolute left-0 w-full z-20 px-4 sm:px-8 top-[68px]"
             >
-              <div className="flex items-center gap-3 bg-[#374151]/80 backdrop-blur-md py-3 rounded-2xl border border-white/5 shadow-lg px-2">
-                <div className="relative flex-1">
+              <div className="flex flex-col gap-3 bg-[#374151]/80 backdrop-blur-md p-3 rounded-2xl border border-white/5 shadow-lg">
+                <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
                   <Input
                     value={searchQuery}
@@ -317,12 +317,12 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                     </button>
                   )}
                 </div>
-                <div className="flex gap-1">
+                <div className="flex gap-2">
                   <Button
                     onClick={expandAll}
                     variant="ghost"
                     size="sm"
-                    className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-xl transition-all"
+                    className="flex-1 h-8 text-[9px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-lg transition-all"
                   >
                     {t('menu.expandAll')}
                   </Button>
@@ -330,7 +330,7 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                     onClick={collapseAll}
                     variant="ghost"
                     size="sm"
-                    className="h-9 px-3 text-[10px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-xl transition-all"
+                    className="flex-1 h-8 text-[9px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-lg transition-all"
                   >
                     {t('menu.collapseAll')}
                   </Button>
@@ -341,11 +341,11 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
             {/* Content Area */}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
               {/* Static Top Bumper - Adjusted for fixed header + search bar + gap */}
-              <div className="h-[160px] relative pointer-events-none">
+              <div className="h-[185px] relative pointer-events-none">
                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
               </div>
 
-              <div className="px-6 pb-6 sm:px-8">
+              <div className="px-5 pb-6 sm:px-6">
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
                     <div className="relative">
@@ -395,24 +395,24 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                           {/* LoRA Header Card */}
                           <button
                             onClick={() => toggleLoraExpansion(group.loraName)}
-                            className="w-full px-5 py-4 flex items-center justify-between text-left transition-all"
+                            className="w-full px-5 py-3.5 flex items-center justify-between text-left transition-all"
                           >
                             <div className="flex items-center space-x-4 min-w-0">
-                              <div className={`p-2 rounded-2xl bg-black/20 border border-white/5 transition-transform duration-300 ${group.isExpanded ? 'rotate-180 bg-violet-500/10 border-violet-500/20' : ''}`}>
-                                <ChevronDown className={`w-4 h-4 ${group.isExpanded ? 'text-violet-400' : 'text-white/40'}`} />
+                              <div className={`p-1.5 rounded-2xl bg-black/20 border border-white/5 transition-transform duration-300 ${group.isExpanded ? 'rotate-180 bg-violet-500/10 border-violet-500/20' : ''}`}>
+                                <ChevronDown className={`w-3.5 h-3.5 ${group.isExpanded ? 'text-violet-400' : 'text-white/40'}`} />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-white/90 truncate text-sm tracking-tight" title={cleanLoraName(group.loraName)}>
+                                <span className="font-bold text-white/90 text-[12px] tracking-tight line-clamp-2 leading-snug" title={cleanLoraName(group.loraName)}>
                                   {cleanLoraName(group.loraName)}
                                 </span>
-                                <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">
+                                <span className="text-[9px] font-medium text-white/30 uppercase tracking-wider mt-0.5">
                                   {group.triggerWords.length} Words
                                 </span>
                               </div>
                             </div>
                             <div className="flex-shrink-0 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-8 h-8 rounded-full bg-black/20 flex items-center justify-center border border-white/10">
-                                <ChevronRight className="h-4 w-4 text-white/40" />
+                              <div className="w-7 h-7 rounded-full bg-black/20 flex items-center justify-center border border-white/10">
+                                <ChevronRight className="h-3.5 w-3.5 text-white/40" />
                               </div>
                             </div>
                           </button>

@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { X, AlertTriangle, Info, Package, ChevronDown, ChevronUp } from 'lucide-react';
+import { X, AlertTriangle, Info, Package, ChevronDown, ChevronUp, Layers, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ComboWidget } from '@/components/controls/widgets/ComboWidget';
@@ -16,9 +17,6 @@ interface MissingModelDetectorModalProps {
   widgetEditor?: ReturnType<typeof useWidgetValueEditor>;
 }
 
-const glassPanelClass = 'bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border border-white/20 dark:border-slate-600/20 rounded-3xl shadow-2xl shadow-slate-900/20 dark:shadow-slate-900/40';
-const flatPanelClass = 'bg-white dark:bg-slate-800 rounded-3xl shadow-2xl shadow-slate-900/20 dark:shadow-slate-900/40';
-
 const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
   isOpen,
   onClose,
@@ -30,15 +28,41 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
   const localWidgetEditor = useWidgetValueEditor();
   const widgetEditor = externalWidgetEditor || localWidgetEditor;
 
-  // Reset expanded state when modal opens/closes or missingModels changes
-  React.useEffect(() => {
-    if (!isOpen) {
-      setExpandedModel(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const [isHeaderCompact, setIsHeaderCompact] = useState(false);
+
+  const baseTitleSize = '1.5rem';
+
+  useEffect(() => {
+    if (isOpen) {
+      setIsHeaderCompact(false);
+      if (scrollContainerRef.current) {
+        scrollContainerRef.current.scrollTop = 0;
+      }
     }
   }, [isOpen, missingModels.length]);
 
+  useEffect(() => {
+    if (!isOpen || !scrollContainerRef.current || !sentinelRef.current) return;
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setIsHeaderCompact(!entry.isIntersecting);
+      },
+      {
+        root: scrollContainerRef.current,
+        threshold: 0,
+        rootMargin: '0px'
+      }
+    );
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [isOpen]);
+
   // Group missing models by model name
-  const groupedModels = React.useMemo(() => {
+  const groupedModels = useMemo(() => {
     const groups = new Map<string, MissingModelInfo[]>();
     for (const modelInfo of missingModels) {
       const existing = groups.get(modelInfo.missingModel) || [];
@@ -48,187 +72,223 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
     return Array.from(groups.entries());
   }, [missingModels]);
 
-  // Toggle expanded state - only one at a time
   const toggleExpanded = (modelName: string) => {
     setExpandedModel(prev => prev === modelName ? null : modelName);
   };
 
-  // Handle model replacement selection
   const handleModelReplacement = (nodeId: number, widgetName: string, newValue: string) => {
-    // Save to widgetEditor's modifiedWidgetValues
     widgetEditor.setModifiedWidgetValue(nodeId, widgetName, newValue);
-    console.log(`Model replacement: Node ${nodeId}, Widget ${widgetName} = ${newValue}`);
   };
 
-  return (
+  if (!isOpen) return null;
+
+  return createPortal(
     <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-purple-900/40 backdrop-blur-md pwa-modal"
-            onClick={onClose}
-          />
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 sm:p-4 overflow-hidden text-xs">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+          onClick={onClose}
+        />
 
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 16 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 16 }}
-            transition={{ duration: 0.3, ease: "easeOut" }}
-            className="fixed inset-0 z-[101] flex items-center justify-center p-4 pwa-modal"
-            onClick={(event) => event.stopPropagation()}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.96, y: 15 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.96, y: 15 }}
+          transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
+          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
+          onClick={(e) => e.stopPropagation()}
+        >
+          {/* Main Card */}
+          <div
+            style={{ backgroundColor: '#374151' }}
+            className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
           >
-            <div className={`relative w-full max-w-3xl ${flatPanelClass}`} style={{ overflow: 'visible' }}>
-
-              <div className="relative flex items-center justify-between px-6 py-5 border-b border-slate-200 dark:border-slate-700">
-                <div>
-                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
-                    {t('missingModels.title')}
-                  </h2>
-                  <p className="text-sm text-slate-600 dark:text-slate-400">
-                    {groupedModels.length !== 1
-                      ? t('missingModels.subtitle_plural', { count: groupedModels.length })
-                      : t('missingModels.subtitle', { count: groupedModels.length })
-                    }
-                  </p>
-                </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="rounded-full hover:bg-white/20 dark:hover:bg-slate-700/30"
+            {/* Dynamic Sticky Header */}
+            <div
+              className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] transition-all duration-300 ease-in-out
+                ${isHeaderCompact
+                  ? 'pt-2 pb-[11px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10'
+                  : 'pt-5 pb-5 pl-6 pr-16 border-transparent bg-black/20 backdrop-blur-0'
+                }`}
+            >
+              {/* Floating Close Button */}
+              <div
+                className={`absolute right-4 top-1/2 -translate-y-1/2 flex-shrink-0 transition-transform duration-300 ${isHeaderCompact ? 'scale-75' : 'scale-100'}`}
+              >
+                <button
                   onClick={onClose}
+                  className="p-1.5 rounded-full bg-black/20 text-white hover:bg-black/40 transition-all pointer-events-auto"
                 >
-                  <X className="h-4 w-4" />
-                </Button>
+                  <X className="w-4 h-4" />
+                </button>
               </div>
 
-              <div className="relative p-6" style={{ maxHeight: '60vh', overflowY: 'auto', overflowX: 'visible' }}>
+              <div className="flex flex-col justify-center flex-1 min-w-0 pointer-events-none">
+                <div className={`flex items-center space-x-2 transition-all duration-300 origin-left ${isHeaderCompact ? 'mb-0.5 scale-90' : 'mb-2 scale-100'}`}>
+                  <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-black/20 text-white/80 border-transparent">
+                    SYSTEM
+                  </Badge>
+                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/60">
+                    {t('missingModels.title')}
+                  </span>
+                </div>
+
+                <div className="flex items-center min-w-0 transition-all duration-300" style={{ height: isHeaderCompact ? '11px' : '1.75rem' }}>
+                  <h2
+                    style={{
+                      fontSize: baseTitleSize,
+                      lineHeight: '1',
+                      transform: isHeaderCompact ? `scale(${0.75 / parseFloat(baseTitleSize)})` : 'scale(1)',
+                      transformOrigin: 'left center',
+                    }}
+                    className="font-extrabold tracking-tight leading-tight text-white/95 transition-transform duration-300 will-change-transform truncate pr-4"
+                  >
+                    {t('missingModels.title')}
+                  </h2>
+                </div>
+              </div>
+            </div>
+
+            {/* Content Area */}
+            <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
+              {/* Static Top Bumper */}
+              <div className="h-[120px] relative pointer-events-none">
+                <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
+              </div>
+
+              <div className="px-5 pb-6 sm:px-6">
                 {missingModels.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Info className="h-16 w-16 mx-auto mb-4 text-slate-400 dark:text-slate-600" />
-                    <p className="text-lg font-medium text-slate-700 dark:text-slate-300">
+                  <div className="text-center py-16 rounded-[32px] bg-black/10 border border-dashed border-white/10">
+                    <div className="relative mb-4">
+                      <Package className="h-12 w-12 text-white/10 mx-auto" />
+                      <Sparkles className="absolute top-0 right-1/2 translate-x-10 h-5 w-5 text-violet-400/30 animate-pulse" />
+                    </div>
+                    <p className="text-base font-medium text-white/60">
                       {t('missingModels.noMissingModels')}
                     </p>
-                    <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                    <p className="text-xs text-white/30 mt-1">
                       {t('missingModels.allAvailable')}
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-5">
                     {/* Warning Banner */}
-                    <div className={`${glassPanelClass} p-4 bg-yellow-500/10 dark:bg-yellow-900/10`}>
+                    <div className="p-4 rounded-[20px] bg-yellow-500/10 border border-yellow-500/20">
                       <div className="flex items-start gap-3">
-                        <AlertTriangle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 flex-shrink-0 mt-0.5" />
+                        <div className="p-1.5 rounded-lg bg-yellow-500/20">
+                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                        </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">
+                          <p className="text-xs font-bold text-yellow-200">
                             {t('missingModels.warningTitle')}
                           </p>
-                          <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">
+                          <p className="text-[10px] text-yellow-100/60 mt-0.5 leading-relaxed">
                             {t('missingModels.warningDesc')}
                           </p>
                         </div>
                       </div>
                     </div>
 
-                    {/* Model Cards */}
-                    <div className="space-y-3">
-                      <AnimatePresence mode="wait">
-                        {groupedModels.map(([modelName, infos]) => {
-                          const isExpanded = expandedModel === modelName;
-                          const isHidden = expandedModel !== null && expandedModel !== modelName;
-                          const firstInfo = infos[0];
-
-                          return (
-                            <motion.div
-                              key={modelName}
-                              initial={{ opacity: 1, scale: 1, y: 0 }}
-                              animate={{
-                                opacity: isHidden ? 0 : 1,
-                                scale: isHidden ? 0.95 : 1,
-                                y: isHidden ? -20 : 0,
-                                display: isHidden ? 'none' : 'block'
-                              }}
-                              exit={{ opacity: 0, scale: 0.95, y: -20 }}
-                              transition={{ duration: 0.3, ease: "easeInOut" }}
+                    {/* Model Grid */}
+                    <div className="grid grid-cols-1 gap-3">
+                      {groupedModels.map(([modelName, infos]) => {
+                        const isExpanded = expandedModel === modelName;
+                        return (
+                          <div
+                            key={modelName}
+                            className={`group relative rounded-[24px] bg-black/10 border transition-all duration-300 ${isExpanded ? 'border-white/20 bg-black/20 shadow-lg' : 'border-white/5 hover:border-white/10 hover:bg-black/15'}`}
+                          >
+                            {/* Clickable Header */}
+                            <button
+                              className="w-full p-5 text-left"
+                              onClick={() => toggleExpanded(modelName)}
                             >
-                              <div
-                                className={`${glassPanelClass}`}
-                                style={{ overflow: 'visible' }}
-                              >
-                                {/* Clickable Header */}
-                                <div
-                                  className="p-5 cursor-pointer hover:bg-white/10 dark:hover:bg-slate-700/10 transition-colors"
-                                  onClick={() => toggleExpanded(modelName)}
-                                >
-                                  <div className="flex items-start justify-between">
-                                    <div className="flex-1">
-                                      <div className="flex items-center gap-3 mb-2">
-                                        <Package className="h-5 w-5 text-slate-600 dark:text-slate-400" />
-                                        <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 break-all">
-                                          {modelName}
-                                        </h3>
-                                        <Badge variant="outline" className="uppercase tracking-wide text-xs">
-                                          {t('missingModels.missing')}
-                                        </Badge>
-                                      </div>
-
-                                      <div className="space-y-2 mt-3">
-                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                                          {infos.length > 1
-                                            ? t('missingModels.usedIn_plural', { count: infos.length })
-                                            : t('missingModels.usedIn', { count: infos.length })
-                                          }
-                                        </p>
-                                      </div>
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-3 mb-2">
+                                    <div className={`p-2.5 rounded-xl bg-black/20 border border-white/5 transition-colors ${isExpanded ? 'text-violet-400 border-violet-500/20' : 'text-white/40'}`}>
+                                      <Package className="h-4 w-4" />
                                     </div>
-
-                                    {/* Expand/Collapse Icon */}
-                                    <div className="flex items-center">
-                                      {isExpanded ? (
-                                        <ChevronUp className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-                                      ) : (
-                                        <ChevronDown className="h-5 w-5 text-slate-500 dark:text-slate-400" />
-                                      )}
+                                    <div className="min-w-0">
+                                      <h3 className="text-sm font-bold text-white/95 break-all leading-tight mb-0.5">
+                                        {modelName}
+                                      </h3>
+                                      <Badge variant="outline" className="bg-white/5 text-white/40 border-white/10 text-[8px] font-bold tracking-widest uppercase px-1 py-0 h-4">
+                                        {t('missingModels.missing')}
+                                      </Badge>
                                     </div>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-1">
+                                    <Layers className="w-3 h-3 text-white/20" />
+                                    <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
+                                      {infos.length > 1
+                                        ? t('missingModels.usedIn_plural', { count: infos.length })
+                                        : t('missingModels.usedIn', { count: infos.length })
+                                      }
+                                    </span>
                                   </div>
                                 </div>
 
-                                {/* Expandable Content */}
-                                {isExpanded && (
-                                  <div className="px-5 pb-5 border-t border-white/10 dark:border-slate-600/10">
-                                    <div className="space-y-4 pt-4" style={{ position: 'relative' }}>
-                                      {/* Usage Locations */}
-                                      <div className="space-y-2">
-                                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                                          {t('missingModels.usageLocations')}
-                                        </p>
-                                        <div className="space-y-1 pl-2">
-                                          {infos.map((info, idx) => (
-                                            <div key={idx} className="flex items-start gap-2 text-sm">
-                                              <span className="text-slate-400 dark:text-slate-600 mt-0.5">•</span>
-                                              <div className="text-slate-600 dark:text-slate-400 break-all">
-                                                <span className="font-medium">{t('missingModels.node', { id: info.nodeId })}</span>
-                                                {info.nodeTitle && (
-                                                  <span className="text-slate-500 dark:text-slate-500"> ({info.nodeTitle})</span>
-                                                )}
-                                                <span className="text-slate-500 dark:text-slate-500"> - {t('missingModels.widget')} {info.widgetName}</span>
+                                <div className={`ml-4 p-1.5 rounded-full bg-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180' : ''}`}>
+                                  <ChevronDown className="h-4 w-4 text-white/40" />
+                                </div>
+                              </div>
+                            </button>
+
+                            {/* Expandable Content */}
+                            <AnimatePresence>
+                              {isExpanded && (
+                                <motion.div
+                                  initial={{ height: 0, opacity: 0 }}
+                                  animate={{ height: 'auto', opacity: 1 }}
+                                  exit={{ height: 0, opacity: 0 }}
+                                  transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
+                                  className="overflow-hidden"
+                                >
+                                  <div className="px-5 pb-5 pt-1 border-t border-white/5 space-y-5">
+                                    {/* Usage Locations */}
+                                    <div className="p-3.5 rounded-xl bg-black/20 border border-white/5">
+                                      <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mb-2.5">
+                                        {t('missingModels.usageLocations')}
+                                      </p>
+                                      <div className="space-y-1.5">
+                                        {infos.map((info, idx) => (
+                                          <div key={idx} className="flex items-start gap-2.5 p-1.5 rounded-lg hover:bg-white/5 transition-colors">
+                                            <div className="w-1 h-1 rounded-full bg-violet-400/50 mt-1.5 flex-shrink-0" />
+                                            <div className="text-xs text-white/70 leading-relaxed">
+                                              <span className="font-bold text-white/90">{t('missingModels.node', { id: info.nodeId })}</span>
+                                              {info.nodeTitle && (
+                                                <span className="text-white/40 font-medium"> • {info.nodeTitle}</span>
+                                              )}
+                                              <div className="text-[9px] text-white/30 mt-0.5">
+                                                {t('missingModels.widget')}: <span className="text-white/50">{info.widgetName}</span>
                                               </div>
                                             </div>
-                                          ))}
-                                        </div>
+                                          </div>
+                                        ))}
                                       </div>
+                                    </div>
 
-                                      {/* Model Replacement Section for each node */}
+                                    {/* Replacement Section */}
+                                    <div className="space-y-3">
                                       {infos.map((info, idx) => (
-                                        <div key={idx} className="space-y-2 pt-3 border-t border-white/10 dark:border-slate-600/10">
-                                          <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide">
-                                            {t('missingModels.replaceFor', { id: info.nodeId })} {info.nodeTitle ? `(${info.nodeTitle})` : ''}:
-                                          </p>
+                                        <div key={idx} className="space-y-2.5 p-4 rounded-[18px] bg-white/5 border border-white/10">
+                                          <div className="flex items-center justify-between">
+                                            <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
+                                              {t('missingModels.replaceFor', { id: info.nodeId })}
+                                            </p>
+                                            {widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) &&
+                                              widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) !== info.missingModel && (
+                                                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[8px] h-3.5">
+                                                  SAVED
+                                                </Badge>
+                                              )}
+                                          </div>
 
-                                          {/* ComboWidget for model selection */}
-                                          <div className="pl-2" style={{ position: 'relative', minHeight: '50px', paddingBottom: '200px' }}>
+                                          <div className="relative">
                                             <ComboWidget
                                               param={{
                                                 name: info.widgetName,
@@ -245,39 +305,46 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
                                             />
                                           </div>
 
-                                          {/* Show if value was modified */}
                                           {widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) &&
                                             widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) !== info.missingModel && (
-                                              <div className="pl-2 text-xs text-green-600 dark:text-green-400 break-all">
-                                                {t('missingModels.replacementSelected', { value: widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) })}
-                                              </div>
+                                              <p className="text-[9px] font-medium text-emerald-400 animate-in fade-in slide-in-from-left-1">
+                                                ✓ {t('missingModels.replacementSelected', { value: widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) })}
+                                              </p>
                                             )}
                                         </div>
                                       ))}
                                     </div>
                                   </div>
-                                )}
-                              </div>
-                            </motion.div>
-                          );
-                        })}
-                      </AnimatePresence>
+                                </motion.div>
+                              )}
+                            </AnimatePresence>
+                          </div>
+                        );
+                      })}
                     </div>
 
                     {/* Instructions */}
-                    <div className={`${glassPanelClass} p-4 bg-blue-500/10 dark:bg-blue-900/10`}>
-                      <div className="flex items-start gap-3">
-                        <Info className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                    <div className="p-5 rounded-[24px] bg-blue-500/10 border border-blue-500/20">
+                      <div className="flex items-start gap-4">
+                        <div className="p-1.5 rounded-lg bg-blue-500/20">
+                          <Info className="h-4 w-4 text-blue-400" />
+                        </div>
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-blue-800 dark:text-blue-200 mb-2">
+                          <p className="text-xs font-bold text-blue-200 mb-2">
                             {t('missingModels.howToResolve')}
                           </p>
-                          <ol className="list-decimal list-inside space-y-1 text-xs text-blue-700 dark:text-blue-300">
-                            <li>{t('missingModels.step1')}</li>
-                            <li>{t('missingModels.step2')}</li>
-                            <li>{t('missingModels.step3')}</li>
-                            <li>{t('missingModels.step4')}</li>
-                          </ol>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
+                            {[1, 2, 3, 4].map((step) => (
+                              <div key={step} className="flex gap-2">
+                                <span className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center text-[9px] font-bold text-blue-300 border border-blue-500/30">
+                                  {step}
+                                </span>
+                                <p className="text-[10px] text-blue-100/60 leading-tight">
+                                  {t(`missingModels.step${step}`)}
+                                </p>
+                              </div>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -285,10 +352,11 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
                 )}
               </div>
             </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>,
+    document.body
   );
 };
 

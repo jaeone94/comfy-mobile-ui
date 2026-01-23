@@ -722,6 +722,7 @@
         "install": "安装",
         "installed": "已安装",
         "missing": "缺失",
+        "disabled": "已禁用",
         "updateAvailable": "有可用更新",
         "source": "来源：",
         "repository": "仓库：",
@@ -740,6 +741,7 @@
         "queueCompleted": "安装队列已完成。",
         "selectPackage": "选择要安装或更新的包。",
         "installAll": "全部安装",
+        "reinstall": "重新安装",
         "goToReboot": "前往重启页面"
     },
     "nodeAdd": {

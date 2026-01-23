@@ -138,7 +138,7 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-          className="relative w-[80vw] h-[75vh] pointer-events-auto flex flex-col"
+          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
         >
           {/* Main Card */}
           <div
@@ -213,7 +213,7 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
               </div>
 
-              <div className="px-6 py-6 sm:px-8">
+              <div className="px-5 py-6 sm:px-6">
                 {groups.length === 0 ? (
                   <div className="text-center py-12 rounded-3xl bg-black/10 border border-dashed border-white/10">
                     <p className="text-white/40 text-sm">{t('node.group.noGroups')}</p>
@@ -233,46 +233,48 @@ export const GroupModeModal: React.FC<GroupModeModalProps> = ({
                         return (
                           <div
                             key={group.id}
-                            className="group relative p-5 rounded-3xl bg-black/10 border border-white/5 hover:bg-black/20 hover:border-white/10 transition-all duration-300"
+                            className="group relative p-4 rounded-2xl bg-black/10 border border-white/5 hover:bg-black/20 hover:border-white/10 transition-all duration-300"
                           >
-                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                            <div className="flex items-center justify-between gap-4">
                               <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-3 mb-2">
+                                <div className="flex items-center gap-2 mb-1.5">
                                   {group.color && (
                                     <div
-                                      className="w-4 h-4 rounded-full border border-white/20 shadow-sm"
+                                      className="w-3 h-3 rounded-full border border-white/20 shadow-sm flex-shrink-0"
                                       style={{ backgroundColor: group.color }}
                                     />
                                   )}
-                                  <h4 className="font-bold text-lg text-white/90 truncate">
+                                  <h4 className="font-bold text-sm text-white/90 truncate">
                                     {group.title}
                                   </h4>
                                 </div>
-                                <div className="flex items-center gap-3 text-[11px] font-medium text-white/40">
-                                  <Badge variant="outline" className="text-[9px] bg-white/5 border-white/5 text-white/50 uppercase">
+                                <div className="flex items-center gap-2 text-[10px] font-medium text-white/40">
+                                  <Badge variant="outline" className="text-[8px] px-1 py-0 bg-white/5 border-white/5 text-white/40 uppercase">
                                     ID: {group.id}
                                   </Badge>
                                   <span>{t('node.nodesCount', { count: group.nodeIds.length })}</span>
                                 </div>
                               </div>
 
-                              <div className="flex items-center gap-1.5 bg-black/30 p-1.5 rounded-2xl self-start sm:self-center ring-1 ring-white/5">
+                              <div className="flex items-center gap-1 bg-black/30 p-1 rounded-xl ring-1 ring-white/5 flex-shrink-0">
                                 {modeButtons.map((config) => {
                                   const isActive = currentMode === config.mode;
                                   return (
                                     <button
                                       key={config.mode}
                                       onClick={() => onGroupModeChange(group.id, config.mode)}
-                                      className={`px-3 py-2.5 rounded-xl transition-all active:scale-95 flex items-center gap-2 group/btn ${isActive
+                                      className={`px-2.5 py-2 rounded-lg transition-all active:scale-95 flex items-center gap-1.5 group/btn ${isActive
                                         ? `${config.color} ${config.bg} ring-1 ${config.activeBorder} shadow-lg shadow-black/20`
                                         : 'text-white/20 hover:text-white/60 hover:bg-white/5'
                                         }`}
                                       title={config.label}
                                     >
-                                      <config.icon className={`w-5 h-5 ${isActive ? 'scale-110' : 'scale-100'} transition-transform`} />
-                                      <span className={`text-[10px] font-bold uppercase tracking-widest ${isActive ? 'opacity-100 w-auto' : 'opacity-0 w-0 h-0 hidden'}`}>
-                                        {config.label}
-                                      </span>
+                                      <config.icon className={`w-4 h-4 ${isActive ? 'scale-110' : 'scale-100'} transition-transform`} />
+                                      {isActive && (
+                                        <span className="text-[9px] font-bold uppercase tracking-wider">
+                                          {config.label}
+                                        </span>
+                                      )}
                                     </button>
                                   );
                                 })}

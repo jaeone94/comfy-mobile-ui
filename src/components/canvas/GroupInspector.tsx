@@ -275,7 +275,7 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
               </div>
 
-              <div className="px-6 py-6 sm:px-8">
+              <div className="px-5 py-6 sm:px-6">
                 {/* Nodes List Stack */}
                 <div className="space-y-4">
                   <div className="flex items-center gap-2 mb-2 p-1">
