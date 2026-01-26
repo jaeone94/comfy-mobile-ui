@@ -278,7 +278,7 @@ const WorkflowUpload: React.FC = () => {
               <CardHeader>
                 <CardTitle className="text-white/90 flex items-center gap-2">
                   <Server className="h-5 w-5 text-blue-400" />
-                  {t('workflow.import.serverRequirements')}
+                  {t('common.serverRequirements')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -286,14 +286,14 @@ const WorkflowUpload: React.FC = () => {
                   <div className="flex items-center space-x-3">
                     <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
                     <span className="text-white/70">
-                      {t('workflow.import.checkingServer')}
+                      {t('common.checkingServer')}
                     </span>
                   </div>
                 ) : (
                   <>
                     {/* Server Connection Status */}
                     <div className="flex items-center justify-between">
-                      <span className="text-white/70 font-medium">{t('workflow.import.serverConnection')}</span>
+                      <span className="text-white/70 font-medium">{t('common.serverConnection')}</span>
                       <div className="flex items-center gap-2">
                         {isConnected ? (
                           <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
@@ -311,7 +311,7 @@ const WorkflowUpload: React.FC = () => {
 
                     {/* Extension Status */}
                     <div className="flex items-center justify-between">
-                      <span className="text-white/70 font-medium">{t('workflow.import.extension')}</span>
+                      <span className="text-white/70 font-medium">{t('common.extension')}</span>
                       <div className="flex items-center gap-2">
                         {hasExtension ? (
                           <Badge className="bg-green-500/10 text-green-400 border-green-500/20">

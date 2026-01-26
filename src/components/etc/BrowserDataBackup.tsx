@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import {
   Database,
@@ -11,8 +12,14 @@ import {
   HardDrive,
   Server,
   ArrowLeft,
-  Settings
+  Settings,
+  Shield,
+  ShieldAlert,
+  ArrowRightLeft
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
+import { Separator } from '@/components/ui/separator';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
@@ -32,6 +39,9 @@ export const BrowserDataBackup: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isCheckingBackup, setIsCheckingBackup] = useState(true);
   const [error, setError] = useState<string>('');
+
+  // Migration options
+  const [includeApiKeys, setIncludeApiKeys] = useState(true);
   const [confirmDialog, setConfirmDialog] = useState<{
     isOpen: boolean;
     type: 'backup' | 'restore' | null;
@@ -56,7 +66,7 @@ export const BrowserDataBackup: React.FC = () => {
   }, [isConnected, hasExtension, isCheckingExtension, checkExtension]);
 
   // Check if backup exists on server
-  const checkBackupStatus = async () => {
+  const checkBackupStatus = useCallback(async () => {
     try {
       setIsCheckingBackup(true);
       const response = await fetch(`${serverUrl}/comfymobile/api/backup/status`);
@@ -85,7 +95,7 @@ export const BrowserDataBackup: React.FC = () => {
     } finally {
       setIsCheckingBackup(false);
     }
-  };
+  }, [serverUrl]);
 
   // Get current IndexedDB version dynamically
   const getCurrentDBVersion = async (): Promise<number> => {
@@ -108,17 +118,37 @@ export const BrowserDataBackup: React.FC = () => {
   };
 
   // Collect browser data for backup
-  const collectBrowserData = async () => {
-    const data: any = {};
+  const collectBrowserData = async (opts: { includeApiKeys: boolean }) => {
+    const data: {
+      localStorage: Record<string, string | null>;
+      indexedDB: {
+        apiKeys?: any[];
+        workflows?: any[];
+      };
+    } = {
+      localStorage: {},
+      indexedDB: {}
+    };
 
     // Collect localStorage data
     try {
-      const workflowsData = localStorage.getItem('comfyui_workflows');
-      if (workflowsData) {
-        data.localStorage = {
-          comfyui_workflows: workflowsData
-        };
-      }
+      // Core keys required for the app to function
+      const coreKeys = [
+        'comfyui_workflows',
+        'comfy-workflow-folders',
+        'comfyui_custom_widget_types',
+        'comfyui_node_patches',
+        'i18nextLng' // Language preference
+      ];
+
+      coreKeys.forEach(key => {
+        const value = localStorage.getItem(key);
+        if (value !== null) {
+          data.localStorage[key] = value;
+        }
+      });
+
+      console.log(`Collected ${Object.keys(data.localStorage).length} core localStorage keys`);
     } catch (error) {
       console.error('Error collecting localStorage data:', error);
     }
@@ -140,8 +170,8 @@ export const BrowserDataBackup: React.FC = () => {
             const db = (event.target as IDBOpenDBRequest).result;
             console.log('Available object stores:', Array.from(db.objectStoreNames));
 
-            // Get apiKeys if store exists
-            if (db.objectStoreNames.contains('apiKeys')) {
+            // Get apiKeys if store exists and user opted in
+            if (opts.includeApiKeys && db.objectStoreNames.contains('apiKeys')) {
               const apiKeysTransaction = db.transaction(['apiKeys'], 'readonly');
               const apiKeysStore = apiKeysTransaction.objectStore('apiKeys');
               const apiKeysRequest = apiKeysStore.getAll();
@@ -151,7 +181,7 @@ export const BrowserDataBackup: React.FC = () => {
                 console.log(`Collected ${apiKeysRequest.result.length} API keys`);
               };
             } else {
-              console.log('apiKeys store not found');
+              console.log(opts.includeApiKeys ? 'apiKeys store not found' : 'API keys excluded by user');
             }
 
             // Get workflows if store exists
@@ -228,8 +258,10 @@ export const BrowserDataBackup: React.FC = () => {
       setIsLoading(true);
       setError('');
 
-      // Collect data
-      const browserData = await collectBrowserData();
+      // Collect data with current options
+      const browserData = await collectBrowserData({
+        includeApiKeys
+      });
 
       // Send to server
       const response = await fetch(`${serverUrl}/comfymobile/api/backup`, {
@@ -415,64 +447,64 @@ export const BrowserDataBackup: React.FC = () => {
     } else {
       setIsCheckingBackup(false);
     }
-  }, [isConnected, hasExtension]);
+  }, [isConnected, hasExtension, checkBackupStatus]);
 
   // If not connected, show connection required state
   if (!isConnected) {
     return (
-      <div className="pwa-container bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
-        {/* Header */}
-        <header className="sticky top-0 z-50 bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
-          {/* Gradient Overlay for Enhanced Glass Effect */}
-          <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-          <div className="relative z-10 p-4">
-            <div className="flex items-center space-x-4">
-              <Button
-                onClick={() => navigate(-1)}
-                variant="outline"
-                size="sm"
-                className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
-              >
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div>
-                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                  {t('backup.title')}
-                </h1>
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  {t('backup.subtitle')}
-                </p>
-              </div>
-            </div>
-          </div>
-        </header>
-        <div className="container mx-auto px-4 py-8 max-w-2xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <div className="bg-orange-50/80 dark:bg-orange-950/40 backdrop-blur border border-orange-200/40 dark:border-orange-800/40 rounded-2xl shadow-xl p-8">
-              <div className="flex items-center justify-center mb-4">
-                <div className="bg-orange-600 p-3 rounded-full">
-                  <Server className="w-6 h-6 text-white" />
+      <div
+        className="bg-black transition-colors duration-300 pwa-container"
+        style={{
+          overflow: 'hidden',
+          height: '100dvh',
+          maxHeight: '100dvh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          touchAction: 'none'
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" />
+        <div className="absolute inset-0 bg-black/5 dark:bg-black/10 pointer-events-none" />
+
+        <div
+          className="absolute top-0 left-0 right-0 bottom-0"
+          style={{
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            position: 'absolute'
+          }}
+        >
+          <header className="sticky top-0 z-50 bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl relative overflow-hidden">
+            <div className="relative z-10 p-4">
+              <div className="flex items-center space-x-4">
+                <Button onClick={() => navigate(-1)} variant="outline" size="sm" className="bg-white/20 dark:bg-slate-700/20 h-10 w-10 p-0 rounded-lg">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t('backup.title')}</h1>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('backup.subtitle')}</p>
                 </div>
               </div>
-              <h1 className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-2">
-                {t('backup.serverRequired')}
-              </h1>
-              <p className="text-orange-800 dark:text-orange-200 mb-6">
-                {t('backup.connectPrompt')}
-              </p>
-              <Button
-                onClick={() => navigate('/settings/server')}
-                className="bg-orange-600 hover:bg-orange-700 text-white"
-              >
+            </div>
+          </header>
+          <div className="container mx-auto px-4 py-8 max-w-2xl">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-orange-50/80 dark:bg-orange-950/40 backdrop-blur border border-orange-200/40 dark:border-orange-800/40 rounded-2xl p-8 text-center shadow-xl">
+              <div className="bg-orange-600 p-3 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4">
+                <Server className="w-6 h-6 text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-orange-900 dark:text-orange-100 mb-2">{t('backup.serverRequired')}</h1>
+              <p className="text-orange-800 dark:text-orange-200 mb-6">{t('backup.connectPrompt')}</p>
+              <Button onClick={() => navigate('/settings/server')} className="bg-orange-600 hover:bg-orange-700 text-white">
                 <Settings className="h-4 w-4 mr-2" />
                 {t('backup.configureServer')}
               </Button>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </div>
     );
@@ -481,7 +513,7 @@ export const BrowserDataBackup: React.FC = () => {
   // If checking extension, show loading state
   if (isCheckingExtension) {
     return (
-      <div className="pwa-container bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-900 flex items-center justify-center">
+      <div className="pwa-container bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-900 flex items-center justify-center h-[100dvh]">
         <div className="text-center space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
           <div className="space-y-2">
@@ -496,281 +528,287 @@ export const BrowserDataBackup: React.FC = () => {
   // If no extension, show extension required state
   if (!hasExtension) {
     return (
-      <div className="pwa-container bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-900">
-        <div className="container mx-auto px-4 py-8 max-w-2xl">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center mb-8"
-          >
-            <Button
-              onClick={() => navigate(-1)}
-              variant="ghost"
-              className="absolute top-4 left-4 text-slate-600 dark:text-slate-400"
-            >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              Back
-            </Button>
-            <div className="bg-red-50/80 dark:bg-red-950/40 backdrop-blur border border-red-200/40 dark:border-red-800/40 rounded-2xl shadow-xl p-8">
-              <div className="flex items-center justify-center mb-4">
-                <div className="bg-red-600 p-3 rounded-full">
+      <div
+        className="bg-black transition-colors duration-300 pwa-container"
+        style={{
+          overflow: 'hidden',
+          height: '100dvh',
+          maxHeight: '100dvh',
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          touchAction: 'none'
+        }}
+      >
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-100 dark:from-slate-900 dark:via-blue-950 dark:to-indigo-900" />
+        <div
+          className="absolute top-0 left-0 right-0 bottom-0"
+          style={{
+            overflowY: 'auto',
+            overflowX: 'hidden',
+            WebkitOverflowScrolling: 'touch',
+            touchAction: 'pan-y',
+            position: 'absolute'
+          }}
+        >
+          <div className="container mx-auto px-4 py-8 max-w-2xl relative">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="text-center">
+              <Button onClick={() => navigate(-1)} variant="ghost" className="absolute top-0 left-0 text-slate-600 dark:text-slate-400">
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
+              </Button>
+              <div className="bg-red-50/80 dark:bg-red-950/40 backdrop-blur border border-red-200/40 dark:border-red-800/40 rounded-2xl shadow-xl p-8 mt-12">
+                <div className="bg-red-600 p-3 rounded-full w-12 h-12 flex items-center justify-center mx-auto mb-4">
                   <AlertTriangle className="w-6 h-6 text-white" />
                 </div>
+                <h1 className="text-2xl font-bold text-red-900 dark:text-red-100 mb-2">{t('backup.extensionRequired')}</h1>
+                <p className="text-red-800 dark:text-red-200 mb-6">{t('backup.extensionRequiredDesc')}</p>
+                <div className="space-y-3 flex flex-col items-center">
+                  <Button onClick={() => window.open('https://github.com/jaeone94/comfy-mobile-ui', '_blank')} className="bg-red-600 hover:bg-red-700 text-white w-full sm:w-auto">
+                    <Download className="h-4 w-4 mr-2" />
+                    {t('backup.downloadExtension')}
+                  </Button>
+                  <Button variant="outline" onClick={() => checkExtension()} className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300 w-full sm:w-auto">
+                    {t('backup.retryCheck')}
+                  </Button>
+                </div>
               </div>
-              <h1 className="text-2xl font-bold text-red-900 dark:text-red-100 mb-2">
-                {t('backup.extensionRequired')}
-              </h1>
-              <p className="text-red-800 dark:text-red-200 mb-6">
-                {t('backup.extensionRequiredDesc')}
-              </p>
-              <div className="space-y-3">
-                <Button
-                  onClick={() => window.open('https://github.com/jaeone94/comfy-mobile-ui', '_blank')}
-                  className="bg-red-600 hover:bg-red-700 text-white"
-                >
-                  <Download className="h-4 w-4 mr-2" />
-                  {t('backup.downloadExtension')}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={() => checkExtension()}
-                  className="border-red-200 text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-300"
-                >
-                  {t('backup.retryCheck')}
-                </Button>
-              </div>
-            </div>
-          </motion.div>
+            </motion.div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="pwa-container bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl shadow-slate-900/10 dark:shadow-slate-900/25 relative overflow-hidden">
-        {/* Gradient Overlay for Enhanced Glass Effect */}
-        <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-        <div className="relative z-10 p-4">
-          <div className="flex items-center space-x-4">
-            <Button
-              onClick={() => navigate(-1)}
-              variant="outline"
-              size="sm"
-              className="bg-white/20 dark:bg-slate-700/20 backdrop-blur-sm border border-white/30 dark:border-slate-600/30 shadow-lg hover:shadow-xl hover:bg-white/30 dark:hover:bg-slate-700/30 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-lg"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                {t('backup.title')}
-              </h1>
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t('backup.subtitle')}
-              </p>
+    <div
+      className="bg-black transition-colors duration-300 pwa-container"
+      style={{
+        overflow: 'hidden',
+        height: '100dvh',
+        maxHeight: '100dvh',
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        touchAction: 'none'
+      }}
+    >
+      <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" />
+      <div className="absolute inset-0 bg-black/5 dark:bg-black/10 pointer-events-none" />
+
+      <div
+        className="absolute top-0 left-0 right-0 bottom-0"
+        style={{
+          overflowY: 'auto',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+          position: 'absolute'
+        }}
+      >
+        <header className="sticky top-0 z-50 bg-white/40 dark:bg-slate-800/40 backdrop-blur-xl border-b border-white/20 dark:border-slate-600/20 shadow-2xl relative overflow-hidden">
+          <div className="relative z-10 p-4">
+            <div className="flex items-center space-x-4">
+              <Button onClick={() => navigate(-1)} variant="outline" size="sm" className="bg-white/20 dark:bg-slate-700/20 h-10 w-10 p-0 rounded-lg">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t('backup.title')}</h1>
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t('backup.subtitle')}</p>
+              </div>
             </div>
           </div>
+        </header>
+
+        <div className="container mx-auto px-4 py-8 max-w-2xl relative">
+          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white/50 dark:bg-slate-800/50 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 rounded-2xl shadow-xl p-6 space-y-6">
+
+            {/* Backup Status */}
+            <div className="space-y-4">
+              <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
+                <HardDrive className="w-5 h-5 mr-2" />
+                {t('backup.status.title')}
+              </h2>
+
+              {isCheckingBackup ? (
+                <div className="flex items-center space-x-3 p-4 bg-slate-100/80 dark:bg-slate-700/50 rounded-xl">
+                  <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-400/20 border-t-slate-600"></div>
+                  <span className="text-slate-600 dark:text-slate-400">{t('backup.status.checking')}</span>
+                </div>
+              ) : backupInfo.hasBackup ? (
+                <div className="p-4 bg-green-50/80 dark:bg-green-950/40 border border-green-200/40 dark:border-green-800/40 rounded-xl">
+                  <div className="flex items-center space-x-2 text-green-700 dark:text-green-300 mb-2">
+                    <CheckCircle className="h-5 w-5" />
+                    <span className="font-semibold">{t('backup.status.available')}</span>
+                  </div>
+                  <div className="text-sm text-green-600 dark:text-green-400 space-y-1">
+                    {backupInfo.createdAt && (
+                      <div className="flex items-center space-x-1">
+                        <Clock className="h-3 w-3" />
+                        <span>{t('backup.status.created', { date: formatDate(backupInfo.createdAt) })}</span>
+                      </div>
+                    )}
+                    {backupInfo.size && (
+                      <div className="flex items-center space-x-1">
+                        <Database className="h-3 w-3" />
+                        <span>{t('backup.status.size', { size: formatFileSize(backupInfo.size) })}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-4 bg-orange-50/80 dark:bg-orange-950/40 border border-orange-200/40 dark:border-orange-800/40 rounded-xl">
+                  <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
+                    <AlertTriangle className="h-5 w-5" />
+                    <span className="font-semibold">{t('backup.status.notFound')}</span>
+                  </div>
+                  <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">{t('backup.status.createFirst')}</p>
+                </div>
+              )}
+            </div>
+
+            {/* Error Display */}
+            <AnimatePresence>
+              {error && (
+                <motion.div initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} className="p-4 bg-red-50/80 dark:bg-red-950/40 border border-red-200/40 dark:border-red-800/40 rounded-xl">
+                  <div className="flex items-center space-x-2 text-red-700 dark:text-red-300">
+                    <AlertTriangle className="h-4 w-4" />
+                    <span className="text-sm font-medium">Error</span>
+                  </div>
+                  <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
+                  <Button variant="ghost" size="sm" className="mt-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300" onClick={() => setError('')}>Dismiss</Button>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Action Buttons */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Button onClick={showBackupConfirmation} disabled={isLoading} className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition-all shadow-sm hover:shadow-md active:scale-95">
+                {isLoading ? (
+                  <div className="flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600/20 border-t-blue-600 mr-2"></div>{t('backup.action.creating')}</div>
+                ) : (
+                  <><Download className="h-4 w-4 mr-2" />{t('backup.action.create')}</>
+                )}
+              </Button>
+
+              <Button onClick={showRestoreConfirmation} disabled={isLoading || !backupInfo.hasBackup} className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-green-300 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 disabled:border-slate-300 disabled:text-slate-400 transition-all shadow-sm hover:shadow-md active:scale-95">
+                {isLoading ? (
+                  <div className="flex items-center"><div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600/20 border-t-green-600 mr-2"></div>{t('backup.action.restoring')}</div>
+                ) : (
+                  <><Upload className="h-4 w-4 mr-2" />{t('backup.action.restore')}</>
+                )}
+              </Button>
+            </div>
+
+            {/* Information & Options */}
+            <div className="p-5 bg-slate-100/80 dark:bg-slate-700/50 rounded-2xl border border-slate-200/50 dark:border-slate-600/30">
+              <h3 className="font-semibold text-slate-900 dark:text-slate-100 flex items-center mb-3">
+                <Shield className="w-4 h-4 mr-2 text-blue-500" />
+                {t('backup.info.title')}
+              </h3>
+              <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-3">
+                <li className="flex items-center justify-between group">
+                  <div className="flex items-start">
+                    <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                    <span>{t('backup.info.workflows')}</span>
+                  </div>
+                  <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-[10px] py-0 h-4 opacity-60">CORE</Badge>
+                </li>
+                <li className="flex items-center justify-between">
+                  <div className="flex items-start">
+                    <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                    <span>{t('backup.info.folders')}</span>
+                  </div>
+                  <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-[10px] py-0 h-4 opacity-60">CORE</Badge>
+                </li>
+                <li className="flex items-center justify-between">
+                  <div className="flex items-start">
+                    <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                    <span>{t('backup.info.storage')}</span>
+                  </div>
+                  <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-[10px] py-0 h-4 opacity-60">CORE</Badge>
+                </li>
+
+                <li className="flex items-center justify-between">
+                  <div className="flex items-start">
+                    <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                    <span>{t('backup.info.settings')}</span>
+                  </div>
+                  <Badge variant="secondary" className="bg-slate-200 dark:bg-slate-700 text-[10px] py-0 h-4 opacity-60">CORE</Badge>
+                </li>
+
+                {includeApiKeys && (
+                  <motion.li
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    className="flex items-center justify-between font-medium text-blue-600 dark:text-blue-400"
+                  >
+                    <div className="flex items-start">
+                      <span className="text-blue-500 mr-2 mt-0.5">•</span>
+                      <span>{t('backup.info.apiKeys')}</span>
+                    </div>
+                    <Badge variant="outline" className="border-amber-500 text-amber-500 bg-amber-500/10 text-[10px] py-0 h-4">WARNING</Badge>
+                  </motion.li>
+                )}
+              </ul>
+
+              <Separator className="my-4 bg-slate-200 dark:bg-slate-600" />
+
+              <div className="space-y-4">
+
+                <div className="flex items-center justify-between p-2 rounded-lg hover:bg-slate-200/50 dark:hover:bg-slate-800/30 transition-colors">
+                  <div className="flex-1 pr-4">
+                    <div className="flex items-center text-sm font-semibold text-slate-800 dark:text-slate-200">
+                      <HardDrive className="w-4 h-4 mr-2 text-blue-500" />
+                      {t('backup.options.includeApiKeys')}
+                    </div>
+                    <p className="text-xs text-slate-500 dark:text-slate-500 mt-0.5">{t('backup.options.includeApiKeysDesc')}</p>
+                  </div>
+                  <Switch id="include-apikeys" checked={includeApiKeys} onCheckedChange={setIncludeApiKeys} />
+                </div>
+
+                {includeApiKeys && (
+                  <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-800/30 rounded-xl">
+                    <ShieldAlert className="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                    <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-400 font-medium">{t('backup.options.securityWarning')}</p>
+                  </motion.div>
+                )}
+              </div>
+              <p className="text-xs text-slate-500 dark:text-slate-500 mt-4 italic">{t('backup.info.note')}</p>
+            </div>
+          </motion.div>
         </div>
-      </header>
-      <div className="container mx-auto px-4 py-8 max-w-2xl">
-
-        {/* Main Content */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.1 }}
-          className="bg-white/50 dark:bg-slate-800/50 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 rounded-2xl shadow-xl shadow-slate-900/15 dark:shadow-slate-900/30 p-6 space-y-6"
-        >
-
-          {/* Backup Status */}
-          <div className="space-y-4">
-            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100 flex items-center">
-              <HardDrive className="w-5 h-5 mr-2" />
-              {t('backup.status.title')}
-            </h2>
-
-            {isCheckingBackup ? (
-              <div className="flex items-center space-x-3 p-4 bg-slate-100/80 dark:bg-slate-700/50 rounded-xl">
-                <div className="animate-spin rounded-full h-5 w-5 border-2 border-slate-400/20 border-t-slate-600"></div>
-                <span className="text-slate-600 dark:text-slate-400">{t('backup.status.checking')}</span>
-              </div>
-            ) : backupInfo.hasBackup ? (
-              <div className="p-4 bg-green-50/80 dark:bg-green-950/40 border border-green-200/40 dark:border-green-800/40 rounded-xl">
-                <div className="flex items-center space-x-2 text-green-700 dark:text-green-300 mb-2">
-                  <CheckCircle className="h-5 w-5" />
-                  <span className="font-semibold">{t('backup.status.available')}</span>
-                </div>
-                <div className="text-sm text-green-600 dark:text-green-400 space-y-1">
-                  {backupInfo.createdAt && (
-                    <div className="flex items-center space-x-1">
-                      <Clock className="h-3 w-3" />
-                      <span>{t('backup.status.created', { date: formatDate(backupInfo.createdAt) })}</span>
-                    </div>
-                  )}
-                  {backupInfo.size && (
-                    <div className="flex items-center space-x-1">
-                      <Database className="h-3 w-3" />
-                      <span>{t('backup.status.size', { size: formatFileSize(backupInfo.size) })}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="p-4 bg-orange-50/80 dark:bg-orange-950/40 border border-orange-200/40 dark:border-orange-800/40 rounded-xl">
-                <div className="flex items-center space-x-2 text-orange-700 dark:text-orange-300">
-                  <AlertTriangle className="h-5 w-5" />
-                  <span className="font-semibold">{t('backup.status.notFound')}</span>
-                </div>
-                <p className="text-sm text-orange-600 dark:text-orange-400 mt-1">
-                  {t('backup.status.createFirst')}
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Error Display */}
-          <AnimatePresence>
-            {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="p-4 bg-red-50/80 dark:bg-red-950/40 border border-red-200/40 dark:border-red-800/40 rounded-xl"
-              >
-                <div className="flex items-center space-x-2 text-red-700 dark:text-red-300">
-                  <AlertTriangle className="h-4 w-4" />
-                  <span className="text-sm font-medium">Error</span>
-                </div>
-                <p className="text-sm text-red-600 dark:text-red-400 mt-1">{error}</p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mt-2 text-red-600 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
-                  onClick={() => setError('')}
-                >
-                  Dismiss
-                </Button>
-              </motion.div>
-            )}
-          </AnimatePresence>
-
-          {/* Action Buttons */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-
-            {/* Backup Button */}
-            <Button
-              onClick={showBackupConfirmation}
-              disabled={isLoading}
-              className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-blue-300 dark:border-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/50 text-blue-700 dark:text-blue-300 hover:text-blue-800 dark:hover:text-blue-200 transition-all duration-150 shadow-sm hover:shadow-md active:scale-95"
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-blue-600/20 border-t-blue-600 mr-2"></div>
-                  {t('backup.action.creating')}
-                </div>
-              ) : (
-                <>
-                  <Download className="h-4 w-4 mr-2" />
-                  {t('backup.action.create')}
-                </>
-              )}
-            </Button>
-
-            {/* Restore Button */}
-            <Button
-              onClick={showRestoreConfirmation}
-              disabled={isLoading || !backupInfo.hasBackup}
-              className="h-14 text-base font-medium rounded-xl bg-transparent border-2 border-green-300 dark:border-green-600 hover:bg-green-50 dark:hover:bg-green-950/50 text-green-700 dark:text-green-300 hover:text-green-800 dark:hover:text-green-200 disabled:border-slate-300 disabled:text-slate-400 disabled:hover:bg-transparent transition-all duration-150 shadow-sm hover:shadow-md active:scale-95"
-            >
-              {isLoading ? (
-                <div className="flex items-center">
-                  <div className="animate-spin rounded-full h-4 w-4 border-2 border-green-600/20 border-t-green-600 mr-2"></div>
-                  {t('backup.action.restoring')}
-                </div>
-              ) : (
-                <>
-                  <Upload className="h-4 w-4 mr-2" />
-                  {t('backup.action.restore')}
-                </>
-              )}
-            </Button>
-          </div>
-
-          {/* Information */}
-          <div className="p-4 bg-slate-100/80 dark:bg-slate-700/50 rounded-xl">
-            <h3 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">{t('backup.info.title')}</h3>
-            <ul className="text-sm text-slate-600 dark:text-slate-400 space-y-1">
-              <li>• {t('backup.info.workflows')}</li>
-              <li>• {t('backup.info.apiKeys')}</li>
-              <li>• {t('backup.info.storage')}</li>
-            </ul>
-            <p className="text-xs text-slate-500 dark:text-slate-500 mt-3">
-              {t('backup.info.note')}
-            </p>
-          </div>
-        </motion.div>
       </div>
 
       {/* Confirmation Dialog */}
       {confirmDialog.isOpen && (
         <div className="fixed inset-0 pwa-modal z-[65] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="relative max-w-md w-full bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 flex flex-col overflow-hidden">
-            {/* Gradient Overlay for Enhanced Glass Effect */}
             <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
-
-            {/* Dialog Header */}
             <div className="relative flex items-center justify-between p-4 border-b border-white/10 dark:border-slate-600/10 flex-shrink-0">
               <div className="flex items-center space-x-2">
-                <div className={`w-6 h-6 backdrop-blur-sm rounded-full flex items-center justify-center border ${confirmDialog.type === 'backup'
-                  ? 'bg-blue-500/20 border-blue-400/30'
-                  : 'bg-orange-500/20 border-orange-400/30'
-                  }`}>
-                  {confirmDialog.type === 'backup' ? (
-                    <Download className="w-4 h-4 text-blue-300" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-orange-300" />
-                  )}
+                <div className={`w-6 h-6 rounded-full flex items-center justify-center border ${confirmDialog.type === 'backup' ? 'bg-blue-500/20 border-blue-400/30' : 'bg-orange-500/20 border-orange-400/30'}`}>
+                  {confirmDialog.type === 'backup' ? <Download className="w-4 h-4 text-blue-300" /> : <AlertTriangle className="w-4 h-4 text-orange-300" />}
                 </div>
-                <h3 className="text-lg font-semibold text-white">
-                  {confirmDialog.title}
-                </h3>
+                <h3 className="text-lg font-semibold text-white">{confirmDialog.title}</h3>
               </div>
             </div>
-
-            {/* Dialog Content */}
             <div className="relative p-4">
-              <p className="text-white/90 mb-4">
-                {confirmDialog.message}
-              </p>
+              <p className="text-white/90 mb-4">{confirmDialog.message}</p>
               {confirmDialog.type === 'restore' && (
                 <div className="p-3 bg-orange-500/10 border border-orange-400/20 rounded-lg mb-4">
                   <p className="text-orange-200 text-sm font-medium">⚠️ {t('backup.dialog.warning')}</p>
-                  <p className="text-orange-300/90 text-sm mt-1">
-                    {t('backup.dialog.warningMessage')}
-                  </p>
+                  <p className="text-orange-300/90 text-sm mt-1">{t('backup.dialog.warningMessage')}</p>
                 </div>
               )}
             </div>
-
-            {/* Dialog Footer */}
             <div className="relative flex justify-end gap-2 p-4 border-t border-white/10 dark:border-slate-600/10 flex-shrink-0">
-              <Button
-                onClick={closeConfirmDialog}
-                variant="outline"
-                className="bg-white/10 backdrop-blur-sm text-white/90 border-white/20 hover:bg-white/20 hover:border-white/30 transition-all duration-300"
-              >
-                {t('backup.dialog.cancel')}
-              </Button>
-              <Button
-                onClick={confirmDialog.onConfirm}
-                className={`backdrop-blur-sm text-white transition-all duration-300 ${confirmDialog.type === 'backup'
-                  ? 'bg-blue-500/80 hover:bg-blue-500/90 border border-blue-400/30 hover:border-blue-400/50'
-                  : 'bg-orange-500/80 hover:bg-orange-500/90 border border-orange-400/30 hover:border-orange-400/50'
-                  }`}
-              >
-                {confirmDialog.confirmText}
-              </Button>
+              <Button onClick={closeConfirmDialog} variant="outline" className="bg-white/10 backdrop-blur-sm text-white border-white/20 hover:bg-white/20 transition-all duration-300">{t('backup.dialog.cancel')}</Button>
+              <Button onClick={confirmDialog.onConfirm} className={`backdrop-blur-sm text-white transition-all duration-300 ${confirmDialog.type === 'backup' ? 'bg-blue-500/80 hover:bg-blue-500/90 border border-blue-400/30' : 'bg-orange-500/80 hover:bg-orange-500/90 border border-orange-400/30'}`}>{confirmDialog.confirmText}</Button>
             </div>
           </div>
         </div>

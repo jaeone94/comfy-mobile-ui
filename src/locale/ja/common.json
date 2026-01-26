@@ -355,7 +355,7 @@
         "cacheFailed": "キャッシュのクリアに失敗しました",
         "confirmClear": "すべてのブラウザキャッシュをクリアしますか？これにより、ダウンロードされたすべての画像、キャッシュファイル、および一時データが削除されます。",
         "language": "言語",
-        "serverConnection": "サーバー接続",
+        "checkForUpdates": "Comfy Mobile UI のアップデートを確認",
         "viewModes": "表示モード",
         "stackView": "スタックビュー",
         "graphView": "グラフビュー",
@@ -1353,10 +1353,17 @@
         },
         "info": {
             "title": "バックアップされるもの：",
-            "workflows": "ワークフローデータ (localStorage: comfyui_workflows)",
-            "apiKeys": "APIキー (IndexedDB: apiKeys)",
-            "storage": "ワークフローストレージ (IndexedDB: workflows)",
+            "workflows": "ワークフローリスト (localStorage: comfyui_workflows)",
+            "folders": "ワークフローフォルダ構造 (localStorage: comfy-workflow-folders)",
+            "apiKeys": "APIキー情報 (IndexedDB: apiKeys)",
+            "storage": "ワークフロー詳細データ (IndexedDB: workflows)",
+            "settings": "ユーザーインターフェースと言語設定",
             "note": "注意：1つのバックアップファイルのみが保持されます。新しいバックアップは既存のものを上書きします。"
+        },
+        "options": {
+            "includeApiKeys": "APIキーを含める",
+            "includeApiKeysDesc": "モデルのダウンロード (Civitai等) やLLMノードで使用されるキーを含めます。",
+            "securityWarning": "⚠️ 注意：バックアップファイルに暗号化されていないAPIキーが含まれる可能性があります。(必ず個人用のComfyUIサーバーにのみアップロードしてください)"
         },
         "dialog": {
             "backupTitle": "バックアップを作成",
@@ -1482,5 +1489,27 @@
             "loraSuccess": "LORA_CONFIG例を正常に作成しました",
             "loraFailed": "例の作成に失敗しました：{{error}}"
         }
+    },
+    "appUpdate": {
+        "title": "Comfy Mobile UI のアップデート",
+        "subtitle": "モバイルインターフェースを最新に保つ",
+        "checkFailed": "アップデート確認に失敗しました",
+        "checking": "アップデートを確認中...",
+        "upToDate": "最新の状態です！",
+        "upToDateDesc": "Comfy Mobile UI の最新バージョンを使用しています。",
+        "newVersion": "新しいバージョン",
+        "releaseNotes": "リリースノート",
+        "noNotes": "リリースノートはありません。",
+        "downloading": "ダウンロード中...",
+        "extracting": "ファイルを展開中...",
+        "ready": "アップデートの準備が完了しました！",
+        "finishRestart": "完了して再起動",
+        "updateTo": "バージョン {{version}} にアップデート",
+        "recheck": "アップデートを再確認",
+        "tryAgain": "再試行",
+        "current": "現在のバージョン",
+        "latest": "最新バージョン",
+        "devVersionNotice": "開発者バージョン (dev) が検出されました。自動アップデートは無効です。",
+        "launcherInfo": "ランチャーステータス"
     }
 }

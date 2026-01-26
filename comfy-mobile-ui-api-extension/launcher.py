@@ -12,16 +12,59 @@ import psutil
 from typing import Optional
 from pathlib import Path
 
-class ComfyUIWatchdog:
+# --- Bootstrap Update Logic ---
+def perform_bootstrap_update():
+    """Check for and apply updates from .update_staging before starting the application"""
+    extension_root = Path(__file__).parent
+    staging_dir = extension_root / ".update_staging"
+    
+    if staging_dir.exists() and staging_dir.is_dir():
+        print(f"🚀 [UPDATE] Update staging folder detected: {staging_dir}")
+        try:
+            # 1. Verification (simple check)
+            if not (staging_dir / "version.json").exists():
+                print(f"⚠️ [UPDATE] version.json missing in staging. Aborting update.")
+                return
+
+            # 2. Perform Swap
+            print(f"📦 [UPDATE] Applying update... and cleaning up staging.")
+            
+            # We iterate through everything in staging_dir
+            for item in staging_dir.iterdir():
+                if item.name == "version.json":
+                    # Update version.json last? Or just copy.
+                    shutil.copy2(item, extension_root / "version.json")
+                elif item.is_dir():
+                    target_dir = extension_root / item.name
+                    if target_dir.exists():
+                        shutil.rmtree(target_dir)
+                    shutil.copytree(item, target_dir)
+                else:
+                    target_file = extension_root / item.name
+                    shutil.copy2(item, target_file)
+            
+            # 3. Clean up
+            shutil.rmtree(staging_dir)
+            print(f"✅ [UPDATE] Update applied successfully!")
+            
+        except Exception as e:
+            print(f"❌ [UPDATE] Failed to apply update: {e}")
+
+# Run update before anything else
+import shutil
+perform_bootstrap_update()
+# --- End Bootstrap Update Logic ---
+
+class ComfyUILauncher:
     """
-    External watchdog process manager (internal watchdog removal)
+    External launcher process manager (internal watchdog removal)
     """
     
     def __init__(self, comfyui_path: str = None, comfyui_port: int = 8188, comfyui_script: str = "main.py"):
-        # External watchdog process related
-        self.external_watchdog_process: Optional[subprocess.Popen] = None
-        self.watchdog_script_path = Path(__file__).parent / "external_watchdog.py"
-        self.watchdog_port = 9188  # Watchdog API port (fixed)
+        # External launcher process related
+        self.external_launcher_process: Optional[subprocess.Popen] = None
+        self.launcher_script_path = Path(__file__).parent / "launcher_service.py"
+        self.launcher_port = 9188  # Launcher API port (fixed)
         
         # ComfyUI related settings (may vary per user)
         self.comfyui_path = comfyui_path or os.getcwd()  # ComfyUI installation path
@@ -46,6 +89,7 @@ class ComfyUIWatchdog:
             with open(self.original_args_file, 'w', encoding='utf-8') as f:
                 json.dump({
                     'args': original_args,
+                    'cwd': os.getcwd(),
                     'saved_at': time.strftime('%Y-%m-%d %H:%M:%S'),
                     'comfyui_script': self.comfyui_script,
                     'comfyui_port': self.comfyui_port
@@ -74,141 +118,141 @@ class ComfyUIWatchdog:
             print(f"❌ Failed to load saved launch args: {e}, using default args")
             return []
         
-    def start_watchdog(self) -> bool:
+    def start_launcher(self) -> bool:
         """
-        Start external watchdog process
+        Start external launcher process
         
         Returns:
             bool: Start success status
         """
-        return self.start_external_watchdog()
+        return self.start_external_launcher()
     
-    def start_external_watchdog(self) -> bool:
-        """Start external watchdog process"""
+    def start_external_launcher(self) -> bool:
+        """Start external launcher process"""
         try:
-            if not self.watchdog_script_path.exists():
-                print(f"❌ External watchdog script not found: {self.watchdog_script_path}")
+            if not self.launcher_script_path.exists():
+                print(f"❌ External launcher script not found: {self.launcher_script_path}")
                 return False
             
-            # Check if watchdog is already running
+            # Check if launcher is already running
             try:
                 import requests
-                response = requests.get(f"http://localhost:{self.watchdog_port}/", timeout=3)
+                response = requests.get(f"http://localhost:{self.launcher_port}/", timeout=3)
                 if response.status_code == 200:
-                    print(f"[WARN] External watchdog already running on port {self.watchdog_port}")
+                    print(f"[WARN] External launcher already running on port {self.launcher_port}")
                     return True  # Already running, treat as success
             except:
                 pass  # Not running, continue
             
             # Use original ComfyUI launch args (saved or default)
-            # Watchdog must preserve ComfyUI's original launch args
+            # Launcher must preserve ComfyUI's original launch args
             launch_args = self._get_original_comfyui_args()
             
             # Combine main script and launch args
             full_args = [self.comfyui_script] + launch_args
             
-            # Start external watchdog process (JSON file is already created)
+            # Start external launcher process (JSON file is already created)
             cmd = [
                 sys.executable,
-                str(self.watchdog_script_path),
-                '--api-port', str(self.watchdog_port)  # 9188 directly passed
+                # Force script name for clarity
+                str(Path(__file__).parent / "launcher_service.py"),
+                '--api-port', str(self.launcher_port)  # 9188 directly passed
             ]
             
-            print(f"[START] Starting external watchdog: {' '.join(cmd)}")
+            print(f"[START] Starting external launcher: {' '.join(cmd)}")
             
             # Start as independent process group with visible terminal
             if os.name == 'nt':  # Windows
                 # Create independent process group with visible terminal
                 creation_flags = subprocess.CREATE_NEW_CONSOLE | subprocess.CREATE_NEW_PROCESS_GROUP
                 
-                self.external_watchdog_process = subprocess.Popen(
+                self.external_launcher_process = subprocess.Popen(
                     cmd,
                     creationflags=creation_flags,
                     # Do not redirect stdout/stderr to new terminal window
                 )
             else:  # Unix/Linux/Mac
                 # Create independent process group with visible terminal
-                self.external_watchdog_process = subprocess.Popen(
+                self.external_launcher_process = subprocess.Popen(
                     cmd,
                     preexec_fn=os.setsid,  # Create new session for complete independence
                     # Run in background on current terminal while showing output
                 )
             
-            watchdog_pid = self.external_watchdog_process.pid
-            print(f"✅ External watchdog started (PID: {watchdog_pid})")
+            launcher_pid = self.external_launcher_process.pid
+            print(f"✅ External launcher started (PID: {launcher_pid})")
             
             # Detach process for complete independence
-            # Prevent watchdog from being affected by parent process termination
-            self.external_watchdog_process = None
+            # Prevent launcher from being affected by parent process termination
+            self.external_launcher_process = None
             
             # Only log PID and do not maintain reference
-            print(f"🔄 Watchdog process detached for complete independence (PID: {watchdog_pid})")
+            print(f"🔄 Launcher process detached for complete independence (PID: {launcher_pid})")
             return True
             
         except Exception as e:
-            print(f"❌ Failed to start external watchdog: {e}")
+            print(f"❌ Failed to start external launcher: {e}")
             return False
     
-    def stop_external_watchdog(self) -> bool:
-        """Stop external watchdog process (API-based)"""
+    def stop_external_launcher(self) -> bool:
+        """Stop external launcher process (API-based)"""
         try:
-            print("🛑 Requesting external watchdog shutdown...")
+            print("🛑 Requesting external launcher shutdown...")
             
             # API to gracefully request shutdown
             import requests
             try:
-                response = requests.post(f"http://localhost:{self.watchdog_port}/shutdown", timeout=5)
+                response = requests.post(f"http://localhost:{self.launcher_port}/shutdown", timeout=5)
                 if response.status_code == 200:
                     result = response.json()
-                    print(f"✅ Watchdog shutdown requested: {result.get('message', 'Success')}")
+                    print(f"✅ Launcher shutdown requested: {result.get('message', 'Success')}")
                     return True
                 else:
-                    print(f"⚠️ Watchdog shutdown request failed: {response.status_code}")
+                    print(f"⚠️ Launcher shutdown request failed: {response.status_code}")
             except Exception as api_error:
                 print(f"⚠️ Could not request graceful shutdown: {api_error}")
             
-            # API method failed but watchdog is independent, so treat as success
-            # (watchdog is already independent, so parent process has no control)
-            print("ℹ️ Watchdog is independent - will continue running until explicitly stopped")
+            # API method failed but launcher is independent, so treat as success
+            print("ℹ️ Launcher is independent")
             return True
             
         except Exception as e:
-            print(f"❌ Error stopping external watchdog: {e}")
+            print(f"❌ Error stopping external launcher: {e}")
             return False
     
-    def stop_watchdog(self):
-        """Stop watchdog service"""
-        return self.stop_external_watchdog()
+    def stop_launcher(self):
+        """Stop launcher service"""
+        return self.stop_external_launcher()
     
     def request_restart(self) -> bool:
         """
-        Request restart through external watchdog
+        Request restart through external launcher
         
         Returns:
             bool: Request success status
         """
         try:
             import requests
-            response = requests.post(f"http://localhost:{self.watchdog_port}/restart", timeout=10)
+            response = requests.post(f"http://localhost:{self.launcher_port}/restart", timeout=10)
             if response.status_code == 200:
                 result = response.json()
-                print(f"✅ Watchdog restart requested: {result.get('message', 'Success')}")
+                print(f"✅ Launcher restart requested: {result.get('message', 'Success')}")
                 return result.get('success', False)
             else:
-                print(f"❌ Watchdog API response error: {response.status_code}")
+                print(f"❌ Launcher API response error: {response.status_code}")
                 return False
         except Exception as e:
-            print(f"❌ Watchdog API communication error: {e}")
+            print(f"❌ Launcher API communication error: {e}")
             return False
     
     def get_status(self) -> dict:
         """
-        Get external watchdog status
+        Get external launcher status
         
         Returns:
             dict: Status information
         """
-        # API to get detailed status (independent watchdog, so use API only)
+        # API to get detailed status (independent launcher, so use API only)
         api_status = None
         process_status = {
             "running": False,
@@ -217,29 +261,29 @@ class ComfyUIWatchdog:
         
         try:
             import requests
-            response = requests.get(f"http://localhost:{self.watchdog_port}/status", timeout=5)
+            response = requests.get(f"http://localhost:{self.launcher_port}/status", timeout=5)
             if response.status_code == 200:
                 api_status = response.json()
-                # API response indicates watchdog is running
+                # API response indicates launcher is running
                 process_status["running"] = True
                 # Use PID from API response if available
                 if api_status and isinstance(api_status, dict):
                     process_status["pid"] = api_status.get("pid")
         except Exception as e:
-            print(f"⚠️ Watchdog API status query failed: {e}")
+            print(f"⚠️ Launcher API status query failed: {e}")
         
         return {
             "process": process_status,
-            "api_port": self.watchdog_port,
+            "api_port": self.launcher_port,
             "api_status": api_status
         }
 
-# Global watchdog instance
-_watchdog_instance: Optional[ComfyUIWatchdog] = None
+# Global launcher instance
+_launcher_instance: Optional[ComfyUILauncher] = None
 
-def get_watchdog(comfyui_path: str = None, comfyui_port: int = 8188, comfyui_script: str = "main.py") -> ComfyUIWatchdog:
+def get_launcher(comfyui_path: str = None, comfyui_port: int = 8188, comfyui_script: str = "main.py") -> ComfyUILauncher:
     """
-    Return watchdog singleton instance
+    Return launcher singleton instance
     
     Args:
         comfyui_path: ComfyUI installation path
@@ -247,16 +291,16 @@ def get_watchdog(comfyui_path: str = None, comfyui_port: int = 8188, comfyui_scr
         comfyui_script: ComfyUI main script filename
         
     Returns:
-        ComfyUIWatchdog: Watchdog instance
+        ComfyUILauncher: Launcher instance
     """
-    global _watchdog_instance
-    if _watchdog_instance is None:
-        _watchdog_instance = ComfyUIWatchdog(comfyui_path, comfyui_port, comfyui_script)
-    return _watchdog_instance
+    global _launcher_instance
+    if _launcher_instance is None:
+        _launcher_instance = ComfyUILauncher(comfyui_path, comfyui_port, comfyui_script)
+    return _launcher_instance
 
-def initialize_watchdog(comfyui_path: str = None, comfyui_port: int = None, comfyui_script: str = None) -> bool:
+def initialize_launcher(comfyui_path: str = None, comfyui_port: int = None, comfyui_script: str = None) -> bool:
     """
-    Initialize and start watchdog (auto-detection support)
+    Initialize and start launcher (auto-detection support)
     
     Args:
         comfyui_path: ComfyUI installation path (None for auto-detection)
@@ -277,15 +321,15 @@ def initialize_watchdog(comfyui_path: str = None, comfyui_port: int = None, comf
             comfyui_port = comfyui_port or detected_port
             comfyui_script = comfyui_script or detected_script
         
-        watchdog = get_watchdog(comfyui_path, comfyui_port, comfyui_script)
-        return watchdog.start_watchdog()
+        launcher = get_launcher(comfyui_path, comfyui_port, comfyui_script)
+        return launcher.start_launcher()
     except Exception as e:
-        print(f"[ERROR] Watchdog initialization failed: {e}")
+        print(f"[ERROR] Launcher initialization failed: {e}")
         return False
 
-def shutdown_watchdog():
-    """Stop watchdog service"""
-    global _watchdog_instance
-    if _watchdog_instance:
-        _watchdog_instance.stop_watchdog()
-        _watchdog_instance = None
+def shutdown_launcher():
+    """Stop launcher service"""
+    global _launcher_instance
+    if _launcher_instance:
+        _launcher_instance.stop_launcher()
+        _launcher_instance = None

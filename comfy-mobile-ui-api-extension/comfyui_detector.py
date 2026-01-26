@@ -37,24 +37,31 @@ def detect_comfyui_environment() -> Tuple[str, int, str]:
 def detect_comfyui_path() -> str:
     """ComfyUI path detection"""
     
-    # Method 1: Current working directory
-    cwd = os.getcwd()
-    if (Path(cwd) / "main.py").exists():
-        return cwd
-    
-    # Method 2: Python script path inference
+    # Method 1: Python script path inference (if currently running inside ComfyUI)
     main_script_path = sys.argv[0] if sys.argv else None
     if main_script_path:
         main_dir = Path(main_script_path).parent
         if (main_dir / "main.py").exists():
             return str(main_dir)
+
+    # Method 2: Custom nodes directory relative detection (High Priority for Extensions)
+    # path: custom_nodes/comfy-mobile-ui-api-extension/comfyui_detector.py
+    current_file = Path(__file__)
+    potential_comfyui = current_file.parent.parent.parent  # ../../ -> ComfyUI Base
+    if (potential_comfyui / "main.py").exists():
+        return str(potential_comfyui)
     
-    # Method 3: Environment variable
+    # Method 3: Current working directory
+    cwd = os.getcwd()
+    if (Path(cwd) / "main.py").exists():
+        return cwd
+
+    # Method 4: Environment variable
     comfyui_path = os.environ.get('COMFYUI_PATH')
     if comfyui_path and Path(comfyui_path).exists():
         return comfyui_path
     
-    # Method 3.5: Common paths
+    # Method 5: Common paths (Last Resort)
     common_paths = [
         Path.home() / "Documents" / "ComfyUI",
         Path("C:\\Users") / os.environ.get('USERNAME', '') / "Documents" / "ComfyUI",

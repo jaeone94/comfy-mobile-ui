@@ -355,6 +355,8 @@
         "cacheClearing": "지우는 중...",
         "cacheSuccess": "캐시가 성공적으로 지워졌습니다",
         "cacheFailed": "캐시를 지우지 못했습니다",
+        "appInfo": "앱 정보",
+        "checkForUpdates": "Comfy Mobile UI 업데이트 확인",
         "confirmClear": "모든 브라우저 캐시를 지우시겠습니까? 이 작업은 다운로드된 모든 이미지, 캐시된 파일 및 임시 데이터를 제거합니다.",
         "language": "언어",
         "serverConnection": "서버 연결",
@@ -1355,10 +1357,17 @@
         },
         "info": {
             "title": "백업 대상:",
-            "workflows": "워크플로우 데이터 (localStorage: comfyui_workflows)",
-            "apiKeys": "API 키 (IndexedDB: apiKeys)",
-            "storage": "워크플로우 저장소 (IndexedDB: workflows)",
-            "note": "참고: 하나의 백업 파일만 유지됩니다. 새 백업은 기존 백업을 덮어씁니다."
+            "workflows": "워크플로우 목록 (localStorage: comfyui_workflows)",
+            "folders": "워크플로우 폴더 구조 (localStorage: comfy-workflow-folders)",
+            "apiKeys": "API 키 정보 (IndexedDB: apiKeys)",
+            "storage": "워크플로우 상세 데이터 (IndexedDB: workflows)",
+            "settings": "사용자 인터페이스 및 언어 설정",
+            "note": "참고: 하나의 백업 파일만 유지되며, 새 백업은 기존 백업을 덮어씁니다."
+        },
+        "options": {
+            "includeApiKeys": "API 키 포함",
+            "includeApiKeysDesc": "모델 다운로드(Civitai 등) 및 LLM 노드에서 사용하는 키를 포함합니다.",
+            "securityWarning": "⚠️ 주의: 백업 파일에 암호화되지 않은 API 키가 포함될 수 있습니다. (반드시 개인용 ComfyUI 서버에만 업로드 하세요)"
         },
         "dialog": {
             "backupTitle": "백업 생성",
@@ -1484,5 +1493,27 @@
             "loraSuccess": "LORA_CONFIG 예제 생성 성공",
             "loraFailed": "예제 생성 실패: {{error}}"
         }
+    },
+    "appUpdate": {
+        "title": "Comfy Mobile UI 업데이트",
+        "subtitle": "모바일 인터페이스를 최신 상태로 유지하세요",
+        "checkFailed": "업데이트 확인 실패",
+        "checking": "업데이트 확인 중...",
+        "upToDate": "최신 버전입니다!",
+        "upToDateDesc": "이미 Comfy Mobile UI의 최신 버전을 사용하고 있습니다.",
+        "newVersion": "새 버전 출시",
+        "releaseNotes": "릴리즈 노트",
+        "noNotes": "릴리즈 노트가 제공되지 않았습니다.",
+        "downloading": "다운로드 중...",
+        "extracting": "파일 압축 해제 중...",
+        "ready": "업데이트 준비 완료!",
+        "finishRestart": "완료 및 재시작",
+        "updateTo": "{{version}} 버전으로 업데이트",
+        "recheck": "업데이트 다시 확인",
+        "tryAgain": "재시도",
+        "current": "현재 버전",
+        "latest": "최신 버전",
+        "devVersionNotice": "개발자 버전(dev)이 감지되었습니다. 자동 업데이트가 비활성화됩니다.",
+        "launcherInfo": "런처 상태"
     }
 }

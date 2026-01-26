@@ -889,7 +889,7 @@ const WorkflowEditor: React.FC = () => {
       const detectedMissingNodes = detectMissingWorkflowNodes(workflowData as IComfyJson, fetchedObjectInfo);
       setMissingWorkflowNodes(detectedMissingNodes);
 
-      const missingNodeIdsSet = new Set<number>(detectedMissingNodes.map((node) => node.id));
+      const missingNodeIdsSet = new Set<number>(detectedMissingNodes.map((node) => Number(node.id)));
       setMissingNodeIds(missingNodeIdsSet);
 
       if (detectedMissingNodes.length > 0) {

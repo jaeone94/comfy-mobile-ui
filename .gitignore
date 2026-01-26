@@ -50,3 +50,10 @@ tests/output/
 #TODO
 TODO
 dev-dist/registerSW.js
+
+# API Extension web build
+comfy-mobile-ui-api-extension/web/
+comfy-mobile-ui-api-extension/.update_staging/
+
+# deploy
+deploy/

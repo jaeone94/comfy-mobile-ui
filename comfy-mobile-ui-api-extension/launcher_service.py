@@ -6,17 +6,26 @@ Provides an API server for external access
 
 import os
 import sys
+from pathlib import Path
+
+# Add current directory to sys.path to allow importing sibling modules
+# This must be done BEFORE importing update_service
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.insert(0, str(current_dir))
+
 import time
 import subprocess
 import psutil
 import requests
+import shutil
 import signal
 import json
 import argparse
 import threading
-from pathlib import Path
 from typing import Optional, Dict, Any
 from datetime import datetime
+from update_service import UpdateService
 
 # Simple HTTP server (minimal external dependencies)
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -24,179 +33,104 @@ from urllib.parse import urlparse, parse_qs
 import socketserver
 
 
-class WatchdogAPIHandler(BaseHTTPRequestHandler):
-    """Watchdog API request handler"""
+class LauncherAPIHandler(BaseHTTPRequestHandler):
+    """Launcher API and Static File request handler"""
     
     def do_GET(self):
-        """GET request handler"""
-        path = urlparse(self.path).path
+        """GET request handler for API and Static files"""
+        parsed_url = urlparse(self.path)
+        path = parsed_url.path
         
-        if path == '/':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
+        # 1. API Endpoints (New & Legacy Aliases)
+        if path in ['/api/status', '/status']:
+            self.send_json_response(self.server.launcher.get_api_status())
             
-            response = {
-                "service": "ComfyUI External Watchdog API",
-                "version": "1.0.0",
-                "timestamp": datetime.now().isoformat()
-            }
-            self.wfile.write(json.dumps(response).encode())
+        elif path in ['/api/logs', '/logs']:
+            self.send_json_response(self.server.launcher.get_recent_logs())
             
-        elif path == '/status':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            
-            # Get status from watchdog instance
-            status = self.server.watchdog.get_api_status()
-            self.wfile.write(json.dumps(status).encode())
-            
-        elif path == '/logs':
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            
-            # Get recent logs
-            logs = self.server.watchdog.get_recent_logs()
-            self.wfile.write(json.dumps(logs).encode())
-            
+        elif path == '/api/ping':
+            self.send_json_response({"status": "pong", "timestamp": datetime.now().isoformat()})
+
+        elif path == '/api/update/check':
+            self.send_json_response(self.server.launcher.update_service.check_for_update())
+
+        elif path == '/api/update/status':
+            self.send_json_response(self.server.launcher.update_service.get_update_status())
+
+        elif path == '/':
+            # If index.html exists, serve it, otherwise return service info (legacy behavior)
+            web_dir = Path(__file__).parent / "web"
+            if (web_dir / "index.html").exists():
+                self.serve_static_file(path)
+            else:
+                self.send_json_response({
+                    "service": "ComfyUI Mobile UI Launcher",
+                    "version": "1.0.1",
+                    "timestamp": datetime.now().isoformat()
+                })
+
+        # 2. Static File Hosting
         else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'Not Found')
+            self.serve_static_file(path)
     
     def do_POST(self):
-        """POST request handler"""
+        """POST request handler for API commands"""
         path = urlparse(self.path).path
         content_length = int(self.headers.get('Content-Length', 0))
         
         if content_length > 0:
-            post_data = self.rfile.read(content_length)
             try:
+                post_data = self.rfile.read(content_length)
                 data = json.loads(post_data.decode())
             except:
                 data = {}
         else:
             data = {}
         
-        if path == '/restart':
+        if path in ['/api/restart', '/restart']:
             # Manual restart request
             client_ip = self.client_address[0]
-            user_agent = self.headers.get('User-Agent', 'Unknown')
-            
-            self.server.watchdog.log(f"Restart API called from {client_ip} (User-Agent: {user_agent})", 'api')
+            self.server.launcher.log(f"Restart API called from {client_ip}", 'api')
             
             try:
-                result = self.server.watchdog.manual_restart()
-                
-                self.send_response(200)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                
-                response = {
+                result = self.server.launcher.manual_restart()
+                self.send_json_response({
                     "success": result,
                     "message": "Restart sequence completed" if result else "Restart sequence failed",
-                    "timestamp": datetime.now().isoformat(),
-                    "details": "Check watchdog logs for detailed restart progress" if result else "Check watchdog logs for error details"
-                }
-                
-                self.server.watchdog.log(f"Restart API response: {response['message']}", 'api')
-                self.wfile.write(json.dumps(response).encode())
-                
+                    "timestamp": datetime.now().isoformat()
+                })
             except Exception as e:
-                self.server.watchdog.log(f"Exception in restart API handler: {e}", 'error')
-                
-                self.send_response(500)
-                self.send_header('Content-type', 'application/json')
-                self.send_header('Access-Control-Allow-Origin', '*')
-                self.end_headers()
-                
-                error_response = {
-                    "success": False,
-                    "message": "Internal server error during restart",
-                    "timestamp": datetime.now().isoformat(),
-                    "error": str(e)
-                }
-                self.wfile.write(json.dumps(error_response).encode())
+                self.server.launcher.log(f"Exception in restart API: {e}", 'error')
+                self.send_json_response({"success": False, "error": str(e)}, status=500)
             
-        elif path == '/config':
-            # Configuration update
-            result = self.server.watchdog.update_config(data)
-            
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            
-            response = {
-                "success": result,
-                "message": "Config updated" if result else "Config update failed"
-            }
-            self.wfile.write(json.dumps(response).encode())
-            
-        elif path == '/start':
-            # Start watchdog with new configuration
-            comfyui_path = data.get('comfyui_path')
-            comfyui_port = data.get('comfyui_port', 8188)
-            comfyui_script = data.get('comfyui_script', 'main.py')
-            
-            if comfyui_path:
-                # Apply new configuration
-                self.server.watchdog.comfyui_dir = comfyui_path
-                self.server.watchdog.comfyui_port = comfyui_port
-                self.server.watchdog.comfyui_args = [comfyui_script]
-                
-                result = True
-                message = f"Watchdog configured for {comfyui_path}:{comfyui_port}/{comfyui_script}"
-            else:
-                result = False
-                message = "ComfyUI path is required"
-            
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
-            
-            response = {
-                "success": result,
-                "message": message,
-                "timestamp": datetime.now().isoformat()
-            }
-            self.wfile.write(json.dumps(response).encode())
-            
-        elif path == '/shutdown':
+        elif path in ['/api/shutdown', '/shutdown']:
             # Graceful shutdown request
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.send_header('Access-Control-Allow-Origin', '*')
-            self.end_headers()
+            self.send_json_response({"success": True, "message": "Launcher shutdown requested"})
             
-            response = {
-                "success": True,
-                "message": "Shutdown requested",
-                "timestamp": datetime.now().isoformat()
-            }
-            self.wfile.write(json.dumps(response).encode())
+            def delayed_shutdown():
+                time.sleep(1)
+                self.server.launcher.log("[API] Shutdown requested via API")
+                self.server.launcher.shutdown()
             
-            # Response after watchdog shutdown (in a separate thread)
-            import threading
-            def shutdown_watchdog():
-                import time
-                time.sleep(1)  # Ensure response is sent
-                self.server.watchdog.log("[API] Shutdown requested via API")
-                self.server.watchdog.shutdown()
+            threading.Thread(target=delayed_shutdown, daemon=True).start()
             
-            threading.Thread(target=shutdown_watchdog, daemon=True).start()
+        elif path == '/api/update/download':
+            # Start update download
+            asset_url = data.get('asset_url')
+            expected_hash = data.get('sha256') # Optional hash for integrity check
             
+            if not asset_url:
+                self.send_json_response({"success": False, "error": "Missing asset_url"}, status=400)
+                return
+            
+            success = self.server.launcher.update_service.start_download(asset_url, expected_hash)
+            self.send_json_response({
+                "success": success,
+                "message": "Download started" if success else "Download already in progress"
+            })
+
         else:
-            self.send_response(404)
-            self.end_headers()
-            self.wfile.write(b'Not Found')
+            self.send_error(404, "Not Found")
     
     def do_OPTIONS(self):
         """CORS preflight request handler"""
@@ -204,11 +138,54 @@ class WatchdogAPIHandler(BaseHTTPRequestHandler):
         self.send_header('Access-Control-Allow-Origin', '*')
         self.send_header('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
         self.send_header('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization')
-        self.send_header('Access-Control-Max-Age', '3600')
         self.end_headers()
-    
+
+    def send_json_response(self, data: Any, status: int = 200):
+        """Helper to send JSON responses"""
+        self.send_response(status)
+        self.send_header('Content-type', 'application/json')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.end_headers()
+        self.wfile.write(json.dumps(data).encode())
+
+    def serve_static_file(self, path: str):
+        """Serve files from the 'web' directory"""
+        import mimetypes
+        web_dir = Path(__file__).parent / "web"
+        
+        # Default to index.html for root or missing files (SPA support)
+        pure_path = path.lstrip('/')
+        if pure_path == '' or pure_path == 'index.html':
+            file_path = web_dir / "index.html"
+        else:
+            file_path = web_dir / pure_path
+
+        # If not found, try index.html for SPA routing
+        if not file_path.exists():
+            file_path = web_dir / "index.html"
+
+        if not file_path.exists() or not file_path.is_file():
+            self.send_error(404, "File Not Found")
+            return
+
+        content_type, _ = mimetypes.guess_type(str(file_path))
+        if not content_type:
+            content_type = 'application/octet-stream'
+
+        try:
+            with open(file_path, 'rb') as f:
+                content = f.read()
+                self.send_response(200)
+                self.send_header('Content-type', content_type)
+                self.send_header('Content-Length', len(content))
+                self.send_header('Access-Control-Allow-Origin', '*')
+                self.end_headers()
+                self.wfile.write(content)
+        except Exception as e:
+            self.send_error(500, f"Internal Server Error: {e}")
+
     def log_message(self, format, *args):
-        """Suppress log messages (to prevent duplicate logging)"""
+        """Suppress default logger to use custom launcher logger"""
         pass
 
 
@@ -217,9 +194,9 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
 
 
-class EnhancedExternalComfyUIWatchdog:
+class EnhancedExternalComfyUILauncher:
     """
-    API server included enhanced external watchdog
+    Enhanced ComfyUI External Launcher with Static File Server
     """
     
     def __init__(self, api_port: int):
@@ -264,35 +241,52 @@ class EnhancedExternalComfyUIWatchdog:
             sys.exit(1)
         
         # ComfyUI settings extraction
-        launch_args = config_data['args']
-        comfyui_script = config_data['comfyui_script']
-        self.comfyui_port = config_data['comfyui_port']
+        launch_args = config_data.get('args', [])
+        comfyui_script = config_data.get('comfyui_script', 'main.py')
+        self.comfyui_port = config_data.get('comfyui_port', 8188)
         self.comfyui_args = [comfyui_script] + launch_args
+        self.original_cwd = config_data.get('cwd') # Capture original working directory
         
         # Use the Python executable that was originally used to start ComfyUI
-        # This is stored in the first argument of sys.argv when ComfyUI was launched
+        # This is the most reliable way to ensure we use the same environment
         self.python_executable = sys.executable
-        self.log(f"Using Python executable: {self.python_executable}", 'debug')
         
-        # Use detector result - it already found the correct ComfyUI backend path
+        # Use detector result only if we need more information or if specifically running standalone
         try:
-            # Add current directory to path for absolute import
-            current_dir = Path(__file__).parent
-            if str(current_dir) not in sys.path:
-                sys.path.insert(0, str(current_dir))
-            
             import comfyui_detector
             self.comfyui_dir = comfyui_detector.detect_comfyui_path()
-            # Use the detector to find the correct Python executable
+            
+            # Use original_cwd if available, otherwise use comfyui_dir as fallback for cwd
+            self.working_directory = self.original_cwd or self.comfyui_dir
+            
+            # Resolve the main script to an absolute path for reliability
+            # This handles cases where main.py is in a subdirectory (like Portable versions)
+            potential_script = Path(self.comfyui_dir) / comfyui_script
+            if potential_script.exists():
+                self.comfyui_args = [str(potential_script)] + launch_args
+                self.log(f"Resolved main script to absolute path: {potential_script}", 'debug')
+            else:
+                # Fallback to original behavior if file not found in comfyui_dir
+                self.comfyui_args = [comfyui_script] + launch_args
+            
+            # Only switch Python if current one is not detected properly OR if it's a known generic python
+            # In Portable versions, sys.executable points to the correct embedded python
             detected_python = comfyui_detector.detect_python_executable()
-            if detected_python != self.python_executable:
-                self.log(f"Switching from {self.python_executable} to detected Python: {detected_python}", 'info')
+            
+            # We trust the currently running Python more than the detector's guess 
+            # unless current Python looks like a system-wide generic one
+            is_generic_python = 'python.exe' in self.python_executable.lower() and \
+                               'windowsapps' in self.python_executable.lower()
+            
+            if is_generic_python and detected_python != self.python_executable:
+                self.log(f"Switching from generic Python to detected: {detected_python}", 'info')
                 self.python_executable = detected_python
-            self.log(f"Using ComfyUI backend directory from detector: {self.comfyui_dir}", 'info')
+            else:
+                self.log(f"Using current Python environment: {self.python_executable}", 'debug')
+                
+            self.log(f"Using ComfyUI backend directory: {self.comfyui_dir}", 'info')
         except Exception as e:
-            self.log(f"Failed to import detector: {e}", 'error')
-            time.sleep(0.1)  # Ensure log is written
-            sys.exit(1)
+            self.log(f"Failed to process environment detection: {e}", 'error')
         
         # Check ComfyUI directory exists
         if not Path(self.comfyui_dir).exists():
@@ -321,11 +315,28 @@ class EnhancedExternalComfyUIWatchdog:
         self.api_thread: Optional[threading.Thread] = None
         
         # Initialization complete
-        self.log("Enhanced External Watchdog initialized", 'success')
+        self.log("Enhanced External Launcher initialized", 'success')
         self.log(f"ComfyUI Directory: {self.comfyui_dir}", 'info')
+        self.log(f"Working Directory: {self.working_directory}", 'info')
+        
+        # Initialize update service
+        self.update_service = UpdateService(self.log)
+        self.log(f"Update Service initialized (Current version: {self.update_service.get_current_version()})", 'success')
+
+        # Copy version.json to web directory for frontend access
+        try:
+            version_src = Path(__file__).parent / "version.json"
+            web_dir = Path(__file__).parent / "web"
+            if version_src.exists() and web_dir.exists():
+                shutil.copy2(version_src, web_dir / "version.json")
+                self.log("Deployed version.json to web directory", 'debug')
+        except Exception as e:
+            self.log(f"Failed to copy version.json to web directory: {e}", 'warning')
+
+        self.console_thread = threading.Thread(target=self._console_input_loop, daemon=True)
         self.log(f"ComfyUI Port: {self.comfyui_port}", 'info')
         self.log(f"ComfyUI Args: {' '.join(self.comfyui_args)}", 'info')
-        self.log(f"API Address: http://{self.api_host}:{self.api_port}", 'info')
+        self.log(f"Launcher Address: http://{self.api_host}:{self.api_port}", 'info')
         self.log(f"Check Interval: {self.check_interval}s", 'info')
     
     def log(self, message: str, level: str = 'info'):
@@ -392,7 +403,7 @@ class EnhancedExternalComfyUIWatchdog:
             
             self.api_server = ThreadedHTTPServer(
                 (bind_host, self.api_port), 
-                WatchdogAPIHandler
+                LauncherAPIHandler
             )
             
             # Check binding address
@@ -400,16 +411,16 @@ class EnhancedExternalComfyUIWatchdog:
             if actual_host == '':
                 actual_host = '0.0.0.0'
             
-            self.api_server.watchdog = self
+            self.api_server.launcher = self
             
             self.api_thread = threading.Thread(
                 target=self.api_server.serve_forever,
                 daemon=True,
-                name="WatchdogAPI"
+                name="LauncherServer"
             )
             self.api_thread.start()
             
-            self.log(f"[API] API server successfully bound to {actual_host}:{actual_port}")
+            self.log(f"[SERVER] Launcher server successfully bound to {actual_host}:{actual_port}")
             return True
             
         except Exception as e:
@@ -431,8 +442,8 @@ class EnhancedExternalComfyUIWatchdog:
     
     def get_api_status(self) -> Dict[str, Any]:
         """API status query"""
-        return {
-            "watchdog": {
+        status = {
+            "launcher": {
                 "running": self.is_running,
                 "check_interval": self.check_interval,
                 "mode": "monitor_only"
@@ -446,10 +457,14 @@ class EnhancedExternalComfyUIWatchdog:
             "api": {
                 "enabled": self.api_enabled,
                 "host": self.api_host,
-                "port": self.api_port
+                "port": self.api_port,
+                "version": self.update_service.get_current_version()
             },
             "timestamp": datetime.now().isoformat()
         }
+        # Add watchdog alias for backward compatibility with older UI versions
+        status["watchdog"] = status["launcher"]
+        return status
     
     def get_recent_logs(self, limit: int = 50) -> Dict[str, Any]:
         """Recent log query"""
@@ -571,7 +586,7 @@ class EnhancedExternalComfyUIWatchdog:
                 return False
             
             self.log(f"   Command: {' '.join(cmd)}")
-            self.log(f"   Working Directory: {self.comfyui_dir}")
+            self.log(f"   Working Directory: {self.working_directory}")
             
             # Start ComfyUI process in a new process group (for isolation)
             # Redirect stdout/stderr to file to prevent pipe buffer issues
@@ -581,7 +596,7 @@ class EnhancedExternalComfyUIWatchdog:
                 with open(log_file, 'w', encoding='utf-8') as log_f:
                     self.comfyui_process = subprocess.Popen(
                         cmd,
-                        cwd=self.comfyui_dir,
+                        cwd=self.working_directory,
                         env=env,
                         creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
                         stdout=log_f,
@@ -692,7 +707,8 @@ class EnhancedExternalComfyUIWatchdog:
         self.log("Step 3/3: Starting new ComfyUI process", 'restart')
         self.log(f"Configuration check:", 'debug')
         self.log(f"  Python: {self.python_executable}", 'debug')
-        self.log(f"  Working Dir: {self.comfyui_dir}", 'debug')  
+        self.log(f"  ComfyUI Dir: {self.comfyui_dir}", 'debug')
+        self.log(f"  Working Dir: {self.working_directory}", 'debug')  
         self.log(f"  Args: {' '.join(map(str, self.comfyui_args))}", 'debug')
         self.log(f"  Port: {self.comfyui_port}", 'debug')
         
@@ -770,9 +786,28 @@ class EnhancedExternalComfyUIWatchdog:
             self.log(f"Failed to start new process (total attempt time: {total_time:.2f}s)", 'error')
             return False
     
+    def _console_input_loop(self):
+        """Console input handler for manual commands"""
+        while self.is_running:
+            try:
+                # Use standard input for command checking
+                if sys.stdin.isatty():
+                    cmd = input()
+                    if cmd.strip().lower() == 'r':
+                        self.log("Manual restart triggered from console", 'restart')
+                        self.manual_restart()
+                else:
+                    # Non-interactive mode, just sleep
+                    time.sleep(1.0)
+            except (EOFError, KeyboardInterrupt):
+                break
+            except Exception as e:
+                # Prevent tight loop on error
+                time.sleep(1.0)
+
     def monitor_loop(self):
         """Main monitoring loop - only status monitoring, no automatic restart"""
-        self.log("[WATCHDOG] Enhanced External Watchdog monitoring started")
+        self.log("[LAUNCHER] Enhanced External Launcher monitoring started")
 
         # Flag to track if we've subscribed to logs on initial startup
         logs_subscribed = False
@@ -815,34 +850,39 @@ class EnhancedExternalComfyUIWatchdog:
                 time.sleep(current_interval)
                 
             except KeyboardInterrupt:
-                self.log("[STOP] Watchdog interrupted by user")
+                self.log("[STOP] Launcher interrupted by user")
                 break
             except Exception as e:
                 self.log(f"[ERROR] Unexpected error in monitor loop: {e}")
                 time.sleep(5)
         
-        self.log("[WATCHDOG] Enhanced External Watchdog monitoring stopped")
+        self.log("[LAUNCHER] Enhanced External Launcher monitoring stopped")
     
     def run(self):
-        """Run watchdog service"""
+        """Run launcher service"""
         try:
-            self.log("[WATCHDOG] Starting Enhanced External Watchdog", 'success')
+            self.log("[LAUNCHER] Starting Enhanced External Launcher", 'success')
             self.log(f"ComfyUI Path: {self.comfyui_dir}", 'info')
             self.log(f"ComfyUI Port: {self.comfyui_port}", 'info')
-            self.log(f"Watchdog API Port: {self.api_port}", 'info')
+            self.log(f"Launcher Server Port: {self.api_port}", 'info')
             
-            # Start API server
+            # Start server
             self.start_api_server()
             
             # Start monitoring loop
-            self.log("[WATCHDOG] Starting monitoring loop...", 'info')
+            self.log("[LAUNCHER] Starting monitoring loop...", 'info')
             self.monitor_loop()
             
         finally:
             # Cleanup
-            self.stop_api_server()
-            self.stop_comfyui()
-            self.log("[WATCHDOG] Enhanced External Watchdog shutdown complete")
+            self.shutdown()
+
+    def shutdown(self):
+        """Graceful shutdown"""
+        self.is_running = False
+        self.stop_api_server()
+        self.stop_comfyui()
+        self.log("[LAUNCHER] Enhanced External Launcher shutdown complete")
 
 
 def check_port_in_use(port: int) -> bool:
@@ -861,31 +901,32 @@ def main():
     """Main function - no fallback logic"""
     # Print intro message to terminal
     print("=" * 60)
-    print("  ComfyUI External Watchdog Service")
+    print("  ComfyUI Mobile UI Launcher & Web Server")
     print("=" * 60)
-    print("This terminal window shows the ComfyUI watchdog service.")
-    print("The watchdog monitors ComfyUI and provides restart functionality.")
+    print("This terminal window shows the ComfyUI launcher service.")
+    print("It hosts the Mobile UI and monitors ComfyUI for restart functionality.")
     print("Do NOT close this window while using ComfyUI Mobile UI.")
+    print("URL: http://localhost:9188")
     print("=" * 60)
     print(f"Started at: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print("=" * 60)
     
-    parser = argparse.ArgumentParser(description='Enhanced ComfyUI External Watchdog with API')
-    parser.add_argument('--api-port', type=int, required=True, help='API server port (required)')
+    parser = argparse.ArgumentParser(description='Enhanced ComfyUI External Launcher & Server')
+    parser.add_argument('--api-port', type=int, required=True, help='Server port (required)')
     
     args = parser.parse_args()
     
-    print(f"[INIT] Watchdog API Port: {args.api_port}")
+    print(f"[INIT] Launcher Port: {args.api_port}")
     
     # Check if port is already in use
     if check_port_in_use(args.api_port):
-        print(f"[ERROR] Port {args.api_port} is already in use. Another watchdog may be running.")
+        print(f"[ERROR] Port {args.api_port} is already in use. Another launcher may be running.")
         time.sleep(0.1)  # Ensure log is written
         sys.exit(1)
     
-    print("[INIT] Starting watchdog service...")
-    watchdog = EnhancedExternalComfyUIWatchdog(args.api_port)
-    watchdog.run()
+    print("[INIT] Starting launcher service...")
+    launcher = EnhancedExternalComfyUILauncher(args.api_port)
+    launcher.run()
 
 
 if __name__ == "__main__":

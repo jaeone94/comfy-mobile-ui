@@ -3,9 +3,10 @@ import { useTranslation } from 'react-i18next';
 import ReactDOM from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { X, Settings, Wifi, WifiOff, Server, Download, Upload, RotateCcw, Package, Trash2, HardDrive, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image, Globe } from 'lucide-react';
+import { X, Settings, Wifi, WifiOff, Server, Download, Upload, RotateCcw, Package, Trash2, HardDrive, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image, Globe, Info } from 'lucide-react';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { CacheService, CacheClearResult, BrowserCapabilities } from '@/services/cacheService';
+import { useNavigate } from 'react-router-dom';
 
 interface SideMenuProps {
   isOpen: boolean;
@@ -38,12 +39,13 @@ const SideMenu: React.FC<SideMenuProps> = ({
   onChainsClick,
   onGalleryClick
 }) => {
-  const { url, isConnected, error } = useConnectionStore();
+  const { url, isConnected, error, remoteVersion } = useConnectionStore();
   const [cacheSize, setCacheSize] = useState<number>(0);
   const [isClearing, setIsClearing] = useState<boolean>(false);
   const [clearResult, setClearResult] = useState<CacheClearResult | null>(null);
   const [browserCapabilities, setBrowserCapabilities] = useState<BrowserCapabilities | null>(null);
   const { t, i18n } = useTranslation();
+  const navigate = useNavigate();
 
   useEffect(() => {
     if (isOpen) {
@@ -380,6 +382,49 @@ const SideMenu: React.FC<SideMenuProps> = ({
               </div>
             </section>
 
+            {/* App Info & Update Section */}
+            <section className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
+              <div className="flex items-center space-x-3 text-slate-600 dark:text-slate-400">
+                <Info className="h-6 w-6" />
+                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                  {t('menu.appInfo')}
+                </h3>
+              </div>
+
+              <Button
+                onClick={() => {
+                  if (remoteVersion === 'dev' || remoteVersion === '0.0.0') {
+                    // In development mode, checking for updates is disabled
+                    import('sonner').then(({ toast }) => {
+                      toast.info('Update check is disabled in development mode');
+                    });
+                    return;
+                  }
+                  onClose();
+                  navigate('/update');
+                }}
+                variant="outline"
+                className={`w-full justify-start text-left h-auto py-3 px-4 bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800 transition-all group ${(remoteVersion === 'dev' || remoteVersion === '0.0.0')
+                  ? 'opacity-50 cursor-not-allowed'
+                  : 'hover:bg-purple-50 dark:hover:bg-purple-900/10 hover:border-purple-200 dark:hover:border-purple-800'
+                  }`}
+              >
+                <div className="flex items-center justify-between w-full">
+                  <div className="flex flex-col items-start gap-1">
+                    <div className={`font-medium text-slate-900 dark:text-slate-100 ${(remoteVersion === 'dev' || remoteVersion === '0.0.0') ? '' : 'group-hover:text-purple-600 dark:group-hover:text-purple-400'
+                      }`}>
+                      {t('menu.checkForUpdates')}
+                    </div>
+                    <div className="text-xs text-slate-500 dark:text-slate-400">
+                      {remoteVersion === 'dev' ? 'dev' : `v${remoteVersion || 'Unknown'}`}
+                    </div>
+                  </div>
+                  <Download className={`h-4 w-4 text-slate-400 ${(remoteVersion === 'dev' || remoteVersion === '0.0.0') ? '' : 'group-hover:text-purple-500'
+                    }`} />
+                </div>
+              </Button>
+            </section>
+
             {/* App Cache Section */}
             <section className="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-800">
               <div className="flex items-center space-x-3 text-slate-600 dark:text-slate-400">
@@ -432,7 +477,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
                 {t('menu.appTitle')}
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                {t('menu.version', { version: '1.0.0' })}
+                {remoteVersion === 'dev' ? 'dev' : t('menu.version', { version: remoteVersion || '0.0.0' })}
               </p>
             </div>
           </div>

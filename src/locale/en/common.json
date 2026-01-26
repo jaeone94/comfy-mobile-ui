@@ -355,6 +355,8 @@
         "cacheClearing": "Clearing...",
         "cacheSuccess": "Cache cleared successfully",
         "cacheFailed": "Failed to clear cache",
+        "appInfo": "App Info",
+        "checkForUpdates": "Check for Comfy Mobile UI Updates",
         "confirmClear": "Are you sure you want to clear all browser caches? This will remove all downloaded images, cached files, and temporary data.",
         "language": "Language",
         "serverConnection": "Server Connection",
@@ -1355,10 +1357,17 @@
         },
         "info": {
             "title": "What gets backed up:",
-            "workflows": "Workflow data (localStorage: comfyui_workflows)",
+            "workflows": "Workflow list (localStorage: comfyui_workflows)",
+            "folders": "Workflow folder structure (localStorage: comfy-workflow-folders)",
             "apiKeys": "API keys (IndexedDB: apiKeys)",
-            "storage": "Workflow storage (IndexedDB: workflows)",
+            "storage": "Workflow detailed data (IndexedDB: workflows)",
+            "settings": "User interface & language preferences",
             "note": "Note: Only one backup file is maintained. New backups overwrite the existing one."
+        },
+        "options": {
+            "includeApiKeys": "Include API Keys",
+            "includeApiKeysDesc": "Include keys for model downloads (Civitai, etc.) and LLM nodes.",
+            "securityWarning": "⚠️ Caution: Backup may contain unencrypted API keys. (Must only upload to your personal ComfyUI server)"
         },
         "dialog": {
             "backupTitle": "Create Backup",
@@ -1484,5 +1493,27 @@
             "loraSuccess": "LORA_CONFIG example created successfully",
             "loraFailed": "Failed to create example: {{error}}"
         }
+    },
+    "appUpdate": {
+        "title": "Comfy Mobile UI Update",
+        "subtitle": "Keep your mobile interface up to date",
+        "checkFailed": "Update Check Failed",
+        "checking": "Checking for updates...",
+        "upToDate": "All caught up!",
+        "upToDateDesc": "You are running the latest version of Comfy Mobile UI.",
+        "newVersion": "NEW VERSION",
+        "releaseNotes": "Release Notes",
+        "noNotes": "No release notes provided.",
+        "downloading": "Downloading...",
+        "extracting": "Extracting files...",
+        "ready": "Update ready!",
+        "finishRestart": "Finish & Restart",
+        "updateTo": "Update to {{version}}",
+        "recheck": "Check for Updates Again",
+        "tryAgain": "Try Again",
+        "current": "Current",
+        "latest": "Latest",
+        "devVersionNotice": "Developer version detected. Auto-update is disabled.",
+        "launcherInfo": "Launcher Status"
     }
 }

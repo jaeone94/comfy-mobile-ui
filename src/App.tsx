@@ -25,6 +25,7 @@ import { autoRecoverIfNeeded } from '@/utils/storageRecovery';
 import StorageErrorBoundary from '@/components/error/StorageErrorBoundary';
 import { PromptHistory } from '@/components/history/PromptHistory';
 import { WorkflowStackPage } from '@/components/workflow/WorkflowStackPage';
+import { AppUpdate } from '@/components/server/AppUpdate';
 
 const AppRouter: React.FC = () => {
   const tryAutoConnect = useConnectionStore((state) => state.tryAutoConnect);
@@ -206,6 +207,7 @@ const AppRouter: React.FC = () => {
         <Route path="/models/download" element={<ModelDownload />} />
         <Route path="/models/browser" element={<ModelBrowserPage />} />
         <Route path="/browser-data-backup" element={<BrowserDataBackup />} />
+        <Route path="/update" element={<AppUpdate />} />
         <Route path="/settings/api-keys" element={<ApiKeyManagement />} />
         <Route path="/settings/widget-types" element={<CustomTypeManager />} />
         <Route path="/videos/download" element={<VideoDownloader />} />

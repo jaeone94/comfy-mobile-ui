@@ -355,7 +355,7 @@
         "cacheFailed": "清除缓存失败",
         "confirmClear": "您确定要清除所有浏览器缓存吗？这将删除所有下载的图像、缓存文件和临时数据。",
         "language": "语言",
-        "serverConnection": "服务器连接",
+        "checkForUpdates": "检查 Comfy Mobile UI 更新",
         "viewModes": "视图模式",
         "stackView": "堆栈视图",
         "graphView": "图表视图",
@@ -1353,10 +1353,17 @@
         },
         "info": {
             "title": "备份内容：",
-            "workflows": "工作流数据 (localStorage: comfyui_workflows)",
-            "apiKeys": "API 密钥 (IndexedDB: apiKeys)",
-            "storage": "工作流存储 (IndexedDB: workflows)",
+            "workflows": "工作流列表 (localStorage: comfyui_workflows)",
+            "folders": "工作流文件夹结构 (localStorage: comfy-workflow-folders)",
+            "apiKeys": "API 密钥信息 (IndexedDB: apiKeys)",
+            "storage": "工作流详细数据 (IndexedDB: workflows)",
+            "settings": "用户界面和语言设置",
             "note": "注意：仅保留一个备份文件。新备份将覆盖现有备份。"
+        },
+        "options": {
+            "includeApiKeys": "包含 API 密钥",
+            "includeApiKeysDesc": "包含用于模型下载 (Civitai 等) 和 LLM 节点的密钥。",
+            "securityWarning": "⚠️ 注意：备份文件可能包含未加密的 API 密钥。(请务必只上传到您个人的 ComfyUI 服务器)"
         },
         "dialog": {
             "backupTitle": "创建备份",
@@ -1482,5 +1489,27 @@
             "loraSuccess": "LORA_CONFIG 示例创建成功",
             "loraFailed": "创建示例失败：{{error}}"
         }
+    },
+    "appUpdate": {
+        "title": "Comfy Mobile UI 更新",
+        "subtitle": "保持您的移动端界面为最新版",
+        "checkFailed": "检查更新失败",
+        "checking": "正在检查更新...",
+        "upToDate": "已是最新版本！",
+        "upToDateDesc": "您正在运行 Comfy Mobile UI 的最新版本。",
+        "newVersion": "新版本",
+        "releaseNotes": "更新日志",
+        "noNotes": "未提供更新日志。",
+        "downloading": "正在下载...",
+        "extracting": "正在解压文件...",
+        "ready": "更新已准备就绪！",
+        "finishRestart": "完成并重启",
+        "updateTo": "更新至 {{version}}",
+        "recheck": "重新检查更新",
+        "tryAgain": "重试",
+        "current": "当前版本",
+        "latest": "最新版本",
+        "devVersionNotice": "检测到开发版本 (dev)。自动更新已禁用。",
+        "launcherInfo": "启动器状态"
     }
 }

@@ -8,7 +8,9 @@
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "vite preview",
-    "generate-icons": "node generate-icons.js"
+    "generate-icons": "node generate-icons.js",
+    "deploy": "node scripts/deploy.js",
+    "build:deploy": "npm run build && npm run deploy"
   },
   "dependencies": {
     "@radix-ui/react-accordion": "^1.2.12",

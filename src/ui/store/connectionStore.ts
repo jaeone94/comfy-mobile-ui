@@ -13,8 +13,9 @@ interface ConnectionStore extends ConnectionState {
   autoReconnectEnabled: boolean;
   setAutoReconnect: (enabled: boolean) => void;
   tryAutoConnect: () => Promise<void>;
-  checkExtension: () => Promise<void>;
-  
+  checkExtension: () => Promise<void>; // New simple method
+  remoteVersion: string | null;
+
   // WebSocket-specific state and actions
   webSocket: GlobalWebSocketState;
   connectWebSocket: () => void;
@@ -34,9 +35,10 @@ export const useConnectionStore = create<ConnectionStore>()(
         lastPingTime: null,
         error: null,
         hasExtension: false,
+        remoteVersion: null,
         isCheckingExtension: false,
         autoReconnectEnabled: true,
-        
+
         // Initialize WebSocket state
         webSocket: globalWebSocketService.getState(),
 
@@ -46,7 +48,7 @@ export const useConnectionStore = create<ConnectionStore>()(
 
         connect: async () => {
           const { url, isConnecting } = get();
-          
+
           if (!url || isConnecting) return;
 
           set({ isConnecting: true, error: null });
@@ -54,32 +56,32 @@ export const useConnectionStore = create<ConnectionStore>()(
           try {
             connectionService.setBaseURL(url);
             const result = await connectionService.testConnection();
-            
+
             if (result.success) {
-              set({ 
-                isConnected: true, 
+              set({
+                isConnected: true,
                 isConnecting: false,
                 lastPingTime: Date.now(),
-                error: null 
+                error: null
               });
-              
+
               // Auto-connect WebSocket when HTTP connection succeeds
               get().connectWebSocket();
-              
+
               // Check extension availability
               get().checkExtension();
             } else {
-              set({ 
-                isConnected: false, 
+              set({
+                isConnected: false,
                 isConnecting: false,
-                error: result.error || 'Connection failed' 
+                error: result.error || 'Connection failed'
               });
             }
           } catch (error) {
-            set({ 
-              isConnected: false, 
+            set({
+              isConnected: false,
               isConnecting: false,
-              error: error instanceof Error ? error.message : 'Unknown error' 
+              error: error instanceof Error ? error.message : 'Unknown error'
             });
           }
         },
@@ -96,6 +98,7 @@ export const useConnectionStore = create<ConnectionStore>()(
             lastPingTime: null,
             error: null,
             hasExtension: false,
+            remoteVersion: null,
             isCheckingExtension: false
           });
         },
@@ -109,15 +112,15 @@ export const useConnectionStore = create<ConnectionStore>()(
           if (!autoReconnectEnabled) return;
 
           const delays = [1000, 2000, 4000, 8000];
-          
+
           for (let i = 0; i < delays.length; i++) {
             await new Promise(resolve => setTimeout(resolve, delays[i]));
-            
+
             const { isConnected } = get();
             if (isConnected) return;
 
             await get().connect();
-            
+
             const { isConnected: connected } = get();
             if (connected) return;
           }
@@ -129,44 +132,44 @@ export const useConnectionStore = create<ConnectionStore>()(
 
         tryAutoConnect: async () => {
           const { url, isConnected, isConnecting } = get();
-          
+
           // Skip if already connected, connecting, or no URL saved
           if (isConnected || isConnecting || !url.trim()) {
             return;
           }
 
-          
+
           // Use a shorter timeout for auto-connect to avoid blocking UI
           set({ isConnecting: true, error: null });
 
           try {
+            // Check app version independently of connection status
+            get().checkExtension();
+
             connectionService.setBaseURL(url);
             // Use shorter timeout for auto-connection (3 seconds)
             const result = await connectionService.testConnection(3000);
-            
+
             if (result.success) {
-              set({ 
-                isConnected: true, 
+              set({
+                isConnected: true,
                 isConnecting: false,
                 lastPingTime: Date.now(),
-                error: null 
+                error: null
               });
-              
+
               // Auto-connect WebSocket when HTTP auto-connection succeeds
               get().connectWebSocket();
-              
-              // Check extension availability
-              get().checkExtension();
             } else {
-              set({ 
-                isConnected: false, 
+              set({
+                isConnected: false,
                 isConnecting: false,
                 error: null // Don't show error for auto-connect failures
               });
             }
           } catch (error) {
-            set({ 
-              isConnected: false, 
+            set({
+              isConnected: false,
               isConnecting: false,
               error: null // Don't show error for auto-connect failures
             });
@@ -174,47 +177,47 @@ export const useConnectionStore = create<ConnectionStore>()(
         },
 
         checkExtension: async () => {
-          const { url, isConnected } = get();
-          
-          if (!url || !isConnected) {
+          const { url } = get();
+
+          // 1. Check static version file (App Version) - Always available if served
+          try {
+            const versionRes = await fetch('/version.json');
+            if (versionRes.ok) {
+              const data = await versionRes.json();
+              set({ remoteVersion: data.version || '0.0.0' });
+              console.log('✅ App version loaded:', data.version);
+            }
+          } catch (e) {
+            console.warn('Failed to load local version.json (Dev environment?)', e);
+            set({ remoteVersion: 'dev' });
+          }
+
+          // 2. Check Extension API presence (Server Capability) - Requires connection
+          if (!url) {
             set({ hasExtension: false, isCheckingExtension: false });
             return;
           }
 
-          set({ isCheckingExtension: true });
-
           try {
-            const response = await fetch(`${url}/comfymobile/api/status`, {
+            const apiRes = await fetch(`${url}/comfymobile/api/status`, {
               method: 'GET',
-              signal: AbortSignal.timeout(5000)
+              signal: AbortSignal.timeout(3000)
             });
 
-            if (response.ok) {
-              const data = await response.json();
-              const extensionAvailable = data.status === 'ok' && data.extension === 'ComfyUI Mobile UI API';
-              
-              set({ 
-                hasExtension: extensionAvailable,
-                isCheckingExtension: false 
+            if (apiRes.ok) {
+              const data = await apiRes.json();
+              const isValid = data.status === 'ok' && data.extension === 'ComfyUI Mobile UI API';
+              set({
+                hasExtension: isValid,
+                isCheckingExtension: false
               });
-              
-              console.log(extensionAvailable ? 
-                '✅ Extension API is available' : 
-                '⚠️ Extension API responded but status not valid'
-              );
+              console.log('✅ Extension API Status:', isValid ? 'Available' : 'Invalid Response');
             } else {
-              set({ 
-                hasExtension: false,
-                isCheckingExtension: false 
-              });
-              console.log('⚠️ Extension API response not ok:', response.status);
+              set({ hasExtension: false, isCheckingExtension: false });
             }
           } catch (error) {
-            set({ 
-              hasExtension: false,
-              isCheckingExtension: false 
-            });
-            console.log('⚠️ Extension API check failed:', error);
+            // API check failed (server down or extension not installed)
+            set({ hasExtension: false, isCheckingExtension: false });
           }
         },
 
@@ -222,7 +225,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         connectWebSocket: () => {
           const { url } = get();
           if (!url) return;
-          
+
           globalWebSocketService.setServerUrl(url);
           globalWebSocketService.connect();
         },
@@ -264,9 +267,9 @@ export const useConnectionStore = create<ConnectionStore>()(
       }),
       {
         name: STORAGE_KEY,
-        partialize: (state) => ({ 
+        partialize: (state) => ({
           url: state.url,
-          autoReconnectEnabled: state.autoReconnectEnabled 
+          autoReconnectEnabled: state.autoReconnectEnabled
         }),
       }
     )

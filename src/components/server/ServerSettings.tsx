@@ -164,7 +164,9 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
         style={{
           overflowY: 'auto',
           overflowX: 'hidden',
-          WebkitOverflowScrolling: 'touch'
+          WebkitOverflowScrolling: 'touch',
+          touchAction: 'pan-y',
+          position: 'absolute'
         }}
       >
         {/* Header */}

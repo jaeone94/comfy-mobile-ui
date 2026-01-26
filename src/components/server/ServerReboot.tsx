@@ -155,22 +155,23 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
         const data = await response.json();
         console.log('🔍 Direct watchdog response data:', JSON.stringify(data, null, 2));
 
-        // Check if watchdog service itself is running (not ComfyUI status)
-        const watchdogRunning = data.watchdog?.running;
+        // Check if service is running (support both legacy 'watchdog' and new 'launcher' keys)
+        const serviceData = data.launcher || data.watchdog;
+        const serviceRunning = serviceData?.running;
         const comfyuiResponsive = data.comfyui?.responsive;
 
-        console.log('🔍 Watchdog status analysis:', {
-          hasWatchdog: !!data.watchdog,
-          watchdogRunning: watchdogRunning,
+        console.log('🔍 Service status analysis:', {
+          hasService: !!serviceData,
+          serviceRunning: serviceRunning,
           comfyuiResponsive: comfyuiResponsive,
           fullResponse: data
         });
 
-        // Watchdog is available if it responds (regardless of ComfyUI status)
-        if (data.watchdog !== undefined) {
+        // Service is available if either key responds
+        if (serviceData !== undefined) {
           return {
             available: true,
-            running: watchdogRunning || false,
+            running: serviceRunning || false,
             restart_requested: false,
             restart_delay: 2,
             comfyuiResponsive: comfyuiResponsive || false

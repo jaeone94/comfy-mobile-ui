@@ -7,10 +7,28 @@ from aiohttp import web
 # Define route handlers as regular functions (to be registered dynamically)
 async def api_status(request):
     """Health check and extension status"""
-    return web.json_response({
+    import json
+    from pathlib import Path
+    
+    # Try to read version.json directly
+    version_info = "0.0.0"
+    try:
+        # handlers/system_handler.py -> parent -> version.json
+        extension_root = Path(__file__).parent.parent
+        version_file = extension_root / "version.json"
+        
+        if version_file.exists():
+            with open(version_file, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                version_info = data.get("version", "0.0.0")
+    except Exception as e:
+        print(f"Warning: Could not read version.json: {e}")
+
+    # Base response
+    response_data = {
         "status": "ok",
         "extension": "ComfyUI Mobile UI API",
-        "version": "2.0.0",
+        "version": version_info, # Actual package version from version.json
         "endpoints": [
             # Core endpoints
             "GET /comfymobile/api/status",
@@ -68,7 +86,8 @@ async def api_status(request):
             "POST /comfymobile/api/backup",
             "POST /comfymobile/api/backup/restore"
         ]
-    })
+    }
+    return web.json_response(response_data)
 
 
 
