@@ -1,8 +1,11 @@
 
-*다른 언어로 읽기: [English](NEW_README_ENG.md)*
+*다른 언어로 읽기: [English](README.md)*
 <div align="center">
 
 # Comfy Mobile UI
+
+
+https://github.com/user-attachments/assets/53ace07b-d060-4147-9ea4-cbc72a3bd059
 
 **ComfyUI를 위한 모바일 우선, 노드 스타일 웹 인터페이스**
 
