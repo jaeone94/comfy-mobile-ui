@@ -89,47 +89,49 @@ Provides smart tools to make workflow editing and management even more efficient
 
 ## <a name="installation"></a>🛠️ Installation & Setup
 
-### **Prerequisites**
+### **1. Standard Installation (Recommended)**
+The easiest way to get started is to download a pre-built release:
+
+1. **Download**: Go to [Latest Release](https://github.com/jaeone94/comfy-mobile-ui/releases) and download `comfy-mobile-ui-api-extension-vX.X.X.zip`.
+2. **Extract**: Unzip the file on your computer.
+3. **Deploy**: Copy the extracted `comfy-mobile-ui-api-extension` folder into your ComfyUI `custom_nodes/` directory.
+4. **Restart**: Start (or restart) ComfyUI with the required flag:
+   ```bash
+   python main.py --enable-cors-header
+   ```
+5. **Access**: Open your browser and navigate to `http://your-server-ip:9188` (or `http://localhost:9188` if running locally).
+
+### **2. Development / Manual Setup**
+If you want to contribute or build from source:
+
+#### **Prerequisites**
 - Node.js 18+ and npm
 - Running ComfyUI server (typically `http://localhost:8188`)
-- **Required**: ComfyMobileUI API Extension
 
-### **IMPORTANT: API Extension Setup**
-
-**This step is required** - The API extension is necessary for ComfyMobileUI to function correctly.
-
-1. **Copy API Extension**:
+#### **Manual Extension Setup**
+1. **Clone the repository**:
    ```bash
-   # Copy the entire comfy-mobile-ui-api-extension folder to your ComfyUI custom_nodes directory
+   git clone https://github.com/jaeone94/comfy-mobile-ui.git
+   cd comfy-mobile-ui
+   ```
+2. **Copy API Extension**:
+   ```bash
+   # Copy the extension folder to your ComfyUI custom_nodes directory
    cp -r comfy-mobile-ui-api-extension /path/to/your/comfyui/custom_nodes/
    ```
 
-2. **Restart ComfyUI**:
-   ```bash
-   # Start ComfyUI - The API extension will be automatically installed and loaded
-   python main.py --enable-cors-header
-   ```
-
-**IMPORTANT**: The API extension provides core functionality (nearly all features) that ComfyMobileUI depends on. It will not work properly without it.
-
-### **Development Setup**
-
+#### **Running Development Server**
 ```bash
-# Clone the repository
-git clone https://github.com/jaeone94/comfy-mobile-ui.git
-cd ComfyMobileUI
-
 # Install dependencies
 npm install
 
 # Start development server
 npm run dev
 
-# Open in browser
-# Navigate to http://localhost:5173
+# Open in browser: http://localhost:5173
 ```
 
-### **Production Build**
+#### **Production Build**
 
 ```bash
 # Build for production
@@ -142,7 +144,7 @@ npm run preview
 npm run lint
 ```
 
-### **ComfyUI Server Setup**
+### **Manual Setup Checklist**
 
 Check the following for your ComfyUI installation:
 

@@ -91,47 +91,49 @@ ComfyUI 워크플로우를 자유롭게 편집할 수 있는 강력한 **Graph V
 
 ## <a name="installation"></a>🛠️ Installation & Setup
 
-### **필수 요구사항**
+### **1. 일반 설치 (권장)**
+가장 쉽고 빠른 설치 방법입니다:
+
+1. **다운로드**: [최신 릴리즈](https://github.com/jaeone94/comfy-mobile-ui/releases) 페이지에서 `comfy-mobile-ui-api-extension-vX.X.X.zip` 파일을 다운로드합니다.
+2. **압축 해제**: 다운로드한 파일의 압축을 풉니다.
+3. **복사**: 압축을 풀어 나온 `comfy-mobile-ui-api-extension` 폴더를 ComfyUI의 `custom_nodes/` 디렉토리에 복사합니다.
+4. **재시작**: 아래 플래그를 포함하여 ComfyUI를 실행 또는 재시작합니다:
+   ```bash
+   python main.py --enable-cors-header
+   ```
+5. **접속**: 브라우저를 열고 `http://서버-IP:9188` (로컬 실행 시 `http://localhost:9188`)로 접속합니다.
+
+### **2. 개발자 설정 / 수동 설치**
+프로젝트에 기여하거나 소스 코드에서 직접 빌드하고 싶은 경우:
+
+#### **필수 요구사항**
 - Node.js 18+ 및 npm
 - ComfyUI 서버 실행 (일반적으로 `http://localhost:8188`)
-- **필수**: ComfyMobileUI API 확장
 
-### **중요: API 확장 설정**
-
-**이 단계는 필수입니다** - ComfyMobileUI가 제대로 작동하려면 API 확장이 필요합니다.
-
-1. **API 확장 복사**:
+#### **수동 API 확장 설정**
+1. **저장소 클론**:
    ```bash
-   # comfy-mobile-ui-api-extension 전체 폴더를 ComfyUI custom_nodes 디렉토리에 복사
+   git clone https://github.com/jaeone94/comfy-mobile-ui.git
+   cd comfy-mobile-ui
+   ```
+2. **API 확장 복사**:
+   ```bash
+   # comfy-mobile-ui-api-extension 폴더를 ComfyUI custom_nodes 디렉토리에 복사
    cp -r comfy-mobile-ui-api-extension /path/to/your/comfyui/custom_nodes/
    ```
 
-2. **ComfyUI 재시작**:
-   ```bash
-   # ComfyUI 시작 - API 확장이 자동으로 설치되고 실행됩니다
-   python main.py --enable-cors-header
-   ```
-
-**중요**: API 확장은 ComfyMobileUI가 의존하는 핵심 기능(거의 대부분의 기능)을 제공합니다. 이것 없이는 앱이 제대로 작동하지 않습니다.
-
-### **개발 설정**
-
+#### **개발용 서버 실행**
 ```bash
-# 저장소 클론
-git clone https://github.com/jaeone94/comfy-mobile-ui.git
-cd ComfyMobileUI
-
 # 의존성 설치
 npm install
 
 # 개발 서버 시작
 npm run dev
 
-# 브라우저에서 열기
-# http://localhost:5173으로 이동
+# 브라우저에서 열기: http://localhost:5173
 ```
 
-### **프로덕션 빌드**
+#### **프로덕션 빌드**
 
 ```bash
 # 프로덕션용 빌드
@@ -144,7 +146,7 @@ npm run preview
 npm run lint
 ```
 
-### **ComfyUI 서버 설정**
+### **수동 설치 시 확인사항**
 
 ComfyUI 설치에서 확인사항:
 
