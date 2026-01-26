@@ -3,6 +3,8 @@
 
 # Comfy Mobile UI
 
+https://github.com/user-attachments/assets/20480b56-5c01-4c27-9401-0d4ba455dd81
+
 **Mobile-first, node-style web interface for ComfyUI**
 
 [Key Features](#features) | [Installation Guide](#installation) | [Contributing](#contributing) | [Show Your Support](#support)
