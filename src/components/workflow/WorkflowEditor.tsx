@@ -2434,8 +2434,29 @@ const WorkflowEditor: React.FC = () => {
         }
       });
 
-      // Remove the node from ComfyGraph._nodes
+      // Remove link references from remaining nodes in ComfyGraph (No-Reload Optimization)
       if (liveGraph._nodes) {
+        liveGraph._nodes.forEach((node: any) => {
+          // Clean up input links
+          if (node.inputs) {
+            node.inputs.forEach((input: any) => {
+              if (input.link !== null && input.link !== undefined && linkIdsToRemove.includes(input.link)) {
+                input.link = null;
+              }
+            });
+          }
+
+          // Clean up output links
+          if (node.outputs) {
+            node.outputs.forEach((output: any) => {
+              if (output.links && Array.isArray(output.links)) {
+                output.links = output.links.filter((id: number) => !linkIdsToRemove.includes(id));
+              }
+            });
+          }
+        });
+
+        // Remove the node from ComfyGraph._nodes
         liveGraph._nodes = liveGraph._nodes.filter((n: any) => {
           const nId = typeof n.id === 'string' ? parseInt(n.id) : n.id;
           return nId !== nodeId;

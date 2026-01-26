@@ -638,6 +638,31 @@ export function removeNodeWithLinks(
     }
   });
 
+  // Remove link references from remaining nodes in ComfyGraph (No-Reload Optimization)
+  if (updatedComfyGraph._nodes) {
+    updatedComfyGraph._nodes.forEach(node => {
+      // Clean up input links
+      if (node.inputs) {
+        node.inputs.forEach(input => {
+          if (input.link !== null && input.link !== undefined && linkIdsToRemove.includes(input.link)) {
+            input.link = null;
+          }
+        });
+      }
+
+      // Clean up output links
+      if (node.outputs) {
+        node.outputs.forEach(output => {
+          if (output.links && Array.isArray(output.links)) {
+            output.links = output.links.filter((linkId: number) =>
+              !linkIdsToRemove.includes(linkId)
+            );
+          }
+        });
+      }
+    });
+  }
+
   // Remove the node from ComfyGraph._nodes
   updatedComfyGraph._nodes = updatedComfyGraph._nodes.filter(node => {
     return String(node.id) !== String(nodeId);
