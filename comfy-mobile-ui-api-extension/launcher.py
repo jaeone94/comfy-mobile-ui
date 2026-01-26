@@ -29,12 +29,15 @@ def perform_bootstrap_update():
             # 2. Perform Swap
             print(f"📦 [UPDATE] Applying update... and cleaning up staging.")
             
-            # We iterate through everything in staging_dir
-            for item in staging_dir.iterdir():
+            # First, move everything except version.json to avoid sync conflicts
+            # We use a two-pass approach or just handle version.json specially
+            update_items = list(staging_dir.iterdir())
+            
+            for item in update_items:
                 if item.name == "version.json":
-                    # Update version.json last? Or just copy.
-                    shutil.copy2(item, extension_root / "version.json")
-                elif item.is_dir():
+                    continue # Handle at the very end
+                    
+                if item.is_dir():
                     target_dir = extension_root / item.name
                     if target_dir.exists():
                         shutil.rmtree(target_dir)
@@ -43,7 +46,18 @@ def perform_bootstrap_update():
                     target_file = extension_root / item.name
                     shutil.copy2(item, target_file)
             
-            # 3. Clean up
+            # 3. Handle version.json at the very end to ensure it survives dir swaps
+            version_item = staging_dir / "version.json"
+            if version_item.exists():
+                # Copy to root
+                shutil.copy2(version_item, extension_root / "version.json")
+                # Copy to web
+                web_dir = extension_root / "web"
+                if web_dir.exists():
+                    shutil.copy2(version_item, web_dir / "version.json")
+                    print(f"✅ [UPDATE] version.json synced to root and web directory.")
+
+            # 4. Clean up
             shutil.rmtree(staging_dir)
             print(f"✅ [UPDATE] Update applied successfully!")
             

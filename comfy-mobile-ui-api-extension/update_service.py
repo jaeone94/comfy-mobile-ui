@@ -153,7 +153,24 @@ class UpdateService:
             self.is_downloading = False
 
     def get_update_status(self) -> Dict[str, Any]:
+        """Get detailed update status with FE-compatible state mapping"""
+        status = "idle"
+        
+        if self.last_error:
+            status = "error"
+        elif self.is_downloading:
+            status = "downloading"
+        elif self.staging_dir.exists() and any(self.staging_dir.iterdir()):
+            # Check if recently downloaded (within staging)
+            temp_zip = self.staging_dir / "update.zip"
+            if temp_zip.exists():
+                status = "downloading" # Still in zip mode?? No, usually extracted.
+            else:
+                # If staging is ready but no zip, it means extraction is done
+                status = "ready_to_restart"
+        
         return {
+            "status": status,
             "is_downloading": self.is_downloading,
             "progress": self.download_progress,
             "last_error": self.last_error,
