@@ -1,163 +1,100 @@
-# ComfyMobileUI
-
-*Read this in other languages: [한국어](README_KOR.md)*
-
+*Read this in other languages: [한국어](NEW_README_KOR.md)*
 <div align="center">
 
-![ComfyMobileUI Icon](./public/icons/icon-192x192.png)
+# Comfy Mobile UI
 
-**A mobile-first, node-style web interface for ComfyUI**
-*Bringing ComfyUI's familiar node graph workflows to your mobile device*
+**Mobile-first, node-style web interface for ComfyUI**
 
-![TypeScript-React](https://img.shields.io/badge/TypeScript-React-blue?style=for-the-badge&logo=typescript)
-![Vite](https://img.shields.io/badge/Vite-Next_Generation_Frontend-646CFF?style=for-the-badge&logo=vite)
-![Mobile First](https://img.shields.io/badge/Mobile-First_Design-success?style=for-the-badge&logo=mobile)
-![ComfyUI](https://img.shields.io/badge/ComfyUI-Compatible-red?style=for-the-badge&logo=image)
-
-[⭐ **Star this project if you find it useful!** ⭐](#show-your-support)
-
-</div>
+[Key Features](#features) | [Installation Guide](#installation) | [Contributing](#contributing) | [Show Your Support](#support)
 
 ---
 
-## History & Motivation
+<p align="left">
+  <img src="https://img.shields.io/badge/Platform-Mobile_First_Web-success?style=flat-square&logo=pwa" alt="Platform">
+  <img src="https://img.shields.io/badge/Backend-ComfyUI-blueviolet?style=flat-square" alt="ComfyUI">
+  <img src="https://img.shields.io/github/license/jaeone94/comfy-mobile-ui?style=flat-square" alt="License">
+</p>
+</div>
 
-I found myself spending long hours sitting at a computer desk to use ComfyUI, which became uncomfortable over time. Most of the work involved simply **experimenting** with workflows (tweaking parameters, testing different configurations, and iterating through ideas).
+## 📖 Introduction
 
-I wanted to enjoy these amazing features comfortably from my couch without being tied to a desk. Initially, I tried accessing ComfyUI through a mobile browser, but while ComfyUI excels at complex workflow creation, the mobile experience was quite inconvenient.
+**Comfy Mobile UI** is a mobile-first web interface designed to seamlessly handle node-based AI workflows on mobile devices, originally optimized for PC environments.
 
-Most existing mobile ComfyUI frontends focus on WebUI-style workflow execution, which meant losing ComfyUI's flexible node graph advantages and having to learn different usage patterns. This made them difficult to use for someone already familiar with ComfyUI's node-based approach.
-
-So I created a mobile-first **node-style interface** that maintains ComfyUI's familiar node graph workflow while being optimized for **mobile workflow editing and experimentation**.
-
-**ComfyMobileUI** was born from this need and focuses on:
-- **Edit and use workflows comfortably** from anywhere with your mobile device
-- **Break free from mouse and keyboard** - quickly modify and execute workflows on mobile
-- **Comprehensive workflow editing support** - most ComfyUI workflow editing features are supported
-- **Quick output review** - open the gallery in the app to quickly review your generated content
-
-## Philosophy
-
-**ComfyMobileUI** is a **node-style mobile interface** that maintains ComfyUI's familiar node graph approach while providing **comprehensive workflow editing and usage** on mobile devices. With advanced node editing capabilities, you can:
-
-- **Edit and modify workflows** with mobile-friendly controls
-- **Adjust node parameters** and fine-tune workflows
-- **Connect and disconnect node links** with intuitive touch gestures
-- **Resize nodes and manage layouts** directly on mobile
-- **Install missing nodes** seamlessly through the app
-- **Execute workflows** with real-time progress tracking
-- **Review outputs quickly** in the built-in gallery
-
-Break free from mouse and keyboard - quickly modify and execute ComfyUI's node-based workflows on your mobile device. Most ComfyUI workflow editing features are now supported with the same familiar node graph interface!
+This is not just a simple viewer. Modify complex workflows on the go, add new nodes, manage models, and monitor execution status in real-time. Experience a desktop-like environment on your mobile device with a touch-optimized UX.
 
 ---
 
-## Showcase
+## <a name="features"></a>✨ Key Features
 
-### **Real-time Workflow Execution**
+### 1. Multi-Mode Support
+Provides both a powerful **Graph View** for freeform workflow editing and a **Stack View** for intuitivel modifying widget values by grouping nodes by type.
+
 <div align="center">
-  <img src="./public/showcases/2.gif" alt="Real-time workflow execution with progress bar" width="300"/>
+  <img src="./public/showcases/graph_view.png" width="45%" alt="Graph View" />
+  <img src="./public/showcases/stack_view.png" width="45%" alt="Stack View" />
 </div>
 
-*Watch your workflows execute in real-time with progress indicators*
+### 2. Touch-First UX
+Perfectly reimagines complex desktop editing experiences for mobile gestures. Control intricate node graphs with ease using just your fingers.
+- **Radial Menu:** Quickly access node addition, removal, color change, and execution mode (Always, Mute, Bypass) with a single long-press.
+- **Advanced Widget Editor:** Comfortably edit node widgets in a dedicated large modal. Easily import images and videos from your device's album or the generated gallery.
+- **Precision Linking:** Precisely configure connection lines between nodes using an intuitive drag-and-drop interface specifically designed for smaller screens.
 
-### **Node Editing & Widget Configuration**
 <div align="center">
-  <img src="./public/showcases/1.gif" alt="Node resizing and widget editing demo" width="300"/>
+  <img src="./public/showcases/long_press_circular_control.png" width="30%" alt="Longpress Circular Control" />
+  <img src="./public/showcases/edit_widget.png" width="30%" alt="Node Widget Editor" />
+  <img src="./public/showcases/connect_link.png" width="30%" alt="Node Connection" />
 </div>
 
-*Resize nodes and edit widget values with intuitive touch controls*
+### 3. Execution & Monitoring
+Provides powerful tools to track execution status in real-time and manage the queue.
+- **Live Progress:** Visually monitor the current executing node and overall progress in real-time.
+- **Server Console:** Monitor server execution logs in real-time to check the overall system status.
 
-### **Node Connection Management**
 <div align="center">
-  <img src="./public/showcases/3.gif" alt="Creating node connections in Connection mode" width="300"/>
+  <img src="./public/showcases/console.png" width="45%" alt="Workflow Execution Console" />
+  <img src="./public/showcases/progress.png" width="45%" alt="Workflow Execution Progress" />
 </div>
 
-*Create new node connections using Connection mode*
+### 4. Easy Resource Downloader
+Install required models directly via URL without needing to access the server manually.
+- **Remote Download:** Directly download Checkpoints, LoRAs, etc., to the server using model links from Hugging Face, Civitai, and more.
+- **Target Folder Selection:** Directly specify the target folder for downloads to systematically manage resources by model type.
 
-### **Remote Server Management**
 <div align="center">
-  <img src="./public/showcases/4.gif" alt="ComfyUI server reboot from mobile" width="300"/>
+  <img src="./public/showcases/download_model.png" width="45%" alt="Model Download Manager" />
+  <img src="./public/showcases/model_management.png" width="45%" alt="Model Management" />
 </div>
 
-*Remotely reboot ComfyUI server when needed*
-
-### **Output Gallery**
+### 5. Unified Media Library
+Instantly view and manage generated images and videos (MP4) within the app without needing a separate gallery.
+- **In-App Gallery:** Offers smooth playback and viewing for everything from high-fidelity outputs to video previews.
+- **Seamless Export:** Check outputs instantly and save them to local storage or share them externally.
 <div align="center">
-  <img src="./public/showcases/5.gif" alt="Viewing outputs in gallery" width="300"/>
+  <img src="./public/showcases/album.png" width="45%" alt="Output Gallery" />
+  <img src="./public/showcases/album2.png" width="45%" alt="Video Player" />
 </div>
 
-*Browse and review generated images and videos in the built-in gallery*
-
-*And many more amazing features are available below!*
+### 6. Advanced Utilities
+Provides smart tools to make workflow editing and management even more efficient.
+- **Workflow Snapshots:** Save the current state of your workflow as a snapshot and restore it at any time. Ideal for fearless experimentation with parameters.
+- **Embedded Group Control:** Built-in Fast Group Muter/Bypasser (from rgthree) to bulk control execution modes (`Always`, `Mute`, `Bypass`) of all nodes within a group.
+- **Trigger Word Manager:** Save and manage trigger words for each LoRA in the Model Browser. Quickly lookup and copy keywords while editing workflows.
+- **Advanced Video Downloader:** Use [yt-dlp](https://github.com/yt-dlp/yt-dlp) to download videos from various platforms directly to the server's `input` folder.
+- **Workflow Chain (Experimental):** Link multiple independent workflows together. Automatically transfer output from one workflow to the input of the next for complex, sequential automation.
 
 ---
 
-## Features
-
-### **Core Workflow Features**
-- **Workflow Execution**: One-tap execution with real-time progress tracking
-- **Queue Management**: View, interrupt, and manage execution queue
-- **Advanced Node Editing**: Full node positioning, resizing, and connection management
-- **Link Management**: Connect and disconnect node links with touch gestures
-- **Widget Value Editing**: Modify node parameters with mobile-optimized controls
-- **Missing Node Installation**: Install missing custom nodes directly through the app
-- **Workflow Upload**: Import standard ComfyUI workflow files (non-API format)
-- **Snapshot System**: Save and restore specific workflow states with full history
-
-### **Convenience Features**
-- **Watchdog Reboot**: Restart ComfyUI server processes (even when server is completely unresponsive!)
-- **Server Sync**: Download & upload workflows from/to ComfyUI server
-- **Model Downloads**: Download models using URL links
-- **Simple Model Explorer**: Browse models with trigger word storage & lookup
-- **Media Browser**: View and manage images/videos from input, output, temp folders
-- **Data Backup**: Browser data backup and restore functionality
-
-### **Workflow Convenience Tools**
-- **Built-in Fast Group Bypassor**: Quickly bypass/enable node groups
-- **Built-in Fast Group Mutor**: Quickly mute/unmute node groups
-- **Randomize Seeds**: Manually randomize all seeds in workflow
-- **Trigger Word Search**: Pre-save trigger words and easily copy them in workflows
-
-### **Mobile-Optimized Interface**
-- **Responsive Web Application**: Mobile-optimized web app with native-like experience
-- **Touch Gestures**: Long press, pinch to zoom, drag to pan
-- **Responsive Design**: Seamless experience across all device sizes
-- **Optimized Performance**: Efficient rendering for mobile hardware
-
----
-
-## Node Patch System
-
-### **Advanced Feature for Power Users**
-
-ComfyUI's diverse custom nodes often include special rules written as JS scripts by node authors, which are tightly integrated with ComfyUI's extension system. Additionally, some custom nodes didn't have essential input information in `/object_info`, making API format conversion difficult (especially **Power Lora Loader (rgthree)** nodes). To solve this, we've implemented a **Node Patch System** that allows patching widget slots for specific node types.
-
-### **Patch Scopes**
-- **Global**: Apply to all nodes of a specific type across all workflows
-- **Workflow**: Apply to specific node types within a particular workflow
-- **Specific Node**: Apply only to a specific node ID within a workflow
-
-### **Use Cases**
-- **Add missing widgets** that don't appear in object_info
-- **Override widget types**
-- **Fix compatibility issues** with some custom nodes
-- **Customize node behavior** for mobile usage
-
-*The utility of this system is still being explored, but it provides functionality for advanced users.*
-
----
-
-## Installation
+## <a name="installation"></a>🛠️ Installation & Setup
 
 ### **Prerequisites**
 - Node.js 18+ and npm
-- ComfyUI server running (typically on `http://localhost:8188`)
-- **REQUIRED**: ComfyMobileUI API Extension
+- Running ComfyUI server (typically `http://localhost:8188`)
+- **Required**: ComfyMobileUI API Extension
 
-### **Critical: API Extension Setup**
+### **IMPORTANT: API Extension Setup**
 
-**This step is MANDATORY** - ComfyMobileUI requires its API extension to function properly.
+**This step is required** - The API extension is necessary for ComfyMobileUI to function correctly.
 
 1. **Copy API Extension**:
    ```bash
@@ -167,11 +104,11 @@ ComfyUI's diverse custom nodes often include special rules written as JS scripts
 
 2. **Restart ComfyUI**:
    ```bash
-   # Start ComfyUI - the API extension will auto-install and run
+   # Start ComfyUI - The API extension will be automatically installed and loaded
    python main.py --enable-cors-header
    ```
 
-**Important**: The API extension provides core functionality (almost all features) that ComfyMobileUI depends on. Without it, the app will not work correctly.
+**IMPORTANT**: The API extension provides core functionality (nearly all features) that ComfyMobileUI depends on. It will not work properly without it.
 
 ### **Development Setup**
 
@@ -205,146 +142,25 @@ npm run lint
 
 ### **ComfyUI Server Setup**
 
-Ensure your ComfyUI installation:
+Check the following for your ComfyUI installation:
 
-1. **Install API Extension**: Copy `comfy-mobile-ui-api-extension` to `custom_nodes/`
-2. **Enable CORS**: Start with `--enable-cors-header` flag
-3. **Network Access**: Use `--listen 0.0.0.0` for network access (optional)
+1. **API Extension Installed**: `comfy-mobile-ui-api-extension` copied to `custom_nodes/`
+2. **CORS Enabled**: Started with the `--enable-cors-header` flag
+3. **Network Access**: Use `--listen 0.0.0.0` for external network access (optional)
 
 ```bash
-# Example ComfyUI startup command
+# Example ComfyUI start command
 python main.py --enable-cors-header --listen 0.0.0.0
 ```
 
 ---
 
-## Usage
-
-### **Getting Started**
-
-1. **Setup API Extension**: Install the required API extension in ComfyUI
-2. **Connect to ComfyUI**: App auto-detects local ComfyUI server
-3. **Import Workflows**: Drag & drop JSON workflow files or use import dialog (PNG files with embedded workflow info also supported)
-4. **Simple Editing**: Tap nodes to edit parameters with mobile-friendly controls
-5. **Execute Workflows**: Use the floating action button to run your workflows
-
-### **Key Interactions**
-
-- **Single Tap**: Select nodes and open parameter editor
-- **Long Press**: On node - enter connection mode; On canvas - enter node repositioning mode
-- **Double Tap**: Insert new node at tapped location
-- **Pinch Gesture**: Zoom in/out of canvas
-- **Drag**: Pan around large workflows
-
-### **Workflow Management**
-
-- **Import**: Load workflows from JSON files or server
-- **Edit**: Modify parameters with mobile-optimized widgets
-- **Execute**: One-tap execution with real-time progress
-- **Save**: Automatic browser storage with thumbnail previews
-- **Export**: Save workflows as JSON files
-
----
-
-## Development
-
-### **Project Structure**
-
-```
-src/
-├── components/          # React components
-│   ├── canvas/         # Canvas rendering and interactions
-│   ├── controls/       # UI controls and panels
-│   ├── workflow/       # Workflow management components
-│   └── ui/            # Reusable UI components (shadcn/ui)
-├── core/              # Business logic and services
-│   └── services/      # Core service implementations
-├── hooks/             # Custom React hooks
-├── infrastructure/    # External integrations
-│   ├── api/          # ComfyUI API client
-│   ├── storage/      # IndexedDB operations
-│   └── websocket/    # Real-time communication
-├── shared/           # Shared utilities and types
-│   ├── types/        # TypeScript type definitions
-│   └── utils/        # Utility functions
-└── test/             # Test utilities and integration tests
-```
-
-### **Key Technologies**
-- **React 19** with TypeScript for type-safe development
-- **Vite** for lightning-fast development and optimized builds
-- **Tailwind CSS + shadcn/ui** for consistent, accessible design system
-- **Framer Motion** for smooth animations and transitions
-
----
-
-## Testing
-
-The project includes two main integration tests:
-
-### **API Format Conversion Test**
-Tests the complete workflow pipeline from JSON to API format:
-- JSON → Graph conversion
-- Graph → ComfyUI API format
-- API structure validation
-- Optional server execution test
-
-```bash
-# Run API format conversion test
-npx tsx --tsconfig tsx.config.json tests/integration/convertToApiFormatTest.ts <workflow-file>
-
-# With server execution
-npx tsx --tsconfig tsx.config.json tests/integration/convertToApiFormatTest.ts <workflow-file> --execute
-```
-
-### **Serialization Consistency Test**
-Tests the consistency of JSON ↔ Graph ↔ JSON conversion:
-- Original JSON → Graph → Serialized JSON
-- Validates that workflows maintain integrity through conversion cycles
-
-```bash
-# Run serialization test
-npx tsx --tsconfig tsx.config.json tests/integration/serializationTest.ts <workflow-file>
-
-# With custom server
-npx tsx --tsconfig tsx.config.json tests/integration/serializationTest.ts <workflow-file> --server http://localhost:8188
-```
-
-**Note**: Both tests require a running ComfyUI server and generate detailed output files for debugging.
-
----
-
-## Known Issues
-
-### **Current Limitations**
-- **Touch Issues**: Occasional touch responsiveness problems or scroll issues
-  - **Solution**: Simply refresh the browser or restart the browser app
-- **Mobile Performance**: Large workflows may be slow on older mobile devices
-- **Browser Cache**: Changes may require hard refresh (Ctrl+F5)
-- **rgthree Node Compatibility**: Some rgthree nodes may not work properly or may be missing features
-  - **Solution**: If a workflow runs in ComfyUI but fails in the mobile app, try replacing problematic rgthree nodes with equivalent standard nodes
-
-### **Workarounds**
-- **Refresh Browser**: Most UI issues resolve with a simple refresh
-- **Clear Cache**: Clear browser cache if issues persist
-- **Restart Browser**: Close and reopen browser for persistent problems
-- **Node Replacement**: Replace unsupported rgthree nodes with compatible alternatives
-
-### **Reporting Issues**
-If you encounter workflows that work in ComfyUI but fail in ComfyMobileUI:
-1. **Replace problematic nodes** with standard ComfyUI nodes when possible
-2. **Report the issue** on GitHub with the workflow file attached
-3. **Specify which nodes** are causing problems
-4. We'll work to fix compatibility issues promptly
-
----
-
-## Contributing
+## <a name="contributing"></a>🤝 Contributing
 
 **Contributions are always welcome!**
 
 ### **Code Quality Notice**
-Most of this app was developed using "vibe coding" (rapid prototyping, using Claude Code - he's a god), so code quality may be lacking. We appreciate your understanding and welcome improvements!
+Much of this app was developed using "vibe coding," so code quality may vary. We appreciate your understanding and welcome improvements!
 
 ### **How to Contribute**
 1. Fork the repository
@@ -353,52 +169,12 @@ Most of this app was developed using "vibe coding" (rapid prototyping, using Cla
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-### **Development Guidelines**
-- Follow TypeScript strict mode requirements
-- Use provided ESLint configuration
-- Write tests for new functionality
-- Ensure mobile compatibility
-- Follow existing component patterns
-
 ---
 
-## Show Your Support
+## <a name="support"></a>⭐ Show Your Support
 
 ⭐ **If you find this app useful, please consider giving it a star!** ⭐
 
 Your support helps the project grow and motivates continued development.
 
 ---
-
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgments
-
-- **ComfyUI**: The powerful backend that makes this all possible
-- **shadcn/ui**: Beautiful, accessible component library
-- **Tailwind CSS**: Utility-first CSS framework
-- **React Team**: For the amazing React framework
-- **ComfyUI Community**: For inspiration and feedback
-
----
-
-## Roadmap
-
-- [ ] **Code Quality**: Refactor and improve code quality
-- [ ] **Known Bug Fixes**: Continue fixing reported bugs
-- [ ] **Performance**: Better mobile performance optimization
-- [ ] **UI Polish**: Enhanced mobile interface refinements
-
----
-
-<div align="center">
-
-**Built with ❤️ for the ComfyUI community**
-
-*Enjoy ComfyUI from your couch!*
-
-</div>
