@@ -1,4 +1,4 @@
-*Read this in other languages: [한국어](NEW_README_KOR.md)*
+*Read this in other languages: [한국어](README_KOR.md)*
 <div align="center">
 
 # Comfy Mobile UI
