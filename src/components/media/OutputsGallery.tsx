@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ArrowLeft, Image as ImageIcon, Video, Loader2, RefreshCw, Server, AlertCircle, CheckCircle, Trash2, FolderOpen, Check, X, MousePointer, ChevronLeft, CheckSquare, Copy } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, Video, Loader2, RefreshCw, Server, AlertCircle, CheckCircle, Trash2, FolderOpen, Check, X, MousePointer, ChevronLeft, CheckSquare, Copy, LayoutGrid, FolderTree, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { IComfyFileInfo } from '@/shared/types/comfy/IComfyFile';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { FilePreviewModal } from '../modals/FilePreviewModal';
+import { SimpleConfirmDialog } from '../ui/SimpleConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 
 
@@ -323,11 +324,16 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
 
+  // View mode states
+  const [viewMode, setViewMode] = useState<'flat' | 'folders'>('flat');
+  const [selectedSubfolder, setSelectedSubfolder] = useState<string | null>(null);
+
   // Selection mode states
   const [isSelectionMode, setIsSelectionMode] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<Set<string>>(new Set());
   // Move panel state
   const [showMovePanel, setShowMovePanel] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const navigate = useNavigate();
   const { url: serverUrl, isConnected, hasExtension, isCheckingExtension, checkExtension } = useConnectionStore();
@@ -391,8 +397,10 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   useEffect(() => {
     if (isConnected && hasExtension) {
       loadFiles();
+      // Reset navigation when switching categories
+      setSelectedSubfolder(null);
     }
-  }, [isConnected, hasExtension, loadFiles]);
+  }, [isConnected, hasExtension, loadFiles, activeFolder, activeTab]);
 
 
   const handleRetryConnection = () => {
@@ -486,6 +494,25 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   }, []);
 
   const handleGoBack = () => {
+    // If inside a subfolder in folder view, go back to parent folder
+    if (viewMode === 'folders' && selectedSubfolder && selectedSubfolder !== '/') {
+      const parts = selectedSubfolder.split('/').filter(Boolean);
+      if (parts.length <= 1) {
+        setSelectedSubfolder('/');
+      } else {
+        parts.pop();
+        setSelectedSubfolder(parts.join('/'));
+      }
+      return;
+    }
+
+    // If at root of folder view, we can either stay or go back to main menu
+    // User requested Root Folder to main screen behavior
+    if (viewMode === 'folders' && selectedSubfolder === '/') {
+      // Just let it fall through to default navigate('/')
+    }
+
+    // Otherwise, use default go back behavior
     if (isFileSelectionMode && onBackClick) {
       onBackClick();
     } else {
@@ -493,9 +520,20 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     }
   };
 
+  // Check if any folder is selected
+  const isAnyFolderSelected = useMemo(() => {
+    return Array.from(selectedFiles).some(key => key.startsWith('folder:'));
+  }, [selectedFiles]);
+
   // Selection mode handlers
-  const handleSelectionChange = (file: IComfyFileInfo, selected: boolean) => {
-    const fileKey = `${file.filename}-${file.subfolder}-${file.type}`;
+  const handleSelectionChange = (file: IComfyFileInfo, selected: boolean, isFolder: boolean = false) => {
+    const fileKey = isFolder
+      ? `folder:${file.subfolder || (file.filename === 'Root' ? '/' : file.filename)}` // Simplified for folder name but let's use fullPath logic
+      : `${file.filename}-${file.subfolder}-${file.type}`;
+
+    // Actually, for folders in our recursive view, info objects have 'fullPath'. 
+    // Let's adjust how we call this.
+
     const newSelected = new Set(selectedFiles);
 
     if (selected) {
@@ -508,25 +546,37 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   };
 
   const handleSelectAll = (visibleOnly: boolean = true) => {
-    if (visibleOnly) {
-      const visibleKeys = currentFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
-      const allVisibleSelected = visibleKeys.every(key => selectedFiles.has(key));
+    const newSelected = new Set(selectedFiles);
 
-      const newSelected = new Set(selectedFiles);
-      if (allVisibleSelected) {
-        // Deselect all visible
-        visibleKeys.forEach(key => newSelected.delete(key));
+    if (viewMode === 'folders') {
+      // In folder mode, select only files (not folders) in the CURRENT path
+      const currentPathFilesKeys = folderContent.files.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
+      const allCurrentFilesSelected = currentPathFilesKeys.every(key => selectedFiles.has(key));
+
+      if (allCurrentFilesSelected) {
+        currentPathFilesKeys.forEach(key => newSelected.delete(key));
       } else {
-        // Select all visible
-        visibleKeys.forEach(key => newSelected.add(key));
+        currentPathFilesKeys.forEach(key => newSelected.add(key));
       }
-      setSelectedFiles(newSelected);
     } else {
-      // Legacy behavior: select everything (all images and all videos)
-      const allFilesList = [...files.images, ...files.videos];
-      const allKeys = allFilesList.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
-      setSelectedFiles(new Set(allKeys));
+      // Flat mode behavior
+      if (visibleOnly) {
+        const visibleKeys = currentFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
+        const allVisibleSelected = visibleKeys.every(key => selectedFiles.has(key));
+
+        if (allVisibleSelected) {
+          visibleKeys.forEach(key => newSelected.delete(key));
+        } else {
+          visibleKeys.forEach(key => newSelected.add(key));
+        }
+      } else {
+        const allFilesList = [...files.images, ...files.videos];
+        const allKeys = allFilesList.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
+        allKeys.forEach(key => newSelected.add(key));
+      }
     }
+
+    setSelectedFiles(newSelected);
   };
 
   const handleDeselectAll = () => {
@@ -541,72 +591,84 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   };
 
   // File operations
-  const handleDeleteSelected = async () => {
+  const handleDeleteClick = () => {
     if (selectedFiles.size === 0) return;
 
-    const allFiles = [...files.images, ...files.videos];
-    const selectedFilesList = allFiles.filter(f =>
-      selectedFiles.has(`${f.filename}-${f.subfolder}-${f.type}`)
-    );
+    if (isAnyFolderSelected) {
+      setIsDeleteConfirmOpen(true);
+    } else {
+      handleDeleteSelected();
+    }
+  };
 
-    const filesToDelete = selectedFilesList.map(f => ({
-      filename: f.filename,
-      subfolder: f.subfolder,
-      type: f.type
-    }));
+  const handleDeleteSelected = async () => {
+    const allItems = Array.from(selectedFiles);
+    const filesToDelete: { filename: string; subfolder?: string; type: string }[] = [];
 
-    // For each video file being deleted, also find and delete its matching thumbnail image
-    const additionalThumbnailsToDelete: { filename: string; subfolder?: string; type: string }[] = [];
-
-    for (const file of selectedFilesList) {
-      const isVideo = file.filename.split('.').pop()?.toLowerCase() || '';
-      const videoExtensions = ['mp4', 'avi', 'mov', 'mkv', 'webm'];
-
-      if (videoExtensions.includes(isVideo)) {
-        // This is a video file, find its matching thumbnail using optimized map
-        let videoNameWithoutExt = file.filename.substring(0, file.filename.lastIndexOf('.'));
-        if (videoNameWithoutExt.endsWith('-audio')) {
-          videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
-        }
-
-        const thumbnailKey = `${file.type}/${file.subfolder}/${videoNameWithoutExt}`;
-        const matchingThumbnail = imageLookupMap.get(thumbnailKey);
-
-        if (matchingThumbnail) {
-          // Check if the thumbnail is not already selected for deletion
-          const fullKey = `${matchingThumbnail.filename}-${matchingThumbnail.subfolder}-${matchingThumbnail.type}`;
-          if (!selectedFiles.has(fullKey)) {
-            additionalThumbnailsToDelete.push({
-              filename: matchingThumbnail.filename,
-              subfolder: matchingThumbnail.subfolder,
-              type: matchingThumbnail.type
-            });
-            console.log(`🎬 Found thumbnail to delete with video: ${matchingThumbnail.filename}`);
-          }
+    // 1. Collect explicitly selected files
+    const allFilesFlat = [...files.images, ...files.videos];
+    allItems.forEach(key => {
+      if (!key.startsWith('folder:')) {
+        const file = allFilesFlat.find(f => `${f.filename}-${f.subfolder}-${f.type}` === key);
+        if (file) {
+          filesToDelete.push({ filename: file.filename, subfolder: file.subfolder, type: file.type });
         }
       }
-    }
+    });
 
-    // Combine original files and additional thumbnails
-    const allFilesToDelete = [...filesToDelete, ...additionalThumbnailsToDelete];
+    // 2. Collect files from selected folders
+    const selectedFolderPaths = allItems.filter(k => k.startsWith('folder:')).map(k => k.replace('folder:', ''));
+
+    selectedFolderPaths.forEach(folderPath => {
+      const searchPath = folderPath === '/' ? '' : folderPath;
+      const folderFiles = allFilesFlat.filter(f => {
+        const fSub = f.subfolder || '/';
+        return fSub === folderPath || fSub.startsWith(searchPath === '' ? '/' : searchPath + '/');
+      });
+
+      folderFiles.forEach(f => {
+        // Avoid duplicates
+        if (!filesToDelete.some(d => d.filename === f.filename && d.subfolder === f.subfolder && d.type === f.type)) {
+          filesToDelete.push({ filename: f.filename, subfolder: f.subfolder, type: f.type });
+        }
+      });
+    });
+
+    if (filesToDelete.length === 0) return;
+
+    // 3. Find matching thumbnails for videos being deleted
+    const additionalThumbnails: { filename: string; subfolder?: string; type: string }[] = [];
+    filesToDelete.forEach(file => {
+      const isVideo = ['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(file.filename.split('.').pop()?.toLowerCase() || '');
+      if (isVideo) {
+        let videoName = file.filename.substring(0, file.filename.lastIndexOf('.'));
+        if (videoName.endsWith('-audio')) videoName = videoName.substring(0, videoName.lastIndexOf('-audio'));
+        const thumbKey = `${file.type}/${file.subfolder}/${videoName}`;
+        const thumb = imageLookupMap.get(thumbKey);
+        if (thumb && !filesToDelete.some(d => d.filename === thumb.filename && d.subfolder === thumb.subfolder && d.type === thumb.type)) {
+          additionalThumbnails.push({ filename: thumb.filename, subfolder: thumb.subfolder, type: thumb.type });
+        }
+      }
+    });
+
+    const finalDeleteList = [...filesToDelete, ...additionalThumbnails];
 
     try {
       setLoading(true);
-      const result = await comfyFileService.deleteFiles(allFilesToDelete);
+      const result = await comfyFileService.deleteFiles(finalDeleteList);
 
       if (result.success) {
-        const totalDeleted = allFilesToDelete.length;
-        const thumbnailsDeleted = additionalThumbnailsToDelete.length;
-        console.log(`✅ Successfully deleted ${totalDeleted} files${thumbnailsDeleted > 0 ? ` (including ${thumbnailsDeleted} thumbnails)` : ''}`);
-        await loadFiles(); // Refresh the file list
+        console.log(`✅ Successfully deleted ${finalDeleteList.length} items`);
+        await loadFiles();
         setSelectedFiles(new Set());
         setIsSelectionMode(false);
+        setIsDeleteConfirmOpen(false);
       } else {
-        setError(`Failed to delete files: ${result.error}`);
+        setError(`Failed to delete items: ${result.error}`);
       }
     } catch (error) {
       console.error('Delete operation failed:', error);
-      setError('Failed to delete selected files');
+      setError('Failed to delete selected items');
     } finally {
       setLoading(false);
     }
@@ -728,6 +790,53 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     return files[activeTab];
   }, [files, activeTab, hasCorrespondingVideo]);
 
+  // Extract current level's folders and files
+  const folderContent = useMemo(() => {
+    const currentPath = selectedSubfolder || '/';
+    const subfolders = new Map<string, { count: number, lastFile: IComfyFileInfo, fullPath: string }>();
+    const filesInCurrentFolder: IComfyFileInfo[] = [];
+
+    currentFiles.forEach(file => {
+      const fileSubfolder = file.subfolder || '/';
+
+      if (fileSubfolder === currentPath) {
+        // This file is directly in the current folder
+        filesInCurrentFolder.push(file);
+      } else if (fileSubfolder.startsWith(currentPath === '/' ? '' : currentPath + '/')) {
+        // This file is in a subfolder of the current path
+        const relativePath = currentPath === '/'
+          ? fileSubfolder
+          : fileSubfolder.substring(currentPath.length + 1);
+
+        const directSubfolderName = relativePath.split('/')[0];
+        const fullSubfolderPath = currentPath === '/'
+          ? directSubfolderName
+          : `${currentPath}/${directSubfolderName}`;
+
+        const existing = subfolders.get(directSubfolderName);
+        if (existing) {
+          existing.count++;
+        } else {
+          subfolders.set(directSubfolderName, {
+            count: 1,
+            lastFile: file,
+            fullPath: fullSubfolderPath
+          });
+        }
+      }
+    });
+
+    const sortedFolders = Array.from(subfolders.entries()).map(([name, info]) => ({
+      name,
+      ...info
+    })).sort((a, b) => a.name.localeCompare(b.name));
+
+    return {
+      folders: sortedFolders,
+      files: filesInCurrentFolder
+    };
+  }, [currentFiles, selectedSubfolder]);
+
   const totalFiles = files.images.length + files.videos.length;
 
   return (
@@ -757,11 +866,29 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                 <ChevronLeft className="h-8 w-8 text-white stroke-[2.5]" />
               </button>
               <h1 className="text-4xl font-black text-white leading-none tracking-tighter">
-                {isFileSelectionMode ? (selectionTitle || t('gallery.selectFile')) : t(`gallery.tabs.${activeTab}`)}
+                {isFileSelectionMode
+                  ? (selectionTitle || t('gallery.selectFile'))
+                  : (selectedSubfolder && viewMode === 'folders'
+                    ? (selectedSubfolder === '/' ? 'Root' : selectedSubfolder.split('/').pop())
+                    : t(`gallery.tabs.${activeTab}`))}
               </h1>
             </div>
 
             <div className="flex items-center space-x-2">
+              {/* View Mode Toggle */}
+              {!isSelectionMode && (!selectedSubfolder || selectedSubfolder === '/') && (
+                <button
+                  onClick={() => {
+                    setViewMode(viewMode === 'flat' ? 'folders' : 'flat');
+                    setSelectedSubfolder(viewMode === 'flat' ? '/' : null);
+                  }}
+                  className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl"
+                  title={viewMode === 'flat' ? 'Folders' : 'Grid'}
+                >
+                  {viewMode === 'flat' ? <FolderTree className="h-7 w-7" /> : <LayoutGrid className="h-7 w-7" />}
+                </button>
+              )}
+
               {/* Refresh Button - Added per user request */}
               <AnimatePresence>
                 {!isSelectionMode && (
@@ -812,13 +939,15 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
           {/* Row 2: Sub-label aligned with Title - Scaled Up & Solid White */}
           <div className="pl-[72px]">
             <p className="text-base font-black text-white uppercase tracking-[0.2em]">
-              {activeFolder === 'all'
-                ? t('gallery.filesTotal', { count: currentFiles.length })
-                : t('gallery.folderSummary', {
-                  count: currentFiles.length,
-                  folder: t(`gallery.folders.${activeFolder}`),
-                  type: t('gallery.actions.files')
-                })}
+              {viewMode === 'folders'
+                ? (selectedSubfolder && selectedSubfolder !== '/' ? selectedSubfolder : "Root Folder")
+                : (activeFolder === 'all'
+                  ? t('gallery.filesTotal', { count: currentFiles.length })
+                  : t('gallery.folderSummary', {
+                    count: currentFiles.length,
+                    folder: t(`gallery.folders.${activeFolder}`),
+                    type: t('gallery.actions.files')
+                  }))}
             </p>
           </div>
         </div>
@@ -846,21 +975,128 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
             <p className="text-white/30 text-sm font-bold uppercase tracking-widest">{t('gallery.noFiles')}</p>
           </div>
         ) : (
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px">
-            {currentFiles.map((file, index) => (
-              <LazyImage
-                key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
-                file={file}
-                index={index}
-                onImageClick={handleFileClick}
-                isSelectionMode={isSelectionMode}
-                isSelected={selectedFiles.has(`${file.filename}-${file.subfolder}-${file.type}`)}
-                onSelectionChange={handleSelectionChange}
-                fileService={comfyFileService}
-                videoLookupMap={videoLookupMap}
-                imageLookupMap={imageLookupMap}
-              />
-            ))}
+          <div className="relative">
+            <AnimatePresence mode="wait">
+              {viewMode === 'folders' ? (
+                <motion.div
+                  key={`recursive-view-${selectedSubfolder}`}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {/* Folders Section First */}
+                  {folderContent.folders.length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 px-4 mb-8">
+                      {folderContent.folders.map((folder) => (
+                        <motion.div
+                          key={folder.fullPath}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => {
+                            if (isSelectionMode) {
+                              const key = `folder:${folder.fullPath}`;
+                              const newSelected = new Set(selectedFiles);
+                              if (newSelected.has(key)) newSelected.delete(key);
+                              else newSelected.add(key);
+                              setSelectedFiles(newSelected);
+                            } else {
+                              setSelectedSubfolder(folder.fullPath);
+                            }
+                          }}
+                          className={`bg-slate-900/50 border rounded-3xl overflow-hidden cursor-pointer group hover:bg-slate-800/80 transition-all shadow-xl ${selectedFiles.has(`folder:${folder.fullPath}`) ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-white/10'
+                            }`}
+                        >
+                          <div className="aspect-square relative">
+                            {/* Selection Checkbox - Immersive Circle */}
+                            {isSelectionMode && (
+                              <div className="absolute top-3 left-3 z-30">
+                                <div className={`w-7 h-7 rounded-full border-2 border-white/50 backdrop-blur-md flex items-center justify-center transition-all duration-300 ${selectedFiles.has(`folder:${folder.fullPath}`) ? 'bg-blue-600 border-blue-400 scale-110 shadow-lg' : 'bg-black/20 hover:bg-black/40'}`}>
+                                  {selectedFiles.has(`folder:${folder.fullPath}`) && <Check className="h-4 w-4 text-white stroke-[3px]" />}
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Folder Thumbnail (latest image in folder) */}
+                            <img
+                              src={comfyFileService.createDownloadUrl({
+                                filename: folder.lastFile.filename,
+                                subfolder: folder.lastFile.subfolder,
+                                type: folder.lastFile.type,
+                                preview: true
+                              })}
+                              alt={folder.name}
+                              className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                            />
+                            <div className="absolute inset-0 flex items-center justify-center">
+                              <div className="bg-black/40 backdrop-blur-md rounded-full p-4 group-hover:bg-blue-600/60 transition-colors">
+                                <FolderTree className="h-8 w-8 text-white" />
+                              </div>
+                            </div>
+                            <div className="absolute bottom-3 right-3 bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
+                              {folder.count}
+                            </div>
+                          </div>
+                          <div className="p-4 bg-gradient-to-b from-transparent to-black/80">
+                            <p className="text-white font-bold truncate text-sm">
+                              {folder.name}
+                            </p>
+                          </div>
+                        </motion.div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Files Section Second */}
+                  {folderContent.files.length > 0 ? (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px">
+                      {folderContent.files.map((file, index) => (
+                        <LazyImage
+                          key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
+                          file={file}
+                          index={index}
+                          onImageClick={handleFileClick}
+                          isSelectionMode={isSelectionMode}
+                          isSelected={selectedFiles.has(`${file.filename}-${file.subfolder}-${file.type}`)}
+                          onSelectionChange={handleSelectionChange}
+                          fileService={comfyFileService}
+                          videoLookupMap={videoLookupMap}
+                          imageLookupMap={imageLookupMap}
+                        />
+                      ))}
+                    </div>
+                  ) : folderContent.folders.length === 0 && (
+                    <div className="text-center py-40">
+                      <ImageIcon className="h-16 w-16 text-white/10 mx-auto mb-6" />
+                      <p className="text-white/30 text-sm font-bold uppercase tracking-widest">{t('gallery.noFiles')}</p>
+                    </div>
+                  )}
+                </motion.div>
+              ) : (
+                <motion.div
+                  key="flat-view"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px"
+                >
+                  {currentFiles.map((file, index) => (
+                    <LazyImage
+                      key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
+                      file={file}
+                      index={index}
+                      onImageClick={handleFileClick}
+                      isSelectionMode={isSelectionMode}
+                      isSelected={selectedFiles.has(`${file.filename}-${file.subfolder}-${file.type}`)}
+                      onSelectionChange={handleSelectionChange}
+                      fileService={comfyFileService}
+                      videoLookupMap={videoLookupMap}
+                      imageLookupMap={imageLookupMap}
+                    />
+                  ))}
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         )}
       </main>
@@ -896,8 +1132,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                 </AnimatePresence>
                 <button
                   onClick={() => setShowMovePanel(!showMovePanel)}
-                  disabled={selectedFiles.size === 0}
-                  className={`w-14 h-14 flex items-center justify-center rounded-full backdrop-blur-md border-2 transition-all active:scale-90 ${selectedFiles.size > 0
+                  disabled={selectedFiles.size === 0 || isAnyFolderSelected}
+                  className={`w-14 h-14 flex items-center justify-center rounded-full backdrop-blur-md border-2 transition-all active:scale-90 ${selectedFiles.size > 0 && !isAnyFolderSelected
                     ? 'bg-white/10 border-white/20 text-white'
                     : 'opacity-0 scale-75 pointer-events-none'
                     }`}
@@ -908,10 +1144,17 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
               {/* Selection Counter - Scaled Up */}
               <div className="flex flex-col items-center">
-                <span className="text-white text-2xl font-black tracking-tighter">
-                  {t('gallery.selectionSummary', { count: selectedFiles.size, type: t(`gallery.tabs.${activeTab}`) })}
+                <span className="text-white text-xl font-black tracking-tighter text-center leading-tight">
+                  {isAnyFolderSelected ? (
+                    t('gallery.selectionCombined', {
+                      folderCount: Array.from(selectedFiles).filter(k => k.startsWith('folder:')).length,
+                      fileCount: Array.from(selectedFiles).filter(k => !k.startsWith('folder:')).length
+                    })
+                  ) : (
+                    t('gallery.selectionSummary', { count: selectedFiles.size, type: t(`gallery.tabs.${activeTab}`) })
+                  )}
                 </span>
-                <span className="text-blue-400 text-xs font-black uppercase tracking-[0.3em] mt-1">
+                <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] mt-0.5">
                   {t('gallery.selectedLabel')}
                 </span>
               </div>
@@ -919,7 +1162,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
               {/* Delete Button */}
               <div className="flex justify-end">
                 <button
-                  onClick={handleDeleteSelected}
+                  onClick={handleDeleteClick}
                   disabled={selectedFiles.size === 0}
                   className={`w-14 h-14 flex items-center justify-center rounded-full backdrop-blur-md border-2 transition-all active:scale-90 ${selectedFiles.size > 0
                     ? 'bg-red-500/80 text-white border-red-500/40 shadow-lg shadow-red-500/20'
@@ -981,6 +1224,16 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
           onRetry={handlePreviewRetry}
         />
       )}
+      {/* Folder Delete Confirmation */}
+      <SimpleConfirmDialog
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        onConfirm={handleDeleteSelected}
+        title={t('gallery.deleteConfirmTitle')}
+        message={t('gallery.deleteConfirmMessage')}
+        confirmText={t('gallery.deleteConfirmConfirm')}
+        isDestructive={true}
+      />
     </div>
   );
 };

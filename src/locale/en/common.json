@@ -584,6 +584,7 @@
         "folderSummary": "Total {{count}} {{folder}} {{type}}",
         "selectedCount": "{{count}} selected",
         "selectionSummary": "{{count}} {{type}}",
+        "selectionCombined": "{{folderCount}} folders, {{fileCount}} images selected",
         "selectedLabel": "Selected",
         "clearSelection": "Clear selection",
         "selectAll": "Select all",
@@ -626,7 +627,10 @@
             "extensionNotFound": "ComfyUI Mobile UI API extension not found",
             "installInstruction": "Install the ComfyUI Mobile UI API extension in your ComfyUI custom_nodes directory.",
             "recheck": "Recheck"
-        }
+        },
+        "deleteConfirmTitle": "Confirm Delete",
+        "deleteConfirmMessage": "All images and folders inside this folder will be deleted. Are you sure you want to proceed?",
+        "deleteConfirmConfirm": "Delete Everything"
     },
     "media": {
         "loading": "Loading...",

@@ -580,6 +580,7 @@
         "folderSummary": "合計 {{count}} 個の {{folder}} {{type}}",
         "selectedCount": "{{count}} 個選択済み",
         "selectionSummary": "{{count}} 個の {{type}}",
+        "selectionCombined": "フォルダ{{folderCount}}件、ファイル{{fileCount}}件を選択中",
         "selectedLabel": "選択済み",
         "clearSelection": "選択をクリア",
         "selectAll": "すべて選択",
@@ -622,7 +623,10 @@
             "extensionNotFound": "ComfyUIモバイルUI API拡張機能が見つかりません",
             "installInstruction": "ComfyUIのcustom_nodesディレクトリにComfyUIモバイルUI API拡張機能をインストールしてください。",
             "recheck": "再確認"
-        }
+        },
+        "deleteConfirmTitle": "項目の削除確認",
+        "deleteConfirmMessage": "選択したフォルダ内のすべてのファイルとサブフォルダが完全に削除されます。この操作は元に戻せません。",
+        "deleteConfirmConfirm": "すべて削除"
     },
     "media": {
         "loading": "読み込み中...",

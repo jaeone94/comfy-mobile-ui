@@ -455,31 +455,39 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
             </div>
           )}
 
-          {/* Upload Icons for Image/Video Files */}
-          {currentValue != null && typeof currentValue === 'string' && (isImageFile(currentValue) || isVideoFile(currentValue)) && (
-            <>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  e.preventDefault();
-                  onFileUpload(nodeId, param.name);
-                }}
-                disabled={uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name}
-                className={`p-1.5 rounded-md transition-all duration-200 hover:shadow-sm active:scale-95 border ${uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name
-                  ? 'bg-gray-100 dark:bg-gray-800 text-gray-400 dark:text-gray-600 border-gray-200 dark:border-gray-700 cursor-not-allowed'
-                  : 'bg-green-100 hover:bg-green-200 dark:bg-green-900/30 dark:hover:bg-green-800/50 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700'
-                  }`}
-                title={t('node.uploadNewFile', { type: isImageFile(currentValue) ? t('node.image') : t('node.video') })}
-              >
-                {uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name ? (
-                  <div className="w-4 h-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <Upload className="w-4 h-4" />
-                )}
-              </button>
-            </>
-          )}
         </div>
+
+        {/* Prominent Upload Button for Image/Video Files */}
+        {currentValue != null && typeof currentValue === 'string' && (isImageFile(currentValue) || isVideoFile(currentValue)) && (
+          <div className="mt-3 mb-3">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                e.preventDefault();
+                onFileUpload(nodeId, param.name);
+              }}
+              disabled={uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name}
+              className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg font-bold transition-all duration-200 active:scale-[0.98] border shadow-sm ${uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name
+                ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-700 cursor-not-allowed'
+                : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-800/50'
+                }`}
+            >
+              {uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+                  <span className="text-sm">{t('gallery.uploading')}</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="w-4 h-4" />
+                  <span className="text-sm">
+                    {t('node.uploadNewFile', { type: isImageFile(currentValue) ? t('node.image') : t('node.video') })}
+                  </span>
+                </>
+              )}
+            </button>
+          </div>
+        )}
 
         {/* Upload Status Message */}
         {uploadState.message && uploadState.nodeId === nodeId && uploadState.paramName === param.name && (
@@ -525,97 +533,105 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       </div>
 
       {/* Parameter Description */}
-      {param.description && (
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
-          {param.description}
-        </p>
-      )}
+      {
+        param.description && (
+          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+            {param.description}
+          </p>
+        )
+      }
 
       {/* Possible Values for COMBO type */}
-      {param.possibleValues && param.possibleValues.length > 0 && (
-        <div className="text-xs text-slate-500 dark:text-slate-400">
-          <span className="font-medium">{t('node.options')}: </span>
-          <span>
-            {(() => {
-              // Truncate long option values
-              const truncateOption = (option: string, maxLength: number = 20) => {
-                return option.length > maxLength ? option.substring(0, maxLength) + '...' : option;
-              };
+      {
+        param.possibleValues && param.possibleValues.length > 0 && (
+          <div className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="font-medium">{t('node.options')}: </span>
+            <span>
+              {(() => {
+                // Truncate long option values
+                const truncateOption = (option: string, maxLength: number = 20) => {
+                  return option.length > maxLength ? option.substring(0, maxLength) + '...' : option;
+                };
 
-              const displayOptions = param.possibleValues!.slice(0, 3).map(option =>
-                truncateOption(String(option))
-              );
+                const displayOptions = param.possibleValues!.slice(0, 3).map(option =>
+                  truncateOption(String(option))
+                );
 
-              const optionsText = displayOptions.join(', ');
+                const optionsText = displayOptions.join(', ');
 
-              // If the combined text is still too long, further truncate
-              const maxTotalLength = 60;
-              if (optionsText.length > maxTotalLength) {
-                return optionsText.substring(0, maxTotalLength) + '...';
-              }
+                // If the combined text is still too long, further truncate
+                const maxTotalLength = 60;
+                if (optionsText.length > maxTotalLength) {
+                  return optionsText.substring(0, maxTotalLength) + '...';
+                }
 
-              const remainingCount = param.possibleValues!.length - displayOptions.length;
-              return optionsText + (remainingCount > 0 ? ` + ${t('node.more', { count: remainingCount })}` : '');
-            })()}
-          </span>
-        </div>
-      )}
+                const remainingCount = param.possibleValues!.length - displayOptions.length;
+                return optionsText + (remainingCount > 0 ? ` + ${t('node.more', { count: remainingCount })}` : '');
+              })()}
+            </span>
+          </div>
+        )
+      }
 
       {/* Validation Info for INT/FLOAT types */}
-      {param.validation && (
-        <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-          {param.validation.min !== undefined && (
-            <span>{t('node.min')}: {param.validation.min} </span>
-          )}
-          {param.validation.max !== undefined && (
-            <span>{t('node.max')}: {param.validation.max} </span>
-          )}
-          {param.validation.step !== undefined && (
-            <span>{t('node.step')}: {param.validation.step}</span>
-          )}
-        </div>
-      )}
+      {
+        param.validation && (
+          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+            {param.validation.min !== undefined && (
+              <span>{t('node.min')}: {param.validation.min} </span>
+            )}
+            {param.validation.max !== undefined && (
+              <span>{t('node.max')}: {param.validation.max} </span>
+            )}
+            {param.validation.step !== undefined && (
+              <span>{t('node.step')}: {param.validation.step}</span>
+            )}
+          </div>
+        )
+      }
 
       {/* File Selection Gallery - Rendered via Portal */}
-      {showAlbumModal && createPortal(
-        <div
-          className="fixed inset-0 z-[9999] bg-white dark:bg-slate-900 overflow-auto overscroll-contain"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            zIndex: 9999,
-            overflow: 'auto',
-            WebkitOverflowScrolling: 'touch',
-            overscrollBehavior: 'contain'
-          }}
-        >
-          <OutputsGallery
-            isFileSelectionMode={true}
-            {...getGalleryPermissions(param.name, currentValue, param.possibleValues)}
-            initialFolder="input"
-            onFileSelect={(filename) => {
-              // For IMAGE/VIDEO types, directly update widget value without editing mode
-              // Start editing mode, set value, and save immediately
-              onStartEditing(nodeId, param.name, filename);
-              // Set the editing value
-              setTimeout(() => {
-                onEditingValueChange(filename);
-                // Save immediately
-                setTimeout(() => {
-                  onSaveEditing();
-                }, 50);
-              }, 50);
-              setShowAlbumModal(false);
+      {
+        showAlbumModal && createPortal(
+          <div
+            className="fixed inset-0 z-[9999] bg-white dark:bg-slate-900 overflow-auto overscroll-contain"
+            style={{
+              position: 'fixed',
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              zIndex: 9999,
+              overflow: 'auto',
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain'
             }}
-            onBackClick={() => setShowAlbumModal(false)}
-            selectionTitle={t('node.selectionTitle', { type: (param.type === 'IMAGE' || isImageParam) ? t('node.image') : (param.type === 'VIDEO' || isVideoParam) ? t('node.video') : t('node.file'), name: param.name })}
-          />
-        </div>,
-        document.body
-      )}
-    </div>
+          >
+            <OutputsGallery
+              isFileSelectionMode={true}
+              {...getGalleryPermissions(param.name, currentValue, param.possibleValues)}
+              initialFolder="input"
+              onFileSelect={(filename) => {
+                // For IMAGE/VIDEO types, directly update widget value without editing mode
+                // Start editing mode, set value, and save immediately
+                onStartEditing(nodeId, param.name, filename);
+                // Set the editing value
+                setTimeout(() => {
+                  onEditingValueChange(filename);
+                  // Save immediately
+                  setTimeout(() => {
+                    onSaveEditing();
+                  }, 50);
+                }, 50);
+                setShowAlbumModal(false);
+              }}
+              onBackClick={() => setShowAlbumModal(false)}
+              selectionTitle={t('node.selectionTitle', { type: (param.type === 'IMAGE' || isImageParam) ? t('node.image') : (param.type === 'VIDEO' || isVideoParam) ? t('node.video') : t('node.file'), name: param.name })}
+            />
+          </div>,
+          document.body
+        )
+      }
+    </div >
   );
 };

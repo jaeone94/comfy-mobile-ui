@@ -580,6 +580,7 @@
         "folderSummary": "共 {{count}} 个 {{folder}} {{type}}",
         "selectedCount": "已选 {{count}} 个",
         "selectionSummary": "{{count}} 个 {{type}}",
+        "selectionCombined": "已选择 {{folderCount}} 个文件夹，{{fileCount}} 张图像",
         "selectedLabel": "已选",
         "clearSelection": "清除选择",
         "selectAll": "全选",
@@ -622,7 +623,10 @@
             "extensionNotFound": "未找到 ComfyUI 移动端 UI API 扩展",
             "installInstruction": "请在您的 ComfyUI custom_nodes 目录中安装 ComfyUI 移动端 UI API 扩展。",
             "recheck": "重新检查"
-        }
+        },
+        "deleteConfirmTitle": "确认删除项目",
+        "deleteConfirmMessage": "所选文件夹内的所有文件和子文件夹都将被永久删除。此操作无法撤销。",
+        "deleteConfirmConfirm": "全部删除"
     },
     "media": {
         "loading": "加载中...",
