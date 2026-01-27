@@ -11,6 +11,7 @@ import { useConnectionStore } from '@/ui/store/connectionStore';
 import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { SimpleConfirmDialog } from '../ui/SimpleConfirmDialog';
 import { useNavigate } from 'react-router-dom';
+import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 
 
 type TabType = 'images' | 'videos';
@@ -26,17 +27,17 @@ const findMatchingImageFile = (
   // Get video filename without extension
   let videoNameWithoutExt = videoFilename.substring(0, videoFilename.lastIndexOf('.'));
 
-  // Remove -audio suffix if present (e.g., "something-video-audio" -> "something-video")
+  // Remove -audio suffix if present
   if (videoNameWithoutExt.endsWith('-audio')) {
     videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
   }
 
-  // Look for image with same name but image extension in the SAME subfolder and folder type
+  const normSub = subfolder === '/' ? '' : (subfolder || '');
   const imageExtensions = ['png', 'jpg', 'jpeg', 'gif', 'webp'];
 
   for (const img of imageFiles) {
-    // Must match subfolder and folder type (input/output/temp) as well as filename
-    if (img.subfolder !== subfolder || img.type !== type) {
+    const imgSub = img.subfolder === '/' ? '' : (img.subfolder || '');
+    if (imgSub !== normSub || img.type !== type) {
       continue;
     }
 
@@ -114,10 +115,6 @@ const LazyImage: React.FC<LazyImageProps> = ({
     return () => observer.disconnect();
   }, [index]);
 
-  const isVideoFile = (filename: string) => {
-    const ext = filename.split('.').pop()?.toLowerCase() || '';
-    return ['mp4', 'avi', 'mov', 'mkv', 'webm'].includes(ext);
-  };
 
   // Find matching image thumbnail for video files using the optimized map
   const findMatchingImageForVideo = (videoFilename: string): IComfyFileInfo | null => {
@@ -128,14 +125,16 @@ const LazyImage: React.FC<LazyImageProps> = ({
       videoNameWithoutExt = videoNameWithoutExt.substring(0, videoNameWithoutExt.lastIndexOf('-audio'));
     }
 
-    const key = `${file.type}/${file.subfolder}/${videoNameWithoutExt}`;
+    const normSub = file.subfolder === '/' ? '' : (file.subfolder || '');
+    const key = `${file.type}/${normSub}/${videoNameWithoutExt}`;
     return imageLookupMap.get(key) || null;
   };
 
   // Check if an image file has a corresponding video (optimized O(1) lookup)
   const hasCorrespondingVideo = useCallback((imageFile: IComfyFileInfo): boolean => {
     const imgNameWithoutExt = imageFile.filename.substring(0, imageFile.filename.lastIndexOf('.'));
-    const key = `${imageFile.type}/${imageFile.subfolder}/${imgNameWithoutExt}`;
+    const normSub = imageFile.subfolder === '/' ? '' : (imageFile.subfolder || '');
+    const key = `${imageFile.type}/${normSub}/${imgNameWithoutExt}`;
     return videoLookupMap.has(key);
   }, [videoLookupMap]);
 
@@ -740,10 +739,6 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     }
   };
 
-  const isImageFile = (filename: string) => {
-    const ext = filename.split('.').pop()?.toLowerCase() || '';
-    return ['png', 'jpg', 'jpeg', 'gif', 'bmp', 'webp'].includes(ext);
-  };
 
   // Create optimized lookup maps for images and videos to replace O(N^2) loops
   const videoLookupMap = useMemo(() => {
@@ -751,7 +746,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     files.videos.forEach(video => {
       let name = video.filename.substring(0, video.filename.lastIndexOf('.'));
       if (name.endsWith('-audio')) name = name.substring(0, name.lastIndexOf('-audio'));
-      const key = `${video.type}/${video.subfolder}/${name}`;
+      const normSub = video.subfolder === '/' ? '' : (video.subfolder || '');
+      const key = `${video.type}/${normSub}/${name}`;
       map.set(key, video);
     });
     return map;
@@ -761,7 +757,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     const map = new Map<string, IComfyFileInfo>();
     files.images.forEach(img => {
       const name = img.filename.substring(0, img.filename.lastIndexOf('.'));
-      const key = `${img.type}/${img.subfolder}/${name}`;
+      const normSub = img.subfolder === '/' ? '' : (img.subfolder || '');
+      const key = `${img.type}/${normSub}/${name}`;
       map.set(key, img);
     });
     return map;
@@ -770,7 +767,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   // Check if an image file has a corresponding video (optimized O(1) lookup)
   const hasCorrespondingVideo = useCallback((imageFile: IComfyFileInfo): boolean => {
     const imgNameWithoutExt = imageFile.filename.substring(0, imageFile.filename.lastIndexOf('.'));
-    const key = `${imageFile.type}/${imageFile.subfolder}/${imgNameWithoutExt}`;
+    const normSub = imageFile.subfolder === '/' ? '' : (imageFile.subfolder || '');
+    const key = `${imageFile.type}/${normSub}/${imgNameWithoutExt}`;
     return videoLookupMap.has(key);
   }, [videoLookupMap]);
 
@@ -793,7 +791,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   // Extract current level's folders and files
   const folderContent = useMemo(() => {
     const currentPath = selectedSubfolder || '/';
-    const subfolders = new Map<string, { count: number, lastFile: IComfyFileInfo, fullPath: string }>();
+    const subfolders = new Map<string, { count: number, lastFile: IComfyFileInfo, thumbnailFile: IComfyFileInfo, fullPath: string }>();
     const filesInCurrentFolder: IComfyFileInfo[] = [];
 
     currentFiles.forEach(file => {
@@ -816,10 +814,35 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         const existing = subfolders.get(directSubfolderName);
         if (existing) {
           existing.count++;
+          // If current thumbnail is video, try to replace it with an image if possible
+          const isCurrentThumbVideo = isVideoFile(existing.thumbnailFile.filename);
+
+          if (isCurrentThumbVideo) {
+            const isNewFileImage = isImageFile(file.filename);
+            if (isNewFileImage) {
+              existing.thumbnailFile = file;
+            }
+          }
         } else {
+          // Determine best thumbnail: if file is video, try to find matching image
+          let thumbnailFile = file;
+          const isVideo = isVideoFile(file.filename);
+
+          if (isVideo) {
+            let videoName = file.filename.substring(0, file.filename.lastIndexOf('.'));
+            if (videoName.endsWith('-audio')) videoName = videoName.substring(0, videoName.lastIndexOf('-audio'));
+            const normSub = (file.subfolder || '') === '/' ? '' : (file.subfolder || '');
+            const key = `${file.type}/${normSub}/${videoName}`;
+            const matchingImg = imageLookupMap.get(key);
+            if (matchingImg) {
+              thumbnailFile = matchingImg;
+            }
+          }
+
           subfolders.set(directSubfolderName, {
             count: 1,
             lastFile: file,
+            thumbnailFile: thumbnailFile,
             fullPath: fullSubfolderPath
           });
         }
@@ -1020,13 +1043,24 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                             {/* Folder Thumbnail (latest image in folder) */}
                             <img
                               src={comfyFileService.createDownloadUrl({
-                                filename: folder.lastFile.filename,
-                                subfolder: folder.lastFile.subfolder,
-                                type: folder.lastFile.type,
+                                filename: folder.thumbnailFile.filename,
+                                subfolder: folder.thumbnailFile.subfolder,
+                                type: folder.thumbnailFile.type,
                                 preview: true
                               })}
                               alt={folder.name}
                               className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
+                              onError={(e) => {
+                                // Fallback to lastFile if thumbnailFile fails
+                                if (folder.thumbnailFile !== folder.lastFile) {
+                                  (e.target as HTMLImageElement).src = comfyFileService.createDownloadUrl({
+                                    filename: folder.lastFile.filename,
+                                    subfolder: folder.lastFile.subfolder,
+                                    type: folder.lastFile.type,
+                                    preview: true
+                                  });
+                                }
+                              }}
                             />
                             <div className="absolute inset-0 flex items-center justify-center">
                               <div className="bg-black/40 backdrop-blur-md rounded-full p-4 group-hover:bg-blue-600/60 transition-colors">
