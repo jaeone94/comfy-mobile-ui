@@ -1709,6 +1709,78 @@ function preprocessVariablesAndSetNodes(workingGraph: any) {
 }
 
 /**
+ * Recursively resolve a variable's final physical source node.
+ * Handles chains like Get(A) -> Set(B) -> Get(B) -> Set(C) ...
+ */
+function findFinalVariableSource(
+  variableName: string,
+  variableStore: Record<string, any>,
+  workingGraph: any,
+  depth: number = 0
+): [string, number] | null {
+  if (depth > 50) {
+    console.error(`[Variable] Max recursion depth reached for variable "${variableName}"`);
+    return null;
+  }
+
+  const variable = variableStore[variableName];
+  if (!variable || !variable.value) return null;
+
+  const [sourceId, slot] = variable.value;
+  const sourceNode = workingGraph._nodes.find((n: any) => String(n.id) === String(sourceId));
+
+  // If the source of this variable is another GetNode, resolve it recursively
+  if (sourceNode && (sourceNode.type === 'GetNode' || sourceNode.type === 'easy getNode' || sourceNode.type === 'GetNode (rgthree)')) {
+    let nestedVarName = '';
+    if (Array.isArray(sourceNode.widgets_values)) {
+      nestedVarName = sourceNode.widgets_values[0] ? String(sourceNode.widgets_values[0]) : '';
+    } else if (sourceNode.widgets_values && typeof sourceNode.widgets_values === 'object') {
+      nestedVarName = String(sourceNode.widgets_values['constant_name'] || sourceNode.widgets_values['key'] || sourceNode.widgets_values['any'] || Object.values(sourceNode.widgets_values)[0] || '');
+    }
+
+    if (nestedVarName && nestedVarName !== variableName) {
+      console.log(`[Variable] Chain detected: "${variableName}" -> GetNode(${sourceId}) -> "${nestedVarName}"`);
+      return findFinalVariableSource(nestedVarName, variableStore, workingGraph, depth + 1);
+    }
+  }
+
+  return variable.value;
+}
+
+/**
+ * Recursively resolve a node's final source, bypassing any virtual nodes like GetNode.
+ */
+function findFinalNodeSource(
+  nodeId: string,
+  slotIndex: number,
+  workingGraph: any,
+  variableStore: Record<string, any>,
+  depth: number = 0
+): [string, number] {
+  if (depth > 50) return [nodeId, slotIndex];
+
+  const node = workingGraph._nodes.find((n: any) => String(n.id) === String(nodeId));
+  if (!node) return [nodeId, slotIndex];
+
+  // If the node is a GetNode, resolve its variable
+  if (node.type === 'GetNode' || node.type === 'easy getNode' || node.type === 'GetNode (rgthree)') {
+    let variableName = '';
+    if (Array.isArray(node.widgets_values)) {
+      variableName = node.widgets_values[0] ? String(node.widgets_values[0]) : '';
+    } else if (node.widgets_values && typeof node.widgets_values === 'object') {
+      variableName = String(node.widgets_values['constant_name'] || node.widgets_values['key'] || node.widgets_values['any'] || Object.values(node.widgets_values)[0] || '');
+    }
+
+    if (variableName) {
+      const finalValue = findFinalVariableSource(variableName, variableStore, workingGraph, depth + 1);
+      if (finalValue) return finalValue;
+    }
+  }
+
+  return [nodeId, slotIndex];
+}
+
+/**
  * Step 5: Process GetNode connections and SetNode output bypass
  */
 function resolveGetNodeConnections(workingGraph: any, variableStore: Record<string, any>) {
@@ -1727,9 +1799,10 @@ function resolveGetNodeConnections(workingGraph: any, variableStore: Record<stri
         variableName = String(node.widgets_values['constant_name'] || node.widgets_values['key'] || node.widgets_values['any'] || Object.values(node.widgets_values)[0] || '');
       }
       const variable = variableStore[variableName];
-      console.log(`[Variable] Resolving GetNode ${node.id} for "${variableName}": ${variable ? 'Variable found' : 'Variable NOT found'}`);
+      const finalValue = findFinalVariableSource(variableName, variableStore, workingGraph);
+      console.log(`[Variable] Resolving GetNode ${node.id} for "${variableName}": ${finalValue ? 'Resolved to ' + finalValue[0] : 'NOT resolved'}`);
 
-      if (variable && variable.value) {
+      if (finalValue) {
         let replacementCount = 0;
         for (const targetNode of workingGraph._nodes) {
           if (targetNode.inputs) {
@@ -1737,7 +1810,7 @@ function resolveGetNodeConnections(workingGraph: any, variableStore: Record<stri
               if (input.link !== null && input.link !== undefined) {
                 const link = workingGraph._links[String(input.link)];
                 if (link && String(link.origin_id) === String(node.id)) {
-                  const [sourceNodeId, sourceSlot] = variable.value;
+                  const [sourceNodeId, sourceSlot] = finalValue;
                   const newLink = {
                     id: nextLinkId,
                     origin_id: String(sourceNodeId) as any,
@@ -1807,8 +1880,11 @@ function resolveGetNodeConnections(workingGraph: any, variableStore: Record<stri
             continue;
           }
 
-          outputLink.origin_id = sourceNodeId;
-          outputLink.origin_slot = sourceSlot;
+          // Resolve direct source, bypassing any virtual nodes like GetNode
+          const [finalSourceId, finalSourceSlot] = findFinalNodeSource(inputLink.origin_id, inputLink.origin_slot, workingGraph, variableStore);
+
+          outputLink.origin_id = finalSourceId;
+          outputLink.origin_slot = finalSourceSlot;
 
           if (sourceOutput.links && Array.isArray(sourceOutput.links)) {
             if (!sourceOutput.links.includes(outputLinkId)) {
