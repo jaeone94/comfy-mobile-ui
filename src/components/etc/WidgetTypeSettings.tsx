@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import React, { useState } from 'react';
-import { Plus, Edit, Trash2, Download, Upload, Copy, FileText, Loader2 } from 'lucide-react';
+import { Plus, Edit, Trash2, Download, Upload, Copy, FileText, Loader2, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -117,11 +117,8 @@ export const WidgetTypeSettings: React.FC = () => {
 
   if (loading && widgetTypes.length === 0) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="flex flex-col items-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-slate-600 dark:text-slate-400" />
-          <p className="text-sm text-slate-600 dark:text-slate-400">{t('widgetTypeSettings.loading')}</p>
-        </div>
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-white/40" />
       </div>
     );
   }
@@ -129,8 +126,8 @@ export const WidgetTypeSettings: React.FC = () => {
   if (error) {
     return (
       <div className="text-center py-8">
-        <p className="text-red-600 dark:text-red-400 mb-4">{error}</p>
-        <Button onClick={loadWidgetTypes} variant="outline">
+        <p className="text-red-400 mb-4">{error}</p>
+        <Button onClick={loadWidgetTypes} variant="outline" className="border-white/10 text-white hover:bg-white/10">
           {t('widgetTypeSettings.retry')}
         </Button>
       </div>
@@ -139,173 +136,93 @@ export const WidgetTypeSettings: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">
-            {t('widgetTypeSettings.title')}
-          </h2>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-            {t('widgetTypeSettings.subtitle')}
-          </p>
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        {/* Title section handled by parent in new design, but keeping for standalone usage correctness */}
+        <div className="hidden sm:block">
+          <h2 className="text-2xl font-bold tracking-tight text-white/90">{t('widgetTypeSettings.title')}</h2>
+          <p className="text-muted-foreground">{t('widgetTypeSettings.subtitle')}</p>
         </div>
 
-        <div className="flex gap-2">
-          <Button onClick={handleImport} variant="outline" size="sm" className="gap-2">
-            <Upload className="h-4 w-4" />
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={handleCreateNew} className="bg-indigo-600 hover:bg-indigo-700 text-white">
+            <Plus className="mr-2 h-4 w-4" />
+            {t('widgetTypeSettings.createType')}
+          </Button>
+          <Button variant="outline" onClick={handleImport} className="border-white/10 bg-white/5 hover:bg-white/10 text-white/80">
+            <Upload className="mr-2 h-4 w-4" />
             {t('widgetTypeSettings.import')}
           </Button>
-          <Button onClick={handleCreateNew} size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />
-            {t('widgetTypeSettings.createType')}
+          <Button variant="outline" onClick={handleCreateLoraExample} className="border-white/10 bg-white/5 hover:bg-white/10 text-white/80">
+            <FileText className="mr-2 h-4 w-4" />
+            {t('widgetTypeSettings.createLoraExample')}
           </Button>
         </div>
       </div>
 
-      {/* Search and Actions */}
-      <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-        <div className="flex-1 max-w-md">
-          <Input
-            placeholder={t('widgetTypeSettings.searchPlaceholder')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full"
-          />
-        </div>
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+        <Input
+          placeholder={t('widgetTypeSettings.searchPlaceholder')}
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          className="pl-9 bg-black/20 border-white/10 text-white placeholder:text-white/20 h-10 rounded-xl"
+        />
+      </div>
 
-        {widgetTypes.length === 0 && (
-          <Button onClick={handleCreateLoraExample} variant="outline" size="sm" className="gap-2">
-            <FileText className="h-4 w-4" />
-            {t('widgetTypeSettings.createLoraExample')}
-          </Button>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {filteredWidgetTypes.map((widgetType) => (
+          <Card key={widgetType.id} className="group relative overflow-hidden bg-black/20 border-white/10 transition-all hover:bg-black/30 hover:border-indigo-500/30">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center justify-between text-base font-medium text-white/90">
+                <span className="truncate" title={widgetType.id}>{widgetType.id}</span>
+                <div className="flex transition-all">
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10 transition-colors" onClick={() => handleCopyToClipboard(widgetType)}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10 transition-colors" onClick={() => handleExport(widgetType)}>
+                    <Download className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-white/40 hover:text-white hover:bg-white/10 transition-colors" onClick={() => handleEdit(widgetType)}>
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-red-500/50 hover:text-red-400 hover:bg-red-500/10 transition-colors" onClick={() => handleDelete(widgetType)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardTitle>
+              <CardDescription className="text-white/40 text-xs truncate">
+                {widgetType.description || t('widgetTypeSettings.noDescription')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center justify-between text-sm">
+                <Badge variant="secondary" className="bg-indigo-500/10 text-indigo-300 border-0">
+                  {t('widgetTypeSettings.fields', { count: Object.keys(widgetType.fields).length })}
+                </Badge>
+                {Object.keys(widgetType.fields).length > 0 && (
+                  <span className="text-xs text-white/30">
+                    {Object.keys(widgetType.fields)[0]}
+                    {Object.keys(widgetType.fields).length > 1 && ` +${Object.keys(widgetType.fields).length - 1}`}
+                  </span>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
+
+        {filteredWidgetTypes.length === 0 && (
+          <div className="col-span-full py-12 text-center text-muted-foreground">
+            <div className="mb-4 flex justify-center">
+              <div className="rounded-full bg-white/5 p-4">
+                <Search className="h-8 w-8 opacity-50" />
+              </div>
+            </div>
+            <p className="text-lg font-medium text-white/60">{t('widgetTypeSettings.noMatchingTypes')}</p>
+            <p className="text-sm text-white/30">{t('widgetTypeSettings.noMatchingTypesDesc')}</p>
+          </div>
         )}
       </div>
 
-      {/* Widget Types Grid */}
-      {filteredWidgetTypes.length === 0 ? (
-        <div className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-700/30 rounded-xl shadow-lg">
-          <div className="flex flex-col items-center justify-center py-12 px-6">
-            <div className="text-center space-y-4">
-              <div className="text-slate-500 dark:text-slate-400">
-                {searchTerm ? (
-                  <>
-                    <p className="text-lg font-medium">{t('widgetTypeSettings.noMatchingTypes')}</p>
-                    <p className="text-sm">{t('widgetTypeSettings.noMatchingTypesDesc')}</p>
-                  </>
-                ) : (
-                  <>
-                    <p className="text-lg font-medium">{t('widgetTypeSettings.noTypesDefined')}</p>
-                    <p className="text-sm">{t('widgetTypeSettings.noTypesDefinedDesc')}</p>
-                  </>
-                )}
-              </div>
-
-              {!searchTerm && (
-                <div className="flex gap-2 justify-center">
-                  <Button
-                    onClick={handleCreateNew}
-                    className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white backdrop-blur-sm"
-                  >
-                    <Plus className="h-4 w-4" />
-                    {t('widgetTypeSettings.createWidgetType')}
-                  </Button>
-                  <Button
-                    onClick={handleCreateLoraExample}
-                    className="gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
-                  >
-                    <FileText className="h-4 w-4" />
-                    {t('widgetTypeSettings.createLoraExample')}
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredWidgetTypes.map((widgetType) => (
-            <div
-              key={widgetType.id}
-              className="bg-white/70 dark:bg-slate-900/70 backdrop-blur-md border border-white/20 dark:border-slate-700/30 rounded-xl shadow-lg hover:shadow-xl hover:bg-white/80 dark:hover:bg-slate-900/80 transition-all duration-300 group"
-            >
-              <div className="p-6">
-                <div className="mb-4">
-                  <h3 className="text-lg font-mono font-semibold bg-slate-100/80 dark:bg-slate-800/80 px-3 py-2 rounded backdrop-blur-sm text-slate-900 dark:text-slate-100 inline-block">
-                    {widgetType.id}
-                  </h3>
-                </div>
-
-                {widgetType.description && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400 line-clamp-2 mb-4">
-                    {widgetType.description}
-                  </p>
-                )}
-
-                {/* Field Summary */}
-                <div className="space-y-2 mb-4">
-                  <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                    {t('widgetTypeSettings.fields', { count: Object.keys(widgetType.fields).length })}
-                  </div>
-                  <div className="flex flex-wrap gap-1">
-                    {Object.entries(widgetType.fields).slice(0, 4).map(([name, config]) => (
-                      <span
-                        key={name}
-                        className="text-xs bg-slate-100/60 dark:bg-slate-800/60 backdrop-blur-sm text-slate-700 dark:text-slate-300 px-2 py-1 rounded border border-slate-200/50 dark:border-slate-700/50"
-                      >
-                        {name}: {config.type}
-                      </span>
-                    ))}
-                    {Object.keys(widgetType.fields).length > 4 && (
-                      <span className="text-xs bg-slate-100/60 dark:bg-slate-800/60 backdrop-blur-sm text-slate-700 dark:text-slate-300 px-2 py-1 rounded border border-slate-200/50 dark:border-slate-700/50">
-                        +{Object.keys(widgetType.fields).length - 4} more
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-
-                {/* Actions */}
-                <div className="flex gap-2 pt-2">
-                  <Button
-                    onClick={() => handleEdit(widgetType)}
-                    size="sm"
-                    className="flex-1 gap-1 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200"
-                  >
-                    <Edit className="h-3 w-3" />
-                    {t('widgetTypeSettings.edit')}
-                  </Button>
-
-                  <Button
-                    onClick={() => handleCopyToClipboard(widgetType)}
-                    size="sm"
-                    className="gap-1 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200"
-                  >
-                    <Copy className="h-3 w-3" />
-                  </Button>
-
-                  <Button
-                    onClick={() => handleExport(widgetType)}
-                    size="sm"
-                    className="gap-1 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100 transition-all duration-200"
-                  >
-                    <Download className="h-3 w-3" />
-                  </Button>
-
-                  <Button
-                    onClick={() => handleDelete(widgetType)}
-                    size="sm"
-                    className="gap-1 bg-red-50/60 dark:bg-red-900/30 backdrop-blur-sm hover:bg-red-100/80 dark:hover:bg-red-900/50 border border-red-200/50 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 transition-all duration-200"
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Widget Type Definition Modal */}
       <WidgetTypeDefinitionModal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}

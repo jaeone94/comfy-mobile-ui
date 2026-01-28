@@ -1,20 +1,34 @@
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import React, { useState, useEffect, useMemo } from 'react';
+import { useNavigate } from "react-router-dom";
+import { useTranslation } from "react-i18next";
+import {
+  loadAllWorkflows
+} from "@/infrastructure/storage/IndexedDBWorkflowService";
+import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+  Search,
+  ArrowLeft,
+  Settings,
+  Code,
+  Plus,
+  Trash2,
+  AlertCircle,
+  CheckCircle2,
+  Loader2,
+  ChevronRight,
+  ChevronDown,
+  LayoutGrid,
+  Sparkles,
+  Save,
+  LayoutList
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { WidgetTypeSettings } from './WidgetTypeSettings';
+import { WidgetTypeManager } from '@/core/services/WidgetTypeManager';
 import {
   Select,
   SelectContent,
@@ -22,33 +36,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  Plus,
-  Trash2,
-  Save,
-  Search,
-  ArrowLeft,
-  Filter,
-  MoreVertical,
-  Settings,
-  AlertCircle,
-  CheckCircle2,
-  FileJson,
-  Code
-} from 'lucide-react';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { toast } from 'sonner';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
 
-// Interfaces (kept as is)
+import { Workflow as IComfyWorkflow } from '@/shared/types/app/IComfyWorkflow';
+
+// Interfaces
 interface CustomWidgetType {
   id: string;
   type: 'select' | 'combo' | 'slider';
@@ -58,644 +49,717 @@ interface CustomWidgetType {
   step?: number;
 }
 
-interface NodePatch {
-  nodeType: string;
-  inputs: {
-    [key: string]: {
-      widgetType: string;
-      customProps?: any;
-    };
-  };
+interface InputFieldMapping {
+  fieldName: string;
+  fieldType: string;
+  currentValue?: any;
+  assignedWidgetType?: string;
+  isCustomField?: boolean;
+  hasWidget?: boolean;
 }
 
-interface WorkflowNode {
-  id: number;
-  type: string;
-  pos: [number, number];
-  size: [number, number] | { 0: number; 1: number };
-  flags: any;
-  order: number;
-  mode: number;
-  inputs?: Array<{ name: string; type: string; link: number | null }>;
-  outputs?: Array<{ name: string; type: string; links: number[] }>;
-  properties: { [key: string]: any };
-  widgets_values?: any[];
-}
-
-interface Workflow {
+interface NodeInfo {
   id: string;
-  name: string;
-  data: {
-    nodes: WorkflowNode[];
-    links: any[];
-    groups: any[];
-    config: any;
-    extra: any;
-    version: number;
-  };
-  timestamp: number;
+  type: string;
+  title?: string;
+  inputs: Array<{
+    name: string;
+    type: string;
+    link?: number;
+    widget?: any;
+  }>;
+  _meta?: any;
 }
+
+interface Workflow extends IComfyWorkflow { }
 
 export const NodePatch: React.FC = () => {
-  const { t } = useTranslation();
-  const location = useLocation();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('list');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
-  const [selectedNodeId, setSelectedNodeId] = useState<number | null>(null);
-  const [workflows, setWorkflows] = useState<Workflow[]>([]);
-  const [widgetTypes, setWidgetTypes] = useState<CustomWidgetType[]>([]);
-  const [nodePatches, setNodePatches] = useState<NodePatch[]>([]);
-  const [customMappings, setCustomMappings] = useState<{
-    [nodeType: string]: {
-      [fieldName: string]: {
-        widgetType: string;
-        scope: 'global' | 'workflow' | 'specific';
-        targetId?: string; // workflow_id or node_id
-      }
-    }
-  }>({});
+  const { t } = useTranslation();
+
+  // View & Step state
+  const [viewMode, setViewMode] = useState<'list' | 'create' | 'settings'>('list');
   const [currentStep, setCurrentStep] = useState<'workflow' | 'node' | 'mapping'>('workflow');
 
-  // Load data from localStorage on mount
-  useEffect(() => {
-    // Load workflows
+  // Data state
+  const [workflows, setWorkflows] = useState<any[]>([]);
+  const [widgetTypes, setWidgetTypes] = useState<CustomWidgetType[]>([]);
+  const [existingMappings, setExistingMappings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Search & Selection state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedWorkflowId, setSelectedWorkflowId] = useState<string | null>(null);
+  const [selectedNode, setSelectedNode] = useState<NodeInfo | null>(null);
+  const [inputMappings, setInputMappings] = useState<InputFieldMapping[]>([]);
+
+  // Field creation state
+  const [newFieldName, setNewFieldName] = useState('');
+  const [selectedWidgetTypeForNewField, setSelectedWidgetTypeForNewField] = useState('LORA_CONFIG');
+  const [isAddingNewField, setIsAddingNewField] = useState(false);
+  const [selectedScope, setSelectedScope] = useState<'global' | 'workflow' | 'specific'>('global');
+  const [saving, setSaving] = useState(false);
+
+  // Node search query for Step 2
+  const [nodeSearchQuery, setNodeSearchQuery] = useState('');
+
+  // Expanded nodes for list view
+  const [expandedNodes, setExpandedNodes] = useState<Record<string, boolean>>({});
+
+  const loadExistingMappings = async () => {
     try {
-      const savedWorkflows = localStorage.getItem('comfyui_workflows');
-      if (savedWorkflows) {
-        setWorkflows(JSON.parse(savedWorkflows));
-      }
-
-      // Load widget types
-      const savedWidgetTypes = localStorage.getItem('comfyui_custom_widget_types');
-      if (savedWidgetTypes) {
-        setWidgetTypes(JSON.parse(savedWidgetTypes));
-      }
-
-      // Load node patches/mappings
-      const savedMappings = localStorage.getItem('comfyui_node_patches');
-      if (savedMappings) {
-        setCustomMappings(JSON.parse(savedMappings));
-      }
+      const mappings = await ComfyUIService.getCustomNodeMappings();
+      setExistingMappings(mappings || []);
+      console.log('📦 Loaded existing mappings:', mappings);
     } catch (error) {
-      console.error('Error loading data:', error);
-      toast.error(t('customTypes.toast.loadFailed'));
+      console.error('Failed to load existing mappings:', error);
+      setExistingMappings([]);
     }
-  }, []);
+  };
 
-  // Filtered nodes based on search and selected workflow
+  // Load data
+  useEffect(() => {
+    const initData = async () => {
+      try {
+        setLoading(true);
+        const storedWorkflows = await loadAllWorkflows();
+        setWorkflows(storedWorkflows);
+
+        // Fetch widget types
+        let remoteWidgetTypes: any[] = [];
+        try {
+          remoteWidgetTypes = await ComfyUIService.getAllCustomWidgetTypes();
+        } catch (e) {
+          console.warn('Failed to fetch widget types from server', e);
+        }
+
+        const savedWidgetTypes = localStorage.getItem('comfyui_custom_widget_types');
+        const localWidgetTypes = savedWidgetTypes ? JSON.parse(savedWidgetTypes) : [];
+        const combined = [...remoteWidgetTypes];
+        localWidgetTypes.forEach((lt: any) => {
+          if (!combined.find(t => t.id === lt.id)) combined.push(lt);
+        });
+        setWidgetTypes(combined);
+
+        // Load mappings
+        await loadExistingMappings();
+      } catch (error) {
+        console.error('Error loading data:', error);
+        toast.error(t('customTypes.toast.loadFailed') || 'Failed to load data');
+      } finally {
+        setLoading(false);
+      }
+    };
+    initData();
+  }, [t, viewMode]);
+
+  // Handlers
+  const handleWorkflowSelect = (workflow: any) => {
+    setSelectedWorkflowId(workflow.id);
+    setSelectedNode(null);
+    setInputMappings([]);
+    setCurrentStep('node');
+  };
+
+  const handleNodeSelect = (nodeId: string, nodeData: any) => {
+    const nodeInfo: NodeInfo = {
+      id: nodeId,
+      type: nodeData.type,
+      inputs: nodeData.inputs || [],
+      _meta: nodeData._meta
+    };
+
+    setSelectedNode(nodeInfo);
+
+    const mappings: InputFieldMapping[] = nodeInfo.inputs.map((input) => ({
+      fieldName: input.name,
+      fieldType: input.type,
+      assignedWidgetType: undefined,
+      isCustomField: false,
+      hasWidget: true
+    }));
+
+    setInputMappings(mappings);
+    setCurrentStep('mapping');
+  };
+
+  const handleWidgetTypeAssignment = (fieldName: string, widgetTypeId: string) => {
+    setInputMappings(prev =>
+      prev.map(mapping =>
+        mapping.fieldName === fieldName
+          ? { ...mapping, assignedWidgetType: widgetTypeId === 'none' ? undefined : widgetTypeId }
+          : mapping
+      )
+    );
+  };
+
+  const handleAddNewField = () => {
+    if (!newFieldName.trim()) {
+      toast.error(t('nodePatch.toast.enterName'));
+      return;
+    }
+
+    if (inputMappings.some(m => m.fieldName === newFieldName.trim())) {
+      toast.error(t('nodePatch.toast.exists'));
+      return;
+    }
+
+    const newMapping: InputFieldMapping = {
+      fieldName: newFieldName.trim(),
+      fieldType: selectedWidgetTypeForNewField,
+      assignedWidgetType: selectedWidgetTypeForNewField,
+      isCustomField: true,
+      hasWidget: true
+    };
+
+    setInputMappings(prev => [...prev, newMapping]);
+    setNewFieldName('');
+    setIsAddingNewField(false);
+  };
+
+  const handleRemoveCustomField = (fieldName: string) => {
+    setInputMappings(prev => prev.filter(m => m.fieldName !== fieldName));
+  };
+
+  const handleSaveMapping = async () => {
+    if (!selectedNode) return;
+
+    setSaving(true);
+    try {
+      const workflow = workflows.find(w => w.id === selectedWorkflowId);
+
+      const bindingData = {
+        nodeType: selectedNode.type,
+        inputMappings: inputMappings
+          .filter(m => m.assignedWidgetType && !m.isCustomField)
+          .reduce((acc, mapping) => {
+            if (mapping.assignedWidgetType) acc[mapping.fieldName] = mapping.assignedWidgetType;
+            return acc;
+          }, {} as Record<string, string>),
+        customFields: inputMappings
+          .filter(m => m.isCustomField)
+          .map(mapping => ({
+            fieldName: mapping.fieldName,
+            fieldType: mapping.assignedWidgetType || 'STRING',
+            assignedWidgetType: mapping.assignedWidgetType,
+            defaultValue: null
+          })),
+        scope: {
+          type: selectedScope,
+          workflowId: selectedScope !== 'global' ? selectedWorkflowId : undefined,
+          workflowName: selectedScope !== 'global' ? workflow?.name : undefined,
+          nodeId: selectedScope === 'specific' ? selectedNode.id : undefined
+        },
+        createdAt: new Date().toISOString()
+      };
+
+      await ComfyUIService.saveCustomNodeMapping(bindingData as any);
+      toast.success(t('nodePatch.toast.saveSuccess', { type: selectedNode.type }));
+
+      await loadExistingMappings();
+      setViewMode('list');
+      setCurrentStep('workflow');
+
+      // Reset creation state
+      setSelectedWorkflowId(null);
+      setSelectedNode(null);
+      setInputMappings([]);
+    } catch (error) {
+      console.error('Failed to save mapping:', error);
+      toast.error(t('nodePatch.toast.saveFailed', { error: (error as any).message || error }));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteMapping = async (nodeType: string, scope: any) => {
+    const scopeTypeLabel = t(`nodePatch.scope.${scope.type}`);
+    if (confirm(t('nodePatch.toast.deleteConfirm', { type: nodeType, scope: scopeTypeLabel }))) {
+      try {
+        await ComfyUIService.deleteCustomNodeMapping(nodeType, scope);
+        toast.success(t('nodePatch.toast.deleteSuccess', { type: nodeType, scope: scopeTypeLabel }));
+        await loadExistingMappings();
+      } catch (error) {
+        console.error('Error deleting mapping:', error);
+        toast.error(t('nodePatch.toast.deleteFailed'));
+      }
+    }
+  };
+
+  const handleCreateLoraExample = async () => {
+    setSaving(true);
+    try {
+      const loraType = WidgetTypeManager.createLoraConfigExample();
+
+      const customFields = Array.from({ length: 15 }, (_, i) => ({
+        fieldName: `lora_${i + 1}`,
+        fieldType: 'LORA_CONFIG',
+        assignedWidgetType: loraType.id,
+        defaultValue: null
+      }));
+
+      const bindingData = {
+        nodeType: 'Power Lora Loader (rgthree)',
+        inputMappings: {},
+        customFields,
+        scope: { type: 'global' },
+        createdAt: new Date().toISOString()
+      };
+
+      await ComfyUIService.saveCustomNodeMapping(bindingData as any);
+      toast.success(t('nodePatch.toast.exampleCreated'));
+      await loadExistingMappings();
+    } catch (error) {
+      console.error('Error creating example:', error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleNodeExpand = (nodeType: string, index: number) => {
+    const key = `${nodeType}-${index}`;
+    setExpandedNodes(prev => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const getWorkflowConfiguredNodesCount = (wfId: string) => {
+    return existingMappings.filter(m =>
+      (m.scope?.type === 'workflow' || m.scope?.type === 'specific') &&
+      m.scope?.workflowId === wfId
+    ).length;
+  };
+
+  // Filtered nodes for Step 2
   const filteredNodes = useMemo(() => {
     if (!selectedWorkflowId) return [];
-
     const workflow = workflows.find(w => w.id === selectedWorkflowId);
-    if (!workflow) return [];
+    if (!workflow || !workflow.workflow_json || !workflow.workflow_json.nodes) return [];
 
-    let nodes = workflow.data.nodes || [];
+    const nodes = workflow.workflow_json.nodes;
+    let nodeList = (Object.values(nodes) as any[]);
 
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      nodes = nodes.filter(node =>
-        node.type.toLowerCase().includes(query) ||
-        node.id.toString().includes(query) ||
-        (node.properties?.name && node.properties.name.toLowerCase().includes(query))
+    if (nodeSearchQuery) {
+      const query = nodeSearchQuery.toLowerCase();
+      nodeList = nodeList.filter(n =>
+        n.type.toLowerCase().includes(query) ||
+        (n._meta?.title && n._meta.title.toLowerCase().includes(query))
       );
     }
 
-    return nodes;
-  }, [selectedWorkflowId, workflows, searchQuery]);
+    return nodeList.sort((a, b) => a.type.localeCompare(b.type));
+  }, [workflows, selectedWorkflowId, nodeSearchQuery]);
 
-  // Handle saving mappings
-  const handleSaveMapping = (nodeType: string, fieldName: string, config: any) => {
-    const updatedMappings = { ...customMappings };
-
-    if (!updatedMappings[nodeType]) {
-      updatedMappings[nodeType] = {};
-    }
-
-    // Determine scope and targetId
-    const mapping = {
-      widgetType: config.widgetType,
-      scope: config.scope || 'global',
-      targetId: config.scope === 'workflow' ? selectedWorkflowId || undefined :
-        config.scope === 'specific' ? selectedNodeId?.toString() : undefined
-    };
-
-    updatedMappings[nodeType][fieldName] = mapping;
-    setCustomMappings(updatedMappings);
-
-    // Save to localStorage
-    localStorage.setItem('comfyui_node_patches', JSON.stringify(updatedMappings));
-    toast.success(t('nodePatch.toast.saveSuccess', { type: nodeType }));
-  };
-
-  // Handle deleting mapping
-  const handleDeleteMapping = (nodeType: string, fieldName: string) => {
-    if (confirm(t('nodePatch.toast.deleteConfirm', { type: nodeType, scope: fieldName }))) {
-      const updatedMappings = { ...customMappings };
-      if (updatedMappings[nodeType]) {
-        delete updatedMappings[nodeType][fieldName];
-        if (Object.keys(updatedMappings[nodeType]).length === 0) {
-          delete updatedMappings[nodeType];
-        }
-        setCustomMappings(updatedMappings);
-        localStorage.setItem('comfyui_node_patches', JSON.stringify(updatedMappings));
-        toast.success(t('nodePatch.toast.deleteSuccess', { type: nodeType, scope: fieldName }));
-      }
-    }
-  };
-
-  const getMappingForField = (nodeType: string, fieldName: string, nodeId: number) => {
-    const nodeMappings = customMappings[nodeType];
-    if (!nodeMappings) return null;
-
-    const mapping = nodeMappings[fieldName];
-    if (!mapping) return null;
-
-    // Check scope applicability
-    if (mapping.scope === 'global') return mapping;
-    if (mapping.scope === 'workflow' && mapping.targetId === selectedWorkflowId) return mapping;
-    if (mapping.scope === 'specific' && mapping.targetId === nodeId.toString()) return mapping;
-
-    return null;
-  };
-
-  const renderWorkflowSelection = () => (
-    <div className="space-y-4">
+  // Renderers
+  const renderHeader = () => (
+    <div className="mb-6 rounded-2xl bg-white/5 border border-white/10 p-4 backdrop-blur-md">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-medium">{t('nodePatch.stepTitle.workflow')}</h3>
-        <span className="text-sm text-muted-foreground">
-          {workflows.length} {t('nodePatch.step.col1')}s
-        </span>
-      </div>
+        <div className="flex flex-col">
+          <h2 className="text-lg font-bold text-white tracking-tight leading-tight">
+            {viewMode === 'settings' ? t('widgetTypeSettings.title') :
+              viewMode === 'create' ? t('nodePatch.createTitle') :
+                t('menu.nodePatches')}
+          </h2>
+          <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider mt-1">
+            {viewMode === 'settings' ? t('widgetTypeSettings.subtitle') :
+              viewMode === 'create' ? t('nodePatch.createSubtitle') :
+                t('nodePatch.listSubtitle')}
+          </p>
+        </div>
 
-      {workflows.length === 0 ? (
-        <Card className="bg-muted/50 border-dashed">
-          <CardContent className="flex flex-col items-center justify-center py-10 space-y-4">
-            <FileJson className="h-10 w-10 text-muted-foreground" />
-            <div className="text-center space-y-1">
-              <h4 className="font-medium">{t('nodePatch.noWorkflows')}</h4>
-              <p className="text-sm text-muted-foreground max-w-xs mx-auto">
-                {t('nodePatch.uploadWorkflows')}
+        <div className="flex items-center space-x-2">
+          {viewMode === 'list' && (
+            <>
+              <Button
+                onClick={handleCreateLoraExample}
+                variant="ghost"
+                size="sm"
+                className="bg-white/5 hover:bg-white/10 text-white/80 h-10 px-3 rounded-xl border border-white/5 shadow-sm transition-all active:scale-95"
+                title={t('widgetTypeSettings.createLoraExample')}
+                disabled={saving}
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 mr-2" />}
+                {t('widgetTypeSettings.createLoraExample')}
+              </Button>
+              <Button
+                onClick={() => {
+                  setViewMode('create');
+                  setCurrentStep('workflow');
+                }}
+                variant="default"
+                size="sm"
+                className="bg-indigo-600 hover:bg-indigo-500 text-white shadow-lg shadow-indigo-500/20 h-10 w-10 p-0 rounded-xl transition-all active:scale-95"
+              >
+                <Plus className="h-5 w-5" />
+              </Button>
+            </>
+          )}
+          {viewMode !== 'list' && (
+            <Button
+              onClick={() => {
+                setViewMode('list');
+                setCurrentStep('workflow');
+              }}
+              variant="ghost"
+              size="sm"
+              className="text-white/60 hover:text-white"
+            >
+              <LayoutList className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+
+  const renderWorkflowStep = () => (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 pb-20">
+      {workflows.map((workflow) => (
+        <div
+          key={workflow.id}
+          onClick={() => handleWorkflowSelect(workflow)}
+          className={`cursor-pointer group relative overflow-hidden rounded-xl border border-white/10 bg-black/20 p-4 hover:bg-black/40 transition-all duration-300 ${selectedWorkflowId === workflow.id ? 'ring-1 ring-indigo-500 bg-indigo-500/10' : ''}`}
+        >
+          <div className="flex items-start justify-between">
+            <div className="space-y-1">
+              <h3 className="font-medium text-white/90 truncate pr-4">{workflow.name}</h3>
+              <p className="text-xs text-white/40">
+                {workflow.createdAt ? new Date(workflow.createdAt).toLocaleDateString() : 'Unknown date'}
               </p>
             </div>
-            <Button variant="outline" onClick={() => navigate('/')}>
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t('nodePatch.backToList')}
-            </Button>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {workflows.map(workflow => (
-            <Card
-              key={workflow.id}
-              className={`cursor-pointer transition-all hover:border-primary/50 ${selectedWorkflowId === workflow.id ? 'border-primary ring-1 ring-primary' : ''
-                }`}
-              onClick={() => {
-                setSelectedWorkflowId(workflow.id);
-                setCurrentStep('node');
-              }}
-            >
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base truncate">{workflow.name}</CardTitle>
-                <CardDescription className="text-xs">
-                  {new Date(workflow.timestamp).toLocaleDateString()}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>{workflow.data.nodes?.length || 0} nodes</span>
-                  <span>v{workflow.data.version || 0}</span>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+          </div>
+          <div className="mt-4 flex items-center justify-between text-xs text-white/50">
+            <div className="flex items-center">
+              <LayoutGrid className="mr-1.5 h-3.5 w-3.5" />
+              {t('nodePatch.inputs', { count: workflow.workflow_json?.nodes?.length || 0 })}
+            </div>
+            {getWorkflowConfiguredNodesCount(workflow.id) > 0 && (
+              <Badge variant="outline" className="border-indigo-500/30 text-indigo-400 bg-indigo-500/5 px-1.5 text-[9px]">
+                {getWorkflowConfiguredNodesCount(workflow.id)} {t('nodePatch.activePatches')}
+              </Badge>
+            )}
+          </div>
+        </div>
+      ))}
+      {workflows.length === 0 && (
+        <div className="col-span-full flex flex-col items-center justify-center p-12 text-white/30 text-center">
+          <AlertCircle className="h-12 w-12 mb-4 opacity-50" />
+          <p>{t('nodePatch.noWorkflows')}</p>
         </div>
       )}
     </div>
   );
 
-  const renderNodeSelection = () => (
-    <div className="space-y-4">
-      <div className="flex items-center space-x-2 mb-4">
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={() => {
-            setSelectedWorkflowId(null);
-            setCurrentStep('workflow');
-          }}
-        >
-          <ArrowLeft className="h-4 w-4 mr-2" />
-          {t('nodePatch.step.workflow')}
-        </Button>
-        <div className="h-4 w-px bg-border" />
-        <h3 className="text-lg font-medium">{t('nodePatch.stepTitle.node')}</h3>
-      </div>
-
-      <div className="flex space-x-2">
-        <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder={t('nodePatch.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
-          />
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="icon">
-              <Filter className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem>{t('nodePatch.step.node')} Type</DropdownMenuItem>
-            <DropdownMenuItem>Status</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <ScrollArea className="h-[60vh] rounded-md border p-4">
-        {filteredNodes.length === 0 ? (
-          <div className="text-center py-10 text-muted-foreground">
-            {t('nodePatch.noNodes')}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {filteredNodes.map(node => {
-              // Count configured fields
-              const configuredCount = Object.keys(customMappings[node.type] || {}).length;
-
-              return (
-                <div
-                  key={node.id}
-                  className={`flex items-center justify-between p-3 rounded-lg border transition-colors cursor-pointer hover:bg-muted/50 ${selectedNodeId === node.id ? 'bg-muted border-primary' : 'bg-card'
-                    }`}
-                  onClick={() => {
-                    setSelectedNodeId(node.id);
-                    setCurrentStep('mapping');
-                  }}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="p-2 bg-primary/10 rounded-md">
-                      <Code className="h-4 w-4 text-primary" />
-                    </div>
-                    <div>
-                      <h4 className="font-medium text-sm">{node.type}</h4>
-                      <p className="text-xs text-muted-foreground">ID: {node.id}</p>
-                    </div>
-                  </div>
-                  {configuredCount > 0 && (
-                    <Badge variant="secondary" className="ml-auto">
-                      {configuredCount} {t('nodePatch.assigned')}
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </ScrollArea>
-    </div>
-  );
-
-  const renderMappingStep = () => {
-    if (!selectedWorkflowId || selectedNodeId === null) return null;
-
+  const renderNodeStep = () => {
     const workflow = workflows.find(w => w.id === selectedWorkflowId);
     if (!workflow) return null;
 
-    const node = workflow.data.nodes?.find(n => n.id === selectedNodeId);
-    if (!node) return null;
-
-    // Get input fields that can be mapped
-    // ComfyUI nodes define inputs in 'inputs' array usually
-    // Also consider 'widgets_values' which might map to input widgets
-    const inputFields = node.inputs || [];
-
-    // Also we might want to map widget values (e.g. seed, text fields)
-    // But typically node patches are for remapping widget types for specific inputs
-
     return (
-      <div className="space-y-6">
-        <div className="flex items-center space-x-2 mb-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              setSelectedNodeId(null);
-              setCurrentStep('node');
-            }}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            {t('nodePatch.step.node')}
-          </Button>
-          <div className="h-4 w-px bg-border" />
-          <div>
-            <h3 className="text-lg font-medium">{node.type}</h3>
-            <p className="text-xs text-muted-foreground">ID: {node.id}</p>
-          </div>
+      <div className="space-y-4 pb-20">
+        <div className="flex items-center justify-between mb-2">
+          <h3 className="text-sm font-medium text-white/50 uppercase tracking-wider">
+            {t('nodePatch.selectNode')}
+          </h3>
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('nodePatch.stepTitle.mapping')}</CardTitle>
-            <CardDescription>
-              {t('nodePatch.nodeInfo', { id: node.id, count: inputFields.length })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {inputFields.length === 0 ? (
-              <div className="text-center py-8 text-muted-foreground">
-                <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                No configurable input fields found for this node.
+        <div className="relative mb-4">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/30" />
+          <Input
+            placeholder={t('nodePatch.searchPlaceholder')}
+            value={nodeSearchQuery}
+            onChange={(e) => setNodeSearchQuery(e.target.value)}
+            className="pl-9 bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 h-10 rounded-xl"
+          />
+        </div>
+
+        <div className="space-y-2">
+          {filteredNodes.map((node: any) => (
+            <div
+              key={node.id}
+              onClick={() => handleNodeSelect(node.id, node)}
+              className="flex items-center justify-between p-4 rounded-xl border border-white/10 bg-black/20 hover:bg-black/30 transition-all cursor-pointer"
+            >
+              <div className="flex items-center space-x-4">
+                <div className="p-2.5 bg-indigo-500/10 rounded-lg">
+                  <Code className="h-5 w-5 text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="font-medium text-white/90 text-sm">{node.type}</h4>
+                  <p className="text-xs text-white/40 font-mono mt-0.5">ID: {node.id}</p>
+                </div>
               </div>
-            ) : (
-              inputFields.map((input, idx) => {
-                const currentMapping = getMappingForField(node.type, input.name, node.id);
-
-                return (
-                  <div key={`${input.name}-${idx}`} className="flex items-start space-x-4 p-4 rounded-lg border bg-card">
-                    <div className="flex-1 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-                            {input.name}
-                          </label>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Type: {input.type}
-                          </p>
-                        </div>
-                        {currentMapping && (
-                          <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">
-                            {t('nodePatch.assigned')}
-                          </Badge>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <label className="text-xs font-medium">{t('nodePatch.widgetType')}</label>
-                          <Select
-                            value={currentMapping?.widgetType || "default"}
-                            onValueChange={(value) => {
-                              if (value === "default") {
-                                // If setting to default, effective delete the mapping?
-                                // Or maybe we need a dedicated delete button
-                                handleDeleteMapping(node.type, input.name);
-                              } else {
-                                handleSaveMapping(node.type, input.name, {
-                                  widgetType: value,
-                                  scope: currentMapping?.scope || 'global'
-                                });
-                              }
-                            }}
-                          >
-                            <SelectTrigger>
-                              <SelectValue placeholder={t('nodePatch.selectWidgetType')} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="default">{t('nodePatch.noWidgetType')}</SelectItem>
-                              {widgetTypes.map(wt => (
-                                <SelectItem key={wt.id} value={wt.id}>
-                                  {wt.id} ({wt.type})
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {currentMapping && (
-                          <div className="space-y-2">
-                            <label className="text-xs font-medium">{t('nodePatch.scope.title')}</label>
-                            <Select
-                              value={currentMapping.scope}
-                              onValueChange={(value) => {
-                                handleSaveMapping(node.type, input.name, {
-                                  widgetType: currentMapping.widgetType,
-                                  scope: value
-                                });
-                              }}
-                            >
-                              <SelectTrigger>
-                                <SelectValue placeholder={t('nodePatch.scope.selected', { scope: currentMapping.scope })} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="global">
-                                  <div className="flex flex-col">
-                                    <span>{t('nodePatch.scope.global')}</span>
-                                    <span className="text-xs text-muted-foreground">{t('nodePatch.scope.globalDesc')}</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="workflow">
-                                  <div className="flex flex-col">
-                                    <span>{t('nodePatch.scope.workflow')}</span>
-                                    <span className="text-xs text-muted-foreground">{t('nodePatch.scope.workflowDesc')}</span>
-                                  </div>
-                                </SelectItem>
-                                <SelectItem value="specific">
-                                  <div className="flex flex-col">
-                                    <span>{t('nodePatch.scope.specific')}</span>
-                                    <span className="text-xs text-muted-foreground">{t('nodePatch.scope.specificDesc')}</span>
-                                  </div>
-                                </SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })
-            )}
-          </CardContent>
-        </Card>
+              <ChevronRight className="h-4 w-4 text-white/20" />
+            </div>
+          ))}
+        </div>
       </div>
     );
   };
 
-  // List view of patch stats
-  const renderListView = () => {
-    const nodeTypes = Object.keys(customMappings);
+  const renderMappingStep = () => {
+    if (!selectedNode) return null;
 
     return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
+      <div className="space-y-6 pb-20">
+        <div className="flex flex-col md:flex-row md:items-center justify-between p-4 rounded-xl bg-indigo-500/10 border border-indigo-500/20 gap-4">
           <div>
-            <h2 className="text-2xl font-bold tracking-tight">{t('customTypes.title')}</h2>
-            <p className="text-muted-foreground">
-              {t('nodePatch.listSubtitle')}
-            </p>
+            <h3 className="text-lg font-medium text-indigo-100">{selectedNode.type}</h3>
+            <p className="text-xs text-indigo-300/60">{t('nodePatch.nodeInfo', { id: selectedNode.id, count: inputMappings.length })}</p>
           </div>
-          <div className="flex space-x-2">
-            <Button onClick={() => setActiveTab('create')}>
-              <Plus className="mr-2 h-4 w-4" />
-              {t('nodePatch.createPatch')}
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                // Helper to create a patch for Lora Loader if not exists
-                // Just as a demo helper
-                handleSaveMapping("LoraLoader", "lora_name", {
-                  widgetType: "LORA_SELECTOR",
-                  scope: "global"
-                });
-                toast.success(t('nodePatch.toast.exampleCreated'));
-              }}
+
+          <div className="flex flex-col space-y-2 min-w-[140px]">
+            <label className="text-[10px] uppercase tracking-wider text-indigo-300/60 font-medium">{t('nodePatch.scopeTitle')}</label>
+            <Select
+              value={selectedScope}
+              onValueChange={(val: any) => setSelectedScope(val)}
             >
-              {t('nodePatch.powerLora')}
-            </Button>
+              <SelectTrigger className="bg-white/5 border-white/10 text-white h-9 text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-[#1e293b] border-white/10 text-white text-xs">
+                <SelectItem value="global">{t('nodePatch.scope.global')}</SelectItem>
+                <SelectItem value="workflow">{t('nodePatch.scope.workflow')}</SelectItem>
+                <SelectItem value="specific">{t('nodePatch.scope.specific')}</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">
-                {t('nodePatch.customNodePatches', { count: nodeTypes.length })}
-              </CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{nodeTypes.length}</div>
-              <p className="text-xs text-muted-foreground">
-                {t('nodePatch.activeNodeTypes')}
-              </p>
-            </CardContent>
-          </Card>
+        <div className="space-y-4">
+          {inputMappings.map((mapping, idx) => (
+            <div key={`${mapping.fieldName}-${idx}`} className="p-4 rounded-xl border border-white/10 bg-black/20 space-y-4">
+              <div className="flex justify-between items-start">
+                <div>
+                  <div className="flex items-center space-x-2">
+                    <label className="text-sm font-medium text-white/90">{mapping.fieldName}</label>
+                    {mapping.isCustomField && <Badge variant="outline" className="text-[8px] py-0 h-4 border-white/5 opacity-40">{t('nodePatch.custom')}</Badge>}
+                  </div>
+                  <p className="text-xs text-white/40 mt-1">{t('common.item')}: {mapping.fieldType}</p>
+                </div>
+                {(mapping.isCustomField || mapping.assignedWidgetType) && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-red-500/50 hover:text-red-500 hover:bg-red-500/10 rounded-full transition-colors"
+                    onClick={() => {
+                      if (mapping.isCustomField) {
+                        handleRemoveCustomField(mapping.fieldName);
+                      } else {
+                        handleWidgetTypeAssignment(mapping.fieldName, 'none');
+                      }
+                    }}
+                    title={t('common.delete')}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-xs text-white/50">{t('nodePatch.widgetType')}</label>
+                <Select
+                  value={mapping.assignedWidgetType || "none"}
+                  onValueChange={(value) => handleWidgetTypeAssignment(mapping.fieldName, value)}
+                >
+                  <SelectTrigger className="bg-black/40 border-white/10 text-white h-9">
+                    <SelectValue placeholder={t('nodePatch.selectWidgetType')} />
+                  </SelectTrigger>
+                  <SelectContent className="bg-[#1e293b] border-white/10 text-white">
+                    <SelectItem value="none">{t('nodePatch.noWidgetType')}</SelectItem>
+                    {widgetTypes.map(wt => (
+                      <SelectItem key={wt.id} value={wt.id}>{wt.id}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          ))}
         </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>{t('nodePatch.activePatches')}</CardTitle>
-            <CardDescription>
-              {t('nodePatch.patchesDesc')}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {nodeTypes.length === 0 ? (
-              <div className="text-center py-10 text-muted-foreground">
-                {t('nodePatch.noCustomMappings')}
-                <br />
-                <Button variant="link" onClick={() => setActiveTab('create')} className="mt-2">
-                  {t('nodePatch.startPrompt')}
+        {/* Add Custom Field */}
+        <div className="p-4 rounded-xl border-2 border-dashed border-white/5 bg-white/2 flex flex-col gap-3">
+          {isAddingNewField ? (
+            <>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase tracking-wider">{t('nodePatch.fieldName')}</label>
+                  <Input
+                    placeholder="e.g. lora_1"
+                    className="bg-black/20 border-white/10 text-sm h-9"
+                    value={newFieldName}
+                    onChange={(e) => setNewFieldName(e.target.value)}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <label className="text-[10px] text-white/40 uppercase tracking-wider">{t('nodePatch.widgetType')}</label>
+                  <Select value={selectedWidgetTypeForNewField} onValueChange={setSelectedWidgetTypeForNewField}>
+                    <SelectTrigger className="bg-black/20 border-white/10 text-white h-9 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="bg-[#1e293b] border-white/10 text-white">
+                      {widgetTypes.map(wt => <SelectItem key={wt.id} value={wt.id}>{wt.id}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" className="flex-1 bg-indigo-600 hover:bg-indigo-500" onClick={handleAddNewField}>
+                  {t('nodePatch.addField')}
+                </Button>
+                <Button size="sm" variant="ghost" className="px-3" onClick={() => setIsAddingNewField(false)}>
+                  {t('common.cancel')}
                 </Button>
               </div>
-            ) : (
-              <ScrollArea className="h-[400px]">
-                <div className="space-y-4">
-                  {nodeTypes.map(nodeType => (
-                    <div key={nodeType} className="flex items-start justify-between p-4 border rounded-lg">
-                      <div>
-                        <h4 className="font-semibold">{nodeType}</h4>
-                        <div className="mt-2 space-y-1">
-                          {Object.entries(customMappings[nodeType]).map(([field, mapping]: [string, any]) => (
-                            <div key={field} className="text-sm flex items-center space-x-2">
-                              <Badge variant="outline">{field}</Badge>
-                              <span className="text-muted-foreground text-xs">→</span>
-                              <Badge variant="secondary">{mapping.widgetType}</Badge>
-                              <Badge variant="outline" className="text-xs scale-90 opacity-70">
-                                {mapping.scope}
-                              </Badge>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => {
-                          if (confirm(t('nodePatch.toast.deleteConfirm', { type: nodeType, scope: 'all' }))) {
-                            const newMappings = { ...customMappings };
-                            delete newMappings[nodeType];
-                            setCustomMappings(newMappings);
-                            localStorage.setItem('comfyui_node_patches', JSON.stringify(newMappings));
-                          }
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-    );
-  };
+            </>
+          ) : (
+            <Button variant="ghost" className="text-white/40 hover:text-white/60 hover:bg-white/5 border-0 h-10 italic text-xs" onClick={() => setIsAddingNewField(true)}>
+              <Plus className="h-3.5 w-3.5 mr-2" /> {t('nodePatch.addCustomPrompt')}
+            </Button>
+          )}
+        </div>
 
-  // Create/Edit View with Stepper
-  const renderCreateView = () => {
-    return (
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold tracking-tight">{t('nodePatch.createTitle')}</h2>
-            <p className="text-muted-foreground">
-              {t('nodePatch.createSubtitle')}
-            </p>
-          </div>
-          <Button variant="ghost" onClick={() => setActiveTab('list')}>
-            {t('nodePatch.backToList')}
+        <div className="mt-8 pt-6 border-t border-white/5">
+          <Button
+            className="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-bold h-12 shadow-xl shadow-indigo-500/20"
+            onClick={handleSaveMapping}
+            disabled={saving}
+          >
+            {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            {t('nodePatch.savePatch')}
           </Button>
         </div>
-
-        {/* Stepper */}
-        <div className="flex items-center justify-center space-x-4 mb-8">
-          <div className={`flex flex-col items-center ${currentStep === 'workflow' ? 'text-primary' : 'text-muted-foreground'
-            }`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 'workflow' ? 'border-primary bg-primary/10' : 'border-muted'
-              }`}>
-              1
-            </div>
-            <span className="text-xs mt-1 font-medium">{t('nodePatch.step.workflow')}</span>
-          </div>
-          <div className="w-12 h-px bg-border" />
-          <div className={`flex flex-col items-center ${currentStep === 'node' ? 'text-primary' : 'text-muted-foreground'
-            }`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 'node' ? 'border-primary bg-primary/10' : 'border-muted'
-              }`}>
-              2
-            </div>
-            <span className="text-xs mt-1 font-medium">{t('nodePatch.step.node')}</span>
-          </div>
-          <div className="w-12 h-px bg-border" />
-          <div className={`flex flex-col items-center ${currentStep === 'mapping' ? 'text-primary' : 'text-muted-foreground'
-            }`}>
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 ${currentStep === 'mapping' ? 'border-primary bg-primary/10' : 'border-muted'
-              }`}>
-              3
-            </div>
-            <span className="text-xs mt-1 font-medium">{t('nodePatch.step.mapping')}</span>
-          </div>
-        </div>
-
-        <div className="min-h-[400px]">
-          {currentStep === 'workflow' && renderWorkflowSelection()}
-          {currentStep === 'node' && renderNodeSelection()}
-          {currentStep === 'mapping' && renderMappingStep()}
-        </div>
       </div>
     );
   };
 
-  if (activeTab === 'create') {
+  const renderListView = () => {
+    if (loading) return <div className="p-20 text-center"><Loader2 className="h-10 w-10 animate-spin mx-auto text-indigo-500 opacity-50" /></div>;
+
+    if (existingMappings.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center h-[60vh] text-white/30 p-8 text-center">
+          <div className="bg-white/5 p-6 rounded-full mb-6">
+            <LayoutGrid className="h-12 w-12 opacity-50" />
+          </div>
+          <h3 className="text-xl font-medium text-white/90 mb-2">{t('nodePatch.noCustomMappings')}</h3>
+          <p className="max-w-xs mx-auto mb-8">{t('nodePatch.startPrompt')}</p>
+          <Button onClick={() => setViewMode('create')} className="bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl h-12 px-6 shadow-lg shadow-indigo-500/20">
+            <Plus className="mr-2 h-5 w-5" /> {t('nodePatch.createPatch')}
+          </Button>
+        </div>
+      );
+    }
+
+    const grouped = existingMappings.reduce((acc, mapping) => {
+      if (!acc[mapping.nodeType]) acc[mapping.nodeType] = [];
+      acc[mapping.nodeType].push(mapping);
+      return acc;
+    }, {} as Record<string, any[]>);
+
     return (
-      <div className="container mx-auto p-4 md:p-8 space-y-8 animate-in fade-in-50">
-        {renderCreateView()}
+      <div className="p-4 space-y-4 pb-20 max-w-4xl mx-auto">
+        {(Object.entries(grouped) as [string, any[]][]).map(([nodeType, mappings], typeIdx) => (
+          <div key={nodeType} className="rounded-xl border border-white/10 bg-black/20 overflow-hidden">
+            <div className="p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition-colors" onClick={() => toggleNodeExpand(nodeType, typeIdx)}>
+              <div className="flex items-center space-x-3 overflow-hidden">
+                {expandedNodes[`${nodeType}-${typeIdx}`] ? <ChevronDown className="h-4 w-4 text-white/40" /> : <ChevronRight className="h-4 w-4 text-white/40" />}
+                <h3 className="font-medium text-white/90 truncate">{nodeType}</h3>
+                <Badge variant="secondary" className="bg-white/10 text-white/60 text-[10px] ml-2">
+                  {t('nodePatch.records', { count: (mappings as any[]).length })}
+                </Badge>
+              </div>
+            </div>
+
+            {expandedNodes[`${nodeType}-${typeIdx}`] && (
+              <div className="border-t border-white/5 bg-black/10 px-4 py-4 space-y-4">
+                {mappings.map((mapping: any, idx: number) => {
+                  const scopeLabel = mapping.scope?.type === 'global' ? t('nodePatch.scope.global') :
+                    mapping.scope?.type === 'workflow' ? `${t('nodePatch.scope.workflow')}: ${mapping.scope.workflowName || mapping.scope.workflowId}` :
+                      `${t('nodePatch.scope.specific')}: ${mapping.scope.nodeId}`;
+                  const scopeColor = mapping.scope?.type === 'global' ? 'indigo' : mapping.scope?.type === 'workflow' ? 'green' : 'amber';
+
+                  return (
+                    <div key={idx} className="p-3 rounded-lg bg-white/5 border border-white/5 space-y-3 relative group">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-2">
+                          <div className={`w-1 h-3 rounded bg-${scopeColor}-500`} />
+                          <span className="text-[10px] font-bold uppercase tracking-widest text-white/40">{scopeLabel}</span>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-400/60 hover:text-red-400 hover:bg-red-400/10 rounded-lg absolute top-2 right-2 transition-all"
+                          onClick={() => handleDeleteMapping(nodeType, mapping.scope)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                        {/* Input Mappings */}
+                        {Object.entries(mapping.inputMappings || {}).map(([field, widget]) => (
+                          <div key={field} className="flex items-center justify-between text-xs py-1.5 px-2 bg-black/40 rounded border border-white/5">
+                            <span className="text-white/60 truncate mr-2">{field}</span>
+                            <Badge variant="outline" className="border-indigo-500/20 text-indigo-300 font-mono py-0 h-4 px-1">{widget as string}</Badge>
+                          </div>
+                        ))}
+                        {/* Custom Fields */}
+                        {(mapping.customFields || []).map((f: any) => (
+                          <div key={f.fieldName} className="flex items-center justify-between text-xs py-1.5 px-2 bg-indigo-500/5 rounded border border-indigo-500/10">
+                            <span className="text-indigo-200/60 truncate mr-2">{f.fieldName}</span>
+                            <Badge variant="outline" className="border-indigo-400/30 text-indigo-300 font-mono py-0 h-4 px-1">{f.assignedWidgetType}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        ))}
       </div>
     );
-  }
+  };
 
   return (
-    <div className="container mx-auto p-4 md:p-8 space-y-8 animate-in fade-in-50">
-      {renderListView()}
+    <div className="w-full min-h-full">
+      {renderHeader()}
+      <div className="mt-4">
+        {viewMode === 'settings' ? (
+          <div className="p-0 max-w-6xl mx-auto"><WidgetTypeSettings /></div>
+        ) : viewMode === 'create' ? (
+          <div className="p-4 max-w-4xl mx-auto">
+            {/* Step Indicators */}
+            <div className="flex items-center justify-center space-x-4 mb-12">
+              {['workflow', 'node', 'mapping'].map((step, idx) => {
+                const isActive = currentStep === step;
+                const isCompleted = idx < ['workflow', 'node', 'mapping'].indexOf(currentStep);
+                return (
+                  <React.Fragment key={step}>
+                    <div className="flex flex-col items-center">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border-2 transition-all ${isActive ? 'border-indigo-500 bg-indigo-500/20 text-indigo-400' : isCompleted ? 'border-green-500 bg-green-500/20 text-green-400' : 'border-white/10 text-white/20'}`}>
+                        {isCompleted ? <CheckCircle2 className="h-4 w-4" /> : idx + 1}
+                      </div>
+                      <span className={`text-[10px] mt-2 font-medium uppercase tracking-wider ${isActive ? 'text-indigo-400' : 'text-white/30'}`}>{t(`nodePatch.step.${step}`)}</span>
+                    </div>
+                    {idx < 2 && <div className={`w-12 h-px ${isCompleted ? 'bg-green-500/30' : 'bg-white/5'}`} />}
+                  </React.Fragment>
+                );
+              })}
+            </div>
+
+            {currentStep === 'workflow' && renderWorkflowStep()}
+            {currentStep === 'node' && renderNodeStep()}
+            {currentStep === 'mapping' && renderMappingStep()}
+
+            {currentStep !== 'workflow' && (
+              <div className="fixed bottom-6 left-0 right-0 px-4 flex justify-center z-40 pwa-safe-area">
+                <Button onClick={() => { if (currentStep === 'mapping') setCurrentStep('node'); else if (currentStep === 'node') setCurrentStep('workflow'); }} variant="outline" className="bg-[#1e293b] border-white/10 text-white shadow-xl hover:bg-white/10">
+                  <ArrowLeft className="mr-2 h-4 w-4" /> {t('common.prev')}
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : renderListView()}
+      </div>
     </div>
   );
 };
