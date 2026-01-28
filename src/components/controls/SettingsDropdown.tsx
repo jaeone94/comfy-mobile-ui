@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import React, { forwardRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Loader2, Dices, Users, FileJson, Database, Hash, Camera, Brush, Move, Link, AlertTriangle, Package } from 'lucide-react';
+import { Loader2, Dices, Users, FileJson, Database, Hash, Camera, Brush, Move, Link, AlertTriangle, Package, Ungroup } from 'lucide-react';
 import type { MissingModelInfo } from '@/services/MissingModelsService';
 
 interface SettingsDropdownProps {
@@ -28,6 +28,8 @@ interface SettingsDropdownProps {
   onShowMissingNodeInstaller?: () => void;
   missingModels?: MissingModelInfo[];
   onOpenMissingModelDetector?: () => void;
+  onExtractSubgraphs?: () => void;
+  hasSubgraphs?: boolean;
 }
 
 export const SettingsDropdownContent: React.FC<SettingsDropdownProps> = ({
@@ -48,6 +50,8 @@ export const SettingsDropdownContent: React.FC<SettingsDropdownProps> = ({
   onShowMissingNodeInstaller,
   missingModels = [],
   onOpenMissingModelDetector,
+  onExtractSubgraphs,
+  hasSubgraphs,
 }) => {
   const { t } = useTranslation();
 
@@ -156,6 +160,19 @@ export const SettingsDropdownContent: React.FC<SettingsDropdownProps> = ({
               <Link className="h-4 w-4 text-white/60 flex-shrink-0" />
               <span className="text-sm font-medium text-white/90 text-left flex-1">
                 {t('menu.nodeConnection')}
+              </span>
+            </button>
+          )}
+
+          {/* Extract Subgraphs Button */}
+          {hasSubgraphs && onExtractSubgraphs && (
+            <button
+              onClick={onExtractSubgraphs}
+              className="w-full px-4 py-3 flex items-center space-x-3 hover:bg-orange-500/10 transition-colors border-b border-orange-500/10 active:bg-orange-500/20"
+            >
+              <Ungroup className="h-4 w-4 text-orange-500 flex-shrink-0" />
+              <span className="text-sm font-medium text-orange-100 text-left flex-1">
+                {t('menu.extractSubgraphs')}
               </span>
             </button>
           )}

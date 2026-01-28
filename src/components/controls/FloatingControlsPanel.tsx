@@ -51,6 +51,8 @@ interface FloatingControlsPanelProps {
     isActive: boolean;
   };
   onToggleConnectionMode?: () => void;
+  onExtractSubgraphs?: () => void;
+  hasSubgraphs?: boolean;
 }
 
 export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
@@ -76,6 +78,8 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   onToggleRepositionMode,
   connectionMode,
   onToggleConnectionMode,
+  onExtractSubgraphs,
+  hasSubgraphs,
 }) => {
   const [isClearingVRAM, setIsClearingVRAM] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -699,6 +703,8 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                 onShowMissingNodeInstaller={onShowMissingNodeInstaller}
                 missingModels={missingModels}
                 onOpenMissingModelDetector={onOpenMissingModelDetector}
+                onExtractSubgraphs={onExtractSubgraphs}
+                hasSubgraphs={hasSubgraphs}
               />
             </div>
           </motion.div>

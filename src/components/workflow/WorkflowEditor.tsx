@@ -13,6 +13,7 @@ import type { NodeWidgetModifications } from '@/shared/types/widgets/widgetModif
 
 // Core Services
 import { WorkflowGraphService, serializeGraph, loadWorkflowToGraph, addNodeToWorkflow, removeNodeWithLinks, removeGroup, createInputSlots, createOutputSlots } from '@/core/services/WorkflowGraphService';
+import { SubgraphExtractService } from '@/core/services/SubgraphExtractService';
 import { ConnectionService } from '@/services/ConnectionService';
 import { detectMissingWorkflowNodes, MissingWorkflowNode, resolveMissingNodePackages } from '@/services/MissingNodesService';
 import { detectMissingModels, formatMissingModelsMessage, getUniqueMissingModels } from '@/services/MissingModelsService';
@@ -149,6 +150,7 @@ const WorkflowEditor: React.FC = () => {
   const [saveSucceeded, setSaveSucceeded] = useState(false);
   const [isJsonViewerOpen, setIsJsonViewerOpen] = useState<boolean>(false);
   const [jsonViewerData, setJsonViewerData] = useState<{ title: string; data: any } | null>(null);
+  const [isExtractConfirmOpen, setIsExtractConfirmOpen] = useState(false);
 
   // Queue refresh trigger
   const [queueRefreshTrigger, setQueueRefreshTrigger] = useState<number>(0);
@@ -218,6 +220,11 @@ const WorkflowEditor: React.FC = () => {
       title: node.title
     }));
   }, [currentGraph?._nodes]);
+
+  // Check if workflow has subgraphs
+  const hasSubgraphs = useMemo(() => {
+    return SubgraphExtractService.hasSubgraphs(workflow?.workflow_json);
+  }, [workflow?.workflow_json]);
 
   // #region Hooks
 
@@ -2096,6 +2103,34 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [workflow, nodeMetadata, widgetEditor.getWidgetValue, widgetEditor.setWidgetValue, forceRender]);
 
+  // Handle subgraph extraction
+  const handleExtractSubgraphs = useCallback(() => {
+    setIsExtractConfirmOpen(true);
+  }, []);
+
+  const handleConfirmExtractSubgraphs = useCallback(async () => {
+    if (!workflow?.workflow_json) return;
+
+    try {
+      const updatedWorkflowJson = SubgraphExtractService.extractAllSubgraphs(workflow.workflow_json);
+
+      // Save and reload
+      const updatedWorkflow = {
+        ...workflow,
+        workflow_json: updatedWorkflowJson,
+        modifiedAt: new Date()
+      };
+
+      await updateWorkflow(updatedWorkflow);
+
+      // Reload the page
+      window.location.reload();
+    } catch (error) {
+      console.error('Error extracting subgraphs:', error);
+      toast.error(t('workflow.extractSubgraphsFailed'));
+    }
+  }, [workflow, t]);
+
   const handleNodeModeChange = useCallback(async (nodeId: number, mode: number) => {
     if (!workflow || !currentGraph) return;
 
@@ -3645,6 +3680,8 @@ const WorkflowEditor: React.FC = () => {
           onRefreshWorkflow={() => refreshNodeSlots()}
           missingModels={missingModels}
           onOpenMissingModelDetector={() => setIsMissingModelModalOpen(true)}
+          onExtractSubgraphs={handleExtractSubgraphs}
+          hasSubgraphs={hasSubgraphs}
           repositionMode={{
             isActive: canvasInteraction.repositionMode.isActive
           }}
@@ -3885,6 +3922,16 @@ const WorkflowEditor: React.FC = () => {
           return node ? `${node.title || node.type}#${node.id}` : `#${nodeIdToDelete}`;
         })()}
         confirmText={t('common.delete')}
+        isDestructive={true}
+      />
+
+      <SimpleConfirmDialog
+        isOpen={isExtractConfirmOpen}
+        onClose={() => setIsExtractConfirmOpen(false)}
+        onConfirm={handleConfirmExtractSubgraphs}
+        title={t('workflow.extractSubgraphs')}
+        message={t('workflow.extractSubgraphsConfirm')}
+        confirmText={t('common.confirm')}
         isDestructive={true}
       />
     </div>

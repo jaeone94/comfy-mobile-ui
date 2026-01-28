@@ -155,6 +155,10 @@
             "executionOrder": "执行顺序"
         },
         "disconnected": "连接已成功断开",
+        "connectionBatchFailed": "批量连接应用失败",
+        "extractSubgraphs": "展开子图",
+        "extractSubgraphsConfirm": "此操作无法撤销。建议在继续之前将当前状态保存为快照。确定要继续吗？",
+        "extractSubgraphsFailed": "展开子图失败",
         "disconnectFailed": "断开连接失败",
         "missingModels": "检测到缺失的模型",
         "missingModelsDesc": "服务器上缺少以下模型：",
@@ -378,6 +382,7 @@
         "randomizeSeeds": "随机化种子",
         "nodeRepositioning": "节点重新定位",
         "nodeConnection": "节点连接",
+        "extractSubgraphs": "展开子图",
         "workflowInfo": "工作流信息",
         "viewWorkflowJson": "查看工作流 JSON",
         "viewObjectInfo": "查看对象信息",
