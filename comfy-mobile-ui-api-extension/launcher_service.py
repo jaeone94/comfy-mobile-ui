@@ -59,14 +59,27 @@ class LauncherAPIHandler(BaseHTTPRequestHandler):
 
         elif path == '/':
             # If index.html exists, serve it, otherwise return service info (legacy behavior)
-            web_dir = Path(__file__).parent / "web"
-            if (web_dir / "index.html").exists():
+            web_dir = Path(__file__).resolve().parent / "web"
+            index_path = web_dir / "index.html"
+            
+            if index_path.exists():
                 self.serve_static_file(path)
             else:
+                # Provide more diagnostic info if index.html is missing
+                current_version = "unknown"
+                try:
+                    current_version = self.server.launcher.update_service.get_current_version()
+                except:
+                    pass
+                    
                 self.send_json_response({
                     "service": "ComfyUI Mobile UI Launcher",
-                    "version": "1.0.1",
-                    "timestamp": datetime.now().isoformat()
+                    "status": "ready",
+                    "web_ui": "not_found",
+                    "version": current_version,
+                    "tried_path": str(index_path),
+                    "timestamp": datetime.now().isoformat(),
+                    "instructions": "If you are see this, the 'web' directory might be missing or misplaced. Ensure the 'web' folder exists next to launcher_service.py"
                 })
 
         # 2. Static File Hosting
@@ -151,7 +164,7 @@ class LauncherAPIHandler(BaseHTTPRequestHandler):
     def serve_static_file(self, path: str):
         """Serve files from the 'web' directory"""
         import mimetypes
-        web_dir = Path(__file__).parent / "web"
+        web_dir = Path(__file__).resolve().parent / "web"
         
         # Default to index.html for root or missing files (SPA support)
         pure_path = path.lstrip('/')
@@ -325,11 +338,14 @@ class EnhancedExternalComfyUILauncher:
 
         # Copy version.json to web directory for frontend access
         try:
-            version_src = Path(__file__).parent / "version.json"
-            web_dir = Path(__file__).parent / "web"
+            root_dir = Path(__file__).resolve().parent
+            version_src = root_dir / "version.json"
+            web_dir = root_dir / "web"
             if version_src.exists() and web_dir.exists():
                 shutil.copy2(version_src, web_dir / "version.json")
-                self.log("Deployed version.json to web directory", 'debug')
+                self.log(f"Deployed version.json to web directory: {web_dir / 'version.json'}", 'debug')
+            elif not web_dir.exists():
+                self.log(f"Web directory not found at {web_dir}, skipping version.json deployment", 'warning')
         except Exception as e:
             self.log(f"Failed to copy version.json to web directory: {e}", 'warning')
 
