@@ -5,6 +5,7 @@
  */
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
@@ -44,6 +45,7 @@ import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
 import { WorkflowSaveButton } from '@/components/workflow/WorkflowSaveButton';
 import { RepositionActionBar } from '@/components/controls/RepositionActionBar';
+import { cn } from '@/lib/utils';
 import { CircularMenu, CircularMenuRef } from '@/components/canvas/CircularMenu';
 import { WorkflowContextMenu } from '@/components/canvas/WorkflowContextMenu';
 import { ConnectionBar } from '@/components/canvas/ConnectionBar';
@@ -71,6 +73,7 @@ import { DEFAULT_CANVAS_CONFIG } from '@/config/canvasConfig';
 // Stores
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { useGlobalStore } from '@/ui/store/globalStore';
+import { useLatentPreviewStore } from '@/ui/store/latentPreviewStore';
 
 // Types
 import type { IComfyGraphNode, IComfyWorkflow, IComfyWidget } from '@/shared/types/app/base';
@@ -200,6 +203,8 @@ const WorkflowEditor: React.FC = () => {
 
   // Connection state
   const { url: serverUrl, isConnected } = useConnectionStore();
+
+  const { isLatentPreviewFullscreen } = useLatentPreviewStore();
 
   // Get groups with mapped nodes
   const workflowGroups = useMemo((): Group[] => {
@@ -3655,15 +3660,18 @@ const WorkflowEditor: React.FC = () => {
       />
 
       {/* Workflow Save Button - Floating separately */}
-      <WorkflowSaveButton
-        hasUnsavedChanges={widgetEditor.hasModifications()}
-        isSaving={isSaving}
-        saveSucceeded={saveSucceeded}
-        onSaveChanges={handleSaveChanges}
-      />
+      {/* Workflow Save Button - Floating separately */}
+      {!isLatentPreviewFullscreen && (
+        <WorkflowSaveButton
+          hasUnsavedChanges={widgetEditor.hasModifications()}
+          isSaving={isSaving}
+          saveSucceeded={saveSucceeded}
+          onSaveChanges={handleSaveChanges}
+        />
+      )}
 
-      {/* Workflow Controls Panel (Right Top) - Hidden during repositioning and connection mode */}
-      {!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && (
+      {/* Workflow Controls Panel (Right Top) - Hidden during repositioning, connection mode, and full-screen preview */}
+      {(!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && !isLatentPreviewFullscreen) && (
         <FloatingControlsPanel
           onRandomizeSeeds={handleRandomizeSeeds}
           onShowGroupModer={() => setIsGroupModeModalOpen(true)}
@@ -3701,7 +3709,7 @@ const WorkflowEditor: React.FC = () => {
           onToggleConnectionMode={connectionMode.toggleConnectionMode}
           installablePackageCount={installablePackageCount}
           missingNodesCount={missingWorkflowNodes.length}
-          onShowMissingNodeInstaller={() => setIsMissingNodeModalOpen(true)}
+          onShowMissingNodeInstaller={() => setIsMissingModelModalOpen(true)}
         />
       )}
 

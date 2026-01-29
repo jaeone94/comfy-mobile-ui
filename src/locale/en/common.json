@@ -1421,8 +1421,6 @@
             "node": "Node",
             "mapping": "Mapping"
         },
-        "createPatch": "Create New Patch",
-        "addPatch": "Add New Patch",
         "powerLora": "Power Lora Example",
         "customNodePatches": "Custom Node Patches ({{count}})",
         "activeNodeTypes": "Active Node Types",
@@ -1528,5 +1526,20 @@
         "latest": "Latest",
         "devVersionNotice": "Developer version detected. Auto-update is disabled.",
         "launcherInfo": "Launcher Status"
+    },
+    "latentPreview": {
+        "title": "Latent Preview",
+        "mode": "Preview Generation Mode",
+        "methods": {
+            "none": "None",
+            "auto": "Auto",
+            "fast": "latent2rgb (fast)",
+            "slow": "taesd (slow)"
+        },
+        "fullScreen": {
+            "title": "Live Preview",
+            "node": "Node {{id}}",
+            "close": "Tap anywhere to close"
+        }
     }
 }

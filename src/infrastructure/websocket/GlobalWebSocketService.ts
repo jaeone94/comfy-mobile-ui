@@ -399,52 +399,96 @@ class GlobalWebSocketService extends EventEmitter {
           // 🎯 ComfyUI-specific event processing
           this.handleComfyUIMessage(message);
 
-        } else if (event.data instanceof ArrayBuffer) {
-          // Binary message (likely image data as per Python example)
-          console.log(`🖼️ [GlobalWebSocketService] Binary message received:`, {
-            type: 'ArrayBuffer',
-            size: event.data.byteLength,
-            timestamp: new Date().toISOString(),
-            isConnected: this.state.isConnected
-          });
+        } else if (event.data instanceof ArrayBuffer || event.data instanceof Blob) {
+          // 🖼️ Binary message (likely image data)
+          const handleBinary = async (buffer: ArrayBuffer) => {
+            if (buffer.byteLength < 4) return;
 
-          // Python example skips first 8 bytes (message type info)
-          const imageData = event.data.slice(8);
-          const blob = new Blob([imageData], { type: 'image/png' });
-          const imageUrl = URL.createObjectURL(blob);
-
-          this.updateState({ lastMessageTime: Date.now() });
-
-          // Emit in ComfyApiClient format
-          this.emit('binary_image_received', {
-            type: 'binary_image',
-            promptId: 'unknown', // Binary images don't typically include prompt_id
-            imageUrl,
-            size: imageData.byteLength,
-            blob,
-            timestamp: Date.now()
-          });
-
-        } else if (event.data instanceof Blob) {
-          // Handle Blob data (convert to ArrayBuffer)
-
-          event.data.arrayBuffer().then(buffer => {
-            const imageData = buffer.slice(8);
-            const blob = new Blob([imageData], { type: 'image/png' });
-            const imageUrl = URL.createObjectURL(blob);
+            const view = new DataView(buffer);
+            const type = view.getUint32(0, false); // Big Endian Uint32
 
             this.updateState({ lastMessageTime: Date.now() });
+
+            let imageData: ArrayBuffer;
+            let metadata: any = null;
+            let nodeId: string | null = 'unknown';
+
+            // 🔍 Smart Detection Logic for different ComfyUI versions
+            if (type === 1) {
+              // Type 1 (Legacy): [Type 4B] + [ImageType 4B] + [Data]
+              const imageType = view.getUint32(4, false); // 1: JPEG, 2: PNG
+              const mimeType = imageType === 2 ? 'image/png' : 'image/jpeg';
+
+              // Node ID is NOT in the packet for Type 1.
+              // User requested to NOT show Node ID for Type 1 instead of guessing.
+              nodeId = null;
+
+              // Skip the first 8 bytes (Type + ImageType)
+              imageData = buffer.slice(8);
+
+              // Double check for JPEG magic bytes at offset 0 of imageData just in case
+              const checkView = new DataView(imageData);
+              const magic16 = checkView.getUint16(0, false);
+              if (magic16 !== 0xFFD8 && magic16 !== 0x8950 && buffer.byteLength > 4) {
+                // If not found at 8, maybe it starts at 4? (Some versions)
+                const magic16_alt = view.getUint16(4, false);
+                if (magic16_alt === 0xFFD8 || magic16_alt === 0x8950) {
+                  imageData = buffer.slice(4);
+                }
+              }
+            } else if (type === 4) {
+              // Type 4: Modern Preview with metadata
+              if (buffer.byteLength < 8) return;
+              const jsonLen = view.getUint32(4, false);
+
+              if (buffer.byteLength < 8 + jsonLen) return;
+              const jsonBytes = new Uint8Array(buffer, 8, jsonLen);
+              const jsonStr = new TextDecoder().decode(jsonBytes);
+              try {
+                metadata = JSON.parse(jsonStr);
+                nodeId = (metadata.node_id || metadata.node || 'unknown').toString();
+              } catch (e) {
+                console.error('[GlobalWS] Failed to parse binary metadata:', e);
+              }
+
+              imageData = buffer.slice(8 + jsonLen);
+            } else {
+              // 🛑 Skip unknown or non-image binary types (e.g. Type 3: Progress Text)
+              // This prevented broken image icons from appearing prematurely.
+              return;
+            }
+
+            if (!imageData || imageData.byteLength === 0) return;
+
+            const blob = new Blob([imageData], { type: 'image/jpeg' });
+            const imageUrl = URL.createObjectURL(blob);
 
             // Emit in ComfyApiClient format
             this.emit('binary_image_received', {
               type: 'binary_image',
-              promptId: 'unknown',
-              imageUrl,
+              promptId: metadata?.prompt_id || 'unknown',
               size: imageData.byteLength,
               blob,
+              nodeId,
+              metadata,
               timestamp: Date.now()
             });
-          });
+
+            /*
+            console.log(`🖼️ [GlobalWebSocketService] Binary preview processed:`, {
+              type,
+              nodeId,
+              size: imageData.byteLength,
+              timestamp: new Date().toISOString()
+            });
+            */
+          };
+
+          if (event.data instanceof Blob) {
+            event.data.arrayBuffer().then(handleBinary);
+          } else {
+            handleBinary(event.data);
+          }
         }
 
       } catch (error) {

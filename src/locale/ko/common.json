@@ -1527,5 +1527,20 @@
         "latest": "최신 버전",
         "devVersionNotice": "개발자 버전(dev)이 감지되었습니다. 자동 업데이트가 비활성화됩니다.",
         "launcherInfo": "런처 상태"
+    },
+    "latentPreview": {
+        "title": "잠재적 미리보기 (Latent Preview)",
+        "mode": "미리보기 생성 모드",
+        "methods": {
+            "none": "사용 안 함",
+            "auto": "자동",
+            "fast": "latent2rgb (빠름)",
+            "slow": "taesd (느림)"
+        },
+        "fullScreen": {
+            "title": "실시간 미리보기",
+            "node": "노드 {{id}}",
+            "close": "화면 아무 곳이나 터치하여 닫기"
+        }
     }
 }

@@ -11,12 +11,17 @@ import {
     Search,
     Loader2,
     Brush,
-    Dices
+    Dices,
+    Image as ImageIcon,
+    Maximize2
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { useConnectionStore } from '@/ui/store/connectionStore';
+import { useLatentPreviewStore } from '@/ui/store/latentPreviewStore';
+import { LatentPreviewFullScreen } from '@/components/execution/LatentPreviewFullScreen';
 import { PromptHistoryContent } from '@/components/history/PromptHistory';
 import type { LogEntry, LogsWsMessage } from '@/core/domain';
 import { toast } from 'sonner';
@@ -49,6 +54,7 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
     const [consoleLogs, setConsoleLogs] = useState<LogEntry[]>([]);
     const [queueCount, setQueueCount] = useState<number>(0);
     const [isLoadingQueue, setIsLoadingQueue] = useState(false);
+    const { isVisible, setVisible, imageUrl, nodeId, isLatentPreviewFullscreen, setLatentPreviewFullscreen } = useLatentPreviewStore();
 
     const consoleContainerRef = useRef<HTMLDivElement>(null);
     const searchInputRef = useRef<HTMLInputElement>(null);
@@ -185,216 +191,275 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
-            {/* Overlays */}
-            <AnimatePresence>
-                {isSearchOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 10 }}
-                        className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 p-4"
-                    >
-                        <div className="flex flex-col gap-3">
-                            <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-xl border border-white/10">
-                                <Search className="w-4 h-4 text-white/40" />
-                                <input
-                                    ref={searchInputRef}
-                                    type="text"
-                                    value={searchValue}
-                                    onChange={(e) => setSearchValue(e.target.value)}
-                                    placeholder={t('workflow.searchNodesPlaceholder')}
-                                    className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder:text-white/20"
-                                />
-                                {searchValue && (
-                                    <button onClick={() => setSearchValue('')}>
-                                        <X className="w-4 h-4 text-white/40" />
-                                    </button>
+            {/* Header / Footer Visibility Control - Restored sliding animation as requested */}
+            <motion.div
+                animate={{
+                    opacity: isLatentPreviewFullscreen ? 0 : 1,
+                    y: isLatentPreviewFullscreen ? 50 : 0,
+                    pointerEvents: isLatentPreviewFullscreen ? 'none' : 'auto'
+                }}
+                transition={{ duration: 0.3, ease: 'easeInOut' }}
+            >
+                {/* Overlays */}
+                <AnimatePresence>
+                    {isSearchOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 10 }}
+                            className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 p-4"
+                        >
+                            <div className="flex flex-col gap-3">
+                                <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-xl border border-white/10">
+                                    <Search className="w-4 h-4 text-white/40" />
+                                    <input
+                                        ref={searchInputRef}
+                                        type="text"
+                                        value={searchValue}
+                                        onChange={(e) => setSearchValue(e.target.value)}
+                                        placeholder={t('workflow.searchNodesPlaceholder')}
+                                        className="flex-1 bg-transparent border-none outline-none text-sm text-white placeholder:text-white/20"
+                                    />
+                                    {searchValue && (
+                                        <button onClick={() => setSearchValue('')}>
+                                            <X className="w-4 h-4 text-white/40" />
+                                        </button>
+                                    )}
+                                </div>
+
+                                {searchResults.length > 0 && (
+                                    <div className="flex flex-col gap-1">
+                                        {searchResults.map((node: any) => (
+                                            <button
+                                                key={node.id}
+                                                onClick={() => handleNodeSelect(node.id)}
+                                                className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 border border-white/5 transition-all text-left"
+                                            >
+                                                <div className="flex flex-col">
+                                                    <span className="text-sm font-bold text-white/90">{node.title || node.type}</span>
+                                                    <span className="text-[10px] text-white/40 uppercase tracking-tight">{node.type}</span>
+                                                </div>
+                                                <Badge variant="outline" className="text-[10px] border-white/10 text-white/40">#{node.id}</Badge>
+                                            </button>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
+                        </motion.div>
+                    )}
 
-                            {searchResults.length > 0 && (
-                                <div className="flex flex-col gap-1">
-                                    {searchResults.map((node: any) => (
-                                        <button
-                                            key={node.id}
-                                            onClick={() => handleNodeSelect(node.id)}
-                                            className="flex items-center justify-between p-3 rounded-xl bg-white/5 hover:bg-blue-500/20 border border-white/5 transition-all text-left"
-                                        >
-                                            <div className="flex flex-col">
-                                                <span className="text-sm font-bold text-white/90">{node.title || node.type}</span>
-                                                <span className="text-[10px] text-white/40 uppercase tracking-tight">{node.type}</span>
-                                            </div>
-                                            <Badge variant="outline" className="text-[10px] border-white/10 text-white/40">#{node.id}</Badge>
-                                        </button>
-                                    ))}
+                    {isConsoleOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                            style={{ height: '40vh' }}
+                        >
+                            <div className="flex items-center justify-between p-3 border-b border-white/5 bg-white/5">
+                                <div className="flex items-center gap-2 text-xs font-bold text-white/70">
+                                    <Terminal className="w-3.5 h-3.5" />
+                                    <span>{t('workflow.serverConsole')}</span>
                                 </div>
-                            )}
-                        </div>
-                    </motion.div>
-                )}
-
-                {isConsoleOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
-                        style={{ height: '40vh' }}
-                    >
-                        <div className="flex items-center justify-between p-3 border-b border-white/5 bg-white/5">
-                            <div className="flex items-center gap-2 text-xs font-bold text-white/70">
-                                <Terminal className="w-3.5 h-3.5" />
-                                <span>{t('workflow.serverConsole')}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setIsConsoleOpen(false)} className="h-7 w-7 p-0 hover:bg-white/10">
+                                    <X className="w-4 h-4" />
+                                </Button>
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => setIsConsoleOpen(false)} className="h-7 w-7 p-0 hover:bg-white/10">
-                                <X className="w-4 h-4" />
-                            </Button>
-                        </div>
-                        <div
-                            ref={consoleContainerRef}
-                            className="p-3 overflow-y-auto h-[calc(40vh-45px)] font-mono text-[10px] space-y-1 custom-scrollbar text-slate-100"
+                            <div
+                                ref={consoleContainerRef}
+                                className="p-3 overflow-y-auto h-[calc(40vh-45px)] font-mono text-[10px] space-y-1 custom-scrollbar text-slate-100"
+                            >
+                                {consoleLogs.map((log, i) => (
+                                    <div key={i} className="py-0.5 leading-relaxed break-all whitespace-pre-wrap opacity-90">
+                                        {log.m}
+                                    </div>
+                                ))}
+                            </div>
+                        </motion.div>
+                    )}
+
+                    {isHistoryOpen && (
+                        <motion.div
+                            initial={{ opacity: 0, y: 20 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: 20 }}
+                            className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                            style={{ height: '60vh' }}
                         >
-                            {consoleLogs.map((log, i) => (
-                                <div key={i} className="py-0.5 leading-relaxed break-all whitespace-pre-wrap opacity-90">
-                                    {log.m}
+                            <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/5">
+                                <div className="flex items-center gap-2 text-xs font-bold text-white/70">
+                                    <Clock className="w-3.5 h-3.5" />
+                                    <span>{t('workflow.queue')}</span>
                                 </div>
-                            ))}
-                        </div>
-                    </motion.div>
-                )}
-
-                {isHistoryOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
-                        style={{ height: '60vh' }}
-                    >
-                        <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/5">
-                            <div className="flex items-center gap-2 text-xs font-bold text-white/70">
-                                <Clock className="w-3.5 h-3.5" />
-                                <span>{t('workflow.queue')}</span>
+                                <Button variant="ghost" size="sm" onClick={() => setIsHistoryOpen(false)} className="h-7 w-7 p-0 hover:bg-white/10">
+                                    <X className="w-4 h-4" />
+                                </Button>
                             </div>
-                            <Button variant="ghost" size="sm" onClick={() => setIsHistoryOpen(false)} className="h-7 w-7 p-0 hover:bg-white/10">
-                                <X className="w-4 h-4" />
-                            </Button>
+                            <div className="h-[calc(60vh-60px)] overflow-y-auto p-4 custom-scrollbar">
+                                <PromptHistoryContent isEmbedded={true} onClose={() => setIsHistoryOpen(false)} />
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* Footer Bar */}
+                <div className="p-3 bg-slate-900/40 backdrop-blur-3xl border-t border-white/20 shadow-[0_-10px_40px_rgba(0,0,0,0.4)] relative">
+                    <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
+                        <div className="flex-1 flex justify-center">
+                            <div className="flex items-center gap-1 bg-black/40 p-1 rounded-[18px] border border-white/10">
+                                {/* Search Button */}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setIsSearchOpen(!isSearchOpen);
+                                        setIsConsoleOpen(false);
+                                        setIsHistoryOpen(false);
+                                    }}
+                                    className={`h-9 w-9 p-0 rounded-[14px] transition-all ${isSearchOpen ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
+                                    title={t('workflow.searchNode')}
+                                >
+                                    <Search className="h-4 w-4" />
+                                </Button>
+
+                                {/* Console Button */}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleConsoleToggle}
+                                    className={`h-9 w-9 p-0 rounded-[14px] transition-all ${isConsoleOpen ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
+                                    title={t('workflow.console')}
+                                >
+                                    <Terminal className="h-4 w-4" />
+                                </Button>
+
+                                {/* Queue Button */}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                        setIsHistoryOpen(!isHistoryOpen);
+                                        setIsConsoleOpen(false);
+                                        setIsSearchOpen(false);
+                                    }}
+                                    className={`h-9 w-9 p-0 rounded-[14px] transition-all ${isHistoryOpen ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
+                                    title={t('workflow.queue')}
+                                >
+                                    <Clock className="h-4 w-4" />
+                                </Button>
+
+                                {/* Latent Preview Toggle Button */}
+                                <div className="relative">
+                                    <AnimatePresence>
+                                        {isVisible && imageUrl && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 10, scale: 0.9, x: '-50%' }}
+                                                animate={{ opacity: 1, y: 0, scale: 1, x: '-50%' }}
+                                                exit={{ opacity: 0, y: 10, scale: 0.9, x: '-50%' }}
+                                                className="absolute bottom-full left-1/2 mb-4"
+                                                onClick={() => setLatentPreviewFullscreen(true)}
+                                            >
+                                                <div
+                                                    className="bg-slate-800/60 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden cursor-pointer group relative"
+                                                    style={{ width: '80px', height: '80px' }}
+                                                >
+                                                    <img
+                                                        src={imageUrl}
+                                                        alt={t('latentPreview.title')}
+                                                        className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                                                    />
+                                                    <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                                        <Maximize2 className="text-white w-4 h-4" />
+                                                    </div>
+                                                    {nodeId && nodeId !== 'unknown' && (
+                                                        <div className="absolute top-1 left-1 z-20">
+                                                            <div className="bg-black/60 backdrop-blur-md px-1.5 py-0.5 rounded-full border border-white/20">
+                                                                <span className="text-[8px] font-bold text-white tracking-tighter">
+                                                                    {t('latentPreview.fullScreen.node', { id: nodeId })}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </motion.div>
+                                        )}
+                                    </AnimatePresence>
+
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => setVisible(!isVisible)}
+                                        className={`h-9 w-9 p-0 rounded-[14px] transition-all ${isVisible && imageUrl ? 'bg-violet-500/20 text-violet-400 shadow-lg shadow-violet-500/10 border border-violet-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
+                                        title={t('latentPreview.title')}
+                                    >
+                                        <div className="relative">
+                                            <ImageIcon className="h-4 w-4" />
+                                            {imageUrl && !isVisible && (
+                                                <span className="absolute -top-1 -right-1 flex h-1.5 w-1.5">
+                                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-violet-500"></span>
+                                                </span>
+                                            )}
+                                        </div>
+                                    </Button>
+                                </div>
+
+                                {/* Clear VRAM Button */}
+                                <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={handleClearVRAM}
+                                    disabled={isClearingVRAM}
+                                    className="h-9 w-9 p-0 rounded-[14px] text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all"
+                                    title={t('common.clearVRAM')}
+                                >
+                                    {isClearingVRAM ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : <Brush className="h-4 w-4" />}
+                                </Button>
+                            </div>
                         </div>
-                        <div className="h-[calc(60vh-60px)] overflow-y-auto p-4 custom-scrollbar">
-                            <PromptHistoryContent isEmbedded={true} onClose={() => setIsHistoryOpen(false)} />
-                        </div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
 
-            {/* Footer Bar */}
-            <div className="p-3 bg-slate-900/40 backdrop-blur-3xl border-t border-white/20 shadow-[0_-10px_40px_rgba(0,0,0,0.4)] relative">
-                <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
-                    {/* Left/Center: Centered in the area excluding Main Buttons */}
-                    <div className="flex-1 flex justify-center">
-                        <div className="flex items-center gap-1 bg-black/40 p-1 rounded-[18px] border border-white/10">
-                            {/* Search Button */}
+                        <div className="flex items-center gap-2 shrink-0 pr-5">
                             <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setIsSearchOpen(!isSearchOpen);
-                                    setIsConsoleOpen(false);
-                                    setIsHistoryOpen(false);
-                                }}
-                                className={`h-9 w-9 p-0 rounded-[14px] transition-all ${isSearchOpen ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                                title={t('workflow.searchNode')}
+                                onClick={onExecute}
+                                size="icon"
+                                className="h-10 w-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center"
+                                title={t('workflow.execute')}
                             >
-                                <Search className="h-4 w-4" />
+                                <Play className="w-5 h-5 fill-current" />
                             </Button>
 
-                            {/* Console Button */}
                             <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleConsoleToggle}
-                                className={`h-9 w-9 p-0 rounded-[14px] transition-all ${isConsoleOpen ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                                title={t('workflow.console')}
-                            >
-                                <Terminal className="h-4 w-4" />
-                            </Button>
-
-                            {/* Queue Button */}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => {
-                                    setIsHistoryOpen(!isHistoryOpen);
-                                    setIsConsoleOpen(false);
-                                    setIsSearchOpen(false);
-                                }}
-                                className={`h-9 w-9 p-0 rounded-[14px] transition-all ${isHistoryOpen ? 'bg-blue-500 text-white shadow-lg shadow-blue-500/30' : 'text-white/40 hover:text-white hover:bg-white/10'}`}
-                                title={t('workflow.queue')}
-                            >
-                                <Clock className="h-4 w-4" />
-                            </Button>
-
-                            {/* Random Seed Button */}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={onRandomizeSeeds}
-                                className="h-9 w-9 p-0 rounded-[14px] text-white/40 hover:text-white hover:bg-white/10 transition-all"
-                                title={t('menu.randomizeSeeds')}
-                            >
-                                <Dices className="h-4 w-4" />
-                            </Button>
-
-                            {/* Clear VRAM Button */}
-                            <Button
-                                variant="ghost"
-                                size="sm"
-                                onClick={handleClearVRAM}
-                                disabled={isClearingVRAM}
-                                className="h-9 w-9 p-0 rounded-[14px] text-red-400/60 hover:text-red-400 hover:bg-red-400/10 transition-all"
-                                title={t('common.clearVRAM')}
-                            >
-                                {isClearingVRAM ? <Loader2 className="h-4 w-4 animate-spin text-red-500" /> : <Brush className="h-4 w-4" />}
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Right: Primary Actions (Shrink to content) */}
-                    <div className="flex items-center gap-2 shrink-0 pr-5">
-                        <Button
-                            onClick={onExecute}
-                            size="icon"
-                            className="h-10 w-10 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-bold shadow-lg shadow-emerald-500/30 transition-all active:scale-95 flex items-center justify-center"
-                            title={t('workflow.execute')}
-                        >
-                            <Play className="w-5 h-5 fill-current" />
-                        </Button>
-
-                        <Button
-                            onClick={onInterrupt}
-                            variant="outline"
-                            className="h-10 w-10 rounded-xl bg-orange-500/10 border-orange-500/30 text-orange-500 hover:bg-orange-500 hover:text-white transition-all active:scale-95 p-0 flex items-center justify-center"
-                        >
-                            <Square className="w-4 h-4 fill-current" />
-                        </Button>
-
-                        <div className="relative">
-                            <Button
-                                onClick={handleClearQueueClick}
+                                onClick={onInterrupt}
                                 variant="outline"
-                                className="h-10 w-10 rounded-xl bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95 p-0 flex items-center justify-center"
+                                className="h-10 w-10 rounded-xl bg-orange-500/10 border-orange-500/30 text-orange-500 hover:bg-orange-500 hover:text-white transition-all active:scale-95 p-0 flex items-center justify-center"
                             >
-                                <X className="w-4 h-4" />
+                                <Square className="w-4 h-4 fill-current" />
                             </Button>
-                            {queueCount > 0 && (
-                                <Badge className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 bg-red-500 text-white border-2 border-slate-900 rounded-full flex items-center justify-center text-[10px] font-bold shadow-lg">
-                                    {queueCount > 99 ? '99+' : queueCount}
-                                </Badge>
-                            )}
+
+                            <div className="relative">
+                                <Button
+                                    onClick={handleClearQueueClick}
+                                    variant="outline"
+                                    className="h-10 w-10 rounded-xl bg-red-500/10 border-red-500/30 text-red-500 hover:bg-red-500 hover:text-white transition-all active:scale-95 p-0 flex items-center justify-center"
+                                >
+                                    <X className="w-4 h-4" />
+                                </Button>
+                                {queueCount > 0 && (
+                                    <Badge className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 bg-red-500 text-white border-2 border-slate-900 rounded-full flex items-center justify-center text-[10px] font-bold shadow-lg">
+                                        {queueCount > 99 ? '99+' : queueCount}
+                                    </Badge>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
-            </div>
+            </motion.div>
+
+            {/* Global Full Screen Preview */}
+            <LatentPreviewFullScreen
+                isOpen={isLatentPreviewFullscreen}
+                onClose={() => setLatentPreviewFullscreen(false)}
+            />
         </div>
     );
 };

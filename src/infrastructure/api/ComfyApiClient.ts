@@ -2,6 +2,7 @@
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { globalWebSocketService } from '../websocket/GlobalWebSocketService';
 import { PromptTracker } from '@/utils/promptTracker';
+import { useLatentPreviewStore } from '@/ui/store/latentPreviewStore';
 import type {
   IComfyPromptResponse,
   ExecutionOptions,
@@ -62,12 +63,12 @@ const initializeService = () => {
   if (isInitialized) {
     return;
   }
-  
+
   // Initialize with current URL from ConnectionStore
   const currentUrl = useConnectionStore.getState().url;
   serverUrl = currentUrl ? currentUrl.replace(/\/$/, '') : 'http://localhost:8188';
   isInitialized = true;
-  
+
   // Subscribe to ConnectionStore changes
   subscribeToConnectionStore();
 };
@@ -138,7 +139,7 @@ const clearCache = async (): Promise<boolean> => {
 const clearVRAM = async (): Promise<boolean> => {
   initializeService();
   try {
-    await axios.post(`${serverUrl}/free`, { 
+    await axios.post(`${serverUrl}/free`, {
       unload_models: true,  // Unload models from VRAM
       free_memory: true     // Free up caches and temporary data
     }, { timeout: 10000 });
@@ -258,7 +259,7 @@ const queuePackageInstall = async (payload: {
   }
 };
 const executeWorkflow = async (
-  apiWorkflow: any, 
+  apiWorkflow: any,
   options: ExecutionOptions & { workflowId?: string; workflowName?: string } = {}
 ): Promise<string> => {
   const {
@@ -295,16 +296,19 @@ const executeWorkflow = async (
  * Submit prompt to ComfyUI server via HTTP
  */
 const submitPrompt = async (
-  apiWorkflow: any, 
-  promptId: string, 
-  workflowId?: string, 
+  apiWorkflow: any,
+  promptId: string,
+  workflowId?: string,
   workflowName?: string
 ): Promise<string> => {
   try {
     const payload = {
       prompt: apiWorkflow,
       client_id: globalWebSocketService.getState().clientId, // Use GlobalWebSocketService's clientId
-      prompt_id: promptId
+      prompt_id: promptId,
+      extra_data: {
+        preview_method: useLatentPreviewStore.getState().previewMethod
+      }
     };
 
     const response = await axios.post<IComfyPromptResponse>(
@@ -322,12 +326,12 @@ const submitPrompt = async (
 
     // Get server-returned prompt_id and track it
     const serverPromptId = response.data.prompt_id;
-    
+
     if (serverPromptId && workflowId) {
       console.log('[ComfyApiClient] Adding prompt to tracking system');
       PromptTracker.addRunningPrompt(serverPromptId, workflowId, workflowName || undefined);
     }
-    
+
     // Notify GlobalWebSocketService that execution started
     globalWebSocketService.notifyExecutionStarted(serverPromptId, workflowId, workflowName);
 
@@ -335,17 +339,17 @@ const submitPrompt = async (
 
   } catch (error) {
     console.error(`Failed to submit prompt ${promptId.substring(0, 8)}:`, error);
-    
+
     // For API response errors, emit execution_error event with raw response
     if (axios.isAxiosError(error) && error.response) {
       const rawServerResponse = error.response.data;
-      
+
       console.log('API Response Error - Emitting execution_error with raw response:', {
         status: error.response.status,
         statusText: error.response.statusText,
         data: rawServerResponse
       });
-      
+
       // Create error object with raw server response (NO PARSING)
       const apiErrorObject = {
         type: 'API Response Error',
@@ -377,7 +381,7 @@ const submitPrompt = async (
           serverUrl: serverUrl
         }
       };
-      
+
       globalWebSocketService.emit('execution_error', {
         type: 'execution_error',
         promptId,
@@ -395,7 +399,7 @@ const submitPrompt = async (
           originalError: error
         }
       };
-      
+
       globalWebSocketService.emit('execution_error', {
         type: 'execution_error',
         promptId,
@@ -403,7 +407,7 @@ const submitPrompt = async (
         timestamp: Date.now()
       });
     }
-    
+
     // Still throw the error for any calling code that might need to handle it
     throw error;
   }
@@ -419,7 +423,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
       prompt: apiWorkflow,
       client_id: globalWebSocketService.getState().clientId,
       prompt_id: promptId
-    };  
+    };
 
     const response = await axios.post<IComfyPromptResponse>(
       `${serverUrl}/prompt`,
@@ -437,12 +441,12 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
     // Track this prompt in localStorage for reconnection after browser restart
     const serverPromptId = response.data.prompt_id;
     console.log(`[ComfyApiClient] Server returned prompt_id:`, serverPromptId);
-    
+
     // Use current processing state from GlobalWebSocketService for tracking
     const processingInfo = globalWebSocketService.getProcessingInfo();
     const currentWorkflowId = processingInfo.workflowId;
     const currentWorkflowName = processingInfo.workflowName;
-    
+
     if (serverPromptId && currentWorkflowId) {
       console.log(`[ComfyApiClient] Adding prompt to tracking system`);
       try {
@@ -451,20 +455,20 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
         console.error(`[ComfyApiClient] Failed to add to tracking system:`, error);
       }
     }
-    
+
   } catch (error) {
     console.error(`Failed to submit prompt ${promptId.substring(0, 8)}:`, error);
-    
+
     // For API response errors, emit execution_error event with raw response
     if (axios.isAxiosError(error) && error.response) {
       const rawServerResponse = error.response.data;
-      
+
       console.log('API Response Error - Emitting execution_error with raw response:', {
         status: error.response.status,
         statusText: error.response.statusText,
         data: rawServerResponse
       });
-      
+
       // Create error object with raw server response (NO PARSING)
       const apiErrorObject = {
         type: 'API Response Error',
@@ -496,7 +500,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
           serverUrl: serverUrl
         }
       };
-      
+
       globalWebSocketService.emit('execution_error', {
         type: 'execution_error',
         promptId,
@@ -514,7 +518,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
           originalError: error
         }
       };
-      
+
       globalWebSocketService.emit('execution_error', {
         type: 'execution_error',
         promptId,
@@ -522,7 +526,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
         timestamp: Date.now()
       });
     }
-    
+
     // Still throw the error for any calling code that might need to handle it
     throw error;
   }
@@ -538,12 +542,12 @@ const getAllHistory = async (maxItems?: number): Promise<Record<string, any>> =>
     if (maxItems) {
       params.append('max_items', maxItems.toString());
     }
-    
+
     const url = `${serverUrl}/history${params.toString() ? '?' + params.toString() : ''}`;
     const response = await axios.get<Record<string, any>>(url, {
       timeout: 15000
     });
-    
+
     return response.data || {};
   } catch (error) {
     console.error('Failed to fetch history:', error);
@@ -570,11 +574,11 @@ const getPromptHistory = async (promptId: string): Promise<any | null> => {
 /**
  * Get queue status
  */
-const getQueueStatus = async (): Promise<{ 
-  running: number; 
-  pending: number; 
-  queue_running: any[]; 
-  queue_pending: any[] 
+const getQueueStatus = async (): Promise<{
+  running: number;
+  pending: number;
+  queue_running: any[];
+  queue_pending: any[]
 }> => {
   initializeService();
   try {
@@ -612,11 +616,11 @@ const getAvailableModels = async (): Promise<Record<string, string[]>> => {
   initializeService();
   try {
     const response = await axios.get(`${serverUrl}/object_info`);
-    
+
     // Extract model lists from node definitions
     const modelLists: Record<string, string[]> = {};
     const nodeInfo = response.data;
-    
+
     for (const [nodeType, nodeData] of Object.entries(nodeInfo as Record<string, any>)) {
       if (nodeData.input && nodeData.input.required) {
         for (const [inputName, inputData] of Object.entries(nodeData.input.required)) {
@@ -627,7 +631,7 @@ const getAvailableModels = async (): Promise<Record<string, string[]>> => {
         }
       }
     }
-    
+
     return modelLists;
   } catch (error) {
     console.error('Failed to fetch available models:', error);
@@ -679,7 +683,7 @@ const fetchModelFolders = async (): Promise<{
     const response = await axios.get(`${serverUrl}/comfymobile/api/models/folders`, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching model folders:', error);
@@ -714,7 +718,7 @@ const startModelDownload = async (params: {
       },
       timeout: 15000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error starting model download:', error);
@@ -739,7 +743,7 @@ const cancelDownload = async (taskId: string): Promise<{
     const response = await axios.delete(`${serverUrl}/comfymobile/api/models/downloads/${taskId}`, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error canceling download:', error);
@@ -764,7 +768,7 @@ const clearDownloadHistory = async (): Promise<{
     const response = await axios.delete(`${serverUrl}/comfymobile/api/models/downloads`, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error clearing download history:', error);
@@ -795,7 +799,7 @@ const resumeDownload = async (taskId: string): Promise<{
     const response = await axios.post(`${serverUrl}/comfymobile/api/models/downloads/${taskId}/resume`, {}, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error resuming download:', error);
@@ -828,7 +832,7 @@ const retryAllFailedDownloads = async (): Promise<{
     const response = await axios.post(`${serverUrl}/comfymobile/api/models/downloads/retry-all`, {}, {
       timeout: 15000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error retrying failed downloads:', error);
@@ -870,12 +874,12 @@ const fetchDownloads = async (options?: {
     const params = new URLSearchParams();
     if (options?.status) params.append('status', options.status);
     if (options?.limit) params.append('limit', options.limit.toString());
-    
+
     const url = `${serverUrl}/comfymobile/api/models/downloads${params.toString() ? '?' + params.toString() : ''}`;
     const response = await axios.get(url, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching downloads:', error);
@@ -896,7 +900,7 @@ const getCustomNodeMappings = async (): Promise<any[]> => {
     const response = await axios.get(`${serverUrl}/comfymobile/api/custom/node-mappings`, {
       timeout: 10000
     });
-    
+
     return Array.isArray(response.data) ? response.data : [];
   } catch (error) {
     console.error('Failed to get custom node mappings:', error);
@@ -930,7 +934,7 @@ const saveCustomNodeMapping = async (mappingData: {
       },
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Failed to save custom node mapping:', error);
@@ -963,7 +967,7 @@ const deleteCustomNodeMapping = async (nodeType: string, scope?: {
         timeout: 10000
       });
     }
-    
+
     // No need to return anything for successful delete
   } catch (error) {
     console.error(`Failed to delete custom node mapping ${nodeType}:`, error);
@@ -980,7 +984,7 @@ const getAllCustomWidgetTypes = async (): Promise<any[]> => {
     const response = await axios.get(`${serverUrl}/comfymobile/api/custom/widgets`, {
       timeout: 10000
     });
-    
+
     const data = response.data;
     console.log('CLIENT DEBUG: Received custom widget types from server:', data.widgetTypes);
     return data.widgetTypes || [];
@@ -1003,7 +1007,7 @@ const getCustomWidgetType = async (typeId: string): Promise<any | null> => {
     const response = await axios.get(`${serverUrl}/comfymobile/api/custom/widgets/${encodeURIComponent(typeId)}`, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error) && error.response?.status === 404) {
@@ -1026,7 +1030,7 @@ const createCustomWidgetType = async (customWidgetType: any): Promise<any> => {
       },
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Failed to create custom widget type:', error);
@@ -1046,7 +1050,7 @@ const updateCustomWidgetType = async (typeId: string, customWidgetType: any): Pr
       },
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error(`Failed to update custom widget type ${typeId}:`, error);
@@ -1063,7 +1067,7 @@ const deleteCustomWidgetType = async (typeId: string): Promise<void> => {
     const response = await axios.delete(`${serverUrl}/comfymobile/api/custom/widgets/${encodeURIComponent(typeId)}`, {
       timeout: 10000
     });
-    
+
     // No need to return anything for successful delete
   } catch (error) {
     console.error(`Failed to delete custom widget type ${typeId}:`, error);
@@ -1093,7 +1097,7 @@ const moveModelFile = async (params: {
       },
       timeout: 30000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error moving model file:', error);
@@ -1130,7 +1134,7 @@ const getLoraList = async (): Promise<{
     const response = await axios.get(`${serverUrl}/comfymobile/api/models/loras`, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching LoRA list:', error);
@@ -1171,7 +1175,7 @@ const getAllModels = async (): Promise<{
     const response = await axios.get(`${serverUrl}/comfymobile/api/models/all`, {
       timeout: 15000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching all models:', error);
@@ -1196,7 +1200,7 @@ const getModelsFromFolder = async (folderName: string): Promise<{
     const response = await axios.get(`${serverUrl}/comfymobile/api/models/${encodeURIComponent(folderName)}`, {
       timeout: 15000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error(`Error fetching models from folder ${folderName}:`, error);
@@ -1224,11 +1228,11 @@ const searchModels = async (query: string, folderType?: string): Promise<{
     if (folderType && folderType !== 'all') {
       params.append('folder_type', folderType);
     }
-    
+
     const response = await axios.get(`${serverUrl}/comfymobile/api/models/search?${params.toString()}`, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error searching models:', error);
@@ -1267,7 +1271,7 @@ const copyModelFile = async (params: {
       },
       timeout: 30000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error copying model file:', error);
@@ -1298,7 +1302,7 @@ const deleteModelFile = async (params: {
       },
       timeout: 30000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error deleting model file:', error);
@@ -1463,7 +1467,7 @@ const getTriggerWords = async (): Promise<{
     const response = await axios.get(`${serverUrl}/comfymobile/api/loras/trigger-words`, {
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error fetching trigger words:', error);
@@ -1494,7 +1498,7 @@ const saveTriggerWords = async (params: {
       },
       timeout: 10000
     });
-    
+
     return response.data;
   } catch (error) {
     console.error('Error saving trigger words:', error);
@@ -1545,7 +1549,7 @@ const rebootServer = async (): Promise<boolean> => {
         },
         timeout: 10000
       });
-      
+
       if (response.status === 200) {
         console.log('Restart requested via extension API');
         return true;
@@ -1560,7 +1564,7 @@ const rebootServer = async (): Promise<boolean> => {
     try {
       const serverUrlObj = new URL(serverUrl);
       const watchdogUrl = `${serverUrlObj.protocol}//${serverUrlObj.hostname}:9188/restart`;
-      
+
       const watchdogResponse = await fetch(watchdogUrl, {
         method: 'POST',
         headers: {
@@ -1568,7 +1572,7 @@ const rebootServer = async (): Promise<boolean> => {
         },
         signal: AbortSignal.timeout(60000)
       });
-      
+
       if (watchdogResponse.ok) {
         const data = await watchdogResponse.json();
         if (data.success) {
@@ -1714,7 +1718,7 @@ const ComfyUIService = {
   removeAllListeners: () => globalWebSocketService.removeAllListeners(),
   getListenerCount: (event: string) => globalWebSocketService.getListenerCount?.(event) || 0,
   debug: () => console.log('Debug mode - events handled by GlobalWebSocketService'),
-  
+
   // Core HTTP API methods
   executeWorkflow,
   submitPromptWithId,
@@ -1723,34 +1727,34 @@ const ComfyUIService = {
   getQueueStatus,
   interruptExecution,
   clearQueue,
-  
+
   // Custom node manager
   getInstalledCustomNodePackages,
   getCustomNodeList,
   getManagerNodeMappings,
   startManagerQueue,
   queuePackageInstall,
-  
+
   // Server management
   getServerInfo,
   clearCache,
   clearVRAM,
   rebootServer,
-  
+
   // Model management
   getAvailableModels,
   getLoraList,
-  
+
   // File operations
   uploadImage,
-  
+
   // Processing state (delegated to GlobalWebSocketService)
   getIsProcessing: () => globalWebSocketService.getIsProcessing(),
   getCurrentPromptId: () => globalWebSocketService.getCurrentPromptId(),
   getCurrentWorkflowId: () => globalWebSocketService.getCurrentWorkflowId(),
   getCurrentWorkflowName: () => globalWebSocketService.getCurrentWorkflowName(),
   getProcessingInfo: () => globalWebSocketService.getProcessingInfo(),
-  
+
   // Legacy methods (compatibility)
   cleanupExecution: (promptId: string) => {
     console.log('[ComfyApiClient] cleanupExecution delegated to GlobalWebSocketService');
@@ -1758,14 +1762,14 @@ const ComfyUIService = {
     // We can still notify it about cleanup if needed
     globalWebSocketService.emit('cleanup_execution', { promptId });
   },
-  
+
   // Reconnection (handled by GlobalWebSocketService)
   reconnectToPrompt: (promptId: string, workflowId: string, workflowName?: string) => {
     console.log('[ComfyApiClient] Reconnection delegated to GlobalWebSocketService');
     // This functionality is now handled by GlobalWebSocketService + WorkflowEditor
     // No longer needed as a direct API call
   },
-  
+
   // Model management APIs
   fetchModelFolders,
   startModelDownload,
@@ -1775,19 +1779,19 @@ const ComfyUIService = {
   resumeDownload,
   retryAllFailedDownloads,
   moveModelFile,
-  
+
   // Custom node mappings APIs
   getCustomNodeMappings,
   saveCustomNodeMapping,
   deleteCustomNodeMapping,
-  
+
   // Custom widget types APIs
   getAllCustomWidgetTypes,
   getCustomWidgetType,
   createCustomWidgetType,
   updateCustomWidgetType,
   deleteCustomWidgetType,
-  
+
   // Model Browser specific APIs
   getAllModels,
   getModelsFromFolder,
@@ -1814,7 +1818,7 @@ const ComfyUIService = {
   // Utility methods
   isInitialized: () => isInitialized,
   getServerUrl: () => serverUrl,
-  
+
   // Cleanup
   cleanup: () => {
     if (connectionStoreUnsubscribe) {
@@ -1822,7 +1826,7 @@ const ComfyUIService = {
       connectionStoreUnsubscribe = null;
     }
   },
-  
+
   // Service management
   destroy: () => {
     ComfyUIService.cleanup();

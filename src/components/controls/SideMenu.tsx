@@ -7,6 +7,14 @@ import { X, Settings, Wifi, WifiOff, Server, Download, Upload, RotateCcw, Packag
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { CacheService, CacheClearResult, BrowserCapabilities } from '@/services/cacheService';
 import { useNavigate } from 'react-router-dom';
+import { useLatentPreviewStore, PreviewMethod } from '@/ui/store/latentPreviewStore';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 interface SideMenuProps {
   isOpen: boolean;
@@ -46,6 +54,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
   const [browserCapabilities, setBrowserCapabilities] = useState<BrowserCapabilities | null>(null);
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
+  const { previewMethod, setPreviewMethod } = useLatentPreviewStore();
 
   useEffect(() => {
     if (isOpen) {
@@ -238,6 +247,32 @@ const SideMenu: React.FC<SideMenuProps> = ({
                       <div className="text-xs text-slate-500 dark:text-slate-400">{t('menu.rebootSub')}</div>
                     </div>
                   </button>
+
+                  <div className="flex items-center p-4 border-t border-slate-100 dark:border-slate-800">
+                    <div className="h-10 w-10 rounded-xl bg-violet-100 dark:bg-violet-900/30 flex items-center justify-center text-violet-600 dark:text-violet-400 mr-4">
+                      <Image className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-medium text-slate-900 dark:text-slate-100 truncate">{t('latentPreview.title')}</div>
+                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{t('latentPreview.mode')}</div>
+                    </div>
+                    <div className="ml-2">
+                      <Select
+                        value={previewMethod}
+                        onValueChange={(value) => setPreviewMethod(value as PreviewMethod)}
+                      >
+                        <SelectTrigger className="h-9 w-[110px] bg-slate-50 dark:bg-slate-800/50">
+                          <SelectValue placeholder="Select" />
+                        </SelectTrigger>
+                        <SelectContent className="z-[10001]">
+                          <SelectItem value="none">{t('latentPreview.methods.none')}</SelectItem>
+                          <SelectItem value="auto">{t('latentPreview.methods.auto')}</SelectItem>
+                          <SelectItem value="latent2rgb">{t('latentPreview.methods.fast')}</SelectItem>
+                          <SelectItem value="taesd">{t('latentPreview.methods.slow')}</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 </div>
               </div>
 

@@ -2,10 +2,13 @@ import { useState, useCallback, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Play, Square, X } from 'lucide-react';
+import { Play, Square, X, Image, Maximize2 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { IComfyWorkflow } from '@/shared/types/app/IComfyWorkflow';
+import { useLatentPreviewStore } from '@/ui/store/latentPreviewStore';
+import { LatentPreviewFullScreen } from '../execution/LatentPreviewFullScreen';
 
 interface QuickActionPanelProps {
   workflow: IComfyWorkflow | null;
@@ -23,9 +26,10 @@ export function QuickActionPanel({
   refreshQueueTrigger
 }: QuickActionPanelProps) {
   const { t } = useTranslation();
-  // Local execution state - ALWAYS FALSE to keep buttons always enabled
   const [isExecuting, setIsExecuting] = useState(false);
   const [currentPromptId, setCurrentPromptId] = useState<string | null>(null);
+
+  const { isVisible, setVisible, imageUrl, nodeId, isLatentPreviewFullscreen, setLatentPreviewFullscreen } = useLatentPreviewStore();
 
   // Queue state management
   const [queueCount, setQueueCount] = useState<number>(0);
@@ -105,6 +109,79 @@ export function QuickActionPanel({
       <div className="bg-slate-600/40 backdrop-blur-3xl rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-1.5 relative">
         {/* Button Group - Separated with gaps */}
         <div className="flex items-center gap-2 relative z-10">
+          <AnimatePresence>
+            {imageUrl && (
+              <motion.div
+                initial={{ opacity: 0, x: -20, scale: 0.8 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: -20, scale: 0.8 }}
+                className="flex items-center"
+              >
+                <div className="relative">
+                  {/* Floating Preview (Bubble) - Localized */}
+                  <AnimatePresence>
+                    {isVisible && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 10, scale: 0.9, x: '-50%' }}
+                        animate={{ opacity: 1, y: 0, scale: 1, x: '-50%' }}
+                        exit={{ opacity: 0, y: 10, scale: 0.9, x: '-50%' }}
+                        className="absolute bottom-full left-1/2 mb-4"
+                        onClick={() => setLatentPreviewFullscreen(true)}
+                      >
+                        <div
+                          className="bg-slate-800/60 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden cursor-pointer group relative"
+                          style={{ width: '100px', height: '100px' }}
+                        >
+                          <img
+                            src={imageUrl}
+                            alt={t('latentPreview.title')}
+                            className="w-full h-full object-cover transition-transform group-hover:scale-110"
+                          />
+                          <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <Maximize2 className="text-white w-5 h-5" />
+                          </div>
+                          {/* Floating preview badge/info - Localized */}
+                          {nodeId && nodeId !== 'unknown' && (
+                            <div className="absolute top-2 left-2 z-20">
+                              <div className="bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20">
+                                <span className="text-[10px] font-bold text-white tracking-tighter">
+                                  {t('latentPreview.fullScreen.node', { id: nodeId })}
+                                </span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  <Button
+                    size="lg"
+                    variant="outline"
+                    className={`h-11 w-11 rounded-[22px] border transition-all duration-150 p-0 active:scale-95 active:translate-y-px ${isVisible
+                      ? 'bg-violet-500/20 border-violet-400 text-violet-600 dark:text-violet-400 shadow-[0_0_15px_rgba(139,92,246,0.3)]'
+                      : 'bg-white/10 dark:bg-white/10 border-white/20 text-slate-300 hover:text-white hover:bg-white/20'
+                      }`}
+                    onClick={() => setVisible(!isVisible)}
+                    title="Toggle Latent Preview"
+                  >
+                    <div className="relative">
+                      <Image className="w-5 h-5" />
+                      {!isVisible && (
+                        <span className="absolute -top-1 -right-1 flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"></span>
+                        </span>
+                      )}
+                    </div>
+                  </Button>
+                </div>
+
+                <div className="w-px h-6 bg-white/10 mx-2" />
+              </motion.div>
+            )}
+          </AnimatePresence>
+
           {/* Execute Workflow Button - ALWAYS ENABLED */}
           <Button
             size="lg"
@@ -162,6 +239,11 @@ export function QuickActionPanel({
           </div>
         </div>
       </div>
+
+      <LatentPreviewFullScreen
+        isOpen={isLatentPreviewFullscreen}
+        onClose={() => setLatentPreviewFullscreen(false)}
+      />
     </div>
   );
 }

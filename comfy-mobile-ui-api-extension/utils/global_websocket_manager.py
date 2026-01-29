@@ -67,6 +67,7 @@ class GlobalWebSocketManager:
         
         self.lock = asyncio.Lock()
         self.original_send_sync = None
+        self.original_send_bytes = None
         
         print("[GlobalWS] Initializing GlobalWebSocketManager...")
 
@@ -88,6 +89,10 @@ class GlobalWebSocketManager:
         if self.original_send_sync is None:
             self.original_send_sync = prompt_server.send_sync
             print("[GlobalWS] Saved original send_sync method")
+        
+        if self.original_send_bytes is None and hasattr(prompt_server, 'send_bytes'):
+            self.original_send_bytes = prompt_server.send_bytes
+            print("[GlobalWS] Saved original send_bytes method")
         
         # Capture the event loop from the server object if possible, or get current
         self.loop = getattr(prompt_server, 'loop', None)
@@ -131,8 +136,28 @@ class GlobalWebSocketManager:
                 except Exception as e:
                     print(f"[GlobalWS] Error in original send_sync: {e}")
 
-        # Apply the hook
+        # Define the binary hook method
+        def hooked_send_bytes(number, data, sid=None):
+            # 1. Capture and broadcast to our clients
+            try:
+                if self.loop and not self.loop.is_closed():
+                    asyncio.run_coroutine_threadsafe(self.broadcast_bytes(number, data), self.loop)
+            except Exception as e:
+                print(f"[GlobalWS] Error capturing binary event {number}: {e}")
+
+            # 2. Delegate to original method
+            if self.original_send_bytes:
+                try:
+                    return self.original_send_bytes(number, data, sid)
+                except Exception as e:
+                    print(f"[GlobalWS] Error in original send_bytes: {e}")
+
+        # Apply the hooks
         prompt_server.send_sync = hooked_send_sync
+        if self.original_send_bytes:
+            prompt_server.send_bytes = hooked_send_bytes
+            print("[GlobalWS] Successfully hooked into PromptServer.send_bytes")
+        
         print("[GlobalWS] Successfully hooked into PromptServer.send_sync")
 
     async def register_proxy_client(self, client_id: str):
@@ -225,6 +250,35 @@ class GlobalWebSocketManager:
                 await ws.send_str(json_msg)
             except Exception as e:
                 # print(f"[GlobalWS] Error sending to client: {e}")
+                disconnected.add(ws)
+        
+        # Cleanup disconnected clients
+        if disconnected:
+            async with self.lock:
+                for ws in disconnected:
+                    self.clients.discard(ws)
+
+    async def broadcast_bytes(self, number: int, data: bytes):
+        """Broadcast binary data to all connected clients"""
+        if not self.clients:
+            return
+
+        # Prepare binary message in ComfyUI format
+        # Protocol: [4-byte BIG ENDIAN type] + [data]
+        import struct
+        try:
+            prefix = struct.pack(">I", number)
+            binary_msg = prefix + data
+        except Exception as e:
+            print(f"[GlobalWS] Failed to prepare binary message {number}: {e}")
+            return
+
+        # Broadcast to all clients
+        disconnected = set()
+        for ws in self.clients:
+            try:
+                await ws.send_bytes(binary_msg)
+            except Exception as e:
                 disconnected.add(ws)
         
         # Cleanup disconnected clients

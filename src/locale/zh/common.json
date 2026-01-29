@@ -1523,5 +1523,20 @@
         "latest": "最新版本",
         "devVersionNotice": "检测到开发版本 (dev)。自动更新已禁用。",
         "launcherInfo": "启动器状态"
+    },
+    "latentPreview": {
+        "title": "潜空间预览 (Latent Preview)",
+        "mode": "预览生成模式",
+        "methods": {
+            "none": "无",
+            "auto": "自动",
+            "fast": "latent2rgb (快速)",
+            "slow": "taesd (慢速)"
+        },
+        "fullScreen": {
+            "title": "实时预览",
+            "node": "节点 {{id}}",
+            "close": "点击任意位置关闭"
+        }
     }
 }

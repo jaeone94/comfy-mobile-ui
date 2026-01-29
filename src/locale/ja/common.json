@@ -1522,5 +1522,20 @@
         "latest": "最新バージョン",
         "devVersionNotice": "開発者バージョン (dev) が検出されました。自動アップデートは無効です。",
         "launcherInfo": "ランチャーステータス"
+    },
+    "latentPreview": {
+        "title": "潜在的プレビュー (Latent Preview)",
+        "mode": "プレビュー生成モード",
+        "methods": {
+            "none": "なし",
+            "auto": "自動",
+            "fast": "高速 (RGB)",
+            "slow": "低速 (TAESD)"
+        },
+        "fullScreen": {
+            "title": "ライブプレビュー",
+            "node": "ノード {{id}}",
+            "close": "画面のどこかをタップして閉じる"
+        }
     }
 }
