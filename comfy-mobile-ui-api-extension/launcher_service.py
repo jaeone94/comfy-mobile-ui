@@ -31,6 +31,8 @@ from update_service import UpdateService
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 import socketserver
+import ssl
+import socket
 
 
 class LauncherAPIHandler(BaseHTTPRequestHandler):
@@ -207,6 +209,49 @@ class ThreadedHTTPServer(socketserver.ThreadingMixIn, HTTPServer):
     allow_reuse_address = True
 
 
+class DualProtocolServer(ThreadedHTTPServer):
+    """
+    Subclass of ThreadedHTTPServer that automatically detects 
+    if an incoming connection is HTTP or HTTPS (TLS).
+    """
+    
+    def __init__(self, server_address, RequestHandlerClass, ssl_context=None):
+        super().__init__(server_address, RequestHandlerClass)
+        self.ssl_context = ssl_context
+        self.launcher = None
+
+    def get_request(self):
+        """
+        Peek at the first byte of the request to detect TLS handshake.
+        If it's TLS (0x16), wrap the socket with SSL.
+        """
+        newsock, fromaddr = self.socket.accept()
+        
+        if self.ssl_context is None:
+            return newsock, fromaddr
+            
+        try:
+            # Peek at the first 6 bytes (TLS record header)
+            # 0x16 is the "Handshake" record type
+            peek_bytes = newsock.recv(6, socket.MSG_PEEK)
+            
+            if len(peek_bytes) > 0 and peek_bytes[0] == 0x16:
+                # This is a TLS handshake
+                try:
+                    ssl_sock = self.ssl_context.wrap_socket(newsock, server_side=True)
+                    return ssl_sock, fromaddr
+                except Exception as ssl_err:
+                    # If TLS handshake fails, log it but don't crash
+                    pass
+            
+            # Not TLS or handshake failed, treat as plain HTTP
+            return newsock, fromaddr
+            
+        except Exception:
+            # Fallback to plain socket on any error
+            return newsock, fromaddr
+
+
 class EnhancedExternalComfyUILauncher:
     """
     Enhanced ComfyUI External Launcher with Static File Server
@@ -259,6 +304,24 @@ class EnhancedExternalComfyUILauncher:
         self.comfyui_port = config_data.get('comfyui_port', 8188)
         self.comfyui_args = [comfyui_script] + launch_args
         self.original_cwd = config_data.get('cwd') # Capture original working directory
+        
+        # TLS / SSL Settings detection
+        self.tls_keyfile = None
+        self.tls_certfile = None
+        
+        # Scan launch_args for TLS certificates
+        for i, arg in enumerate(launch_args):
+            if arg == '--tls-keyfile' and i + 1 < len(launch_args):
+                self.tls_keyfile = launch_args[i + 1]
+            elif arg == '--tls-certfile' and i + 1 < len(launch_args):
+                self.tls_certfile = launch_args[i + 1]
+            elif arg.startswith('--tls-keyfile='):
+                self.tls_keyfile = arg.split('=', 1)[1]
+            elif arg.startswith('--tls-certfile='):
+                self.tls_certfile = arg.split('=', 1)[1]
+
+        if self.tls_keyfile and self.tls_certfile:
+            self.log(f"Detected TLS configuration: key={self.tls_keyfile}, cert={self.tls_certfile}", 'info')
         
         # Use the Python executable that was originally used to start ComfyUI
         # This is the most reliable way to ensure we use the same environment
@@ -403,6 +466,32 @@ class EnhancedExternalComfyUILauncher:
         except Exception as e:
             error_msg = f"[{timestamp}] [ERROR] Failed to write log: {e}"
             print(error_msg)
+
+    def _get_local_ips(self) -> list:
+        """Get all local IP addresses for display"""
+        ips = ["127.0.0.1", "localhost"]
+        try:
+            # Try to get the primary interface IP
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            try:
+                # doesn't even have to be reachable
+                s.connect(('10.255.255.255', 1))
+                primary_ip = s.getsockname()[0]
+                if primary_ip not in ips:
+                    ips.append(primary_ip)
+            except Exception:
+                pass
+            finally:
+                s.close()
+            
+            # Additional check for all interfaces (optional, but good for completeness)
+            hostname = socket.gethostname()
+            for ip in socket.gethostbyname_ex(hostname)[2]:
+                if ip not in ips and not ip.startswith("127."):
+                    ips.append(ip)
+        except Exception:
+            pass
+        return ips
     
     def start_api_server(self) -> bool:
         """API server start"""
@@ -417,9 +506,26 @@ class EnhancedExternalComfyUILauncher:
             
             self.log(f"[API] Attempting to bind to {self.api_host}:{self.api_port}")
             
-            self.api_server = ThreadedHTTPServer(
+            # Prepare SSL Context if certificates exist
+            ssl_context = None
+            if self.tls_keyfile and self.tls_certfile:
+                try:
+                    key_path = Path(self.tls_keyfile)
+                    cert_path = Path(self.tls_certfile)
+                    
+                    if key_path.exists() and cert_path.exists():
+                        ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+                        ssl_context.load_cert_chain(certfile=str(cert_path), keyfile=str(key_path))
+                        self.log("[SERVER] SSL logic initialized for Dual-Protocol support", 'success')
+                    else:
+                        self.log(f"[WARN] TLS files not found at specified paths. Falling back to HTTP only.", 'warning')
+                except Exception as e:
+                    self.log(f"[ERROR] Failed to initialize SSL context: {e}. Falling back to HTTP only.", 'error')
+
+            self.api_server = DualProtocolServer(
                 (bind_host, self.api_port), 
-                LauncherAPIHandler
+                LauncherAPIHandler,
+                ssl_context=ssl_context
             )
             
             # Check binding address
@@ -436,7 +542,49 @@ class EnhancedExternalComfyUILauncher:
             )
             self.api_thread.start()
             
-            self.log(f"[SERVER] Launcher server successfully bound to {actual_host}:{actual_port}")
+            protocol_desc = "Dual HTTP/HTTPS" if ssl_context else "HTTP"
+            self.log(f"[SERVER] Launcher server ({protocol_desc}) successfully bound to {actual_host}:{actual_port}")
+            
+            # Print Pretty URL List
+            is_dual = ssl_context is not None
+            self.log("-----------------------------------------", 'info')
+            self.log("🚀 ComfyUI Mobile API is ready!", 'success')
+            
+            GREEN = "\033[1;32m"
+            RESET = "\033[0m"
+            BOLD = "\033[1m"
+            CYAN = "\033[36m"
+            
+            local_ips = self._get_local_ips()
+            
+            # Categorize IPs
+            locals_list = [ip for ip in local_ips if ip in ["127.0.0.1", "localhost"]]
+            networks_list = [ip for ip in local_ips if ip not in ["127.0.0.1", "localhost"]]
+            
+            # Helper to print a group
+            def print_url_group(is_https: bool):
+                protocol = "https" if is_https else "http"
+                suffix = " (HTTPS)" if is_https else ""
+                
+                # Local
+                for ip in locals_list:
+                    label = f"Local{suffix}"
+                    self.log(f"  {GREEN}➜{RESET}  {BOLD}{label:<15}:{RESET} {CYAN}{protocol}://{ip}:{self.api_port}/{RESET}", 'info')
+                
+                # Networks
+                for i, ip in enumerate(networks_list, 1):
+                    label = f"Network {i}{suffix}"
+                    self.log(f"  {GREEN}➜{RESET}  {BOLD}{label:<15}:{RESET} {CYAN}{protocol}://{ip}:{self.api_port}/{RESET}", 'info')
+
+            # 1. Print HTTP Group
+            print_url_group(is_https=False)
+            
+            # 2. Print HTTPS Group (Only if Dual)
+            if is_dual:
+                print_url_group(is_https=True)
+            
+            self.log("-----------------------------------------", 'info')
+            
             return True
             
         except Exception as e:
@@ -474,7 +622,8 @@ class EnhancedExternalComfyUILauncher:
                 "enabled": self.api_enabled,
                 "host": self.api_host,
                 "port": self.api_port,
-                "version": self.update_service.get_current_version()
+                "version": self.update_service.get_current_version(),
+                "protocol": "dual" if (self.tls_keyfile and self.tls_certfile) else "http"
             },
             "timestamp": datetime.now().isoformat()
         }
@@ -533,9 +682,18 @@ class EnhancedExternalComfyUILauncher:
     def is_comfyui_responsive(self) -> bool:
         """ComfyUI server response check"""
         try:
+            protocol = "https" if self.tls_keyfile and self.tls_certfile else "http"
+            url = f"{protocol}://localhost:{self.comfyui_port}/"
+            
+            # Use verify=False for local health check to handle self-signed certs
+            # Suppress insecure request warnings for local check
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+            
             response = requests.get(
-                f"http://localhost:{self.comfyui_port}/",
-                timeout=10
+                url,
+                timeout=10,
+                verify=False
             )
             return response.status_code == 200
         except Exception:
@@ -548,16 +706,22 @@ class EnhancedExternalComfyUILauncher:
             self.log(f"⏳ Waiting 20 seconds for ComfyUI internal systems to initialize...", 'info')
             time.sleep(20)
 
-            url = f"http://127.0.0.1:{self.comfyui_port}/internal/logs/subscribe"
+            protocol = "https" if self.tls_keyfile and self.tls_certfile else "http"
+            url = f"{protocol}://127.0.0.1:{self.comfyui_port}/internal/logs/subscribe"
             client_id = "comfy-mobile-ui-client-2025"
 
-            self.log(f"📋 Subscribing to ComfyUI logs with clientId: {client_id}", 'info')
+            self.log(f"📋 Subscribing to ComfyUI logs ({protocol}) with clientId: {client_id}", 'info')
+
+            # Suppress insecure request warnings for local loopback
+            import urllib3
+            urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
             response = requests.patch(
                 url,
                 json={"enabled": True, "clientId": client_id},
                 headers={"Content-Type": "application/json"},
-                timeout=10
+                timeout=10,
+                verify=False
             )
 
             if response.status_code == 200:
