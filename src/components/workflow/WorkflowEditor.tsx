@@ -3709,7 +3709,7 @@ const WorkflowEditor: React.FC = () => {
           onToggleConnectionMode={connectionMode.toggleConnectionMode}
           installablePackageCount={installablePackageCount}
           missingNodesCount={missingWorkflowNodes.length}
-          onShowMissingNodeInstaller={() => setIsMissingModelModalOpen(true)}
+          onShowMissingNodeInstaller={() => setIsMissingNodeModalOpen(true)}
         />
       )}
 
