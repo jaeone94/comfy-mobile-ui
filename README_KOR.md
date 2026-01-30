@@ -1,5 +1,5 @@
 
-*다른 언어로 읽기: [English](README.md)*
+[English](README.md) | [한국어](README_KOR.md) | [日本語](README_JP.md) | [简体中文](README_ZH.md)
 <div align="center">
 
 # Comfy Mobile UI
@@ -101,7 +101,7 @@ ComfyUI 워크플로우를 자유롭게 편집할 수 있는 강력한 **Graph V
    ```bash
    python main.py --enable-cors-header
    ```
-5. **접속**: 브라우저를 열고 `http://서버-IP:9188` (로컬 실행 시 `http://localhost:9188`)로 접속합니다.
+5. **접속**: 브라우저를 열고 `http://서버-IP:9188` (로컬 실행 시 `http://localhost:9188`)로 접속합니다. 자세한 내용은 [접속 가이드](./docs/connection_guide_kor.md)를 참고하세요.
 
 ### **2. 개발자 설정 / 수동 설치**
 프로젝트에 기여하거나 소스 코드에서 직접 빌드하고 싶은 경우:

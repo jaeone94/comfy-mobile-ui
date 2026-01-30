@@ -1,4 +1,4 @@
-*Read this in other languages: [한국어](README_KOR.md)*
+[English](README.md) | [한국어](README_KOR.md) | [日本語](README_JP.md) | [简体中文](README_ZH.md)
 <div align="center">
 
 # Comfy Mobile UI
@@ -99,7 +99,7 @@ The easiest way to get started is to download a pre-built release:
    ```bash
    python main.py --enable-cors-header
    ```
-5. **Access**: Open your browser and navigate to `http://your-server-ip:9188` (or `http://localhost:9188` if running locally).
+5. **Access**: Open your browser and navigate to `http://your-server-ip:9188` (or `http://localhost:9188` if running locally). See the [Connection Guide](./docs/connection_guide.md) for more details.
 
 ### **2. Development / Manual Setup**
 If you want to contribute or build from source:
