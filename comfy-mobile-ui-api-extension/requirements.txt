@@ -1,4 +1,3 @@
-# ComfyUI Mobile UI API Extension Requirements
 psutil>=5.8.0
 requests>=2.25.0
 aiohttp>=3.7.0
