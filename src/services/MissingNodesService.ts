@@ -248,7 +248,7 @@ export async function resolveMissingNodePackages(
       files: Array.isArray(managerPack?.files)
         ? (managerPack?.files as string[])
         : undefined,
-      // GitHub source인 경우 기본적으로 git-clone 타입을 사용하도록 보완
+      // For GitHub sources, default to 'git-clone' type
       installType: typeof managerPack?.install_type === 'string'
         ? managerPack?.install_type
         : (accumulator.source === 'github' ? 'git-clone' : undefined),
@@ -391,9 +391,9 @@ export async function queueMissingNodeInstallation(
       mode: selection.mode ?? DEFAULT_MODE,
       skip_post_install: selection.skipPostInstall,
       pip: selection.pip,
-      // Manager의 특정 코드(manager_server.py)에서 json_data['files'][0]에 무조건 접근하려 시도하는 경우가 있음.
-      // 빈 배열([])이면 IndexError, 아예 없으면 KeyError가 발생하므로, 
-      // 내용이 없을 경우 repository URL이나 packId를 대신 넣어주어 파싱 실패를 방지함.
+      // Some server-side code in ComfyUI Manager (manager_server.py) unconditionally accesses json_data['files'][0].
+      // An empty array ([]) causes an IndexError, and a missing 'files' key causes a KeyError.
+      // To prevent parsing failure, we provide the repository URL or packId as a fallback when no files are specified.
       files: (selection.files && selection.files.length > 0)
         ? selection.files
         : [selection.repository || selection.packId],

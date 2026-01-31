@@ -35,6 +35,8 @@ interface PromptHistoryItem {
   workflow?: any;
   outputs?: any;
   rawData?: any;
+  isInterrupted?: boolean;
+  duration?: number;
 }
 
 interface LazyThumbnailProps {
@@ -299,7 +301,41 @@ export const PromptHistoryContent: React.FC<{
 
       const historyItems: PromptHistoryItem[] = Object.entries(rawHistory)
         .map(([promptId, data]: [string, any]) => {
-          const timestamp = parseInt(promptId.split('-')[0]) || Date.now();
+          let startTime: number | undefined;
+          let successTime: number | undefined;
+          let isInterrupted = false;
+          let calculatedTimestamp: number | undefined;
+
+          if (data.status && data.status.messages) {
+            data.status.messages.forEach((msg: any[]) => {
+              const type = msg[0];
+              const msgData = msg[1];
+              if (type === 'execution_start' || type === 'execution_cached') {
+                startTime = msgData.timestamp;
+              } else if (type === 'execution_success') {
+                successTime = msgData.timestamp;
+              } else if (type === 'execution_interrupted') {
+                isInterrupted = true;
+                if (!startTime) startTime = msgData.timestamp;
+              }
+            });
+          }
+
+          calculatedTimestamp = startTime || successTime;
+
+          if (!calculatedTimestamp) {
+            const parsedId = parseInt(promptId.split('-')[0]);
+            if (!isNaN(parsedId) && parsedId > 946684800000) {
+              calculatedTimestamp = parsedId;
+            }
+          }
+
+          const timestamp = calculatedTimestamp || 0;
+
+          let duration: number | undefined;
+          if (startTime && successTime) {
+            duration = successTime - startTime;
+          }
 
           let exception_message = data.exception_message;
           let exception_type = data.exception_type;
@@ -322,13 +358,16 @@ export const PromptHistoryContent: React.FC<{
             exception_type,
             workflow: data.workflow,
             outputs: data.outputs,
-            rawData: data
+            rawData: data,
+            isInterrupted,
+            duration
           };
         });
 
       const runningItems: PromptHistoryItem[] = queueStatus.queue_running.map((queueItem: any) => {
         const promptId = queueItem[1];
-        const timestamp = parseInt(promptId.split('-')[0]) || Date.now();
+        const parsedId = parseInt(promptId.split('-')[0]);
+        const timestamp = (!isNaN(parsedId) && parsedId > 946684800000) ? parsedId : Date.now();
 
         return {
           promptId,
@@ -343,7 +382,8 @@ export const PromptHistoryContent: React.FC<{
 
       const pendingItems: PromptHistoryItem[] = queueStatus.queue_pending.map((queueItem: any) => {
         const promptId = queueItem[1];
-        const timestamp = parseInt(promptId.split('-')[0]) || Date.now();
+        const parsedId = parseInt(promptId.split('-')[0]);
+        const timestamp = (!isNaN(parsedId) && parsedId > 946684800000) ? parsedId : Date.now();
 
         return {
           promptId,
@@ -459,6 +499,7 @@ export const PromptHistoryContent: React.FC<{
 
 
   const formatTimestamp = (timestamp: number): string => {
+    if (timestamp === 0) return 'Old History';
     const date = new Date(timestamp);
     const now = new Date();
     const diffMs = now.getTime() - date.getTime();
@@ -474,7 +515,18 @@ export const PromptHistoryContent: React.FC<{
     return date.toLocaleDateString();
   };
 
-  const getStatusIcon = (status: PromptHistoryItem['status'], hasException: boolean) => {
+  const formatDuration = (ms: number): string => {
+    const seconds = (ms / 1000).toFixed(1);
+    return `${seconds}s`;
+  };
+
+  const getStatusIcon = (item: PromptHistoryItem, hasException: boolean) => {
+    const { status, isInterrupted } = item;
+
+    if (isInterrupted) {
+      return <Clock className="h-4 w-4 text-orange-400" />;
+    }
+
     if (hasException || status.status_str === 'error') {
       return <XCircle className="h-4 w-4 text-red-400" />;
     }
@@ -490,20 +542,26 @@ export const PromptHistoryContent: React.FC<{
     return <Clock className="h-4 w-4 text-yellow-400" />;
   };
 
-  const getStatusIndicator = (status: PromptHistoryItem['status'], hasException: boolean) => {
+  const getStatusIndicator = (item: PromptHistoryItem, hasException: boolean) => {
+    const { status, isInterrupted } = item;
+
+    if (isInterrupted) {
+      return <div className="w-3 h-3 rounded-full bg-orange-400 flex-shrink-0 shadow-lg shadow-orange-400/50" title={t('promptHistory.status.interrupted')} />;
+    }
+
     if (hasException || status.status_str === 'error') {
-      return <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0 shadow-lg shadow-red-400/50" title="Error" />;
+      return <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0 shadow-lg shadow-red-400/50" title={t('promptHistory.status.error')} />;
     }
 
     if (status.completed) {
-      return <div className="w-3 h-3 rounded-full bg-green-400 flex-shrink-0 shadow-lg shadow-green-400/50" title="Completed" />;
+      return <div className="w-3 h-3 rounded-full bg-green-400 flex-shrink-0 shadow-lg shadow-green-400/50" title={t('promptHistory.status.completed')} />;
     }
 
     if (status.status_str === 'executing') {
-      return <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse flex-shrink-0 shadow-lg shadow-blue-400/50" title="Running" />;
+      return <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse flex-shrink-0 shadow-lg shadow-blue-400/50" title={t('promptHistory.status.executing')} />;
     }
 
-    return <div className="w-3 h-3 rounded-full bg-slate-400 flex-shrink-0 shadow-lg shadow-slate-400/50" title="Pending" />;
+    return <div className="w-3 h-3 rounded-full bg-slate-400 flex-shrink-0 shadow-lg shadow-slate-400/50" title={t('promptHistory.status.pending')} />;
   };
 
   const getShortPromptId = (promptId: string): string => {
@@ -724,15 +782,27 @@ export const PromptHistoryContent: React.FC<{
                             <div className="flex-1 space-y-3">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                  {getStatusIcon(item.status, hasException)}
+                                  {getStatusIcon(item, hasException)}
                                   <span className="font-mono text-xs text-slate-700 dark:text-slate-300 truncate flex-1">
                                     {getShortPromptId(item.promptId)}
                                   </span>
-                                  {getStatusIndicator(item.status, hasException)}
+                                  {getStatusIndicator(item, hasException)}
                                 </div>
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 ml-3 flex-shrink-0">
-                                  {formatTimestamp(item.timestamp)}
-                                </span>
+                                <div className="flex flex-col items-end ml-3">
+                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-shrink-0">
+                                    {formatTimestamp(item.timestamp)}
+                                  </span>
+                                  {item.duration !== undefined && (
+                                    <span className="text-[9px] text-violet-400/70 font-mono mt-0.5">
+                                      {formatDuration(item.duration)}
+                                    </span>
+                                  )}
+                                  {item.isInterrupted && (
+                                    <span className="text-[9px] text-orange-400 font-bold mt-0.5">
+                                      {t('promptHistory.status.interrupted')}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
 
                               {hasException && (

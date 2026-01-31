@@ -1290,6 +1290,7 @@
             "executing": "Executing",
             "completed": "Completed",
             "error": "Error",
+            "interrupted": "Interrupted",
             "unknown": "Unknown"
         },
         "time": {

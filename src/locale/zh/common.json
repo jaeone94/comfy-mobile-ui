@@ -1287,6 +1287,7 @@
             "executing": "执行中",
             "completed": "已完成",
             "error": "错误",
+            "interrupted": "已中断",
             "unknown": "未知"
         },
         "time": {
