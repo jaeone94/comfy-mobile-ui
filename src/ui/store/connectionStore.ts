@@ -36,6 +36,9 @@ export const useConnectionStore = create<ConnectionStore>()(
         error: null,
         hasExtension: false,
         remoteVersion: null,
+        apiStatus: 'idle',
+        wsStatus: 'idle',
+        extensionStatus: 'idle',
         isCheckingExtension: false,
         autoReconnectEnabled: true,
 
@@ -51,29 +54,47 @@ export const useConnectionStore = create<ConnectionStore>()(
 
           if (!url || isConnecting) return;
 
-          set({ isConnecting: true, error: null });
+          set({
+            isConnected: false,
+            isConnecting: true,
+            error: null,
+            apiStatus: 'checking',
+            wsStatus: 'checking',
+            extensionStatus: 'checking'
+          });
 
           try {
             connectionService.setBaseURL(url);
+
+            // 1. Check API Connection
             const result = await connectionService.testConnection();
 
             if (result.success) {
               set({
-                isConnected: true,
-                isConnecting: false,
-                lastPingTime: Date.now(),
-                error: null
+                apiStatus: 'success',
+                lastPingTime: Date.now()
               });
 
-              // Auto-connect WebSocket when HTTP connection succeeds
+              // 2. Try WebSocket Connection
               get().connectWebSocket();
 
-              // Check extension availability
-              get().checkExtension();
+              // 3. Check Extension (This usually takes a moment)
+              await get().checkExtension();
+
+              // Note: WebSocket status will be updated via listeners in initializeWebSocketListeners
+
+              set({
+                isConnected: true,
+                isConnecting: false,
+                error: null
+              });
             } else {
               set({
                 isConnected: false,
                 isConnecting: false,
+                apiStatus: 'failed',
+                wsStatus: 'failed',
+                extensionStatus: 'failed',
                 error: result.error || 'Connection failed'
               });
             }
@@ -81,6 +102,9 @@ export const useConnectionStore = create<ConnectionStore>()(
             set({
               isConnected: false,
               isConnecting: false,
+              apiStatus: 'failed',
+              wsStatus: 'failed',
+              extensionStatus: 'failed',
               error: error instanceof Error ? error.message : 'Unknown error'
             });
           }
@@ -99,6 +123,9 @@ export const useConnectionStore = create<ConnectionStore>()(
             error: null,
             hasExtension: false,
             remoteVersion: null,
+            apiStatus: 'idle',
+            wsStatus: 'idle',
+            extensionStatus: 'idle',
             isCheckingExtension: false
           });
         },
@@ -140,7 +167,13 @@ export const useConnectionStore = create<ConnectionStore>()(
 
 
           // Use a shorter timeout for auto-connect to avoid blocking UI
-          set({ isConnecting: true, error: null });
+          set({
+            isConnecting: true,
+            error: null,
+            apiStatus: 'checking',
+            wsStatus: 'checking',
+            extensionStatus: 'checking'
+          });
 
           try {
             // Check app version independently of connection status
@@ -155,6 +188,7 @@ export const useConnectionStore = create<ConnectionStore>()(
                 isConnected: true,
                 isConnecting: false,
                 lastPingTime: Date.now(),
+                apiStatus: 'success',
                 error: null
               });
 
@@ -164,6 +198,9 @@ export const useConnectionStore = create<ConnectionStore>()(
               set({
                 isConnected: false,
                 isConnecting: false,
+                apiStatus: 'idle',
+                wsStatus: 'idle',
+                extensionStatus: 'idle',
                 error: null // Don't show error for auto-connect failures
               });
             }
@@ -171,7 +208,10 @@ export const useConnectionStore = create<ConnectionStore>()(
             set({
               isConnected: false,
               isConnecting: false,
-              error: null // Don't show error for auto-connect failures
+              apiStatus: 'idle',
+              wsStatus: 'idle',
+              extensionStatus: 'idle',
+              error: null
             });
           }
         },
@@ -209,15 +249,16 @@ export const useConnectionStore = create<ConnectionStore>()(
               const isValid = data.status === 'ok' && data.extension === 'ComfyUI Mobile UI API';
               set({
                 hasExtension: isValid,
+                extensionStatus: isValid ? 'success' : 'failed',
                 isCheckingExtension: false
               });
               console.log('✅ Extension API Status:', isValid ? 'Available' : 'Invalid Response');
             } else {
-              set({ hasExtension: false, isCheckingExtension: false });
+              set({ hasExtension: false, extensionStatus: 'failed', isCheckingExtension: false });
             }
           } catch (error) {
             // API check failed (server down or extension not installed)
-            set({ hasExtension: false, isCheckingExtension: false });
+            set({ hasExtension: false, extensionStatus: 'failed', isCheckingExtension: false });
           }
         },
 
@@ -237,8 +278,15 @@ export const useConnectionStore = create<ConnectionStore>()(
         initializeWebSocketListeners: () => {
           // Update store when WebSocket state changes
           const handleStateChange = (wsState: GlobalWebSocketState) => {
-            set({ webSocket: wsState });
+            const { isConnected: wsConnected } = wsState;
+            set({
+              webSocket: wsState,
+              wsStatus: wsConnected ? 'success' : (wsState.isConnecting ? 'checking' : (get().isConnected ? 'failed' : 'idle'))
+            });
           };
+
+          // Sync current state immediately upon initialization to catch current status before events fire
+          handleStateChange(globalWebSocketService.getState());
 
           const handleConnected = (data: any) => {
           };

@@ -1,3 +1,5 @@
+export type ConnectionStepStatus = 'idle' | 'checking' | 'success' | 'failed';
+
 export interface ConnectionState {
   url: string;
   isConnected: boolean;
@@ -6,6 +8,9 @@ export interface ConnectionState {
   error: string | null;
   hasExtension: boolean;
   isCheckingExtension: boolean;
+  apiStatus: ConnectionStepStatus;
+  wsStatus: ConnectionStepStatus;
+  extensionStatus: ConnectionStepStatus;
 }
 
 export interface ServerInfo {

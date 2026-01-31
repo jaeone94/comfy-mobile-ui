@@ -22,19 +22,26 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
     isConnected,
     isConnecting,
     error,
+    apiStatus,
+    wsStatus,
+    extensionStatus,
     setUrl,
     connect,
     disconnect,
-    setError
+    setError,
+    initializeWebSocketListeners
   } = useConnectionStore();
 
   const [inputUrl, setInputUrl] = useState(url);
-  const [isTesting, setIsTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   useEffect(() => {
     setInputUrl(url);
   }, [url]);
+
+  useEffect(() => {
+    const cleanup = initializeWebSocketListeners();
+    return cleanup;
+  }, [initializeWebSocketListeners]);
 
   const validateUrl = (url: string): { isValid: boolean; message?: string } => {
     if (!url.trim()) {
@@ -52,63 +59,15 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
     }
   };
 
-  const handleUrlChange = (value: string) => {
-    setInputUrl(value);
-    setTestResult(null);
-    setError(null);
-  };
-
-  const handleTestConnection = async () => {
-    const validation = validateUrl(inputUrl);
-    if (!validation.isValid) {
-      setTestResult({ success: false, message: validation.message || t('serverSettings.validation.format') });
-      return;
-    }
-
-    setIsTesting(true);
-    setTestResult(null);
-
-    try {
-      // Temporarily set URL for testing
-      setUrl(inputUrl);
-
-      // Test connection
-      await connect();
-
-      setTestResult({
-        success: true,
-        message: t('serverSettings.messages.success')
-      });
-      toast.success(t('serverSettings.messages.success'));
-    } catch (error) {
-      setTestResult({
-        success: false,
-        message: error instanceof Error ? error.message : t('serverSettings.messages.failed')
-      });
-      // Don't toast error here as we show it in the UI
-    } finally {
-      setIsTesting(false);
-    }
-  };
-
-  const handleSave = () => {
-    const validation = validateUrl(inputUrl);
-    if (!validation.isValid) {
-      setTestResult({ success: false, message: validation.message || 'Invalid URL' });
-      return;
-    }
-
-    setUrl(inputUrl);
-    setTestResult({
-      success: true,
-      message: t('serverSettings.messages.saved')
-    });
-    toast.success(t('serverSettings.messages.saved'));
-  };
-
   const handleConnect = async () => {
+    const validation = validateUrl(inputUrl);
+    if (!validation.isValid) {
+      setError(validation.message || t('serverSettings.validation.format'));
+      return;
+    }
+
     if (inputUrl !== url) {
-      handleSave();
+      setUrl(inputUrl);
     }
 
     try {
@@ -120,7 +79,6 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
 
   const handleDisconnect = () => {
     disconnect();
-    setTestResult(null);
   };
 
   const getDefaultUrls = () => [
@@ -203,7 +161,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 <span>{t('serverSettings.statusTitle')}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="flex items-center justify-between">
                 <span className="font-medium text-white/70">{t('common.status')}</span>
                 {isConnected ? (
@@ -217,6 +175,27 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                     {t('common.disconnected')}
                   </Badge>
                 )}
+              </div>
+
+              {/* Enhanced verification steps */}
+              <div className="space-y-3 pt-2 border-t border-white/5">
+                {[
+                  { label: 'ComfyUI API', status: (isConnected || isConnecting) ? apiStatus : 'idle', icon: Server },
+                  { label: t('common.extension'), status: (isConnected || isConnecting) ? extensionStatus : 'idle', icon: Info }
+                ].map((step, idx) => (
+                  <div key={idx} className="flex items-center justify-between text-sm">
+                    <div className="flex items-center space-x-2 text-white/60">
+                      <step.icon className="h-4 w-4" />
+                      <span>{step.label}</span>
+                    </div>
+                    <div>
+                      {step.status === 'checking' && <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />}
+                      {step.status === 'success' && <CheckCircle className="h-4 w-4 text-green-400" />}
+                      {step.status === 'failed' && <XCircle className="h-4 w-4 text-red-400" />}
+                      {step.status === 'idle' && <div className="h-4 w-4 rounded-full border border-white/10" />}
+                    </div>
+                  </div>
+                ))}
               </div>
 
               {error && (
@@ -249,7 +228,10 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 <Input
                   type="url"
                   value={inputUrl}
-                  onChange={(e) => handleUrlChange(e.target.value)}
+                  onChange={(e) => {
+                    setInputUrl(e.target.value);
+                    setError(null);
+                  }}
                   placeholder="http://127.0.0.1:8188"
                   className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
                 />
@@ -269,7 +251,10 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                       key={defaultUrl}
                       variant="outline"
                       size="sm"
-                      onClick={() => handleUrlChange(defaultUrl)}
+                      onClick={() => {
+                        setInputUrl(defaultUrl);
+                        setError(null);
+                      }}
                       className="text-xs border-white/10 text-white/60 hover:bg-white/10 hover:text-white bg-transparent"
                     >
                       {defaultUrl}
@@ -278,47 +263,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 </div>
               </div>
 
-              {/* Test Result */}
-              {testResult && (
-                <div className={`p-3 rounded-lg border flex items-center space-x-2 ${testResult.success
-                  ? 'bg-green-500/10 border-green-500/20 text-green-400'
-                  : 'bg-red-500/10 border-red-500/20 text-red-400'
-                  }`}>
-                  {testResult.success ? (
-                    <CheckCircle className="h-4 w-4 flex-shrink-0" />
-                  ) : (
-                    <XCircle className="h-4 w-4 flex-shrink-0" />
-                  )}
-                  <span className="text-sm">{testResult.message}</span>
-                </div>
-              )}
-
-              {/* Action Buttons */}
-              <div className="grid grid-cols-2 gap-3 pt-2">
-                <Button
-                  onClick={handleTestConnection}
-                  disabled={isTesting || isConnecting}
-                  variant="outline"
-                  className="border-white/10 text-white hover:bg-white/10 hover:text-white bg-white/5"
-                >
-                  {isTesting ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <TestTube className="h-4 w-4 mr-2" />
-                  )}
-                  {isTesting ? t('serverSettings.testing') : t('serverSettings.testConnection')}
-                </Button>
-
-                <Button
-                  onClick={handleSave}
-                  disabled={inputUrl === url}
-                  variant="outline"
-                  className="border-white/10 text-white hover:bg-white/10 hover:text-white bg-white/5"
-                >
-                  <Save className="h-4 w-4 mr-2" />
-                  {t('serverSettings.saveUrl')}
-                </Button>
-              </div>
+              {/* Action Buttons removed - integrated into Connect */}
 
               {/* Connect/Disconnect Button */}
               <div className="pt-2">
