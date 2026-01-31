@@ -32,3 +32,8 @@ except Exception as e:
     print("   The extension is not functional")
     import traceback
     traceback.print_exc()
+
+# ComfyUI requirements: Define dummy mappings to avoid "IMPORT FAILED" warning
+# as this extension only provides API/Web functionality and no custom nodes.
+NODE_CLASS_MAPPINGS = {}
+NODE_DISPLAY_NAME_MAPPINGS = {}
