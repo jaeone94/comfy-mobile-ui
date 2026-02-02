@@ -143,7 +143,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
     filename: file.filename,
     subfolder: file.subfolder,
     type: file.type,
-    preview: true
+    preview: true,
+    modified: file.modified
   }) : undefined;
 
   // Try to load matching image thumbnail for videos
@@ -155,7 +156,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
           filename: matchingImage.filename,
           subfolder: matchingImage.subfolder,
           type: matchingImage.type,
-          preview: true
+          preview: true,
+          modified: matchingImage.modified
         });
         setMatchingImageThumbnail(imageUrl);
       } else {
@@ -215,6 +217,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
             <img
               src={matchingImageThumbnail}
               alt={file.filename}
+              loading="lazy"
+              decoding="async"
               className="w-full h-full object-cover"
               onError={() => {
                 setMatchingImageThumbnail(null);
@@ -241,6 +245,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
             <img
               src={thumbnailUrl}
               alt={file.filename}
+              loading="lazy"
+              decoding="async"
               className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={() => setIsLoaded(true)}
               onError={() => {
@@ -322,6 +328,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
   const [previewError, setPreviewError] = useState<string | null>(null);
+  const [currentPreviewIndex, setCurrentPreviewIndex] = useState<number>(-1);
 
   // View mode states
   const [viewMode, setViewMode] = useState<'flat' | 'folders'>('flat');
@@ -444,6 +451,13 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     }
 
     // Normal preview mode
+    const index = navigableFiles.findIndex(f =>
+      f.filename === file.filename &&
+      f.subfolder === file.subfolder &&
+      f.type === file.type
+    );
+    setCurrentPreviewIndex(index);
+
     setPreviewFile(file);
     setPreviewLoading(true);
     setPreviewError(null);
@@ -453,7 +467,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       const url = comfyFileService.createDownloadUrl({
         filename: file.filename,
         subfolder: file.subfolder,
-        type: file.type
+        type: file.type,
+        modified: file.modified
       });
       setPreviewUrl(url);
     } catch (err) {
@@ -858,7 +873,12 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       folders: sortedFolders,
       files: filesInCurrentFolder
     };
-  }, [currentFiles, selectedSubfolder]);
+  }, [currentFiles, selectedSubfolder, imageLookupMap]);
+
+  // Files available for navigation in preview modal
+  const navigableFiles = useMemo(() => {
+    return viewMode === 'folders' ? folderContent.files : currentFiles;
+  }, [viewMode, folderContent.files, currentFiles]);
 
   const totalFiles = files.images.length + files.videos.length;
 
@@ -946,16 +966,18 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
               </AnimatePresence>
 
               {/* Selection/X Button - Balanced Size */}
-              <button
-                onClick={toggleSelectionMode}
-                className={`w-14 h-14 flex items-center justify-center rounded-full border-2 transition-all duration-300 active:scale-90 shadow-2xl ${isSelectionMode
-                  ? 'bg-white border-white text-black'
-                  : 'bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-xl'
-                  }`}
-                title={isSelectionMode ? t('gallery.exitSelectionMode') : t('gallery.enterSelectionMode')}
-              >
-                {isSelectionMode ? <X className="h-7 w-7" /> : <CheckSquare className="h-7 w-7" />}
-              </button>
+              {!isFileSelectionMode && (
+                <button
+                  onClick={toggleSelectionMode}
+                  className={`w-14 h-14 flex items-center justify-center rounded-full border-2 transition-all duration-300 active:scale-90 shadow-2xl ${isSelectionMode
+                    ? 'bg-white border-white text-black'
+                    : 'bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-xl'
+                    }`}
+                  title={isSelectionMode ? t('gallery.exitSelectionMode') : t('gallery.enterSelectionMode')}
+                >
+                  {isSelectionMode ? <X className="h-7 w-7" /> : <CheckSquare className="h-7 w-7" />}
+                </button>
+              )}
             </div>
           </div>
 
@@ -1002,7 +1024,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
             <AnimatePresence mode="wait">
               {viewMode === 'folders' ? (
                 <motion.div
-                  key={`recursive-view-${selectedSubfolder}`}
+                  key={`recursive-view-${activeTab}-${selectedSubfolder}`}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
@@ -1046,7 +1068,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                                 filename: folder.thumbnailFile.filename,
                                 subfolder: folder.thumbnailFile.subfolder,
                                 type: folder.thumbnailFile.type,
-                                preview: true
+                                preview: true,
+                                modified: folder.thumbnailFile.modified
                               })}
                               alt={folder.name}
                               className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
@@ -1057,7 +1080,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                                     filename: folder.lastFile.filename,
                                     subfolder: folder.lastFile.subfolder,
                                     type: folder.lastFile.type,
-                                    preview: true
+                                    preview: true,
+                                    modified: folder.lastFile.modified
                                   });
                                 }
                               }}
@@ -1108,7 +1132,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                 </motion.div>
               ) : (
                 <motion.div
-                  key="flat-view"
+                  key={`flat-view-${activeTab}`}
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
@@ -1256,6 +1280,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
           url={previewUrl || undefined}
           onClose={handlePreviewClose}
           onRetry={handlePreviewRetry}
+          files={!isFileSelectionMode ? navigableFiles : undefined}
+          initialIndex={currentPreviewIndex}
+          comfyFileService={comfyFileService}
         />
       )}
       {/* Folder Delete Confirmation */}

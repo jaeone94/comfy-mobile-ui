@@ -268,6 +268,9 @@ def scan_directory_recursive(base_path: str, folder_type: str) -> List[Dict[str,
     
     try:
         for root, dirs, filenames in os.walk(base_path):
+            # Filter hidden directories to prevent scanning cache folders like .mobile_thumbnails
+            dirs[:] = [d for d in dirs if not d.startswith('.')]
+            
             # Calculate relative subfolder path
             rel_path = os.path.relpath(root, base_path)
             subfolder = "" if rel_path == "." else rel_path.replace(os.sep, "/")

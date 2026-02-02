@@ -28,6 +28,7 @@ export interface IComfyFileDownloadOptions {
   subfolder?: string;
   type?: 'input' | 'temp' | 'output' | string;
   preview?: boolean;
+  modified?: number | string | Date;
 }
 
 export interface IComfyFileUploadResponse {

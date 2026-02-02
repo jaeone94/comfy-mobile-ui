@@ -1,7 +1,11 @@
 import os
 import shutil
+import io
+import time
+import hashlib
 from typing import Dict, List, Any, Optional
 from aiohttp import web
+from PIL import Image
 import folder_paths
 from ..utils.file_utils import (
     scan_directory_recursive, categorize_files, validate_filename, 
@@ -504,3 +508,85 @@ async def copy_files(request):
         }, status=500)
 
 
+async def view_thumbnail(request):
+    """
+    Get a resized thumbnail of an image with disk caching.
+    Query params: filename, subfolder, type, width (default 256)
+    """
+    try:
+        query = request.query
+        filename = query.get('filename')
+        subfolder = query.get('subfolder', '')
+        folder_type = query.get('type', 'output')
+        width = int(query.get('width', 256))
+        
+        if not filename:
+            return web.Response(status=400, text="Filename required")
+            
+        # Build original file path
+        try:
+            file_path = build_file_path(folder_type, filename, subfolder)
+        except ValueError as e:
+            return web.Response(status=403, text=str(e))
+            
+        if not os.path.exists(file_path):
+            return web.Response(status=404, text="File not found")
+            
+        # Get original file stats for cache validation
+        stat = os.stat(file_path)
+        mtime = stat.st_mtime
+        size = stat.st_size
+        
+        # Create cache directory in temp folder
+        temp_dir = folder_paths.get_temp_directory()
+        cache_dir = os.path.join(temp_dir, ".mobile_thumbnails")
+        if not os.path.exists(cache_dir):
+            os.makedirs(cache_dir, exist_ok=True)
+            
+        # Generate cache key based on path and width
+        cache_key = hashlib.md5(f"{file_path}_{width}".encode()).hexdigest()
+        cache_path = os.path.join(cache_dir, f"{cache_key}.jpg")
+        
+        # Check if valid cache exists
+        use_cache = False
+        if os.path.exists(cache_path):
+            cache_stat = os.stat(cache_path)
+            # If cache is newer than original, we can use it
+            if cache_stat.st_mtime >= mtime:
+                use_cache = True
+                
+        if use_cache:
+            return web.FileResponse(cache_path)
+            
+        # Create thumbnail
+        try:
+            with Image.open(file_path) as img:
+                # Calculate aspect ratio
+                aspect = img.height / img.width
+                height = int(width * aspect)
+                
+                # Resize if needed (don't upscale)
+                if img.width > width:
+                    # Use Lanczos (standard in modern PILLOW) or Bilinear for speed
+                    # PILLOW 10.0+ uses Resampling.LANCZOS, older uses Image.LANCZOS
+                    resample_filter = getattr(Image, 'Resampling', Image).LANCZOS
+                    img = img.resize((width, height), resample_filter)
+                
+                # Convert to RGB if necessary (e.g. for PNG with alpha to JPG)
+                if img.mode in ('RGBA', 'P', 'LA'):
+                    img = img.convert('RGB')
+                
+                # Save to cache and stream to response
+                # We use JPG for thumbnails to minimize transfer size
+                img.save(cache_path, "JPEG", quality=80, optimize=True)
+                
+            return web.FileResponse(cache_path)
+            
+        except Exception as img_err:
+            print(f"❌ Thumbnail generation failed: {img_err}")
+            # Fallback to original file if resizing fails
+            return web.FileResponse(file_path)
+            
+    except Exception as e:
+        print(f"❌ Error in view_thumbnail: {e}")
+        return web.Response(status=500, text=str(e))

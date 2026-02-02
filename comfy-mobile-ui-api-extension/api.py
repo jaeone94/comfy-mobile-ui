@@ -107,6 +107,7 @@ def setup_routes():
                 # File management routes
                 app.router.add_get('/comfymobile/api/files/list', list_all_files)
                 app.router.add_get('/comfymobile/api/files/list/{folder_type}', list_files_by_type)
+                app.router.add_get('/comfymobile/api/files/view', view_thumbnail)
                 app.router.add_delete('/comfymobile/api/files/delete', delete_files)
                 app.router.add_post('/comfymobile/api/files/move', move_files)
                 app.router.add_post('/comfymobile/api/files/copy', copy_files)

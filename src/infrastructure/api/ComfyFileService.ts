@@ -30,12 +30,12 @@ export class ComfyFileService {
   async testConnection(): Promise<boolean> {
     try {
       console.log(`🔍 Testing connection to ComfyUI server: ${this.serverUrl}/system_stats`);
-      
-      const response = await axios.get(`${this.serverUrl}/system_stats`, { 
+
+      const response = await axios.get(`${this.serverUrl}/system_stats`, {
         timeout: 5000,
         validateStatus: (status) => status >= 200 && status < 300 // Only treat 2xx as success
       });
-      
+
       console.log(`✅ ComfyUI server responded with status: ${response.status}`);
       return true;
     } catch (error: any) {
@@ -70,7 +70,7 @@ export class ComfyFileService {
     try {
       const response = await axios.get(`${this.serverUrl}/history`);
       const historyData = response.data;
-      
+
       if (typeof historyData !== 'object') {
         return [];
       }
@@ -80,7 +80,7 @@ export class ComfyFileService {
       const allKeys = Object.keys(historyData);
       // Reverse the keys so newest entries come first in our array
       const historyKeys = (limit ? allKeys.slice(-limit) : allKeys).reverse();
-      
+
       for (const key of historyKeys) {
         const entry = historyData[key];
         if (entry && entry.outputs) {
@@ -100,20 +100,20 @@ export class ComfyFileService {
    */
   async listFiles(): Promise<IComfyFileListResponse> {
     try {
-      
+
       // Try the custom API endpoint first
       try {
         const response = await axios.get(`${this.serverUrl}/comfymobile/api/files/list`);
-        
+
         if (response.data?.status === 'success') {
           const { images, videos, files } = response.data;
-          
+
           console.log('✅ Files loaded via custom API:', {
             images: images.length,
             videos: videos.length,
             files: files.length
           });
-          
+
           // Map the files to include all fields from API
           const mapFiles = (fileArray: any[]) => fileArray.map(file => ({
             filename: file.filename,
@@ -124,7 +124,7 @@ export class ComfyFileService {
             modified_iso: file.modified_iso,
             extension: file.extension
           }));
-          
+
           return {
             images: mapFiles(images || []),
             videos: mapFiles(videos || []),
@@ -135,7 +135,7 @@ export class ComfyFileService {
         }
       } catch (apiError) {
         console.warn('Custom API not available, falling back to legacy method:', apiError);
-        
+
         // Fallback: return empty results (legacy /view method doesn't work for listing)
         return { images: [], videos: [], files: [] };
       }
@@ -150,26 +150,26 @@ export class ComfyFileService {
    */
   async listWorkflows(): Promise<{ success: boolean; workflows: any[]; error?: string }> {
     try {
-      
+
       // Try the custom API endpoint for workflows
       const response = await axios.get(`${this.serverUrl}/comfymobile/api/workflows/list`, {
         timeout: 10000 // 10 second timeout
       });
-      
+
       console.log('📡 Workflows API response:', {
         status: response.status,
         data: response.data
       });
-      
+
       if (response.data?.status === 'success') {
         const workflows = response.data.workflows || [];
-        
+
         console.log('✅ Workflows loaded via custom API:', {
           count: response.data.count || workflows.length,
           totalWorkflows: workflows.length,
           firstWorkflow: workflows[0] || null
         });
-        
+
         return {
           success: true,
           workflows: workflows
@@ -185,7 +185,7 @@ export class ComfyFileService {
         data: error.response?.data,
         endpoint: `${this.serverUrl}/comfymobile/api/workflows/list`
       });
-      
+
       return {
         success: false,
         workflows: [],
@@ -200,16 +200,16 @@ export class ComfyFileService {
   async checkExtensionAvailable(): Promise<boolean> {
     try {
       const response = await axios.get(`${this.serverUrl}/comfymobile/api/status`, { timeout: 5000 });
-      
+
       console.log('📡 Mobile API Extension response:', {
         status: response.status,
         data: response.data,
         statusField: response.data?.status,
         extensionField: response.data?.extension
       });
-      
+
       const isAvailable = response.data?.status === 'ok' && response.data?.extension === 'ComfyUI Mobile UI API';
-      
+
       return isAvailable;
     } catch (error: any) {
       console.warn('❌ Mobile API Extension check failed:', {
@@ -227,47 +227,47 @@ export class ComfyFileService {
    */
   async uploadWorkflow(file: File, filename?: string, overwrite: boolean = false): Promise<{ success: boolean; message?: string; filename?: string; error?: string }> {
     try {
-      
+
       // Create FormData for file upload
       const formData = new FormData();
       formData.append('file', file);
-      
+
       if (filename) {
         formData.append('filename', filename);
       }
-      
+
       if (overwrite) {
         formData.append('overwrite', 'true');
       }
-      
+
       const endpoint = `${this.serverUrl}/comfymobile/api/workflows/upload`;
-      
+
       console.log('📤 Uploading workflow to server:', {
         endpoint,
         filename: filename || file.name,
         size: file.size,
         overwrite
       });
-      
+
       const response = await axios.post(endpoint, formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
         timeout: 30000 // 30 second timeout for upload
       });
-      
+
       console.log('📤 Workflow upload response:', {
         status: response.status,
         dataStatus: response.data?.status,
         filename: response.data?.filename
       });
-      
+
       if (response.data?.status === 'success') {
         console.log('✅ Workflow uploaded successfully:', {
           filename: response.data.filename,
           size: response.data.size
         });
-        
+
         return {
           success: true,
           message: response.data.message,
@@ -284,7 +284,7 @@ export class ComfyFileService {
         statusText: error.response?.statusText,
         data: error.response?.data
       });
-      
+
       return {
         success: false,
         error: error.response?.data?.message || error.message || 'Failed to upload workflow to server'
@@ -297,28 +297,28 @@ export class ComfyFileService {
    */
   async downloadWorkflow(filename: string): Promise<{ success: boolean; content?: any; error?: string }> {
     try {
-      
+
       // Ensure .json extension
       const workflowFilename = filename.endsWith('.json') ? filename : `${filename}.json`;
       const endpoint = `${this.serverUrl}/comfymobile/api/workflows/content/${encodeURIComponent(workflowFilename)}`;
-      
-      
+
+
       const response = await axios.get(endpoint, {
         timeout: 15000 // 15 second timeout for download
       });
-      
+
       console.log('📡 Workflow download response:', {
         status: response.status,
         dataStatus: response.data?.status,
         hasContent: !!response.data?.content
       });
-      
+
       if (response.data?.status === 'success' && response.data?.content) {
         console.log('✅ Workflow downloaded successfully:', {
           filename: response.data.filename,
           size: response.data.size
         });
-        
+
         return {
           success: true,
           content: response.data.content
@@ -334,7 +334,7 @@ export class ComfyFileService {
         statusText: error.response?.statusText,
         data: error.response?.data
       });
-      
+
       return {
         success: false,
         error: error.response?.data?.message || error.message || 'Failed to download workflow from server'
@@ -348,7 +348,7 @@ export class ComfyFileService {
   async downloadFile(options: IComfyFileDownloadOptions): Promise<Blob | null> {
     try {
       const { filename, subfolder = '', type = 'output', preview = false } = options;
-      
+
       console.log('📥 [ComfyFileService] downloadFile called with:', {
         filename,
         subfolder,
@@ -356,10 +356,10 @@ export class ComfyFileService {
         preview,
         serverUrl: this.serverUrl
       });
-      
+
       const encodedFilename = encodeURIComponent(filename);
       const encodedSubfolder = encodeURIComponent(subfolder);
-      
+
       // Construct download URL
       let downloadUrl = `${this.serverUrl}/view?filename=${encodedFilename}&type=${type}`;
       if (subfolder) {
@@ -574,7 +574,7 @@ export class ComfyFileService {
   /**
    * Delete one or multiple files using the Mobile API Extension
    */
-  async deleteFiles(files: Array<{filename: string; subfolder?: string; type?: ComfyFileType}>): Promise<{success: boolean; results: any[]; error?: string}> {
+  async deleteFiles(files: Array<{ filename: string; subfolder?: string; type?: ComfyFileType }>): Promise<{ success: boolean; results: any[]; error?: string }> {
     try {
       const response = await axios.delete(`${this.serverUrl}/comfymobile/api/files/delete`, {
         data: { files },
@@ -607,9 +607,9 @@ export class ComfyFileService {
    * Move one or multiple files between folders using the Mobile API Extension
    */
   async moveFiles(
-    files: Array<{filename: string; subfolder?: string; type?: ComfyFileType}>, 
+    files: Array<{ filename: string; subfolder?: string; type?: ComfyFileType }>,
     destinationType: ComfyFileType
-  ): Promise<{success: boolean; results: any[]; error?: string}> {
+  ): Promise<{ success: boolean; results: any[]; error?: string }> {
     try {
       const response = await axios.post(`${this.serverUrl}/comfymobile/api/files/move`, {
         files,
@@ -644,9 +644,9 @@ export class ComfyFileService {
    * Copy one or multiple files between folders using the Mobile API Extension
    */
   async copyFiles(
-    files: Array<{filename: string; subfolder?: string; type?: ComfyFileType}>, 
+    files: Array<{ filename: string; subfolder?: string; type?: ComfyFileType }>,
     destinationType: ComfyFileType
-  ): Promise<{success: boolean; results: any[]; error?: string}> {
+  ): Promise<{ success: boolean; results: any[]; error?: string }> {
     try {
       const response = await axios.post(`${this.serverUrl}/comfymobile/api/files/copy`, {
         files,
@@ -687,7 +687,7 @@ export class ComfyFileService {
     // ComfyUI history keys are ordered oldest first, but we want newest first
     // So we reverse the index: newest execution gets order 0, oldest gets higher numbers
     const totalHistoryEntries = history.length;
-    
+
     history.forEach((entry, historyIndex) => {
       Object.values(entry.outputs).forEach(output => {
         if (output.images) {
@@ -759,16 +759,30 @@ export class ComfyFileService {
    */
   createDownloadUrl(options: IComfyFileDownloadOptions): string {
     const { filename, subfolder = '', type = 'output', preview = false } = options;
-    
+
     const encodedFilename = encodeURIComponent(filename);
     const encodedSubfolder = encodeURIComponent(subfolder);
-    
-    let downloadUrl = `${this.serverUrl}/view?filename=${encodedFilename}&type=${type}`;
+
+    let downloadUrl = '';
+
+    if (preview) {
+      // Use custom mobile-optimized thumbnail API with caching
+      downloadUrl = `${this.serverUrl}/comfymobile/api/files/view?filename=${encodedFilename}&type=${type}`;
+    } else {
+      // Use official ComfyUI view API for full resolution
+      downloadUrl = `${this.serverUrl}/view?filename=${encodedFilename}&type=${type}`;
+    }
+
     if (subfolder) {
       downloadUrl += `&subfolder=${encodedSubfolder}`;
     }
-    if (preview) {
-      downloadUrl += `&preview=true`;
+
+    // Add cache busting timestamp if available to prevent showing old images with same name
+    if (options.modified) {
+      const timestamp = typeof options.modified === 'number'
+        ? options.modified
+        : new Date(options.modified).getTime();
+      downloadUrl += `&t=${timestamp}`;
     }
 
     return downloadUrl;
