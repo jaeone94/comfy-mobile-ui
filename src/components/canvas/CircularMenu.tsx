@@ -148,7 +148,7 @@ export const CircularMenu = forwardRef<CircularMenuRef, CircularMenuProps>((prop
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0, pointerEvents: 'none' }}
                         onClick={onClose}
-                        onContextMenu={(e) => { e.preventDefault(); onClose(); }}
+                        onContextMenu={(e) => { e.preventDefault(); }}
                         style={{
                             position: 'fixed',
                             inset: 0,

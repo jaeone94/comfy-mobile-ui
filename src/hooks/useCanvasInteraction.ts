@@ -1023,21 +1023,14 @@ export const useCanvasInteraction = ({
   };
 
   const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (isMenuOpen && onMenuDrag && e.touches.length > 0) {
-      // Prevent default to stop scrolling/refresh
-      if (e.cancelable) e.preventDefault();
-
-      onMenuDrag({
-        x: e.touches[0].clientX,
-        y: e.touches[0].clientY
-      });
+    if (isMenuOpen) {
+      if (onMenuDrag && e.touches.length === 1) {
+        const touch = e.touches[0];
+        onMenuDrag({ x: touch.clientX, y: touch.clientY });
+      }
       return;
     }
 
-    // Prevent browser gestures
-    e.preventDefault();
-
-    // Update last touch time to prevent mouse events
     setLastTouchTime(Date.now());
 
     // Check long press movement tolerance
