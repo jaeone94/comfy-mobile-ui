@@ -97,6 +97,7 @@ ComfyUI 워크플로우를 자유롭게 편집할 수 있는 강력한 **Graph V
 1. **다운로드**: [최신 릴리즈](https://github.com/jaeone94/comfy-mobile-ui/releases) 페이지에서 `comfy-mobile-ui-api-extension-vX.X.X.zip` 파일을 다운로드합니다.
 2. **압축 해제**: 다운로드한 파일의 압축을 풉니다.
 3. **복사**: 압축을 풀어 나온 `comfy-mobile-ui-api-extension` 폴더를 ComfyUI의 `custom_nodes/` 디렉토리에 복사합니다.
+   - **3.5. 의존성 설치 (포터블 사용자)**: ComfyUI-Manager가 설치되어 있지 않은 **바닐라 환경의 ComfyUI Windows Portable** 사용자라면, 확장 프로그램 폴더 안의 `install-requirements-for-comfyui-portable.bat` 파일을 실행하여 필요한 라이브러리를 설치해 주세요.
 4. **재시작**: 아래 플래그를 포함하여 ComfyUI를 실행 또는 재시작합니다:
    ```bash
    python main.py --enable-cors-header

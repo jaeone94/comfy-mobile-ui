@@ -95,6 +95,7 @@ The easiest way to get started is to download a pre-built release:
 1. **Download**: Go to [Latest Release](https://github.com/jaeone94/comfy-mobile-ui/releases) and download `comfy-mobile-ui-api-extension-vX.X.X.zip`.
 2. **Extract**: Unzip the file on your computer.
 3. **Deploy**: Copy the extracted `comfy-mobile-ui-api-extension` folder into your ComfyUI `custom_nodes/` directory.
+   - **Step 3.5 (Portable User)**: If you are using the **ComfyUI Windows Portable** version without ComfyUI-Manager, run `install-requirements-for-comfyui-portable.bat` inside the extension folder to install required libraries.
 4. **Restart**: Start (or restart) ComfyUI with the required flag:
    ```bash
    python main.py --enable-cors-header

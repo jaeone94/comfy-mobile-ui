@@ -97,7 +97,8 @@ https://github.com/user-attachments/assets/20480b56-5c01-4c27-9401-0d4ba455dd81
 
 1. **ダウンロード**: [最新リリース](https://github.com/jaeone94/comfy-mobile-ui/releases)ページから `comfy-mobile-ui-api-extension-vX.X.X.zip` をダウンロードします。
 2. **展開**: ダウンロードしたファイルを解凍します。
-3. **配置**: 解凍された `comfy-mobile-ui-api-extension` フォルダを ComfyUI の `custom_nodes/` ディレクトリにコピーします。
+3. **配置**: 解凍された `comfy-mobile-ui-api-extension` フォルダを ComfyUI の `custom_nodes/` ディレクトリにコピーします.
+   - **3.5. 依存関係のインストール (ポータブル版ユーザー)**: ComfyUI-Manager がインストールされていない **バニラ状態の ComfyUI Windows Portable** を使用している場合は, 拡張機能フォルダ内の `install-requirements-for-comfyui-portable.bat` を実行して, 必要なライブラリをインストールしてください.
 4. **再起動**: 以下のフラグを含めて ComfyUI を起動または再起動します：
    ```bash
    python main.py --enable-cors-header
