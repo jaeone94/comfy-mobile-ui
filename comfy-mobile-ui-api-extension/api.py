@@ -34,24 +34,10 @@ try:
     from .handlers.global_websocket_handler import *
     from .utils.global_websocket_manager import global_websocket_manager
 except ImportError as e:
-    print(f"Warning: Could not import handlers: {e}")
-    # Fallback imports (for development/testing)
-    from handlers.workflow_handler import *
-    from handlers.file_handler import *
-    from handlers.model_handler import *
-    from handlers.download_handler import *
-    from handlers.lora_handler import *
-    from handlers.snapshot_handler import *
-    from handlers.backup_handler import *
-    from handlers.system_handler import *
-    from handlers.widget_handler import *
-    from handlers.node_mapping_handler import *
-    from handlers.manager_handler import *
-    from handlers.video_download_handler import *
-    from handlers.chain_handler import *
-    from handlers.chain_progress_handler import *
-    from handlers.global_websocket_handler import *
-    from utils.global_websocket_manager import global_websocket_manager
+    print(f"\n[ComfyMobileUI] ❌ ERROR: Missing dependency - {e}")
+    print("[ComfyMobileUI] 💡 Please install required packages using: python -m pip install -r requirements.txt\n")
+    # We raise the error to allow ComfyUI to handle the failure gracefully with the original cause
+    raise e
 
 def get_routes():
     """Get routes from ComfyUI server module"""
