@@ -7,12 +7,6 @@ import { WorkflowNode } from '@/shared/types/app/IComfyWorkflow';
 import { checkNodeCompatibility } from '@/shared/utils/nodeCompatibility';
 import { getSlotColor } from '@/shared/utils/rendering/CanvasRendererService';
 
-interface SlotInfo {
-    name: string;
-    type: string;
-    index: number;
-}
-
 interface DirectConnectionPanelProps {
     isVisible: boolean;
     sourceNode: WorkflowNode | null;
@@ -294,7 +288,7 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                                 <h3 className="text-lg font-bold text-white/90 line-clamp-2 break-all">{sourceNode.title || sourceNode.type}</h3>
                             </div>
                             <div
-                                className={`flex-1 ${activeDrag ? 'overflow-hidden' : 'overflow-y-auto'} custom-scrollbar flex flex-col justify-center`}
+                                className={`flex-1 ${activeDrag ? 'overflow-hidden' : 'overflow-y-auto'} custom-scrollbar flex flex-col`}
                                 style={{ gap: sourceOutputs.length > 8 ? '8px' : '16px' }}
                                 onScroll={onScroll}
                             >
@@ -342,7 +336,7 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                                 <h3 className="text-lg font-bold text-white/90 line-clamp-2 break-all">{targetNode.title || targetNode.type}</h3>
                             </div>
                             <div
-                                className={`flex-1 ${activeDrag ? 'overflow-hidden' : 'overflow-y-auto'} custom-scrollbar flex flex-col justify-center`}
+                                className={`flex-1 ${activeDrag ? 'overflow-hidden' : 'overflow-y-auto'} custom-scrollbar flex flex-col`}
                                 style={{ gap: targetInputs.length > 8 ? '8px' : '16px' }}
                                 onScroll={onScroll}
                             >
