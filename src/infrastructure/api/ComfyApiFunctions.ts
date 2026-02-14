@@ -2206,6 +2206,8 @@ function isVirtualNode(node: any): boolean {
     // rgthree extension nodes
     'Fast Groups Bypasser (rgthree)',
     'Fast Groups Muter (rgthree)',
+    'Fast Bypasser (rgthree)',
+    'Fast Muter (rgthree)',
     'Display Any (rgthree)',
     'Bookmark (rgthree)',
     'Context (rgthree)',
@@ -2215,7 +2217,6 @@ function isVirtualNode(node: any): boolean {
     'Pipe To/From (rgthree)',
     'Constant (rgthree)',
     'Label (rgthree)',
-    'Fast Muter (rgthree)',     // Mute control
     'Mute / Bypass Repeater (rgthree)',     // Mute / Bypass control
   ]);
 

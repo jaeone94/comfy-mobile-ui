@@ -22,6 +22,8 @@ export const VIRTUAL_NODES: ReadonlyArray<string> = [
   // rgthree extension nodes (workflow management)
   'Fast Groups Bypasser (rgthree)',  // Group bypass control    
   'Fast Groups Muter (rgthree)',     // Group mute control
+  'Fast Bypasser (rgthree)',         // Node bypass control
+  'Fast Muter (rgthree)',            // Node mute control
   'Display Any (rgthree)',           // Display/debug nodes
   'Bookmark (rgthree)',              // Workflow bookmarks
   'Context (rgthree)',               // Context management
@@ -32,7 +34,6 @@ export const VIRTUAL_NODES: ReadonlyArray<string> = [
   'Constant (rgthree)',              // Constant values
   'Label (rgthree)',                 // Text labels and annotations
   'MarkdownNote',
-  'Fast Muter (rgthree)',     // Mute control
   'Mute / Bypass Repeater (rgthree)',     // Mute / Bypass control
   'GraphInput',
   'GraphOutput',
