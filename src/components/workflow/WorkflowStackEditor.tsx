@@ -27,6 +27,10 @@ import { convertGraphToAPI } from '@/infrastructure/api/ComfyApiFunctions';
 import { autoChangeSeed } from '@/shared/utils/seedProcessing';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
+import { InlineImagePreview } from '@/components/media/InlineImagePreview';
+import { useNodeExecutionPreviewStore, NodeExecutionPreviewFile } from '@/ui/store/nodeExecutionPreviewStore';
+
+const EMPTY_EXECUTION_PREVIEWS: readonly NodeExecutionPreviewFile[] = [];
 
 // Custom morphing icon component (copied from WorkflowHeader)
 const SaveToCheckIcon: React.FC<{
@@ -114,6 +118,8 @@ interface StackNodeProps {
 
 const StackNode: React.FC<StackNodeProps> = ({ node, widgetEditor, onModeChange, globalExpandAction, executingNodeId }) => {
     const { t } = useTranslation();
+    const executionNodePreviewFiles =
+        useNodeExecutionPreviewStore(state => state.previewsByNode.get(node.id)) || EMPTY_EXECUTION_PREVIEWS;
 
     const widgets = useMemo(() => {
         if (node.getWidgets) {
@@ -180,6 +186,15 @@ const StackNode: React.FC<StackNodeProps> = ({ node, widgetEditor, onModeChange,
     const fileOperations = useFileOperations({
         onSetWidgetValue: (nodeId, paramName, value) => setWidgetValue(nodeId, paramName, value)
     });
+
+    const latestExecutionPreview = executionNodePreviewFiles.length > 0
+        ? executionNodePreviewFiles[executionNodePreviewFiles.length - 1]
+        : null;
+    const latestExecutionPreviewPath = latestExecutionPreview
+        ? (latestExecutionPreview.subfolder
+            ? `${latestExecutionPreview.subfolder}/${latestExecutionPreview.filename}`
+            : latestExecutionPreview.filename)
+        : '';
 
     const [fileSelectionState, setFileSelectionState] = useState<{
         isOpen: boolean;
@@ -326,6 +341,25 @@ const StackNode: React.FC<StackNodeProps> = ({ node, widgetEditor, onModeChange,
                     </div>
                 </div>
 
+                {latestExecutionPreview && (
+                    <div className="rounded-xl overflow-hidden border border-white/10 bg-black/20">
+                        <InlineImagePreview
+                            imagePreview={latestExecutionPreview}
+                            isFromExecution={true}
+                            onClick={() => {
+                                if (latestExecutionPreviewPath) {
+                                    fileOperations.handleFilePreview(latestExecutionPreviewPath);
+                                }
+                            }}
+                            themeOverride={{
+                                container: 'bg-transparent',
+                                text: 'text-white/80',
+                                secondaryText: 'text-white/60'
+                            }}
+                        />
+                    </div>
+                )}
+
                 {/* Collapsible Content */}
                 <AnimatePresence initial={false}>
                     {isExpanded && (
@@ -447,13 +481,15 @@ export const WorkflowStackEditor: React.FC<WorkflowStackEditorProps> = ({ graph,
     const [executingNodeId, setExecutingNodeId] = useState<string | null>(null);
     const currentPromptIdRef = useRef<string | null>(null);
     const { isConnected } = useConnectionStore();
+    const clearNodeExecutionPreviews = useNodeExecutionPreviewStore(state => state.clearPreviews);
 
     // Trigger queue refresh when ID changes
     useEffect(() => {
         if (id) {
             setQueueRefreshTrigger(prev => prev + 1);
         }
-    }, [id]);
+        clearNodeExecutionPreviews();
+    }, [id, clearNodeExecutionPreviews]);
 
     // Subscribe to execution events to highlight the currently running node
     useEffect(() => {

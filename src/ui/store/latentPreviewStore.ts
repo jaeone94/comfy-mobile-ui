@@ -61,7 +61,7 @@ export const useLatentPreviewStore = create<LatentPreviewState>()(
                         return;
                     }
 
-                    if (state.imageUrl) {
+                    if (state.imageUrl?.startsWith('blob:')) {
                         try {
                             URL.revokeObjectURL(state.imageUrl);
                         } catch (e) {
@@ -88,7 +88,7 @@ export const useLatentPreviewStore = create<LatentPreviewState>()(
 
                 clearPreview: () => {
                     const state = get();
-                    if (state.imageUrl) {
+                    if (state.imageUrl?.startsWith('blob:')) {
                         URL.revokeObjectURL(state.imageUrl);
                     }
                     set({

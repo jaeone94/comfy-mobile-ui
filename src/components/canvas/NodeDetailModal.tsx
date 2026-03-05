@@ -25,6 +25,10 @@ import { VideoPreviewSection } from '@/components/media/VideoPreviewSection';
 import { InlineImagePreview } from '@/components/media/InlineImagePreview';
 import { PointEditor } from '@/components/controls/widgets/custom_node_widget/PointEditor';
 import { detectParameterTypeForGallery } from '@/shared/utils/GalleryPermissionUtils';
+import { useNodeExecutionPreviewStore, NodeExecutionPreviewFile } from '@/ui/store/nodeExecutionPreviewStore';
+import { useNodeSamplerPreviewStore } from '@/ui/store/nodeSamplerPreviewStore';
+
+const EMPTY_EXECUTION_PREVIEWS: readonly NodeExecutionPreviewFile[] = [];
 
 interface NodeBounds {
     x: number;
@@ -154,6 +158,12 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
 }) => {
     const { t } = useTranslation();
     const nodeId = typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id;
+    const executionNodePreviewFiles =
+        useNodeExecutionPreviewStore(state => state.previewsByNode.get(nodeId)) || EMPTY_EXECUTION_PREVIEWS;
+    const samplerPreviewFrame = useNodeSamplerPreviewStore(state => {
+        const frames = state.previewsByNode.get(String(nodeId));
+        return frames && frames.length > 0 ? frames[0] : null;
+    });
     const metadata = nodeMetadata.get(nodeId);
 
     const hasCustomColor = true; // Always true now as we default to dark grey
@@ -425,6 +435,10 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
 
     // We need to re-implement these helpers properly to match the file we read
     const extractImagePreviewFromNode = () => { // Renamed to avoid collision
+        if (executionNodePreviewFiles.length > 0) {
+            return executionNodePreviewFiles[executionNodePreviewFiles.length - 1];
+        }
+
         const imagePreviewValue = getWidgetValue(nodeId, 'imagepreview', undefined);
         if (imagePreviewValue?.params) return imagePreviewValue.params;
 
@@ -476,7 +490,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
             }
         }
     }, [selectedNode, widgets, onAutoRefreshNode]);
-    const imagePreview = useMemo(() => extractImagePreviewFromNode(), [selectedNode, widgets, nodeId]); // Depend on widgets
+    const imagePreview = useMemo(() => extractImagePreviewFromNode(), [selectedNode, widgets, nodeId, executionNodePreviewFiles]); // Depend on widgets
     // Video preview was mostly stubbed in original code, skipping for brevity unless needed.
     const videoPreview = useMemo(() => extractVideoPreview(), [selectedNode, widgets, nodeId]);
 
@@ -1120,7 +1134,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                         {/* Single Scrollable Content Area */}
                         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
                             {/* Static Top Bumper - Prevents initial jitter */}
-                            <div className="h-[110px] relative pointer-events-none">
+                            <div className="h-[150px] relative pointer-events-none">
                                 {/* Sentinel for IntersectionObserver at exactly 80px scroll depth */}
                                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
                             </div>
@@ -1130,12 +1144,35 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                    actually since it's NOT absolute but flex-col, it pushes down naturally. 
                                    We just removed the old identity header from here. */}
 
+                                {/* Live sampler preview from websocket latent frames (node-associated when possible). */}
+                                {samplerPreviewFrame && (
+                                    <div className={`mt-4 mb-6 rounded-2xl overflow-hidden border ${hasCustomColor ? 'bg-black/20 border-white/10' : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-800'}`}>
+                                        <div className={`px-3 py-2 border-b text-[11px] uppercase tracking-wider font-semibold ${hasCustomColor ? 'border-white/10 text-white/70' : 'border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                                            <span>{t('latentPreview.title')}</span>
+                                        </div>
+                                        <div className="p-2">
+                                            <img
+                                                src={samplerPreviewFrame.imageUrl}
+                                                alt={t('latentPreview.title')}
+                                                className="w-full max-h-56 object-contain rounded-xl"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+
                                 {/* Image Preview */}
                                 {imagePreview && (
-                                    <div className={`mb-8 rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
+                                    <div className={`mt-4 mb-8 rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
                                         <InlineImagePreview
                                             imagePreview={imagePreview}
-                                            onClick={() => onFilePreview(imagePreview.filename || imagePreview)}
+                                            onClick={() => {
+                                                const previewPath = typeof imagePreview === 'string'
+                                                    ? imagePreview
+                                                    : (imagePreview.subfolder
+                                                        ? `${imagePreview.subfolder}/${imagePreview.filename || ''}`
+                                                        : (imagePreview.filename || ''));
+                                                onFilePreview(previewPath);
+                                            }}
                                             isFromExecution={true}
                                             themeOverride={hasCustomColor ? {
                                                 container: 'bg-transparent shadow-none',

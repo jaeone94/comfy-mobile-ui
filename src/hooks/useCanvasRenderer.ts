@@ -15,7 +15,8 @@ import {
   NodeBounds,
   GroupBounds,
   ViewportTransform,
-  RenderingOptions
+  RenderingOptions,
+  NodeExecutionPreviewFile
 } from '@/shared/utils/rendering/CanvasRendererService';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import { useGlobalStore } from '@/ui/store/globalStore';
@@ -49,6 +50,7 @@ interface UseCanvasRendererProps {
   groupBounds: GroupBounds[];
   selectedNode: IComfyGraphNode | null;
   modifiedWidgetValues?: Map<number, Record<string, any>>;
+  executionNodePreviews?: Map<number, NodeExecutionPreviewFile[]>;
   repositionMode?: {
     isActive: boolean;
     selectedNodeId: number | null;
@@ -76,6 +78,7 @@ export const useCanvasRenderer = ({
   groupBounds,
   selectedNode,
   modifiedWidgetValues,
+  executionNodePreviews,
   repositionMode,
   connectionMode,
   missingNodeIds,
@@ -333,6 +336,7 @@ export const useCanvasRenderer = ({
           viewportScale: viewport.scale, // Pass viewport scale for responsive font sizing
           modifiedNodeIds, // Add modified nodes for green outline
           modifiedWidgetValues, // Add modified widget values for accurate display
+          executionNodePreviews,
           repositionMode: repositionMode || null, // Add repositioning mode info
           connectionMode: connectionMode || null, // Add connection mode info for highlighting
           missingNodeIds: missingNodeIds || new Set(), // Add missing node IDs for red outline
@@ -365,7 +369,7 @@ export const useCanvasRenderer = ({
       window.removeEventListener('resize', resizeCanvas);
       canvas.removeEventListener('imageLoaded', handleImageLoaded);
     };
-  }, [workflow, viewport, nodeBounds, groupBounds, selectedNode, config, executionState, modifiedWidgetValues, repositionMode, missingNodeIds]);
+  }, [workflow, viewport, nodeBounds, groupBounds, selectedNode, config, executionState, modifiedWidgetValues, executionNodePreviews, repositionMode, missingNodeIds]);
 
   return {
     config,

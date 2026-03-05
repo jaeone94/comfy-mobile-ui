@@ -74,6 +74,8 @@ import { DEFAULT_CANVAS_CONFIG } from '@/config/canvasConfig';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { useGlobalStore } from '@/ui/store/globalStore';
 import { useLatentPreviewStore } from '@/ui/store/latentPreviewStore';
+import { useNodeExecutionPreviewStore } from '@/ui/store/nodeExecutionPreviewStore';
+import { useNodeSamplerPreviewStore } from '@/ui/store/nodeSamplerPreviewStore';
 
 // Types
 import type { IComfyGraphNode, IComfyWorkflow, IComfyWidget } from '@/shared/types/app/base';
@@ -205,6 +207,9 @@ const WorkflowEditor: React.FC = () => {
   const { url: serverUrl, isConnected } = useConnectionStore();
 
   const { isLatentPreviewFullscreen } = useLatentPreviewStore();
+  const executionNodePreviews = useNodeExecutionPreviewStore(state => state.previewsByNode);
+  const clearNodeExecutionPreviews = useNodeExecutionPreviewStore(state => state.clearPreviews);
+  const registerSamplerWorkflowNodes = useNodeSamplerPreviewStore(state => state.registerWorkflowNodes);
 
   // Get groups with mapped nodes
   const workflowGroups = useMemo((): Group[] => {
@@ -796,6 +801,7 @@ const WorkflowEditor: React.FC = () => {
     groupBounds,
     selectedNode,
     modifiedWidgetValues: widgetEditor.modifiedWidgetValues,
+    executionNodePreviews,
     repositionMode: {
       isActive: canvasInteraction.repositionMode.isActive,
       selectedNodeId: canvasInteraction.repositionMode.selectedNodeId,
@@ -822,7 +828,8 @@ const WorkflowEditor: React.FC = () => {
     if (id) {
       setQueueRefreshTrigger(prev => prev + 1);
     }
-  }, [id]);
+    clearNodeExecutionPreviews();
+  }, [id, clearNodeExecutionPreviews]);
 
   // Load workflow on mount
   useEffect(() => {
@@ -878,6 +885,14 @@ const WorkflowEditor: React.FC = () => {
 
       // Use nodes directly from ComfyGraphProcessor - no conversion
       const nodes = graph._nodes || [];
+
+      registerSamplerWorkflowNodes(
+        nodes.map((node: IComfyGraphNode) => ({
+          id: node.id,
+          type: node.type,
+          title: node.title
+        }))
+      );
 
       // Check for missing models in node widgets (COMBO widgets)
       const detectedMissingModels = detectMissingModels(nodes);

@@ -18,6 +18,12 @@ const nodeImageLoadingInitiated = new Set<number>();
 // Track which images belong to which nodes
 const nodeImageMap = new Map<number, Set<string>>();
 
+export interface NodeExecutionPreviewFile {
+  filename: string;
+  subfolder?: string;
+  type?: 'input' | 'output' | 'temp' | string;
+}
+
 /**
  * Clear node image loading tracking (called when workflow changes)
  */
@@ -89,25 +95,34 @@ function getVideoThumbnailFilename(videoFilename: string): string {
 /**
  * Load an image from ComfyUI server
  */
-async function loadComfyImage(filename: string, nodeId?: number): Promise<HTMLImageElement> {
+async function loadComfyImage(source: string | NodeExecutionPreviewFile, nodeId?: number): Promise<HTMLImageElement> {
   // Get server URL from connectionStore
   const serverUrl = useConnectionStore.getState().url || 'http://localhost:8188';
 
+  const isExecutionPreview = typeof source !== 'string';
+  const sourceType = isExecutionPreview ? (source.type || 'output') : 'input';
+  const sourceSubfolder = isExecutionPreview ? (source.subfolder || '') : '';
+  const sourceFilename = isExecutionPreview ? source.filename : source;
+
+  const cacheKey = isExecutionPreview
+    ? `${sourceType}/${sourceSubfolder}/${sourceFilename}`
+    : sourceFilename;
+
   // For video files, load the PNG thumbnail instead
-  let targetFilename = filename;
-  if (isVideoFile(filename)) {
-    targetFilename = getVideoThumbnailFilename(filename);
-    console.log(`🎬 [Canvas] Loading thumbnail for video: ${filename} -> ${targetFilename}`);
+  let targetFilename = sourceFilename;
+  if (isVideoFile(sourceFilename)) {
+    targetFilename = getVideoThumbnailFilename(sourceFilename);
+    console.log(`[Canvas] Loading thumbnail for video: ${sourceFilename} -> ${targetFilename}`);
   }
 
-  // Check cache first (use original filename as cache key for consistency)
-  if (imageCache.has(filename)) {
-    return imageCache.get(filename)!;
+  // Check cache first
+  if (imageCache.has(cacheKey)) {
+    return imageCache.get(cacheKey)!;
   }
 
   // Check if already loading
-  if (imageLoadingPromises.has(filename)) {
-    return imageLoadingPromises.get(filename)!;
+  if (imageLoadingPromises.has(cacheKey)) {
+    return imageLoadingPromises.get(cacheKey)!;
   }
 
   // Create loading promise
@@ -115,45 +130,45 @@ async function loadComfyImage(filename: string, nodeId?: number): Promise<HTMLIm
     const img = new Image();
 
     // Parse filename and subfolder
-    let actualFilename: string;
-    let subfolder: string = '';
+    let actualFilename: string = targetFilename;
+    let subfolder: string = sourceSubfolder;
+    const type: string = sourceType;
 
-    if (targetFilename.includes('/')) {
+    // Regular widget preview values are path-like strings under input/
+    if (!isExecutionPreview && targetFilename.includes('/')) {
       const lastSlashIndex = targetFilename.lastIndexOf('/');
       subfolder = targetFilename.substring(0, lastSlashIndex);
       actualFilename = targetFilename.substring(lastSlashIndex + 1);
-    } else {
-      actualFilename = targetFilename;
     }
 
     // Build URL for ComfyUI file view
-    const url = `${serverUrl}/view?filename=${encodeURIComponent(actualFilename)}&type=input${subfolder ? `&subfolder=${encodeURIComponent(subfolder)}` : ''}`;
+    const url = `${serverUrl}/view?filename=${encodeURIComponent(actualFilename)}&type=${encodeURIComponent(type)}${subfolder ? `&subfolder=${encodeURIComponent(subfolder)}` : ''}`;
 
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      imageCache.set(filename, img);  // Use original filename as key
-      imageLoadingPromises.delete(filename);
+      imageCache.set(cacheKey, img);
+      imageLoadingPromises.delete(cacheKey);
 
       // Track which node this image belongs to
       if (nodeId !== undefined) {
         if (!nodeImageMap.has(nodeId)) {
           nodeImageMap.set(nodeId, new Set());
         }
-        nodeImageMap.get(nodeId)!.add(filename);
+        nodeImageMap.get(nodeId)!.add(cacheKey);
       }
 
       resolve(img);
     };
 
     img.onerror = () => {
-      imageLoadingPromises.delete(filename);
+      imageLoadingPromises.delete(cacheKey);
       reject(new Error(`Failed to load image: ${targetFilename}`));
     };
 
     img.src = url;
   });
 
-  imageLoadingPromises.set(filename, loadPromise);
+  imageLoadingPromises.set(cacheKey, loadPromise);
   return loadPromise;
 }
 
@@ -205,6 +220,7 @@ export interface RenderingOptions {
   viewportScale?: number; // Viewport scale for responsive font sizing
   modifiedNodeIds?: Set<number>; // Nodes with temporary widget changes
   modifiedWidgetValues?: Map<number, Record<string, any>>; // Actual modified widget values
+  executionNodePreviews?: Map<number, NodeExecutionPreviewFile[]>; // Runtime execution previews by node
   repositionMode?: {
     isActive: boolean;
     selectedNodeId: number | null;
@@ -847,7 +863,7 @@ export function renderNodes(
   config: CanvasConfig = DEFAULT_CANVAS_CONFIG,
   options: RenderingOptions = {}
 ): void {
-  const { selectedNode, executingNodeId, errorNodeId, nodeExecutionProgress, showText = true, viewportScale, modifiedNodeIds, modifiedWidgetValues, repositionMode, connectionMode, missingNodeIds, longPressState, visibleRect } = options;
+  const { selectedNode, executingNodeId, errorNodeId, nodeExecutionProgress, showText = true, viewportScale, modifiedNodeIds, modifiedWidgetValues, executionNodePreviews, repositionMode, connectionMode, missingNodeIds, longPressState, visibleRect } = options;
 
   // Sort nodes by collapsed state first, then connection mode priority, then by order
   // Lower values are drawn first (behind), higher values are drawn last (in front)
@@ -1229,9 +1245,10 @@ export function renderNodes(
         const treatAsCollapsed = slotAreaHeight > bounds.height;
 
         // Draw widgets with LOD system - below slot area (only if not treating as collapsed)
-        if (!treatAsCollapsed && node.widgets && node.getWidgets) {
-          const widgets = node.getWidgets();
-          if (widgets.length > 0) {
+        if (!treatAsCollapsed) {
+          const widgets = node.getWidgets ? node.getWidgets() : [];
+          const executionPreviewFiles = executionNodePreviews?.get(node.id) || [];
+          if (widgets.length > 0 || executionPreviewFiles.length > 0) {
             // Widget area starts below title and slot area
             const widgetStartY = Math.max(bounds.y + titleYOffset + 30, bounds.y + slotAreaHeight + 10);
             const widgetHeight = 24;
@@ -1239,11 +1256,49 @@ export function renderNodes(
             const widgetLineHeight = widgetHeight + widgetSpacing;
 
             // First, collect IMAGE/VIDEO widgets and initiate loading
-            const imageWidgets: { widget: any; value: string }[] = [];
+            const imageWidgets: { widget: any; value: string; cacheKey: string; source: string | NodeExecutionPreviewFile }[] = [];
             const shouldInitiateLoading = !nodeImageLoadingInitiated.has(node.id);
             if (shouldInitiateLoading) {
               nodeImageLoadingInitiated.add(node.id);
             }
+
+            const addImageWidget = (
+              widget: any,
+              value: string,
+              source: string | NodeExecutionPreviewFile,
+              cacheKey?: string
+            ) => {
+              const finalCacheKey = cacheKey || value;
+
+              if (imageWidgets.some(item => item.cacheKey === finalCacheKey)) return;
+
+              imageWidgets.push({ widget, value, cacheKey: finalCacheKey, source });
+
+              if (!nodeImageMap.has(node.id)) {
+                nodeImageMap.set(node.id, new Set());
+              }
+              const nodeImages = nodeImageMap.get(node.id)!;
+              const isNewForNode = !nodeImages.has(finalCacheKey);
+              nodeImages.add(finalCacheKey);
+
+              // Runtime execution previews can change per run; allow loading new keys even after initial node scan.
+              const isRuntimeExecutionPreview = typeof source !== 'string';
+              const shouldLoadImage =
+                (shouldInitiateLoading || (isRuntimeExecutionPreview && isNewForNode)) &&
+                !imageCache.has(finalCacheKey) &&
+                !imageLoadingPromises.has(finalCacheKey);
+
+              if (shouldLoadImage) {
+                loadComfyImage(source, node.id).then(() => {
+                  // Request a redraw when image loads
+                  if (ctx.canvas && ctx.canvas.parentElement) {
+                    ctx.canvas.dispatchEvent(new Event('imageLoaded'));
+                  }
+                }).catch(() => {
+                  console.log('Failed to load preview image:', value);
+                });
+              }
+            };
 
             for (const widget of widgets) {
               const name = (widget.name || '').toLowerCase();
@@ -1256,35 +1311,28 @@ export function renderNodes(
                 name === 'filename' || name === 'file' || name === 'input') &&
                 value && typeof value === 'string' &&
                 (value.includes('.') || value.includes('/'))) {
-                imageWidgets.push({ widget, value });
-
-                // Track this image for the node
-                if (!nodeImageMap.has(node.id)) {
-                  nodeImageMap.set(node.id, new Set());
-                }
-                nodeImageMap.get(node.id)!.add(value);
-
-                // Only initiate loading on first render of this node
-                if (shouldInitiateLoading && !imageCache.has(value) && !imageLoadingPromises.has(value)) {
-                  loadComfyImage(value, node.id).then(img => {
-                    // Request a redraw when image loads
-                    if (ctx.canvas && ctx.canvas.parentElement) {
-                      ctx.canvas.dispatchEvent(new Event('imageLoaded'));
-                    }
-                  }).catch(err => {
-                    console.log('Failed to load preview image:', value);
-                  });
-                }
+                addImageWidget(widget, value, value);
               }
             }
 
-            // Calculate available height for widgets - widgets are prioritized
+            // Add runtime execution previews for SaveImage/PreviewImage style nodes
+            for (const previewFile of executionPreviewFiles) {
+              if (!previewFile?.filename) continue;
+              const cacheKey = `${previewFile.type || 'output'}/${previewFile.subfolder || ''}/${previewFile.filename}`;
+              addImageWidget(null, previewFile.filename, previewFile, cacheKey);
+            }
+
+            // Calculate available height for widgets - keep space for runtime execution previews when present.
             const availableHeight = bounds.height - (widgetStartY - bounds.y) - 10;
-            const totalWidgetHeight = widgets.length * widgetLineHeight;
-            const maxWidgetsToShow = Math.min(widgets.length, Math.floor(availableHeight / widgetLineHeight));
+            const hasRuntimeExecutionPreviews = executionPreviewFiles.length > 0;
+            const reservedPreviewHeight = hasRuntimeExecutionPreviews && imageWidgets.length > 0
+              ? Math.min(72, availableHeight * 0.45)
+              : 0;
+            const widgetBudgetHeight = Math.max(0, availableHeight - reservedPreviewHeight);
+            const maxWidgetsToShow = Math.min(widgets.length, Math.floor(widgetBudgetHeight / widgetLineHeight));
             const allWidgetsShown = widgets.length === maxWidgetsToShow;
 
-            if (maxWidgetsToShow > 0) {
+            if (maxWidgetsToShow > 0 || imageWidgets.length > 0) {
               // Render widgets based on LOD level
               widgets.slice(0, maxWidgetsToShow).forEach((widget, index) => {
                 const widgetY = widgetStartY + (index * widgetLineHeight);
@@ -1510,9 +1558,8 @@ export function renderNodes(
                 ctx.fillText(moreText, bounds.x + bounds.width / 2, bounds.y + bounds.height - 12);
               }
 
-              // Draw image preview at bottom ONLY if all widgets are shown and we have images
-              // Images are shown at ALL LOD levels for better visibility
-              if (allWidgetsShown && imageWidgets.length > 0) {
+              // Draw image previews: always for runtime execution previews, otherwise only when all widgets fit.
+              if (imageWidgets.length > 0 && (allWidgetsShown || hasRuntimeExecutionPreviews)) {
                 // Calculate the position and size for the preview area
                 const widgetEndY = widgetStartY + (maxWidgetsToShow * widgetLineHeight);
                 const remainingHeight = bounds.y + bounds.height - widgetEndY - 15; // Leave some padding
@@ -1538,17 +1585,17 @@ export function renderNodes(
                   let imageX = previewX;
 
                   for (let i = 0; i < numImagesToShow; i++) {
-                    const { value } = imageWidgets[i];
+                    const { value, cacheKey } = imageWidgets[i];
 
                     // Check if image is in cache
-                    if (imageCache.has(value)) {
-                      const img = imageCache.get(value)!;
+                    if (imageCache.has(cacheKey)) {
+                      const img = imageCache.get(cacheKey)!;
 
                       // Track this cached image for the node if not already tracked
                       if (!nodeImageMap.has(node.id)) {
                         nodeImageMap.set(node.id, new Set());
                       }
-                      nodeImageMap.get(node.id)!.add(value);
+                      nodeImageMap.get(node.id)!.add(cacheKey);
 
                       // Draw container with fixed width and dynamic height
                       ctx.save();
@@ -1619,6 +1666,59 @@ export function renderNodes(
                     ctx.textBaseline = 'middle';
                     ctx.fillText(`+${imageWidgets.length - 3}`, imageX - imageSpacing / 2, previewY + previewHeight / 2);
                   }
+                } else if (hasRuntimeExecutionPreviews) {
+                  // Fallback: draw a compact thumbnail badge so execution preview is still visible on small nodes.
+                  const compactSize = Math.max(28, Math.min(44, Math.min(bounds.width, bounds.height) * 0.28));
+                  const compactX = bounds.x + bounds.width - compactSize - 8;
+                  const compactY = bounds.y + 8;
+                  const compactRadius = 5;
+                  const { cacheKey } = imageWidgets[0];
+
+                  if (imageCache.has(cacheKey)) {
+                    const img = imageCache.get(cacheKey)!;
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.roundRect(compactX, compactY, compactSize, compactSize, compactRadius);
+                    ctx.clip();
+
+                    const aspectRatio = img.width / img.height;
+                    let sourceX = 0;
+                    let sourceY = 0;
+                    let sourceWidth = img.width;
+                    let sourceHeight = img.height;
+
+                    if (aspectRatio > 1) {
+                      sourceWidth = img.height;
+                      sourceX = (img.width - sourceWidth) / 2;
+                    } else {
+                      sourceHeight = img.width;
+                      sourceY = (img.height - sourceHeight) / 2;
+                    }
+
+                    ctx.drawImage(
+                      img,
+                      sourceX,
+                      sourceY,
+                      sourceWidth,
+                      sourceHeight,
+                      compactX,
+                      compactY,
+                      compactSize,
+                      compactSize
+                    );
+                    ctx.restore();
+                  } else {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.06)';
+                    ctx.beginPath();
+                    ctx.roundRect(compactX, compactY, compactSize, compactSize, compactRadius);
+                    ctx.fill();
+                  }
+
+                  ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+                  ctx.lineWidth = 1;
+                  ctx.beginPath();
+                  ctx.roundRect(compactX, compactY, compactSize, compactSize, compactRadius);
+                  ctx.stroke();
                 }
               }
             }

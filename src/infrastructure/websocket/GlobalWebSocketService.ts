@@ -416,8 +416,6 @@ class GlobalWebSocketService extends EventEmitter {
             // 🔍 Smart Detection Logic for different ComfyUI versions
             if (type === 1) {
               // Type 1 (Legacy): [Type 4B] + [ImageType 4B] + [Data]
-              const imageType = view.getUint32(4, false); // 1: JPEG, 2: PNG
-              const mimeType = imageType === 2 ? 'image/png' : 'image/jpeg';
 
               // Node ID is NOT in the packet for Type 1.
               // User requested to NOT show Node ID for Type 1 instead of guessing.
@@ -461,7 +459,6 @@ class GlobalWebSocketService extends EventEmitter {
             if (!imageData || imageData.byteLength === 0) return;
 
             const blob = new Blob([imageData], { type: 'image/jpeg' });
-            const imageUrl = URL.createObjectURL(blob);
 
             // Emit in ComfyApiClient format
             this.emit('binary_image_received', {

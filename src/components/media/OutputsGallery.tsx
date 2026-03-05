@@ -16,6 +16,8 @@ import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 
 type TabType = 'images' | 'videos';
 type FolderType = 'input' | 'output' | 'temp' | 'all';
+const INITIAL_VISIBLE_FILE_COUNT = 120;
+const VISIBLE_FILE_BATCH_SIZE = 90;
 
 // Utility function to find matching image file for a video
 const findMatchingImageFile = (
@@ -340,6 +342,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   // Move panel state
   const [showMovePanel, setShowMovePanel] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [visibleFileCount, setVisibleFileCount] = useState(INITIAL_VISIBLE_FILE_COUNT);
+  const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
 
   const navigate = useNavigate();
   const { url: serverUrl, isConnected, hasExtension, isCheckingExtension, checkExtension } = useConnectionStore();
@@ -563,8 +567,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     const newSelected = new Set(selectedFiles);
 
     if (viewMode === 'folders') {
-      // In folder mode, select only files (not folders) in the CURRENT path
-      const currentPathFilesKeys = folderContent.files.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
+      // In folder mode, select currently rendered files by default.
+      const selectableFiles = visibleOnly ? visibleFiles : folderContent.files;
+      const currentPathFilesKeys = selectableFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
       const allCurrentFilesSelected = currentPathFilesKeys.every(key => selectedFiles.has(key));
 
       if (allCurrentFilesSelected) {
@@ -575,7 +580,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     } else {
       // Flat mode behavior
       if (visibleOnly) {
-        const visibleKeys = currentFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
+        const visibleKeys = visibleFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
         const allVisibleSelected = visibleKeys.every(key => selectedFiles.has(key));
 
         if (allVisibleSelected) {
@@ -787,11 +792,6 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     return videoLookupMap.has(key);
   }, [videoLookupMap]);
 
-  // Calculate filtered image count (excluding thumbnails)
-  const filteredImageCount = useMemo(() => {
-    return files.images.filter(img => !hasCorrespondingVideo(img)).length;
-  }, [files.images, hasCorrespondingVideo]);
-
   // Apply thumbnail filtering only for images tab
   const currentFiles = useMemo(() => {
     if (activeTab === 'images') {
@@ -805,6 +805,13 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
   // Extract current level's folders and files
   const folderContent = useMemo(() => {
+    if (viewMode !== 'folders') {
+      return {
+        folders: [] as Array<{ name: string; count: number; lastFile: IComfyFileInfo; thumbnailFile: IComfyFileInfo; fullPath: string }>,
+        files: [] as IComfyFileInfo[]
+      };
+    }
+
     const currentPath = selectedSubfolder || '/';
     const subfolders = new Map<string, { count: number, lastFile: IComfyFileInfo, thumbnailFile: IComfyFileInfo, fullPath: string }>();
     const filesInCurrentFolder: IComfyFileInfo[] = [];
@@ -873,7 +880,42 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       folders: sortedFolders,
       files: filesInCurrentFolder
     };
-  }, [currentFiles, selectedSubfolder, imageLookupMap]);
+  }, [currentFiles, selectedSubfolder, imageLookupMap, viewMode]);
+
+  const filesForCurrentView = useMemo(() => {
+    return viewMode === 'folders' ? folderContent.files : currentFiles;
+  }, [viewMode, folderContent.files, currentFiles]);
+
+  const visibleFiles = useMemo(() => {
+    return filesForCurrentView.slice(0, visibleFileCount);
+  }, [filesForCurrentView, visibleFileCount]);
+
+  const hasMoreVisibleFiles = visibleFiles.length < filesForCurrentView.length;
+
+  useEffect(() => {
+    setVisibleFileCount(INITIAL_VISIBLE_FILE_COUNT);
+  }, [activeTab, activeFolder, viewMode, selectedSubfolder, files.images.length, files.videos.length]);
+
+  useEffect(() => {
+    if (!hasMoreVisibleFiles || !loadMoreTriggerRef.current) return;
+
+    const target = loadMoreTriggerRef.current;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some(entry => entry.isIntersecting)) {
+          observer.unobserve(target);
+          setVisibleFileCount(prev => Math.min(prev + VISIBLE_FILE_BATCH_SIZE, filesForCurrentView.length));
+        }
+      },
+      {
+        threshold: 0.01,
+        rootMargin: '500px 0px'
+      }
+    );
+
+    observer.observe(target);
+    return () => observer.disconnect();
+  }, [hasMoreVisibleFiles, filesForCurrentView.length, visibleFileCount]);
 
   // Files available for navigation in preview modal
   const navigableFiles = useMemo(() => {
@@ -1072,6 +1114,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                                 modified: folder.thumbnailFile.modified
                               })}
                               alt={folder.name}
+                              loading="lazy"
+                              decoding="async"
                               className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity"
                               onError={(e) => {
                                 // Fallback to lastFile if thumbnailFile fails
@@ -1108,9 +1152,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                   {/* Files Section Second */}
                   {folderContent.files.length > 0 ? (
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px">
-                      {folderContent.files.map((file, index) => (
+                      {visibleFiles.map((file, index) => (
                         <LazyImage
-                          key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
+                          key={`${file.filename}-${file.subfolder}-${file.type}`}
                           file={file}
                           index={index}
                           onImageClick={handleFileClick}
@@ -1138,9 +1182,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                   exit={{ opacity: 0 }}
                   className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px"
                 >
-                  {currentFiles.map((file, index) => (
+                  {visibleFiles.map((file, index) => (
                     <LazyImage
-                      key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
+                      key={`${file.filename}-${file.subfolder}-${file.type}`}
                       file={file}
                       index={index}
                       onImageClick={handleFileClick}
@@ -1155,6 +1199,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
+            {hasMoreVisibleFiles && (
+              <div ref={loadMoreTriggerRef} className="flex flex-col items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 text-white/30 animate-spin" />
+                <p className="mt-2 text-xs text-white/40 tracking-wide">
+                  Showing {visibleFiles.length} / {filesForCurrentView.length}
+                </p>
+              </div>
+            )}
           </div>
         )}
       </main>
