@@ -75,7 +75,11 @@ import { useConnectionStore } from '@/ui/store/connectionStore';
 import { useGlobalStore } from '@/ui/store/globalStore';
 import { useLatentPreviewStore } from '@/ui/store/latentPreviewStore';
 import { useNodeExecutionPreviewStore } from '@/ui/store/nodeExecutionPreviewStore';
-import { useNodeSamplerPreviewStore } from '@/ui/store/nodeSamplerPreviewStore';
+import {
+  useNodeSamplerPreviewStore,
+  initNodeSamplerPreviewListeners,
+  disposeNodeSamplerPreviewListeners
+} from '@/ui/store/nodeSamplerPreviewStore';
 
 // Types
 import type { IComfyGraphNode, IComfyWorkflow, IComfyWidget } from '@/shared/types/app/base';
@@ -843,6 +847,30 @@ const WorkflowEditor: React.FC = () => {
       loadNodeMetadata(workflow.graph._nodes);
     }
   }, [isConnected, workflow?.graph?._nodes, nodeMetadata.size, metadataLoading]);
+
+  useEffect(() => {
+    if (!isConnected) return;
+
+    initNodeSamplerPreviewListeners();
+    return () => {
+      disposeNodeSamplerPreviewListeners();
+    };
+  }, [isConnected]);
+
+  useEffect(() => {
+    if (!currentGraph?._nodes) {
+      registerSamplerWorkflowNodes([]);
+      return;
+    }
+
+    registerSamplerWorkflowNodes(
+      currentGraph._nodes.map((node: IComfyGraphNode) => ({
+        id: node.id,
+        type: node.type,
+        title: node.title
+      }))
+    );
+  }, [currentGraph?._nodes, registerSamplerWorkflowNodes]);
 
   // #endregion useEffects
 

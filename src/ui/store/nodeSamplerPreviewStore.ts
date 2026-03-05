@@ -171,14 +171,16 @@ export const useNodeSamplerPreviewStore = create<NodeSamplerPreviewState>((set) 
 }));
 
 let listenersRegistered = false;
+let binaryImageListenerId: string | null = null;
+let executionStartedListenerId: string | null = null;
 
-const ensureNodeSamplerPreviewListeners = () => {
+export const initNodeSamplerPreviewListeners = () => {
   if (listenersRegistered) return;
   listenersRegistered = true;
 
   // Known-sampler-only mode:
   // associate latent preview frames only with the currently executing known sampler node.
-  globalWebSocketService.on('binary_image_received', (rawEvent: unknown) => {
+  binaryImageListenerId = globalWebSocketService.on('binary_image_received', (rawEvent: unknown) => {
     const event = asRecord(rawEvent);
     if (!event) return;
 
@@ -196,9 +198,22 @@ const ensureNodeSamplerPreviewListeners = () => {
     });
   });
 
-  globalWebSocketService.on('execution_started', () => {
+  executionStartedListenerId = globalWebSocketService.on('execution_started', () => {
     useNodeSamplerPreviewStore.getState().clearPreviews();
   });
 };
 
-ensureNodeSamplerPreviewListeners();
+export const disposeNodeSamplerPreviewListeners = () => {
+  if (!listenersRegistered) return;
+
+  if (binaryImageListenerId) {
+    globalWebSocketService.offById('binary_image_received', binaryImageListenerId);
+  }
+  if (executionStartedListenerId) {
+    globalWebSocketService.offById('execution_started', executionStartedListenerId);
+  }
+
+  binaryImageListenerId = null;
+  executionStartedListenerId = null;
+  listenersRegistered = false;
+};

@@ -5,6 +5,7 @@ import type { IComfyGraphNode, IComfyGraphLink } from '@/shared/types/app/base';
 import { DEFAULT_CANVAS_CONFIG, CanvasConfig } from '@/config/canvasConfig';
 import { IComfyGraphGroup } from '@/shared/types/app/base';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
+import type { NodeExecutionPreviewFile } from '@/shared/types/app/NodeExecutionPreviewFile';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 
 // Alias for backward compatibility
@@ -17,12 +18,6 @@ const imageLoadingPromises = new Map<string, Promise<HTMLImageElement>>();
 const nodeImageLoadingInitiated = new Set<number>();
 // Track which images belong to which nodes
 const nodeImageMap = new Map<number, Set<string>>();
-
-export interface NodeExecutionPreviewFile {
-  filename: string;
-  subfolder?: string;
-  type?: 'input' | 'output' | 'temp' | string;
-}
 
 /**
  * Clear node image loading tracking (called when workflow changes)
@@ -1669,10 +1664,32 @@ export function renderNodes(
                 } else if (hasRuntimeExecutionPreviews) {
                   // Fallback: draw a compact thumbnail badge so execution preview is still visible on small nodes.
                   const compactSize = Math.max(28, Math.min(44, Math.min(bounds.width, bounds.height) * 0.28));
-                  const compactX = bounds.x + bounds.width - compactSize - 8;
+                  let compactX = bounds.x + bounds.width - compactSize - 8;
                   const compactY = bounds.y + 8;
                   const compactRadius = 5;
                   const { cacheKey } = imageWidgets[0];
+                  const indicatorSize = 12;
+                  const indicatorOffset = 4;
+                  const indicatorX = bounds.x + bounds.width - indicatorSize - indicatorOffset;
+                  const indicatorY = bounds.y + indicatorOffset;
+                  const hasExecutionIndicator = isExecuting || isError;
+
+                  if (hasExecutionIndicator) {
+                    const compactRight = compactX + compactSize;
+                    const compactBottom = compactY + compactSize;
+                    const indicatorRight = indicatorX + indicatorSize;
+                    const indicatorBottom = indicatorY + indicatorSize;
+                    const overlapsExecutionIndicator = (
+                      compactX < indicatorRight &&
+                      compactRight > indicatorX &&
+                      compactY < indicatorBottom &&
+                      compactBottom > indicatorY
+                    );
+
+                    if (overlapsExecutionIndicator) {
+                      compactX = Math.max(bounds.x + 6, compactX - (indicatorSize + indicatorOffset));
+                    }
+                  }
 
                   if (imageCache.has(cacheKey)) {
                     const img = imageCache.get(cacheKey)!;

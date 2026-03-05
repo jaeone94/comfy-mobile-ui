@@ -15,9 +15,9 @@ import {
   NodeBounds,
   GroupBounds,
   ViewportTransform,
-  RenderingOptions,
-  NodeExecutionPreviewFile
+  RenderingOptions
 } from '@/shared/utils/rendering/CanvasRendererService';
+import type { NodeExecutionPreviewFile } from '@/shared/types/app/NodeExecutionPreviewFile';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import { useGlobalStore } from '@/ui/store/globalStore';
 

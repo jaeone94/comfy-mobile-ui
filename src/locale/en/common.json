@@ -587,6 +587,7 @@
         "selectFile": "Select File",
         "filesTotal": "{{count}} files total",
         "folderSummary": "Total {{count}} {{folder}} {{type}}",
+        "showingVisible": "Showing {{visible}} / {{total}}",
         "selectedCount": "{{count}} selected",
         "selectionSummary": "{{count}} {{type}}",
         "selectionCombined": "{{folderCount}} folders, {{fileCount}} images selected",

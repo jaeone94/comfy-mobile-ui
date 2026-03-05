@@ -583,6 +583,7 @@
         "selectFile": "ファイルを選択",
         "filesTotal": "合計 {{count}} ファイル",
         "folderSummary": "合計 {{count}} 個の {{folder}} {{type}}",
+        "showingVisible": "Showing {{visible}} / {{total}}",
         "selectedCount": "{{count}} 個選択済み",
         "selectionSummary": "{{count}} 個の {{type}}",
         "selectionCombined": "フォルダ{{folderCount}}件、ファイル{{fileCount}}件を選択中",

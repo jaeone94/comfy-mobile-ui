@@ -1171,7 +1171,10 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                     : (imagePreview.subfolder
                                                         ? `${imagePreview.subfolder}/${imagePreview.filename || ''}`
                                                         : (imagePreview.filename || ''));
-                                                onFilePreview(previewPath);
+                                                if (typeof previewPath !== 'string' || previewPath.trim().length === 0) {
+                                                    return;
+                                                }
+                                                onFilePreview(previewPath.trim());
                                             }}
                                             isFromExecution={true}
                                             themeOverride={hasCustomColor ? {

@@ -584,6 +584,7 @@
         "selectFile": "选择文件",
         "filesTotal": "共 {{count}} 个文件",
         "folderSummary": "共 {{count}} 个 {{folder}} {{type}}",
+        "showingVisible": "Showing {{visible}} / {{total}}",
         "selectedCount": "已选 {{count}} 个",
         "selectionSummary": "{{count}} 个 {{type}}",
         "selectionCombined": "已选择 {{folderCount}} 个文件夹，{{fileCount}} 张图像",

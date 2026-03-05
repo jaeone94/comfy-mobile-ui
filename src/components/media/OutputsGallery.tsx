@@ -117,6 +117,12 @@ const LazyImage: React.FC<LazyImageProps> = ({
     return () => observer.disconnect();
   }, [index]);
 
+  useEffect(() => {
+    if (index < 12) {
+      setIsInView(true);
+    }
+  }, [index]);
+
 
   // Find matching image thumbnail for video files using the optimized map
   const findMatchingImageForVideo = (videoFilename: string): IComfyFileInfo | null => {
@@ -1203,7 +1209,10 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
               <div ref={loadMoreTriggerRef} className="flex flex-col items-center justify-center py-8">
                 <Loader2 className="h-6 w-6 text-white/30 animate-spin" />
                 <p className="mt-2 text-xs text-white/40 tracking-wide">
-                  Showing {visibleFiles.length} / {filesForCurrentView.length}
+                  {t('gallery.showingVisible', {
+                    visible: visibleFiles.length,
+                    total: filesForCurrentView.length
+                  })}
                 </p>
               </div>
             )}

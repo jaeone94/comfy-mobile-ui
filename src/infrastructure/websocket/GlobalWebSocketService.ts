@@ -9,7 +9,7 @@
 // EventEmitter implementation with ID support (compatible with original ComfyApiClient)
 class EventEmitter {
   private events: Record<string, Function[]> = {};
-  private listenerIds: Map<string, string> = new Map();
+  private listenerIds: Map<string, { event: string; listener: Function }> = new Map();
   private idCounter = 0;
 
   on(event: string, listener: Function): string {
@@ -18,7 +18,7 @@ class EventEmitter {
     }
     const id = `${event}_${++this.idCounter}`;
     this.events[event].push(listener);
-    this.listenerIds.set(id, event);
+    this.listenerIds.set(id, { event, listener });
     return id;
   }
 
@@ -31,17 +31,32 @@ class EventEmitter {
   off(event: string, listener: Function) {
     if (this.events[event]) {
       this.events[event] = this.events[event].filter(l => l !== listener);
+      if (this.events[event].length === 0) {
+        delete this.events[event];
+      }
+
+      for (const [id, metadata] of this.listenerIds.entries()) {
+        if (metadata.event === event && metadata.listener === listener) {
+          this.listenerIds.delete(id);
+        }
+      }
     }
   }
 
   offById(event: string, id: string) {
-    if (this.events[event] && this.listenerIds.has(id)) {
-      const targetEvent = this.listenerIds.get(id);
-      if (targetEvent === event) {
-        // Remove the listener by finding its index
-        this.listenerIds.delete(id);
+    const metadata = this.listenerIds.get(id);
+    if (!metadata || metadata.event !== event) {
+      return;
+    }
+
+    if (this.events[event]) {
+      this.events[event] = this.events[event].filter(listener => listener !== metadata.listener);
+      if (this.events[event].length === 0) {
+        delete this.events[event];
       }
     }
+
+    this.listenerIds.delete(id);
   }
 
   removeAllListeners() {
@@ -81,6 +96,7 @@ class GlobalWebSocketService extends EventEmitter {
   private webSocket: WebSocket | null = null;
   private clientId: string;
   private reconnectTimer: NodeJS.Timeout | null = null;
+  private reconnectScheduled = false;
 
   // State management
   private state: GlobalWebSocketState = {
@@ -321,6 +337,8 @@ class GlobalWebSocketService extends EventEmitter {
       return;
     }
 
+    this.clearReconnectTimer();
+
     console.log(`🔄 [GlobalWebSocketService] Attempting connection:`, {
       url: this.serverUrl,
       clientId: this.clientId,
@@ -348,10 +366,7 @@ class GlobalWebSocketService extends EventEmitter {
       });
 
       // Clear any existing reconnect timer
-      if (this.reconnectTimer) {
-        clearTimeout(this.reconnectTimer);
-        this.reconnectTimer = null;
-      }
+      this.clearReconnectTimer();
 
       // 🎯 Rolling buffer is always active, no need to start/stop
 
@@ -509,7 +524,7 @@ class GlobalWebSocketService extends EventEmitter {
       });
 
       this.emit('error', { type: 'connection_error', error });
-      this.attemptReconnect();
+      this.scheduleReconnect();
     };
 
     this.webSocket.onclose = (event) => {
@@ -536,7 +551,7 @@ class GlobalWebSocketService extends EventEmitter {
       // Even "clean" closes (1000) might be server timeouts that we want to recover from
       if (this.state.reconnectAttempts < this.state.maxReconnectAttempts) {
         console.log(`🔄 [GlobalWebSocketService] Connection closed (code: ${event.code}), attempting reconnect...`);
-        this.attemptReconnect();
+        this.scheduleReconnect();
       }
     };
   }
@@ -547,10 +562,7 @@ class GlobalWebSocketService extends EventEmitter {
   disconnect(): void {
 
     // Clear timers
-    if (this.reconnectTimer) {
-      clearTimeout(this.reconnectTimer);
-      this.reconnectTimer = null;
-    }
+    this.clearReconnectTimer();
 
     // Keep rolling buffer on disconnect for navigation scenarios
 
@@ -573,7 +585,27 @@ class GlobalWebSocketService extends EventEmitter {
   /**
    * Attempt reconnection with exponential backoff
    */
+  private clearReconnectTimer(): void {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
+      this.reconnectTimer = null;
+    }
+    this.reconnectScheduled = false;
+  }
+
+  private scheduleReconnect(): void {
+    if (this.reconnectScheduled || this.reconnectTimer) {
+      return;
+    }
+
+    this.attemptReconnect();
+  }
+
   private attemptReconnect(): void {
+    if (this.reconnectScheduled || this.reconnectTimer) {
+      return;
+    }
+
     if (this.state.reconnectAttempts >= this.state.maxReconnectAttempts) {
       console.error('❌ Max reconnect attempts reached for global WebSocket');
       this.updateState({
@@ -598,7 +630,10 @@ class GlobalWebSocketService extends EventEmitter {
       reconnectAttempts: attempt
     });
 
+    this.reconnectScheduled = true;
     this.reconnectTimer = setTimeout(() => {
+      this.reconnectTimer = null;
+      this.reconnectScheduled = false;
       console.log(`🔄 [GlobalWebSocketService] Executing reconnection attempt ${attempt}`);
       this.connect();
     }, delay);

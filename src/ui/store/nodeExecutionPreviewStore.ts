@@ -1,11 +1,8 @@
 import { create } from 'zustand';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
+import type { NodeExecutionPreviewFile } from '@/shared/types/app/NodeExecutionPreviewFile';
 
-export interface NodeExecutionPreviewFile {
-  filename: string;
-  subfolder?: string;
-  type?: 'input' | 'output' | 'temp' | string;
-}
+export type { NodeExecutionPreviewFile } from '@/shared/types/app/NodeExecutionPreviewFile';
 
 interface NodeExecutionPreviewState {
   previewsByNode: Map<number, NodeExecutionPreviewFile[]>;
