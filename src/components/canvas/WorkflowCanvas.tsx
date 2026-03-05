@@ -49,7 +49,8 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         touchAction: 'none', // Prevent browser touch gestures
         overscrollBehavior: 'none', // Prevent overscroll
         WebkitUserSelect: 'none',
-        userSelect: 'none'
+        userSelect: 'none',
+        WebkitTouchCallout: 'none'
       }}
     >
       <canvas
@@ -57,6 +58,7 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
         className="absolute inset-0"
         style={{
           touchAction: 'none', // Prevent browser touch gestures on canvas
+          WebkitTouchCallout: 'none', // Prevent iOS native callout on long press
         }}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
