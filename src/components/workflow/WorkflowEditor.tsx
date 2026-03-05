@@ -214,6 +214,9 @@ const WorkflowEditor: React.FC = () => {
   const executionNodePreviews = useNodeExecutionPreviewStore(state => state.previewsByNode);
   const clearNodeExecutionPreviews = useNodeExecutionPreviewStore(state => state.clearPreviews);
   const registerSamplerWorkflowNodes = useNodeSamplerPreviewStore(state => state.registerWorkflowNodes);
+  const samplerWorkflowNodesKey = (currentGraph?._nodes || [])
+    .map((node: IComfyGraphNode) => `${node.id}:${node.type || ''}:${node.title || ''}`)
+    .join(',');
 
   // Get groups with mapped nodes
   const workflowGroups = useMemo((): Group[] => {
@@ -858,19 +861,20 @@ const WorkflowEditor: React.FC = () => {
   }, [isConnected]);
 
   useEffect(() => {
-    if (!currentGraph?._nodes) {
+    const nodes = currentGraph?._nodes || [];
+    if (nodes.length === 0) {
       registerSamplerWorkflowNodes([]);
       return;
     }
 
     registerSamplerWorkflowNodes(
-      currentGraph._nodes.map((node: IComfyGraphNode) => ({
+      nodes.map((node: IComfyGraphNode) => ({
         id: node.id,
         type: node.type,
         title: node.title
       }))
     );
-  }, [currentGraph?._nodes, registerSamplerWorkflowNodes]);
+  }, [samplerWorkflowNodesKey, registerSamplerWorkflowNodes]);
 
   // #endregion useEffects
 
