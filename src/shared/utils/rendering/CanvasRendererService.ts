@@ -1326,7 +1326,13 @@ export function renderNodes(
             const widgetLineHeight = widgetHeight + widgetSpacing;
 
             // First, collect IMAGE/VIDEO widgets and initiate loading
-            const imageWidgets: { widget: any; value: string; cacheKey: string; source: string | NodeExecutionPreviewFile }[] = [];
+            const imageWidgets: {
+              widget: any;
+              value: string;
+              cacheKey: string;
+              source: string | NodeExecutionPreviewFile;
+              isRuntimePreview: boolean;
+            }[] = [];
             const shouldInitiateLoading = !nodeImageLoadingInitiated.has(node.id);
             if (shouldInitiateLoading) {
               nodeImageLoadingInitiated.add(node.id);
@@ -1336,20 +1342,26 @@ export function renderNodes(
               widget: any,
               value: string,
               source: string | NodeExecutionPreviewFile,
-              cacheKey?: string
+              cacheKey?: string,
+              isModifiedWidgetValue = false
             ) => {
               const finalCacheKey = cacheKey || value;
 
               if (imageWidgets.some(item => item.cacheKey === finalCacheKey)) return;
 
-              imageWidgets.push({ widget, value, cacheKey: finalCacheKey, source });
-
-              const isNewForNode = addNodeImageReference(node.id, finalCacheKey);
+              const isRuntimeExecutionPreview = typeof source !== 'string';
+              imageWidgets.push({
+                widget,
+                value,
+                cacheKey: finalCacheKey,
+                source,
+                isRuntimePreview: isRuntimeExecutionPreview
+              });
 
               // Runtime execution previews can change per run; allow loading new keys even after initial node scan.
-              const isRuntimeExecutionPreview = typeof source !== 'string';
+              const isNewForNode = addNodeImageReference(node.id, finalCacheKey);
               const shouldLoadImage =
-                (shouldInitiateLoading || (isRuntimeExecutionPreview && isNewForNode)) &&
+                (shouldInitiateLoading || isRuntimeExecutionPreview || isModifiedWidgetValue || isNewForNode) &&
                 !imageCache.has(finalCacheKey) &&
                 !imageLoadingPromises.has(finalCacheKey);
 
@@ -1369,14 +1381,15 @@ export function renderNodes(
               const name = (widget.name || '').toLowerCase();
               // Check modifiedWidgetValues first, then fall back to widget.value
               const modifiedValues = modifiedWidgetValues?.get(node.id);
-              const value = modifiedValues?.[widget.name] !== undefined ? modifiedValues[widget.name] : widget.value;
+              const hasModifiedWidgetValue = modifiedValues?.[widget.name] !== undefined;
+              const value = hasModifiedWidgetValue ? modifiedValues[widget.name] : widget.value;
 
               // Check if it's an IMAGE or VIDEO widget
               if ((name.includes('image') || name.includes('img') || name.includes('video') ||
                 name === 'filename' || name === 'file' || name === 'input') &&
                 value && typeof value === 'string' &&
                 (value.includes('.') || value.includes('/'))) {
-                addImageWidget(widget, value, value);
+                addImageWidget(widget, value, value, undefined, hasModifiedWidgetValue);
               }
             }
 
@@ -1732,7 +1745,13 @@ export function renderNodes(
                   let compactX = bounds.x + bounds.width - compactSize - 8;
                   const compactY = bounds.y + 8;
                   const compactRadius = 5;
-                  const { cacheKey } = imageWidgets[0];
+                  const compactPreviewWidget = imageWidgets.find(item =>
+                    item.isRuntimePreview ||
+                    item.widget?.isRuntimePreview ||
+                    item.widget?.type === 'runtimePreview' ||
+                    item.widget?.runtimePreview === true
+                  ) || imageWidgets[0];
+                  const { cacheKey } = compactPreviewWidget;
                   const indicatorSize = 12;
                   const indicatorOffset = 4;
                   const indicatorX = bounds.x + bounds.width - indicatorSize - indicatorOffset;
