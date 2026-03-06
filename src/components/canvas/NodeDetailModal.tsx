@@ -297,28 +297,6 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     // Group handling
     const isGroupNode = selectedNode.type === 'GROUP_NODE' && 'groupInfo' in selectedNode && selectedNode.groupInfo;
 
-    // NOTE: GroupInspector handling
-    if (isGroupNode) {
-        return (
-            <>
-                {/* Hidden container to satisfy useScroll hook requirements when in group mode */}
-                <div ref={scrollContainerRef} style={{ display: 'none' }} />
-                <GroupInspector
-                    selectedNode={selectedNode}
-                    isVisible={true}
-                    onClose={onClose}
-                    onNavigateToNode={onNavigateToNode}
-                    onSelectNode={onSelectNode}
-                    onNodeModeChange={onNodeModeChange}
-                    getNodeMode={getNodeMode}
-                    onGroupDelete={onGroupDelete}
-                    onGroupSizeChange={onGroupSizeChange}
-                    onNodeModeChangeBatch={onNodeModeChangeBatch}
-                />
-            </>
-        );
-    }
-
     // --- Logic from NodeParameterEditor ---
 
     // Helper function for file selection (OutputsGallery)
@@ -876,6 +854,27 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
             </div>
         );
     };
+
+    if (isGroupNode) {
+        return (
+            <>
+                {/* Hidden container to satisfy useScroll hook requirements when in group mode */}
+                <div ref={scrollContainerRef} style={{ display: 'none' }} />
+                <GroupInspector
+                    selectedNode={selectedNode}
+                    isVisible={true}
+                    onClose={onClose}
+                    onNavigateToNode={onNavigateToNode}
+                    onSelectNode={onSelectNode}
+                    onNodeModeChange={onNodeModeChange}
+                    getNodeMode={getNodeMode}
+                    onGroupDelete={onGroupDelete}
+                    onGroupSizeChange={onGroupSizeChange}
+                    onNodeModeChangeBatch={onNodeModeChangeBatch}
+                />
+            </>
+        );
+    }
 
     return createPortal(
         <AnimatePresence>

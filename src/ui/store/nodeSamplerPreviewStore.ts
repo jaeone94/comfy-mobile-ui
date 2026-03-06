@@ -102,7 +102,9 @@ export const useNodeSamplerPreviewStore = create<NodeSamplerPreviewState>((set) 
       const nextPreviews = new Map(state.previewsByNode);
       for (const [nodeId, frames] of nextPreviews.entries()) {
         if (workflowNodeIds.has(nodeId)) continue;
-        frames.forEach((frame) => revokeIfBlobUrl(frame.imageUrl));
+        frames.forEach((frame) => {
+          revokeIfBlobUrl(frame.imageUrl);
+        });
         nextPreviews.delete(nodeId);
       }
 
@@ -152,7 +154,9 @@ export const useNodeSamplerPreviewStore = create<NodeSamplerPreviewState>((set) 
       const frames = state.previewsByNode.get(normalizedNodeId);
       if (!frames || frames.length === 0) return state;
 
-      frames.forEach((frame) => revokeIfBlobUrl(frame.imageUrl));
+      frames.forEach((frame) => {
+        revokeIfBlobUrl(frame.imageUrl);
+      });
 
       const next = new Map(state.previewsByNode);
       next.delete(normalizedNodeId);
@@ -163,7 +167,9 @@ export const useNodeSamplerPreviewStore = create<NodeSamplerPreviewState>((set) 
   clearPreviews: () => {
     set((state) => {
       state.previewsByNode.forEach((frames) => {
-        frames.forEach((frame) => revokeIfBlobUrl(frame.imageUrl));
+        frames.forEach((frame) => {
+          revokeIfBlobUrl(frame.imageUrl);
+        });
       });
       return { previewsByNode: new Map() };
     });

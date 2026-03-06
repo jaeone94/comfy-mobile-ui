@@ -19,8 +19,13 @@ const nodeImageLoadingInitiated = new Set<number>();
 // Track which images belong to which nodes
 const nodeImageMap = new Map<number, Set<string>>();
 const imageCacheRecency = new Map<string, true>();
+const failedImageTimestamps = new Map<string, number>();
 const MAX_IMAGE_CACHE_ENTRIES = 200;
+const IMAGE_LOAD_FAILURE_COOLDOWN_MS = 30000;
 
+/**
+ * Marks an image key as recently used in the LRU recency map.
+ */
 function markImageKeyAsRecentlyUsed(cacheKey: string) {
   if (imageCacheRecency.has(cacheKey)) {
     imageCacheRecency.delete(cacheKey);
@@ -28,10 +33,24 @@ function markImageKeyAsRecentlyUsed(cacheKey: string) {
   imageCacheRecency.set(cacheKey, true);
 }
 
-function removeImageCacheEntry(cacheKey: string) {
+/**
+ * Removes a cache key from cache bookkeeping and node references.
+ *
+ * `preserveLoadingPromise` is used during eviction to avoid dropping
+ * in-flight promise dedupe entries and triggering duplicate fetches.
+ */
+function removeImageCacheEntry(
+  cacheKey: string,
+  options?: { preserveLoadingPromise?: boolean; preserveFailureTimestamp?: boolean }
+) {
   imageCache.delete(cacheKey);
-  imageLoadingPromises.delete(cacheKey);
   imageCacheRecency.delete(cacheKey);
+  if (!options?.preserveLoadingPromise) {
+    imageLoadingPromises.delete(cacheKey);
+  }
+  if (!options?.preserveFailureTimestamp) {
+    failedImageTimestamps.delete(cacheKey);
+  }
 
   for (const [nodeId, nodeImages] of Array.from(nodeImageMap.entries())) {
     if (!nodeImages.delete(cacheKey)) {
@@ -47,16 +66,25 @@ function removeImageCacheEntry(cacheKey: string) {
   }
 }
 
+/**
+ * Evicts least recently used keys until cache recency size is within limits.
+ */
 function evictLeastRecentlyUsedEntries() {
   while (imageCacheRecency.size > MAX_IMAGE_CACHE_ENTRIES) {
     const leastRecentlyUsedKey = imageCacheRecency.keys().next().value as string | undefined;
     if (!leastRecentlyUsedKey) {
       break;
     }
-    removeImageCacheEntry(leastRecentlyUsedKey);
+    removeImageCacheEntry(leastRecentlyUsedKey, {
+      preserveLoadingPromise: true,
+      preserveFailureTimestamp: true
+    });
   }
 }
 
+/**
+ * Registers an image key for a node and returns whether it is new for that node.
+ */
 function addNodeImageReference(nodeId: number, cacheKey: string): boolean {
   if (!nodeImageMap.has(nodeId)) {
     nodeImageMap.set(nodeId, new Set());
@@ -72,6 +100,9 @@ function addNodeImageReference(nodeId: number, cacheKey: string): boolean {
   return isNewForNode;
 }
 
+/**
+ * Returns a cached image and marks it as recently used.
+ */
 function getCachedImage(cacheKey: string): HTMLImageElement | undefined {
   const cachedImage = imageCache.get(cacheKey);
   if (!cachedImage) {
@@ -82,6 +113,9 @@ function getCachedImage(cacheKey: string): HTMLImageElement | undefined {
   return cachedImage;
 }
 
+/**
+ * Stores an image in cache, marks recency, and applies LRU eviction.
+ */
 function setCachedImage(cacheKey: string, image: HTMLImageElement) {
   imageCache.set(cacheKey, image);
   markImageKeyAsRecentlyUsed(cacheKey);
@@ -94,6 +128,7 @@ function setCachedImage(cacheKey: string, image: HTMLImageElement) {
 export function clearNodeImageLoadingCache() {
   nodeImageLoadingInitiated.clear();
   nodeImageMap.clear();
+  failedImageTimestamps.clear();
 }
 
 /**
@@ -119,6 +154,7 @@ export function clearNodeImageCache(nodeId?: number) {
     imageLoadingPromises.clear();
     nodeImageMap.clear();
     imageCacheRecency.clear();
+    failedImageTimestamps.clear();
   }
 }
 
@@ -218,6 +254,7 @@ async function loadComfyImage(source: string | NodeExecutionPreviewFile, nodeId?
     img.crossOrigin = 'anonymous';
     img.onload = () => {
       setCachedImage(cacheKey, img);
+      failedImageTimestamps.delete(cacheKey);
       imageLoadingPromises.delete(cacheKey);
 
       // Track which node this image belongs to
@@ -1360,18 +1397,25 @@ export function renderNodes(
 
               // Runtime execution previews can change per run; allow loading new keys even after initial node scan.
               const isNewForNode = addNodeImageReference(node.id, finalCacheKey);
+              const lastFailureTs = failedImageTimestamps.get(finalCacheKey);
+              const hasRecentLoadFailure =
+                typeof lastFailureTs === 'number' &&
+                (Date.now() - lastFailureTs) < IMAGE_LOAD_FAILURE_COOLDOWN_MS;
               const shouldLoadImage =
                 (shouldInitiateLoading || isRuntimeExecutionPreview || isModifiedWidgetValue || isNewForNode) &&
+                !hasRecentLoadFailure &&
                 !imageCache.has(finalCacheKey) &&
                 !imageLoadingPromises.has(finalCacheKey);
 
               if (shouldLoadImage) {
                 loadComfyImage(source, node.id).then(() => {
+                  failedImageTimestamps.delete(finalCacheKey);
                   // Request a redraw when image loads
                   if (ctx.canvas && ctx.canvas.parentElement) {
                     ctx.canvas.dispatchEvent(new Event('imageLoaded'));
                   }
                 }).catch(() => {
+                  failedImageTimestamps.set(finalCacheKey, Date.now());
                   console.log('Failed to load preview image:', value);
                 });
               }

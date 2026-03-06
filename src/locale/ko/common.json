@@ -587,7 +587,7 @@
         "selectFile": "파일 선택",
         "filesTotal": "총 {{count}}개 파일",
         "folderSummary": "총 {{count}}개 {{folder}} {{type}}",
-        "showingVisible": "Showing {{visible}} / {{total}}",
+        "showingVisible": "{{visible}} / {{total}}개 표시",
         "selectedCount": "{{count}}개 선택됨",
         "selectionSummary": "{{count}}개 {{type}}",
         "selectionCombined": "폴더 {{folderCount}}개, 이미지 {{fileCount}}개 선택됨",
