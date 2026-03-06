@@ -18,6 +18,75 @@ const imageLoadingPromises = new Map<string, Promise<HTMLImageElement>>();
 const nodeImageLoadingInitiated = new Set<number>();
 // Track which images belong to which nodes
 const nodeImageMap = new Map<number, Set<string>>();
+const imageCacheRecency = new Map<string, true>();
+const MAX_IMAGE_CACHE_ENTRIES = 200;
+
+function markImageKeyAsRecentlyUsed(cacheKey: string) {
+  if (imageCacheRecency.has(cacheKey)) {
+    imageCacheRecency.delete(cacheKey);
+  }
+  imageCacheRecency.set(cacheKey, true);
+}
+
+function removeImageCacheEntry(cacheKey: string) {
+  imageCache.delete(cacheKey);
+  imageLoadingPromises.delete(cacheKey);
+  imageCacheRecency.delete(cacheKey);
+
+  for (const [nodeId, nodeImages] of Array.from(nodeImageMap.entries())) {
+    if (!nodeImages.delete(cacheKey)) {
+      continue;
+    }
+
+    // Let nodes re-initiate loads for keys that were evicted from cache.
+    nodeImageLoadingInitiated.delete(nodeId);
+
+    if (nodeImages.size === 0) {
+      nodeImageMap.delete(nodeId);
+    }
+  }
+}
+
+function evictLeastRecentlyUsedEntries() {
+  while (imageCacheRecency.size > MAX_IMAGE_CACHE_ENTRIES) {
+    const leastRecentlyUsedKey = imageCacheRecency.keys().next().value as string | undefined;
+    if (!leastRecentlyUsedKey) {
+      break;
+    }
+    removeImageCacheEntry(leastRecentlyUsedKey);
+  }
+}
+
+function addNodeImageReference(nodeId: number, cacheKey: string): boolean {
+  if (!nodeImageMap.has(nodeId)) {
+    nodeImageMap.set(nodeId, new Set());
+  }
+
+  const nodeImages = nodeImageMap.get(nodeId)!;
+  const isNewForNode = !nodeImages.has(cacheKey);
+  nodeImages.add(cacheKey);
+
+  markImageKeyAsRecentlyUsed(cacheKey);
+  evictLeastRecentlyUsedEntries();
+
+  return isNewForNode;
+}
+
+function getCachedImage(cacheKey: string): HTMLImageElement | undefined {
+  const cachedImage = imageCache.get(cacheKey);
+  if (!cachedImage) {
+    return undefined;
+  }
+
+  markImageKeyAsRecentlyUsed(cacheKey);
+  return cachedImage;
+}
+
+function setCachedImage(cacheKey: string, image: HTMLImageElement) {
+  imageCache.set(cacheKey, image);
+  markImageKeyAsRecentlyUsed(cacheKey);
+  evictLeastRecentlyUsedEntries();
+}
 
 /**
  * Clear node image loading tracking (called when workflow changes)
@@ -38,9 +107,8 @@ export function clearNodeImageCache(nodeId?: number) {
     // Clear cached images for this specific node only
     const nodeImages = nodeImageMap.get(nodeId);
     if (nodeImages) {
-      nodeImages.forEach(filename => {
-        imageCache.delete(filename);
-        imageLoadingPromises.delete(filename);
+      nodeImages.forEach(cacheKey => {
+        removeImageCacheEntry(cacheKey);
       });
       nodeImageMap.delete(nodeId);
     }
@@ -50,6 +118,7 @@ export function clearNodeImageCache(nodeId?: number) {
     imageCache.clear();
     imageLoadingPromises.clear();
     nodeImageMap.clear();
+    imageCacheRecency.clear();
   }
 }
 
@@ -111,13 +180,20 @@ async function loadComfyImage(source: string | NodeExecutionPreviewFile, nodeId?
   }
 
   // Check cache first
-  if (imageCache.has(cacheKey)) {
-    return imageCache.get(cacheKey)!;
+  const cachedImage = getCachedImage(cacheKey);
+  if (cachedImage) {
+    if (nodeId !== undefined) {
+      addNodeImageReference(nodeId, cacheKey);
+    }
+    return cachedImage;
   }
 
   // Check if already loading
-  if (imageLoadingPromises.has(cacheKey)) {
-    return imageLoadingPromises.get(cacheKey)!;
+  const existingLoadPromise = imageLoadingPromises.get(cacheKey);
+  if (existingLoadPromise) {
+    markImageKeyAsRecentlyUsed(cacheKey);
+    evictLeastRecentlyUsedEntries();
+    return existingLoadPromise;
   }
 
   // Create loading promise
@@ -141,15 +217,12 @@ async function loadComfyImage(source: string | NodeExecutionPreviewFile, nodeId?
 
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      imageCache.set(cacheKey, img);
+      setCachedImage(cacheKey, img);
       imageLoadingPromises.delete(cacheKey);
 
       // Track which node this image belongs to
       if (nodeId !== undefined) {
-        if (!nodeImageMap.has(nodeId)) {
-          nodeImageMap.set(nodeId, new Set());
-        }
-        nodeImageMap.get(nodeId)!.add(cacheKey);
+        addNodeImageReference(nodeId, cacheKey);
       }
 
       resolve(img);
@@ -164,6 +237,8 @@ async function loadComfyImage(source: string | NodeExecutionPreviewFile, nodeId?
   });
 
   imageLoadingPromises.set(cacheKey, loadPromise);
+  markImageKeyAsRecentlyUsed(cacheKey);
+  evictLeastRecentlyUsedEntries();
   return loadPromise;
 }
 
@@ -1269,12 +1344,7 @@ export function renderNodes(
 
               imageWidgets.push({ widget, value, cacheKey: finalCacheKey, source });
 
-              if (!nodeImageMap.has(node.id)) {
-                nodeImageMap.set(node.id, new Set());
-              }
-              const nodeImages = nodeImageMap.get(node.id)!;
-              const isNewForNode = !nodeImages.has(finalCacheKey);
-              nodeImages.add(finalCacheKey);
+              const isNewForNode = addNodeImageReference(node.id, finalCacheKey);
 
               // Runtime execution previews can change per run; allow loading new keys even after initial node scan.
               const isRuntimeExecutionPreview = typeof source !== 'string';
@@ -1580,17 +1650,12 @@ export function renderNodes(
                   let imageX = previewX;
 
                   for (let i = 0; i < numImagesToShow; i++) {
-                    const { value, cacheKey } = imageWidgets[i];
+                    const { cacheKey } = imageWidgets[i];
 
                     // Check if image is in cache
-                    if (imageCache.has(cacheKey)) {
-                      const img = imageCache.get(cacheKey)!;
-
-                      // Track this cached image for the node if not already tracked
-                      if (!nodeImageMap.has(node.id)) {
-                        nodeImageMap.set(node.id, new Set());
-                      }
-                      nodeImageMap.get(node.id)!.add(cacheKey);
+                    const img = getCachedImage(cacheKey);
+                    if (img) {
+                      addNodeImageReference(node.id, cacheKey);
 
                       // Draw container with fixed width and dynamic height
                       ctx.save();
@@ -1691,8 +1756,9 @@ export function renderNodes(
                     }
                   }
 
-                  if (imageCache.has(cacheKey)) {
-                    const img = imageCache.get(cacheKey)!;
+                  const img = getCachedImage(cacheKey);
+                  if (img) {
+                    addNodeImageReference(node.id, cacheKey);
                     ctx.save();
                     ctx.beginPath();
                     ctx.roundRect(compactX, compactY, compactSize, compactSize, compactRadius);
