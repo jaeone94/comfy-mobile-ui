@@ -100,8 +100,8 @@ export const useNodeSamplerPreviewStore = create<NodeSamplerPreviewState>((set) 
       }
 
       const nextPreviews = new Map(state.previewsByNode);
-      for (const [nodeId, frames] of nextPreviews.entries()) {
-        if (workflowNodeIds.has(nodeId)) continue;
+      for (const [nodeId, frames] of state.previewsByNode.entries()) {
+        if (workflowNodeIds.has(nodeId) && samplerNodeIds.has(nodeId)) continue;
         frames.forEach((frame) => {
           revokeIfBlobUrl(frame.imageUrl);
         });

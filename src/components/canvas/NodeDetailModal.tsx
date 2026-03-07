@@ -411,29 +411,84 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
         return null;
     };
 
+    type ImagePreviewData = string | { filename?: string; subfolder?: string; type?: string };
+
     // We need to re-implement these helpers properly to match the file we read
-    const extractImagePreviewFromNode = () => { // Renamed to avoid collision
+    const extractImagePreviewFromNode = (): { value: ImagePreviewData | null; isFromExecution: boolean } => { // Renamed to avoid collision
         if (executionNodePreviewFiles.length > 0) {
-            return executionNodePreviewFiles[executionNodePreviewFiles.length - 1];
+            return {
+                value: executionNodePreviewFiles[executionNodePreviewFiles.length - 1],
+                isFromExecution: true
+            };
         }
 
         const imagePreviewValue = getWidgetValue(nodeId, 'imagepreview', undefined);
-        if (imagePreviewValue?.params) return imagePreviewValue.params;
+        if (imagePreviewValue?.params) {
+            return {
+                value: imagePreviewValue.params,
+                isFromExecution: false
+            };
+        }
 
         const imageWidget = widgets.find((w: any) => w.name === 'imagepreview' || w.type === 'imagepreview');
-        if (imageWidget?.value?.params) return imageWidget.value.params;
+        if (imageWidget?.value?.params) {
+            return {
+                value: imageWidget.value.params,
+                isFromExecution: false
+            };
+        }
         const previewWidget = widgets.find((w: any) => w.name === 'previewImage');
-        if (previewWidget?.value) return previewWidget.value;
+        if (previewWidget?.value) {
+            return {
+                value: previewWidget.value,
+                isFromExecution: false
+            };
+        }
 
-        if (!selectedNode?.widgets_values || typeof selectedNode.widgets_values !== 'object') return null;
+        if (!selectedNode?.widgets_values || typeof selectedNode.widgets_values !== 'object') {
+            return {
+                value: null,
+                isFromExecution: false
+            };
+        }
 
         if (!Array.isArray(selectedNode.widgets_values)) {
             const widgetsValues = selectedNode.widgets_values as Record<string, any>;
-            if (widgetsValues.imagepreview && widgetsValues.imagepreview.params) return widgetsValues.imagepreview.params;
-            if (widgetsValues.previewImage) return widgetsValues.previewImage;
+            if (widgetsValues.imagepreview && widgetsValues.imagepreview.params) {
+                return {
+                    value: widgetsValues.imagepreview.params,
+                    isFromExecution: false
+                };
+            }
+            if (widgetsValues.previewImage) {
+                return {
+                    value: widgetsValues.previewImage,
+                    isFromExecution: false
+                };
+            }
         }
 
-        return null;
+        return {
+            value: null,
+            isFromExecution: false
+        };
+    };
+
+    const getPreviewPath = (preview: ImagePreviewData): string | null => {
+        if (typeof preview === 'string') {
+            const trimmedPath = preview.trim();
+            return trimmedPath.length > 0 ? trimmedPath : null;
+        }
+
+        const filename = typeof preview.filename === 'string' ? preview.filename.trim() : '';
+        const subfolder = typeof preview.subfolder === 'string' ? preview.subfolder.trim() : '';
+
+        // Ignore malformed objects that do not point to a concrete file.
+        if (!filename) {
+            return null;
+        }
+
+        return subfolder ? `${subfolder}/${filename}` : filename;
     };
 
 
@@ -468,7 +523,9 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
             }
         }
     }, [selectedNode, widgets, onAutoRefreshNode]);
-    const imagePreview = useMemo(() => extractImagePreviewFromNode(), [selectedNode, widgets, nodeId, executionNodePreviewFiles]); // Depend on widgets
+    const imagePreviewData = useMemo(() => extractImagePreviewFromNode(), [selectedNode, widgets, nodeId, executionNodePreviewFiles]); // Depend on widgets
+    const imagePreview = imagePreviewData.value;
+    const isImagePreviewFromExecution = imagePreviewData.isFromExecution;
     // Video preview was mostly stubbed in original code, skipping for brevity unless needed.
     const videoPreview = useMemo(() => extractVideoPreview(), [selectedNode, widgets, nodeId]);
 
@@ -1165,17 +1222,13 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                         <InlineImagePreview
                                             imagePreview={imagePreview}
                                             onClick={() => {
-                                                const previewPath = typeof imagePreview === 'string'
-                                                    ? imagePreview
-                                                    : (imagePreview.subfolder
-                                                        ? `${imagePreview.subfolder}/${imagePreview.filename || ''}`
-                                                        : (imagePreview.filename || ''));
-                                                if (typeof previewPath !== 'string' || previewPath.trim().length === 0) {
+                                                const previewPath = getPreviewPath(imagePreview);
+                                                if (!previewPath) {
                                                     return;
                                                 }
                                                 onFilePreview(previewPath.trim());
                                             }}
-                                            isFromExecution={true}
+                                            isFromExecution={isImagePreviewFromExecution}
                                             themeOverride={hasCustomColor ? {
                                                 container: 'bg-transparent shadow-none',
                                                 text: 'text-white/80',
