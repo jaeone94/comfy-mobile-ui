@@ -43,8 +43,9 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className="absolute top-16 left-0 right-0 bottom-0 overflow-hidden"
+      className="absolute left-0 right-0 bottom-0 overflow-hidden"
       style={{
+        top: 'calc(4rem + var(--safe-top-effective, env(safe-area-inset-top, 0px)))',
         cursor: isDragging ? 'grabbing' : 'grab',
         touchAction: 'none', // Prevent browser touch gestures
         overscrollBehavior: 'none', // Prevent overscroll

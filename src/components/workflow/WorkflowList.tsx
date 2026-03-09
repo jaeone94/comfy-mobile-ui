@@ -339,7 +339,7 @@ const WorkflowList: React.FC = () => {
   return (
     <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30 overflow-hidden">
       {/* Fixed Header */}
-      <header className="flex-none z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60 shadow-sm transition-all duration-300">
+      <header className="flex-none z-40 pwa-header bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60 shadow-sm transition-all duration-300">
         <div className="max-w-[1600px] mx-auto px-4 h-16 flex items-center justify-between gap-2">
           {/* Left: Menu & Breadcrumbs */}
           <div className="flex items-center gap-2 min-w-0 flex-1">

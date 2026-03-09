@@ -112,7 +112,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
   return typeof document !== 'undefined' ? ReactDOM.createPortal(
     <>
       {/* Side Menu - Full Screen Overlay */}
-      <div className={`fixed inset-0 bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xl z-[9999] transition-all duration-300 ease-out flex flex-col ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
+      <div className={`fixed inset-0 safe-area-inset bg-slate-50/95 dark:bg-slate-950/95 backdrop-blur-xl z-[9999] transition-all duration-300 ease-out flex flex-col ${isOpen ? 'translate-x-0 opacity-100' : '-translate-x-full opacity-0'
         }`}>
         {/* Header */}
         <div className="flex-none flex items-center justify-between p-6 border-b border-slate-200/50 dark:border-slate-800/50">

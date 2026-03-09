@@ -189,8 +189,10 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
         setTimeout(loadQueueStatus, 500);
     };
 
+    const overlayBottomStyle = { bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' } as const;
+
     return (
-        <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe">
+        <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe px-safe">
             {/* Header / Footer Visibility Control - Restored sliding animation as requested */}
             <motion.div
                 animate={{
@@ -207,7 +209,8 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 10 }}
-                            className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 p-4"
+                            className="fixed left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 p-4"
+                            style={overlayBottomStyle}
                         >
                             <div className="flex flex-col gap-3">
                                 <div className="flex items-center gap-2 px-3 py-2 bg-white/5 rounded-xl border border-white/10">
@@ -253,8 +256,8 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
-                            style={{ height: '40vh' }}
+                            className="fixed left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                            style={{ ...overlayBottomStyle, height: '40vh' }}
                         >
                             <div className="flex items-center justify-between p-3 border-b border-white/5 bg-white/5">
                                 <div className="flex items-center gap-2 text-xs font-bold text-white/70">
@@ -283,8 +286,8 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
                             initial={{ opacity: 0, y: 20 }}
                             animate={{ opacity: 1, y: 0 }}
                             exit={{ opacity: 0, y: 20 }}
-                            className="fixed bottom-[96px] left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
-                            style={{ height: '60vh' }}
+                            className="fixed left-4 right-4 bg-slate-900/95 backdrop-blur-xl border border-white/10 rounded-2xl shadow-2xl z-50 overflow-hidden"
+                            style={{ ...overlayBottomStyle, height: '60vh' }}
                         >
                             <div className="flex items-center justify-between p-4 border-b border-white/5 bg-white/5">
                                 <div className="flex items-center gap-2 text-xs font-bold text-white/70">

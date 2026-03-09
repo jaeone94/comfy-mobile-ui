@@ -83,6 +83,47 @@
   --sidebar-accent-foreground: oklch(0.205 0 0);
   --sidebar-border: oklch(0.922 0 0);
   --sidebar-ring: oklch(0.708 0 0);
+  --app-viewport-height: 100vh;
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-top-effective: var(--safe-top);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+}
+
+@supports (height: 100dvh) {
+  :root {
+    --app-viewport-height: 100dvh;
+  }
+}
+
+/* JS-assisted fallback: iOS home-screen mode can ignore display-mode media queries on some versions. */
+:root.ios-standalone {
+  --app-viewport-height: 100svh;
+}
+
+@media (orientation: portrait) {
+  :root.ios-standalone {
+    --safe-top-effective: max(var(--safe-top), 52px);
+  }
+}
+
+/* iOS standalone mode needs a stable viewport unit to avoid jumpy/cut layouts */
+@supports (-webkit-touch-callout: none) {
+  @supports (height: 100svh) {
+    @media (display-mode: standalone) {
+      :root {
+        --app-viewport-height: 100svh;
+      }
+    }
+  }
+
+  /* Some iOS standalone builds under-report top inset; enforce a tappable header zone in portrait. */
+  @media (display-mode: standalone) and (orientation: portrait) {
+    :root {
+      --safe-top-effective: max(var(--safe-top), 52px);
+    }
+  }
 }
 
 /* Dark theme variables */
@@ -129,7 +170,8 @@
   html,
   body {
     @apply bg-background text-foreground;
-    height: 100%;
+    height: var(--app-viewport-height);
+    min-height: var(--app-viewport-height);
     width: 100%;
     overflow: hidden;
     overscroll-behavior: none;
@@ -137,7 +179,8 @@
   }
 
   #root {
-    height: 100%;
+    height: var(--app-viewport-height);
+    min-height: var(--app-viewport-height);
     width: 100%;
     overflow: hidden;
   }
@@ -160,53 +203,97 @@ canvas {
 
 /* Main PWA container - full viewport with safe areas */
 .pwa-container {
-  height: 100dvh;
-  min-height: 100dvh;
-  max-height: 100dvh;
-  padding-top: env(safe-area-inset-top, 0);
-  padding-bottom: 0;
-  padding-left: env(safe-area-inset-left, 0);
-  padding-right: env(safe-area-inset-right, 0);
+  height: var(--app-viewport-height);
+  min-height: var(--app-viewport-height);
+  max-height: var(--app-viewport-height);
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* PWA Canvas container - full viewport behind safe areas */
 .pwa-canvas {
-  height: 100dvh;
-  min-height: 100dvh;
-  max-height: 100dvh;
-  padding-left: env(safe-area-inset-left, 0);
-  padding-right: env(safe-area-inset-right, 0);
+  height: var(--app-viewport-height);
+  min-height: var(--app-viewport-height);
+  max-height: var(--app-viewport-height);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 
 /* PWA header - top safe area only */
 .pwa-header {
-  padding-top: env(safe-area-inset-top, 0);
-  padding-left: env(safe-area-inset-left, 0);
-  padding-right: env(safe-area-inset-right, 0);
+  padding-top: var(--safe-top-effective);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* PWA bottom panel - bottom safe area only */
 .pwa-bottom {
-  padding-bottom: 0;
-  padding-left: env(safe-area-inset-left, 0);
-  padding-right: env(safe-area-inset-right, 0);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* PWA modal/dialog - safe area + 1rem on top/left/right, fixed 1rem on bottom */
 .pwa-modal {
-  padding-top: calc(env(safe-area-inset-top, 0) + 1rem);
-  padding-bottom: 1rem;
-  padding-left: calc(env(safe-area-inset-left, 0) + 1rem);
-  padding-right: calc(env(safe-area-inset-right, 0) + 1rem);
+  padding-top: calc(var(--safe-top-effective) + 1rem);
+  padding-bottom: calc(var(--safe-bottom) + 1rem);
+  padding-left: calc(var(--safe-left) + 1rem);
+  padding-right: calc(var(--safe-right) + 1rem);
 }
 
 /* PWA content area - height excluding safe areas */
 .pwa-content {
-  height: calc(100dvh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0));
-  min-height: calc(100dvh - env(safe-area-inset-top, 0) - env(safe-area-inset-bottom, 0));
-  padding-left: env(safe-area-inset-left, 0);
-  padding-right: env(safe-area-inset-right, 0);
+  height: calc(var(--app-viewport-height) - var(--safe-top) - var(--safe-bottom));
+  min-height: calc(var(--app-viewport-height) - var(--safe-top) - var(--safe-bottom));
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+/* Shared utilities used across screens and overlays. */
+.app-screen {
+  height: var(--app-viewport-height);
+  min-height: var(--app-viewport-height);
+}
+
+.app-min-screen {
+  min-height: var(--app-viewport-height);
+}
+
+.pt-safe {
+  padding-top: var(--safe-top-effective);
+}
+
+.pb-safe {
+  padding-bottom: var(--safe-bottom);
+}
+
+.pl-safe {
+  padding-left: var(--safe-left);
+}
+
+.pr-safe {
+  padding-right: var(--safe-right);
+}
+
+.px-safe {
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.safe-area-inset {
+  padding-top: var(--safe-top-effective);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+}
+
+.pwa-safe-area {
+  padding-bottom: calc(var(--safe-bottom) + 1rem);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 

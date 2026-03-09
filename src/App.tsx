@@ -243,9 +243,23 @@ const AppRouter: React.FC = () => {
 };
 
 export default function App() {
-  // Apply dark mode class to document element
+  // Apply root classes for theme and iOS standalone layout behavior
   useEffect(() => {
-    document.documentElement.classList.add('dark');
+    const root = document.documentElement;
+    root.classList.add('dark');
+
+    const nav = navigator as Navigator & { standalone?: boolean };
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || nav.standalone === true;
+
+    if (isIOS && isStandalone) {
+      root.classList.add('ios-standalone');
+    }
+
+    return () => {
+      root.classList.remove('ios-standalone');
+    };
   }, []);
 
   return (

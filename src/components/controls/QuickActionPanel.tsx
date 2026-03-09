@@ -105,7 +105,13 @@ export function QuickActionPanel({
   }, [onClearQueue]);
 
   return (
-    <div className="fixed right-6 bottom-4 z-40">
+    <div
+      className="fixed z-40"
+      style={{
+        right: 'calc(1.5rem + env(safe-area-inset-right, 0px))',
+        bottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))'
+      }}
+    >
       <div className="bg-slate-600/40 backdrop-blur-3xl rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-1.5 relative">
         {/* Button Group - Separated with gaps */}
         <div className="flex items-center gap-2 relative z-10">

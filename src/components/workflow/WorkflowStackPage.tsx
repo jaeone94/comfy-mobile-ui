@@ -71,7 +71,7 @@ export const WorkflowStackPage: React.FC = () => {
 
     if (loading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-slate-950 text-white">
+            <div className="app-screen flex items-center justify-center bg-slate-950 text-white">
                 {t('common.loading')}
             </div>
         );
@@ -79,14 +79,14 @@ export const WorkflowStackPage: React.FC = () => {
 
     if (!graph) {
         return (
-            <div className="flex items-center justify-center h-screen bg-slate-950 text-white">
+            <div className="app-screen flex items-center justify-center bg-slate-950 text-white">
                 {t('workflow.loadFailed')}
             </div>
         );
     }
 
     return (
-        <div className="h-screen w-full bg-[#0F1012]">
+        <div className="app-screen w-full bg-[#0F1012]">
             <WorkflowStackEditor
                 graph={graph}
                 workflowName={workflowName}

@@ -1014,7 +1014,10 @@ export const WorkflowStackEditor: React.FC<WorkflowStackEditorProps> = ({ graph,
             {/* Content area */}
             <div className="flex flex-col flex-1 h-full overflow-hidden relative">
                 <div className="flex-1 h-full w-full overflow-y-auto custom-scrollbar">
-                    <div className="p-4 space-y-8 pb-24">
+                    <div
+                        className="p-4 space-y-8"
+                        style={{ paddingBottom: 'calc(6rem + env(safe-area-inset-bottom, 0px))' }}
+                    >
                         {/* Unified Control Section */}
                         <div className="space-y-3">
                             <div className="flex items-center gap-2 px-1">
