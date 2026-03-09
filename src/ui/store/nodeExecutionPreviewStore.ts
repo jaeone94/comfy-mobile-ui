@@ -71,12 +71,9 @@ export const useNodeExecutionPreviewStore = create<NodeExecutionPreviewState>((s
     });
   },
 
+  // Cleared explicitly when workflow context changes, not on every execution start.
   clearPreviews: () => set({ previewsByNode: new Map() })
 }));
-
-globalWebSocketService.on('execution_started', () => {
-  useNodeExecutionPreviewStore.getState().clearPreviews();
-});
 
 globalWebSocketService.on('executed', (event: any) => {
   try {
