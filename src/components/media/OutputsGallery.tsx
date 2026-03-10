@@ -12,6 +12,7 @@ import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { SimpleConfirmDialog } from '../ui/SimpleConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
+import { ImageMaskEditorModal } from '@/components/media/ImageMaskEditorModal';
 
 
 type TabType = 'images' | 'videos';
@@ -305,6 +306,8 @@ interface OutputsGalleryProps {
   allowImages?: boolean;
   allowVideos?: boolean;
   onFileSelect?: (filename: string) => void;
+  enableMaskEditor?: boolean;
+  onMaskEditorApply?: (file: File) => Promise<void> | void;
   onBackClick?: () => void;
   selectionTitle?: string;
   initialFolder?: FolderType;
@@ -315,6 +318,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   allowImages = true,
   allowVideos = true,
   onFileSelect,
+  enableMaskEditor = false,
+  onMaskEditorApply,
   onBackClick,
   selectionTitle,
   initialFolder = 'output'
@@ -350,12 +355,19 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [visibleFileCount, setVisibleFileCount] = useState(INITIAL_VISIBLE_FILE_COUNT);
   const loadMoreTriggerRef = useRef<HTMLDivElement | null>(null);
+  const [isMaskPickMode, setIsMaskPickMode] = useState(false);
+  const [isMaskEditorOpen, setIsMaskEditorOpen] = useState(false);
+  const [isApplyingMask, setIsApplyingMask] = useState(false);
+  const [maskSourceImage, setMaskSourceImage] = useState<File | null>(null);
+  const [maskSourceLabel, setMaskSourceLabel] = useState<string>('');
+  const maskSourceInputRef = useRef<HTMLInputElement | null>(null);
 
   const navigate = useNavigate();
   const { url: serverUrl, isConnected, hasExtension, isCheckingExtension, checkExtension } = useConnectionStore();
 
   // Memoize the service instance to prevent infinite loops
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
+  const canUseMaskEditor = isFileSelectionMode && allowImages && enableMaskEditor && !!onMaskEditorApply;
 
 
   const loadFiles = useCallback(async () => {
@@ -424,9 +436,100 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     checkExtension();
   };
 
+  const closeMaskEditor = useCallback(() => {
+    setIsMaskEditorOpen(false);
+    setMaskSourceImage(null);
+    setMaskSourceLabel('');
+    setIsApplyingMask(false);
+  }, []);
+
+  const openMaskEditorFromGalleryFile = useCallback(async (file: IComfyFileInfo) => {
+    try {
+      setError(null);
+      setLoading(true);
+
+      const blob = await comfyFileService.downloadFile({
+        filename: file.filename,
+        subfolder: file.subfolder,
+        type: file.type
+      });
+
+      if (!blob) {
+        setError('Could not load image for mask editing.');
+        return;
+      }
+
+      const sourceFile = new File([blob], file.filename, {
+        type: blob.type || 'image/png'
+      });
+
+      setMaskSourceImage(sourceFile);
+      setMaskSourceLabel(file.subfolder ? `${file.subfolder}/${file.filename}` : file.filename);
+      setIsMaskEditorOpen(true);
+    } catch (error) {
+      console.error('Failed to load image for mask editor:', error);
+      setError('Failed to open mask editor for this image.');
+    } finally {
+      setLoading(false);
+    }
+  }, [comfyFileService]);
+
+  const handleMaskSourceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = event.target.files?.[0];
+    if (!selectedFile) {
+      return;
+    }
+
+    if (!isImageFile(selectedFile.name)) {
+      setError('Mask editor requires an image file.');
+      event.target.value = '';
+      return;
+    }
+
+    setError(null);
+    setMaskSourceImage(selectedFile);
+    setMaskSourceLabel(selectedFile.name);
+    setIsMaskEditorOpen(true);
+    event.target.value = '';
+  };
+
+  const handleMaskApply = useCallback(async (file: File) => {
+    if (!onMaskEditorApply) {
+      return;
+    }
+
+    setError(null);
+    setIsApplyingMask(true);
+
+    try {
+      await onMaskEditorApply(file);
+      closeMaskEditor();
+      setIsMaskPickMode(false);
+    } catch (error) {
+      console.error('Failed to apply mask file:', error);
+      setError('Failed to apply generated mask.');
+      setIsApplyingMask(false);
+    }
+  }, [closeMaskEditor, onMaskEditorApply]);
+
+  useEffect(() => {
+    if (!canUseMaskEditor || activeTab !== 'images') {
+      setIsMaskPickMode(false);
+    }
+  }, [activeTab, canUseMaskEditor]);
+
   const handleFileClick = async (file: IComfyFileInfo) => {
     // File selection mode: handle file selection with auto-copy if needed
     if (isFileSelectionMode && onFileSelect) {
+      if (canUseMaskEditor && isMaskPickMode) {
+        if (!isImageFile(file.filename)) {
+          setError('Mask editor only supports images.');
+          return;
+        }
+        await openMaskEditorFromGalleryFile(file);
+        return;
+      }
+
       try {
         // If file is not in input folder, copy it to input first
         if (file.type !== 'input') {
@@ -980,6 +1083,30 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                 </button>
               )}
 
+              {canUseMaskEditor && !isSelectionMode && activeTab === 'images' && (
+                <>
+                  <button
+                    onClick={() => setIsMaskPickMode((prev) => !prev)}
+                    className={`w-14 h-14 flex items-center justify-center rounded-full border transition-all duration-300 active:scale-90 shadow-2xl ${isMaskPickMode
+                      ? 'bg-white text-black border-white'
+                      : 'bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-xl'
+                      }`}
+                    title={isMaskPickMode ? 'Mask mode enabled' : 'Enable mask mode'}
+                  >
+                    <MousePointer className="h-7 w-7" />
+                  </button>
+                  {isMaskPickMode && (
+                    <button
+                      onClick={() => maskSourceInputRef.current?.click()}
+                      className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl"
+                      title="Use image from device"
+                    >
+                      <ImageIcon className="h-7 w-7" />
+                    </button>
+                  )}
+                </>
+              )}
+
               {/* Refresh Button - Added per user request */}
               <AnimatePresence>
                 {!isSelectionMode && (
@@ -1032,7 +1159,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
           {/* Row 2: Sub-label aligned with Title - Scaled Up & Solid White */}
           <div className="pl-[72px]">
             <p className="text-base font-black text-white uppercase tracking-[0.2em]">
-              {viewMode === 'folders'
+              {canUseMaskEditor && isMaskPickMode
+                ? 'Mask Mode: Tap Image To Edit'
+                : viewMode === 'folders'
                 ? (selectedSubfolder && selectedSubfolder !== '/' ? selectedSubfolder : "Root Folder")
                 : (activeFolder === 'all'
                   ? t('gallery.filesTotal', { count: currentFiles.length })
@@ -1330,6 +1459,23 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
           )}
         </div>
       </footer>
+      <input
+        ref={maskSourceInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={handleMaskSourceFileChange}
+      />
+      {canUseMaskEditor && (
+        <ImageMaskEditorModal
+          isOpen={isMaskEditorOpen}
+          sourceImage={maskSourceImage}
+          sourceLabel={maskSourceLabel}
+          isApplying={isApplyingMask}
+          onApply={handleMaskApply}
+          onClose={closeMaskEditor}
+        />
+      )}
       {/* File Preview Modal */}
       {previewFile && (
         <FilePreviewModal

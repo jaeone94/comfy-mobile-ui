@@ -13,9 +13,12 @@ import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 import { IComfyWidget } from '@/shared/types/app/IComfyGraphNode';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 import { getGalleryPermissions } from '@/shared/utils/GalleryPermissionUtils';
+import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
+import { useConnectionStore } from '@/ui/store/connectionStore';
 import { InlineImagePreview } from '@/components/media/InlineImagePreview';
 import { InlineVideoPreview } from '@/components/media/InlineVideoPreview';
 import { OutputsGallery } from '@/components/media/OutputsGallery';
+import { ImageMaskEditorModal } from '@/components/media/ImageMaskEditorModal';
 import {
   NumberWidget,
   BooleanWidget,
@@ -117,6 +120,11 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showAlbumModal, setShowAlbumModal] = useState(false);
+  const [maskSourceImage, setMaskSourceImage] = useState<File | null>(null);
+  const [showMaskEditor, setShowMaskEditor] = useState(false);
+  const [isLoadingMaskSource, setIsLoadingMaskSource] = useState(false);
+  const [isApplyingMask, setIsApplyingMask] = useState(false);
+  const { url: serverUrl } = useConnectionStore();
 
   // Debug logging for modal state changes
   React.useEffect(() => {
@@ -159,6 +167,80 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
     (param.possibleValues && param.possibleValues.some(v =>
       typeof v === 'string' && (v.includes('.mp4') || v.includes('.avi') || v.includes('.mov') || v.includes('.mkv') || v.includes('.webm'))
     ));
+
+  const closeMaskEditor = () => {
+    setShowMaskEditor(false);
+    setMaskSourceImage(null);
+    setIsApplyingMask(false);
+  };
+
+  const openMaskEditorForCurrentImage = async () => {
+    if (typeof currentValue !== 'string' || !isImageFile(currentValue)) {
+      return;
+    }
+
+    setIsLoadingMaskSource(true);
+    try {
+      const fileService = new ComfyFileService(serverUrl || 'http://localhost:8188');
+
+      let filename = currentValue;
+      let subfolder = '';
+      if (currentValue.includes('/')) {
+        const lastSlashIndex = currentValue.lastIndexOf('/');
+        subfolder = currentValue.substring(0, lastSlashIndex);
+        filename = currentValue.substring(lastSlashIndex + 1);
+      }
+
+      const locations: Array<{ type: 'input' | 'output' | 'temp'; subfolder: string }> = [
+        { type: 'input', subfolder },
+        { type: 'output', subfolder },
+        { type: 'temp', subfolder }
+      ];
+
+      let blob: Blob | null = null;
+      for (const location of locations) {
+        blob = await fileService.downloadFile({
+          filename,
+          subfolder: location.subfolder,
+          type: location.type
+        });
+        if (blob && blob.size > 0) {
+          break;
+        }
+      }
+
+      if (!blob || blob.size === 0) {
+        toast.error('Could not load current image for masking.');
+        return;
+      }
+
+      const sourceFile = new File([blob], filename, { type: blob.type || 'image/png' });
+      setMaskSourceImage(sourceFile);
+      setShowMaskEditor(true);
+    } catch (error) {
+      console.error('Failed to prepare image for masking:', error);
+      toast.error('Failed to load image for mask editor.');
+    } finally {
+      setIsLoadingMaskSource(false);
+    }
+  };
+
+  const handleMaskApply = async (maskFile: File) => {
+    if (!onFileUploadDirect) {
+      toast.error('Mask upload is not available in this context.');
+      return;
+    }
+
+    setIsApplyingMask(true);
+    try {
+      await onFileUploadDirect(nodeId, param.name, maskFile);
+      closeMaskEditor();
+    } catch (error) {
+      console.error('Mask upload failed:', error);
+      toast.error('Failed to apply mask.');
+      setIsApplyingMask(false);
+    }
+  };
 
   // Check if this widget has custom field definitions
   const hasCustomWidgetDefinition = widget?.customWidgetDefinition?.fields &&
@@ -459,7 +541,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
         {/* Prominent Upload Button for Image/Video Files */}
         {currentValue != null && typeof currentValue === 'string' && (isImageFile(currentValue) || isVideoFile(currentValue)) && (
-          <div className="mt-3 mb-3">
+          <div className="mt-3 mb-3 space-y-2">
             <button
               onClick={(e) => {
                 e.stopPropagation();
@@ -486,6 +568,27 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 </>
               )}
             </button>
+            {isImageFile(currentValue) && onFileUploadDirect && (
+              <>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    e.preventDefault();
+                    void openMaskEditorForCurrentImage();
+                  }}
+                  disabled={(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource}
+                  className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg font-bold transition-all duration-200 active:scale-[0.98] border shadow-sm ${(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource
+                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-700 cursor-not-allowed'
+                    : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-800/50'
+                    }`}
+                >
+                  <Images className="w-4 h-4" />
+                  <span className="text-sm">
+                    {isLoadingMaskSource ? 'Loading image...' : isApplyingMask ? 'Applying mask...' : 'Mask Current Image'}
+                  </span>
+                </button>
+              </>
+            )}
           </div>
         )}
 
@@ -632,6 +735,14 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
           document.body
         )
       }
+      <ImageMaskEditorModal
+        isOpen={showMaskEditor}
+        sourceImage={maskSourceImage}
+        sourceLabel={maskSourceImage?.name}
+        isApplying={isApplyingMask}
+        onApply={handleMaskApply}
+        onClose={closeMaskEditor}
+      />
     </div >
   );
 };
