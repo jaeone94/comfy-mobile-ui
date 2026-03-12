@@ -604,7 +604,8 @@
             "maskContextUnavailable": "Mask context is unavailable.",
             "exportContextUnavailable": "Export context is unavailable.",
             "failedToExport": "Failed to export mask file.",
-            "applyFailed": "Failed to apply mask."
+            "applyFailed": "Failed to apply mask.",
+            "uploadUnavailable": "此上下文中无法使用蒙版上传。"
         }
     },
     "gallery": {
@@ -622,6 +623,10 @@
         "refreshFiles": "刷新文件",
         "enterSelectionMode": "进入选择模式",
         "exitSelectionMode": "退出选择模式",
+        "maskLoadError": "无法加载用于蒙版编辑的图像。",
+        "maskOpenError": "无法为此图像打开蒙版编辑器。",
+        "maskInvalidFileType": "蒙版编辑器需要图像文件。",
+        "maskOnlySupportsImages": "蒙版编辑器仅支持图像。",
         "loading": "正在加载输出文件...",
         "noFilesFound": "未找到 {{type}}",
         "noFilesDescription": "尚未生成 {{type}}",

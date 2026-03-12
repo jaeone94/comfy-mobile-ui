@@ -583,31 +583,32 @@
         }
     },
     "mask": {
-        "editorTitle": "Mask Editor",
-        "selectedImage": "Selected image",
-        "close": "Close",
-        "applyMask": "Apply Mask",
-        "maskCurrentImage": "Mask Current Image",
-        "loadingImage": "Loading image...",
-        "applyingMask": "Applying mask...",
-        "brush": "Brush",
-        "eraser": "Eraser",
-        "reset": "Reset",
-        "clearMask": "Clear Mask",
-        "resetView": "Reset View",
-        "brushSize": "Brush Size: {{size}}px",
-        "preparingEditor": "Preparing editor...",
-        "selectImageToStart": "Select an image to start masking.",
+        "editorTitle": "마스크 편집기",
+        "selectedImage": "선택한 이미지",
+        "close": "닫기",
+        "applyMask": "마스크 적용",
+        "maskCurrentImage": "현재 이미지 마스킹",
+        "loadingImage": "이미지 불러오는 중...",
+        "applyingMask": "마스크 적용 중...",
+        "brush": "브러시",
+        "eraser": "지우개",
+        "reset": "초기화",
+        "clearMask": "마스크 지우기",
+        "resetView": "보기 초기화",
+        "brushSize": "브러시 크기: {{size}}px",
+        "preparingEditor": "편집기 준비 중...",
+        "selectImageToStart": "마스킹을 시작하려면 이미지를 선택하세요.",
         "errors": {
-            "couldNotInitializeCanvas": "Could not initialize canvas.",
-            "couldNotAccessContext": "Could not access drawing context.",
-            "failedToLoadSourceImage": "Failed to load source image.",
-            "sourceImageUnavailable": "Source image is unavailable.",
-            "invalidSourceDimensions": "Invalid source image dimensions.",
-            "maskContextUnavailable": "Mask context is unavailable.",
-            "exportContextUnavailable": "Export context is unavailable.",
-            "failedToExport": "Failed to export mask file.",
-            "applyFailed": "Failed to apply mask."
+            "couldNotInitializeCanvas": "캔버스를 초기화할 수 없습니다.",
+            "couldNotAccessContext": "그리기 컨텍스트에 접근할 수 없습니다.",
+            "failedToLoadSourceImage": "원본 이미지를 불러오지 못했습니다.",
+            "sourceImageUnavailable": "원본 이미지를 사용할 수 없습니다.",
+            "invalidSourceDimensions": "원본 이미지 크기가 올바르지 않습니다.",
+            "maskContextUnavailable": "마스크 컨텍스트를 사용할 수 없습니다.",
+            "exportContextUnavailable": "내보내기 컨텍스트를 사용할 수 없습니다.",
+            "failedToExport": "마스크 파일을 내보내지 못했습니다.",
+            "applyFailed": "마스크를 적용하지 못했습니다.",
+            "uploadUnavailable": "이 컨텍스트에서는 마스크 업로드를 사용할 수 없습니다."
         }
     },
     "gallery": {
@@ -625,6 +626,10 @@
         "refreshFiles": "파일 새로고침",
         "enterSelectionMode": "선택 모드 진입",
         "exitSelectionMode": "선택 모드 종료",
+        "maskLoadError": "마스크 편집용 이미지를 불러올 수 없습니다.",
+        "maskOpenError": "이 이미지의 마스크 편집기를 열지 못했습니다.",
+        "maskInvalidFileType": "마스크 편집기에는 이미지 파일이 필요합니다.",
+        "maskOnlySupportsImages": "마스크 편집기는 이미지만 지원합니다.",
         "loading": "출력 파일 로딩 중...",
         "noFilesFound": "{{type}} 없음",
         "noFilesDescription": "아직 생성된 {{type}}이(가) 없습니다",
@@ -1574,6 +1579,4 @@
         }
     }
 }
-
-
 

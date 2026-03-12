@@ -545,12 +545,12 @@ class GlobalWebSocketService extends EventEmitter {
       if (ws !== this.webSocket) {
         return;
       }
-      this.webSocket = null;
 
       const isManualClose =
         this.manualDisconnect ||
         (event.code === 1000 && event.reason === 'Manual disconnect');
       if (isManualClose) {
+        this.webSocket = null;
         return;
       }
       console.warn(`🔌 [GlobalWebSocketService] WebSocket closed:`, {
@@ -576,8 +576,10 @@ class GlobalWebSocketService extends EventEmitter {
       // Even "clean" closes (1000) might be server timeouts that we want to recover from
       if (this.state.reconnectAttempts < this.state.maxReconnectAttempts) {
         console.log(`🔄 [GlobalWebSocketService] Connection closed (code: ${event.code}), attempting reconnect...`);
-        this.scheduleReconnect(ws);
+        this.scheduleReconnect();
       }
+
+      this.webSocket = null;
     };
   }
 

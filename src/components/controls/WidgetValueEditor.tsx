@@ -222,7 +222,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       }
 
       if (!blob || blob.size === 0) {
-        toast.error('Could not load current image for masking.');
+        toast.error(t('mask.errors.sourceImageUnavailable'));
         return;
       }
 
@@ -231,7 +231,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       setShowMaskEditor(true);
     } catch (error) {
       console.error('Failed to prepare image for masking:', error);
-      toast.error('Failed to load image for mask editor.');
+      toast.error(t('mask.errors.failedToLoadSourceImage'));
     } finally {
       setIsLoadingMaskSource(false);
     }
@@ -239,7 +239,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   const handleMaskApply = async (maskFile: File) => {
     if (!onFileUploadDirect) {
-      toast.error('Mask upload is not available in this context.');
+      toast.error(t('mask.errors.uploadUnavailable'));
       return;
     }
 
@@ -249,7 +249,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       closeMaskEditor();
     } catch (error) {
       console.error('Mask upload failed:', error);
-      toast.error('Failed to apply mask.');
+      toast.error(t('mask.errors.applyFailed'));
       setIsApplyingMask(false);
     }
   };

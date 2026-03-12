@@ -603,7 +603,8 @@
             "maskContextUnavailable": "Mask context is unavailable.",
             "exportContextUnavailable": "Export context is unavailable.",
             "failedToExport": "Failed to export mask file.",
-            "applyFailed": "Failed to apply mask."
+            "applyFailed": "Failed to apply mask.",
+            "uploadUnavailable": "このコンテキストではマスクのアップロードは利用できません。"
         }
     },
     "gallery": {
@@ -621,6 +622,10 @@
         "refreshFiles": "ファイルを更新",
         "enterSelectionMode": "選択モードに入る",
         "exitSelectionMode": "選択モードを終了",
+        "maskLoadError": "マスク編集用の画像を読み込めませんでした。",
+        "maskOpenError": "この画像のマスクエディターを開けませんでした。",
+        "maskInvalidFileType": "マスクエディターには画像ファイルが必要です。",
+        "maskOnlySupportsImages": "マスクエディターは画像のみ対応しています。",
         "loading": "出力ファイルを読み込み中...",
         "noFilesFound": "{{type}} が見つかりません",
         "noFilesDescription": "{{type}} はまだ生成されていません",

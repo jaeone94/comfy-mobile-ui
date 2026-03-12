@@ -607,7 +607,8 @@
             "maskContextUnavailable": "Mask context is unavailable.",
             "exportContextUnavailable": "Export context is unavailable.",
             "failedToExport": "Failed to export mask file.",
-            "applyFailed": "Failed to apply mask."
+            "applyFailed": "Failed to apply mask.",
+            "uploadUnavailable": "Mask upload is not available in this context."
         }
     },
     "gallery": {
@@ -625,6 +626,10 @@
         "refreshFiles": "Refresh files",
         "enterSelectionMode": "Enter selection mode",
         "exitSelectionMode": "Exit selection mode",
+        "maskLoadError": "Could not load image for mask editing.",
+        "maskOpenError": "Failed to open mask editor for this image.",
+        "maskInvalidFileType": "Mask editor requires an image file.",
+        "maskOnlySupportsImages": "Mask editor only supports images.",
         "loading": "Loading output files...",
         "noFilesFound": "No {{type}} found",
         "noFilesDescription": "No {{type}} have been generated yet",

@@ -455,7 +455,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       });
 
       if (!blob) {
-        setError('Could not load image for mask editing.');
+        setError(t('gallery.maskLoadError'));
         return;
       }
 
@@ -468,11 +468,11 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       setIsMaskEditorOpen(true);
     } catch (error) {
       console.error('Failed to load image for mask editor:', error);
-      setError('Failed to open mask editor for this image.');
+      setError(t('gallery.maskOpenError'));
     } finally {
       setLoading(false);
     }
-  }, [comfyFileService]);
+  }, [comfyFileService, t]);
 
   const handleMaskSourceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -481,7 +481,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     }
 
     if (!isImageFile(selectedFile.name)) {
-      setError('Mask editor requires an image file.');
+      setError(t('gallery.maskInvalidFileType'));
       event.target.value = '';
       return;
     }
@@ -523,7 +523,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     if (isFileSelectionMode && onFileSelect) {
       if (canUseMaskEditor && isMaskPickMode) {
         if (!isImageFile(file.filename)) {
-          setError('Mask editor only supports images.');
+          setError(t('gallery.maskOnlySupportsImages'));
           return;
         }
         await openMaskEditorFromGalleryFile(file);
