@@ -52,7 +52,7 @@ interface WidgetValueEditorProps {
   onEditingValueChange: (value: any) => void;
   onFilePreview: (filename: string) => void;
   onFileUpload: (nodeId: number, paramName: string) => void;
-  onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => void;
+  onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => Promise<void>;
   // Optional ComfyGraphNode context
   node?: ComfyGraphNode;
   widget?: IComfyWidget;
@@ -124,9 +124,9 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
   const [showMaskEditor, setShowMaskEditor] = useState(false);
   const [isLoadingMaskSource, setIsLoadingMaskSource] = useState(false);
   const [isApplyingMask, setIsApplyingMask] = useState(false);
-  const { url: serverUrl } = useConnectionStore();
+  const serverUrl = useConnectionStore((state) => state.url);
   const comfyFileService = useMemo(
-    () => new ComfyFileService(serverUrl || 'http://localhost:8188'),
+    () => (serverUrl ? new ComfyFileService(serverUrl) : null),
     [serverUrl]
   );
 
@@ -180,6 +180,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   const openMaskEditorForCurrentImage = async () => {
     if (typeof currentValue !== 'string' || !isImageFile(currentValue)) {
+      return;
+    }
+    if (!comfyFileService) {
+      toast.error(t('mask.errors.serverUrlUnavailable'));
       return;
     }
 
@@ -587,8 +591,8 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                   e.preventDefault();
                   void openMaskEditorForCurrentImage();
                 }}
-                disabled={(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource}
-                className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg font-bold transition-all duration-200 active:scale-[0.98] border shadow-sm ${(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource
+                disabled={!comfyFileService || (uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource}
+                className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg font-bold transition-all duration-200 active:scale-[0.98] border shadow-sm ${!comfyFileService || (uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource
                   ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-700 cursor-not-allowed'
                   : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-800/50'
                   }`}

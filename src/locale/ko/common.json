@@ -595,6 +595,9 @@
         "reset": "초기화",
         "clearMask": "마스크 지우기",
         "resetView": "보기 초기화",
+        "modeEnabled": "마스크 모드 활성화됨",
+        "enableMode": "마스크 모드 활성화",
+        "useImageFromDevice": "기기 이미지 사용",
         "brushSize": "브러시 크기: {{size}}px",
         "preparingEditor": "편집기 준비 중...",
         "selectImageToStart": "마스킹을 시작하려면 이미지를 선택하세요.",
@@ -608,7 +611,8 @@
             "exportContextUnavailable": "내보내기 컨텍스트를 사용할 수 없습니다.",
             "failedToExport": "마스크 파일을 내보내지 못했습니다.",
             "applyFailed": "마스크를 적용하지 못했습니다.",
-            "uploadUnavailable": "이 컨텍스트에서는 마스크 업로드를 사용할 수 없습니다."
+            "uploadUnavailable": "이 컨텍스트에서는 마스크 업로드를 사용할 수 없습니다.",
+            "serverUrlUnavailable": "서버 URL이 설정되지 않아 마스크 편집기를 사용할 수 없습니다."
         }
     },
     "gallery": {
@@ -630,6 +634,7 @@
         "maskOpenError": "이 이미지의 마스크 편집기를 열지 못했습니다.",
         "maskInvalidFileType": "마스크 편집기에는 이미지 파일이 필요합니다.",
         "maskOnlySupportsImages": "마스크 편집기는 이미지만 지원합니다.",
+        "maskModeTapToEdit": "마스크 모드: 이미지를 눌러 편집",
         "loading": "출력 파일 로딩 중...",
         "noFilesFound": "{{type}} 없음",
         "noFilesDescription": "아직 생성된 {{type}}이(가) 없습니다",
@@ -1579,4 +1584,3 @@
         }
     }
 }
-

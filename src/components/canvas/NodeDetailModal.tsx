@@ -70,7 +70,7 @@ interface NodeDetailModalProps {
     onControlAfterGenerateChange?: (nodeId: number, value: string) => void;
     onFilePreview: (filename: string) => void;
     onFileUpload: (nodeId: number, paramName: string) => void;
-    onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => void;
+    onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => Promise<void>;
     onNavigateToNode: (nodeId: number) => void;
     onSelectNode: (node: ComfyGraphNode) => void;
     onNodeModeChange: (nodeId: number, mode: number) => void;

@@ -591,6 +591,9 @@
         "reset": "Reset",
         "clearMask": "Clear Mask",
         "resetView": "Reset View",
+        "modeEnabled": "マスクモード有効",
+        "enableMode": "マスクモードを有効化",
+        "useImageFromDevice": "端末の画像を使用",
         "brushSize": "Brush Size: {{size}}px",
         "preparingEditor": "Preparing editor...",
         "selectImageToStart": "Select an image to start masking.",
@@ -604,7 +607,8 @@
             "exportContextUnavailable": "Export context is unavailable.",
             "failedToExport": "Failed to export mask file.",
             "applyFailed": "Failed to apply mask.",
-            "uploadUnavailable": "このコンテキストではマスクのアップロードは利用できません。"
+            "uploadUnavailable": "このコンテキストではマスクのアップロードは利用できません。",
+            "serverUrlUnavailable": "サーバーURLが設定されていないため、マスクエディターは利用できません。"
         }
     },
     "gallery": {
@@ -626,6 +630,7 @@
         "maskOpenError": "この画像のマスクエディターを開けませんでした。",
         "maskInvalidFileType": "マスクエディターには画像ファイルが必要です。",
         "maskOnlySupportsImages": "マスクエディターは画像のみ対応しています。",
+        "maskModeTapToEdit": "マスクモード: 画像をタップして編集",
         "loading": "出力ファイルを読み込み中...",
         "noFilesFound": "{{type}} が見つかりません",
         "noFilesDescription": "{{type}} はまだ生成されていません",

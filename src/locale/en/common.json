@@ -595,6 +595,9 @@
         "reset": "Reset",
         "clearMask": "Clear Mask",
         "resetView": "Reset View",
+        "modeEnabled": "Mask mode enabled",
+        "enableMode": "Enable mask mode",
+        "useImageFromDevice": "Use image from device",
         "brushSize": "Brush Size: {{size}}px",
         "preparingEditor": "Preparing editor...",
         "selectImageToStart": "Select an image to start masking.",
@@ -608,7 +611,8 @@
             "exportContextUnavailable": "Export context is unavailable.",
             "failedToExport": "Failed to export mask file.",
             "applyFailed": "Failed to apply mask.",
-            "uploadUnavailable": "Mask upload is not available in this context."
+            "uploadUnavailable": "Mask upload is not available in this context.",
+            "serverUrlUnavailable": "Mask editor is unavailable because the server URL is not configured."
         }
     },
     "gallery": {
@@ -630,6 +634,7 @@
         "maskOpenError": "Failed to open mask editor for this image.",
         "maskInvalidFileType": "Mask editor requires an image file.",
         "maskOnlySupportsImages": "Mask editor only supports images.",
+        "maskModeTapToEdit": "Mask mode: tap image to edit",
         "loading": "Loading output files...",
         "noFilesFound": "No {{type}} found",
         "noFilesDescription": "No {{type}} have been generated yet",

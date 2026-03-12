@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { ArrowLeft, Image as ImageIcon, Video, Loader2, RefreshCw, Server, AlertCircle, CheckCircle, Trash2, FolderOpen, Check, X, MousePointer, ChevronLeft, CheckSquare, Copy, LayoutGrid, FolderTree, ChevronRight } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
+import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -455,7 +456,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       });
 
       if (!blob) {
-        setError(t('gallery.maskLoadError'));
+        toast.error(t('gallery.maskLoadError'));
         return;
       }
 
@@ -468,7 +469,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       setIsMaskEditorOpen(true);
     } catch (error) {
       console.error('Failed to load image for mask editor:', error);
-      setError(t('gallery.maskOpenError'));
+      toast.error(t('gallery.maskOpenError'));
     } finally {
       setLoading(false);
     }
@@ -480,8 +481,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       return;
     }
 
-    if (!isImageFile(selectedFile.name)) {
-      setError(t('gallery.maskInvalidFileType'));
+    const hasImageMimeType = selectedFile.type.startsWith('image/');
+    if (!hasImageMimeType && !isImageFile(selectedFile.name)) {
+      toast.error(t('gallery.maskInvalidFileType'));
       event.target.value = '';
       return;
     }
@@ -523,7 +525,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     if (isFileSelectionMode && onFileSelect) {
       if (canUseMaskEditor && isMaskPickMode) {
         if (!isImageFile(file.filename)) {
-          setError(t('gallery.maskOnlySupportsImages'));
+          toast.error(t('gallery.maskOnlySupportsImages'));
           return;
         }
         await openMaskEditorFromGalleryFile(file);
@@ -684,9 +686,13 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       const allCurrentFilesSelected = currentPathSelectableKeys.length > 0 && currentPathSelectableKeys.every(key => selectedFiles.has(key));
 
       if (allCurrentFilesSelected) {
-        currentPathSelectableKeys.forEach(key => newSelected.delete(key));
+        currentPathSelectableKeys.forEach((key) => {
+          newSelected.delete(key);
+        });
       } else {
-        currentPathSelectableKeys.forEach(key => newSelected.add(key));
+        currentPathSelectableKeys.forEach((key) => {
+          newSelected.add(key);
+        });
       }
     } else {
       // Flat mode behavior
@@ -695,14 +701,20 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         const allVisibleSelected = visibleKeys.every(key => selectedFiles.has(key));
 
         if (allVisibleSelected) {
-          visibleKeys.forEach(key => newSelected.delete(key));
+          visibleKeys.forEach((key) => {
+            newSelected.delete(key);
+          });
         } else {
-          visibleKeys.forEach(key => newSelected.add(key));
+          visibleKeys.forEach((key) => {
+            newSelected.add(key);
+          });
         }
       } else {
         const allFilesList = [...files.images, ...files.videos];
         const allKeys = allFilesList.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
-        allKeys.forEach(key => newSelected.add(key));
+        allKeys.forEach((key) => {
+          newSelected.add(key);
+        });
       }
     }
 
@@ -1093,7 +1105,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                       ? 'bg-white text-black border-white'
                       : 'bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-xl'
                       }`}
-                    title={isMaskPickMode ? 'Mask mode enabled' : 'Enable mask mode'}
+                    title={isMaskPickMode ? t('mask.modeEnabled') : t('mask.enableMode')}
                   >
                     <MousePointer className="h-7 w-7" />
                   </button>
@@ -1101,7 +1113,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                     <button
                       onClick={() => maskSourceInputRef.current?.click()}
                       className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl"
-                      title="Use image from device"
+                      title={t('mask.useImageFromDevice')}
                     >
                       <ImageIcon className="h-7 w-7" />
                     </button>
@@ -1162,7 +1174,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
           <div className="pl-[72px]">
             <p className="text-base font-black text-white uppercase tracking-[0.2em]">
               {canUseMaskEditor && isMaskPickMode
-                ? 'Mask Mode: Tap Image To Edit'
+                ? t('gallery.maskModeTapToEdit')
                 : viewMode === 'folders'
                 ? (selectedSubfolder && selectedSubfolder !== '/' ? selectedSubfolder : "Root Folder")
                 : (activeFolder === 'all'

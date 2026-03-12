@@ -24,7 +24,9 @@ class EventEmitter {
 
   emit(event: string, ...args: any[]) {
     if (this.events[event]) {
-      this.events[event].forEach(({ listener }) => listener(...args));
+      this.events[event].forEach(({ listener }) => {
+        listener(...args);
+      });
     }
   }
 
@@ -644,10 +646,6 @@ class GlobalWebSocketService extends EventEmitter {
 
   private attemptReconnect(): void {
     if (this.manualDisconnect) {
-      return;
-    }
-
-    if (this.reconnectScheduled || this.reconnectTimer) {
       return;
     }
 

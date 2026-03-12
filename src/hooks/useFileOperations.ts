@@ -387,7 +387,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
   };
 
   // Handle direct file upload (from clipboard or album)
-  const handleFileUploadDirect = async (nodeId: number, paramName: string, file: File) => {
+  const handleFileUploadDirect = async (nodeId: number, paramName: string, file: File): Promise<void> => {
     
     // Validate file type based on the parameter
     // For now, we'll accept both images and videos unless restricted
