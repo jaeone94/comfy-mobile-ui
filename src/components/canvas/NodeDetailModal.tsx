@@ -27,6 +27,7 @@ import { PointEditor } from '@/components/controls/widgets/custom_node_widget/Po
 import { detectParameterTypeForGallery } from '@/shared/utils/GalleryPermissionUtils';
 import { useNodeExecutionPreviewStore, NodeExecutionPreviewFile } from '@/ui/store/nodeExecutionPreviewStore';
 import { useNodeSamplerPreviewStore } from '@/ui/store/nodeSamplerPreviewStore';
+import type { PreviewFileReference } from '@/shared/types/app/PreviewFileReference';
 
 const EMPTY_EXECUTION_PREVIEWS: readonly NodeExecutionPreviewFile[] = [];
 
@@ -68,7 +69,7 @@ interface NodeDetailModalProps {
     onSaveEditing: () => void;
     onEditingValueChange: (value: any) => void;
     onControlAfterGenerateChange?: (nodeId: number, value: string) => void;
-    onFilePreview: (filename: string) => void;
+    onFilePreview: (fileReference: PreviewFileReference) => void;
     onFileUpload: (nodeId: number, paramName: string) => void;
     onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => Promise<void>;
     onNavigateToNode: (nodeId: number) => void;
@@ -474,7 +475,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
         };
     };
 
-    const getPreviewPath = (preview: ImagePreviewData): string | null => {
+    const getPreviewPath = (preview: ImagePreviewData): PreviewFileReference | null => {
         if (typeof preview === 'string') {
             const trimmedPath = preview.trim();
             return trimmedPath.length > 0 ? trimmedPath : null;
@@ -482,13 +483,22 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
 
         const filename = typeof preview.filename === 'string' ? preview.filename.trim() : '';
         const subfolder = typeof preview.subfolder === 'string' ? preview.subfolder.trim() : '';
+        const type = typeof preview.type === 'string' ? preview.type.trim() : '';
 
         // Ignore malformed objects that do not point to a concrete file.
         if (!filename) {
             return null;
         }
 
-        return subfolder ? `${subfolder}/${filename}` : filename;
+        const normalizedType = type === 'input' || type === 'output' || type === 'temp'
+            ? type
+            : undefined;
+
+        return {
+            filename,
+            ...(subfolder ? { subfolder } : {}),
+            ...(normalizedType ? { type: normalizedType } : {})
+        };
     };
 
 
@@ -523,7 +533,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
             }
         }
     }, [selectedNode, widgets, onAutoRefreshNode]);
-    const imagePreviewData = useMemo(() => extractImagePreviewFromNode(), [selectedNode, widgets, nodeId, executionNodePreviewFiles]); // Depend on widgets
+    const imagePreviewData = extractImagePreviewFromNode();
     const imagePreview = imagePreviewData.value;
     const isImagePreviewFromExecution = imagePreviewData.isFromExecution;
     // Video preview was mostly stubbed in original code, skipping for brevity unless needed.
@@ -1222,11 +1232,11 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                         <InlineImagePreview
                                             imagePreview={imagePreview}
                                             onClick={() => {
-                                                const previewPath = getPreviewPath(imagePreview);
-                                                if (!previewPath) {
+                                                const previewReference = getPreviewPath(imagePreview);
+                                                if (!previewReference) {
                                                     return;
                                                 }
-                                                onFilePreview(previewPath.trim());
+                                                onFilePreview(previewReference);
                                             }}
                                             isFromExecution={isImagePreviewFromExecution}
                                             themeOverride={hasCustomColor ? {

@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { IProcessedParameter } from '@/shared/types/comfy/IComfyObjectInfo';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 import { IComfyWidget } from '@/shared/types/app/IComfyGraphNode';
+import type { PreviewFileReference } from '@/shared/types/app/PreviewFileReference';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 import { getGalleryPermissions } from '@/shared/utils/GalleryPermissionUtils';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
@@ -50,7 +51,7 @@ interface WidgetValueEditorProps {
   onCancelEditing: () => void;
   onSaveEditing: () => void;
   onEditingValueChange: (value: any) => void;
-  onFilePreview: (filename: string) => void;
+  onFilePreview: (fileReference: PreviewFileReference) => void;
   onFileUpload: (nodeId: number, paramName: string) => void;
   onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => Promise<void>;
   // Optional ComfyGraphNode context
@@ -254,6 +255,8 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
     } catch (error) {
       console.error('Mask upload failed:', error);
       toast.error(t('mask.errors.applyFailed'));
+      throw error;
+    } finally {
       setIsApplyingMask(false);
     }
   };

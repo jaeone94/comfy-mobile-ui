@@ -486,7 +486,18 @@ class GlobalWebSocketService extends EventEmitter {
 
             if (!imageData || imageData.byteLength === 0) return;
 
-            const blob = new Blob([imageData], { type: 'image/jpeg' });
+            let imageMimeType: 'image/jpeg' | 'image/png' = 'image/jpeg';
+            if (imageData.byteLength >= 2) {
+              const imageHeaderView = new DataView(imageData);
+              const imageMagic16 = imageHeaderView.getUint16(0, false);
+              if (imageMagic16 === 0x8950) {
+                imageMimeType = 'image/png';
+              } else if (imageMagic16 === 0xFFD8) {
+                imageMimeType = 'image/jpeg';
+              }
+            }
+
+            const blob = new Blob([imageData], { type: imageMimeType });
 
             // Emit in ComfyApiClient format
             this.emit('binary_image_received', {

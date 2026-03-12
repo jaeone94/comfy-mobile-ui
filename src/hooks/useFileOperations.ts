@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 import { extractVideoThumbnail } from '@/shared/utils/VideoUtils';
+import type { PreviewFileReference } from '@/shared/types/app/PreviewFileReference';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 
 interface UploadState {
@@ -33,6 +34,14 @@ interface UseFileOperationsProps {
 
 export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) => {
   const { url: serverUrl } = useConnectionStore();
+
+  const normalizePreviewType = (type?: string): 'input' | 'output' | 'temp' | null => {
+    if (!type) return null;
+    if (type === 'input' || type === 'output' || type === 'temp') {
+      return type;
+    }
+    return null;
+  };
   
   // File preview states
   const [previewModal, setPreviewModal] = useState<PreviewModal>({ 
@@ -60,47 +69,70 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
   };
 
   // File preview handler
-  const handleFilePreview = async (filename: string) => {
-    
-    if (!filename || typeof filename !== 'string') {
-      console.error('❌ Invalid filename:', filename);
+  const handleFilePreview = async (previewReference: PreviewFileReference) => {
+    if (!previewReference) {
+      console.error('❌ Invalid preview reference:', previewReference);
       setErrorDialog({
         isOpen: true,
         title: 'Invalid File',
         message: 'File name is invalid or empty.',
-        details: `Received: ${JSON.stringify(filename)}`
+        details: `Received: ${JSON.stringify(previewReference)}`
       });
       return;
     }
-    
-    const isImage = isImageFile(filename);
-    const isVideo = isVideoFile(filename);
-    
-    
+
+    const explicitSubfolder =
+      typeof previewReference === 'object' && previewReference?.subfolder
+        ? previewReference.subfolder.trim()
+        : '';
+    const explicitType =
+      typeof previewReference === 'object'
+        ? normalizePreviewType(previewReference.type)
+        : null;
+    const rawFilename =
+      typeof previewReference === 'string'
+        ? previewReference.trim()
+        : (previewReference.filename || '').trim();
+
+    if (!rawFilename) {
+      console.error('❌ Invalid filename in preview reference:', previewReference);
+      setErrorDialog({
+        isOpen: true,
+        title: 'Invalid File',
+        message: 'File name is invalid or empty.',
+        details: `Received: ${JSON.stringify(previewReference)}`
+      });
+      return;
+    }
+
+    const previewDisplayPath = explicitSubfolder ? `${explicitSubfolder}/${rawFilename}` : rawFilename;
+    const isImage = isImageFile(rawFilename);
+    const isVideo = isVideoFile(rawFilename);
+
     if (!isImage && !isVideo) {
       setErrorDialog({
         isOpen: true,
         title: 'Unsupported File Type',
         message: 'Only image and video files can be previewed.',
-        details: `File: ${filename}\nSupported image types: png, jpg, jpeg, gif, bmp, webp, svg\nSupported video types: mp4, avi, mov, mkv, webm, flv, wmv`
+        details: `File: ${previewDisplayPath}\nSupported image types: png, jpg, jpeg, gif, bmp, webp, svg\nSupported video types: mp4, avi, mov, mkv, webm, flv, wmv`
       });
       return;
     }
-    
+
     // Show loading modal immediately
     setPreviewModal({
       isOpen: true,
-      filename,
+      filename: previewDisplayPath,
       isImage,
       loading: true
     });
-    
+
     try {
       const fileService = getFileService();
-      
+
       // First check server connection
       const isConnected = await fileService.testConnection();
-      
+
       if (!isConnected) {
         setPreviewModal(prev => ({ ...prev, loading: false, error: 'Server connection failed' }));
         setErrorDialog({
@@ -115,28 +147,30 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
       // Parse filename and subfolder
       // Handle cases like "pasted/image.png" or "subfolder/filename.ext"
       let actualFilename: string;
-      let subfolder: string = '';
-      
-      if (filename.includes('/')) {
-        const lastSlashIndex = filename.lastIndexOf('/');
-        subfolder = filename.substring(0, lastSlashIndex);
-        actualFilename = filename.substring(lastSlashIndex + 1);
+      let subfolder: string = explicitSubfolder;
+
+      if (rawFilename.includes('/')) {
+        const lastSlashIndex = rawFilename.lastIndexOf('/');
+        const derivedSubfolder = rawFilename.substring(0, lastSlashIndex);
+        subfolder = subfolder || derivedSubfolder;
+        actualFilename = rawFilename.substring(lastSlashIndex + 1);
       } else {
-        actualFilename = filename;
+        actualFilename = rawFilename;
       }
-      
-      // For widget values, search in input first, then fallback to output and temp
-      const locations = [
-        { type: 'input', subfolder, description: 'Input files (widget values)' },
-        { type: 'output', subfolder, description: 'Output files (fallback)' },
-        { type: 'temp', subfolder, description: 'Temporary files (fallback)' }
-      ];
-      
+
+      // If preview metadata includes a concrete type, preserve it to avoid resolving the wrong duplicate file.
+      const locations = explicitType
+        ? [{ type: explicitType, subfolder, description: 'Explicit preview file location' }]
+        : [
+            { type: 'input', subfolder, description: 'Input files (widget values)' },
+            { type: 'output', subfolder, description: 'Output files (fallback)' },
+            { type: 'temp', subfolder, description: 'Temporary files (fallback)' }
+          ];
+
       let blob: Blob | null = null;
       let successLocation = '';
-      
+
       for (const location of locations) {
-        
         try {
           blob = await fileService.downloadFile({
             filename: actualFilename,
@@ -147,18 +181,18 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
           if (blob && blob.size > 0) {
             successLocation = `${location.type}${location.subfolder ? '/' + location.subfolder : ''}`;
             break;
-          } else {
           }
-        } catch (locationError) {
+        } catch {
+          // Try next location
         }
       }
-      
+
       if (blob && blob.size > 0) {
         const url = URL.createObjectURL(blob);
-        
+
         setPreviewModal({
           isOpen: true,
-          filename,
+          filename: previewDisplayPath,
           isImage,
           url,
           loading: false
@@ -170,20 +204,20 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
           isOpen: true,
           title: 'File Not Found',
           message: `Could not find the file "${actualFilename}" on the ComfyUI server.`,
-          details: `Original path: ${filename}\nParsed: ${actualFilename}${subfolder ? ` (subfolder: ${subfolder})` : ''}\n\nSearched in locations:\n${locations.map(loc => `- ${loc.type}${loc.subfolder ? '/' + loc.subfolder : ''} (${loc.description})`).join('\n')}\n\nNote: Widget values typically contain input files. Make sure the file exists in the ComfyUI input directory.`
+          details: `Original reference: ${previewDisplayPath}\nParsed: ${actualFilename}${subfolder ? ` (subfolder: ${subfolder})` : ''}${explicitType ? ` (type: ${explicitType})` : ''}\n\nSearched in locations:\n${locations.map(loc => `- ${loc.type}${loc.subfolder ? '/' + loc.subfolder : ''} (${loc.description})`).join('\n')}\n\nNote: Widget values typically contain input files. Make sure the file exists in the ComfyUI input directory.`
         });
       }
     } catch (error) {
       console.error('💥 File preview error:', error);
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
       const errorDetails = error instanceof Error ? error.stack : String(error);
-      
+
       setPreviewModal(prev => ({ ...prev, loading: false, error: errorMessage }));
       setErrorDialog({
         isOpen: true,
         title: 'File Preview Error',
         message: `Failed to load file preview: ${errorMessage}`,
-        details: `File: ${filename}\nError details:\n${errorDetails}`
+        details: `File: ${previewDisplayPath}\nError details:\n${errorDetails}`
       });
     }
   };
