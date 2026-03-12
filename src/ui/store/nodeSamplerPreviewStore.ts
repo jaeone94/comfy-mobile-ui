@@ -193,13 +193,14 @@ export const initNodeSamplerPreviewListeners = () => {
     const blob = event.blob instanceof Blob ? event.blob : null;
     if (!blob || blob.size === 0) return;
 
-    const executionState = globalWebSocketService.getCurrentExecutionState();
-    const executingNodeId = normalizeNodeId(executionState.executingNodeId);
-    if (!executingNodeId) return;
+    const explicitNodeId = normalizeNodeId(event.nodeId);
+    const fallbackNodeId = normalizeNodeId(globalWebSocketService.getCurrentExecutionState().executingNodeId);
+    const targetNodeId = explicitNodeId || fallbackNodeId;
+    if (!targetNodeId) return;
 
     useNodeSamplerPreviewStore.getState().setNodePreview({
       blob,
-      nodeId: executingNodeId,
+      nodeId: targetNodeId,
       timestamp: typeof event.timestamp === 'number' ? event.timestamp : Date.now()
     });
   });

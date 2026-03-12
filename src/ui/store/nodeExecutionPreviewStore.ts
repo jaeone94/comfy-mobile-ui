@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
+import { useGlobalStore } from '@/ui/store/globalStore';
 import type { NodeExecutionPreviewFile } from '@/shared/types/app/NodeExecutionPreviewFile';
 
 export type { NodeExecutionPreviewFile } from '@/shared/types/app/NodeExecutionPreviewFile';
@@ -11,6 +12,34 @@ interface NodeExecutionPreviewState {
 }
 
 const IMAGE_EXTENSIONS = new Set(['png', 'jpg', 'jpeg', 'webp', 'gif', 'bmp', 'avif']);
+const PREVIEW_SOURCE_TYPES: Array<NonNullable<NodeExecutionPreviewFile['type']>> = ['input', 'output', 'temp'];
+
+const normalizePreviewSourceType = (value: unknown): NonNullable<NodeExecutionPreviewFile['type']> => {
+  if (typeof value === 'string' && PREVIEW_SOURCE_TYPES.includes(value as NonNullable<NodeExecutionPreviewFile['type']>)) {
+    return value as NonNullable<NodeExecutionPreviewFile['type']>;
+  }
+  return 'output';
+};
+
+const getActiveGraphNodeIds = (): Set<number> => {
+  const nodes = useGlobalStore.getState().getNodes?.() || [];
+  const nodeIds = new Set<number>();
+  for (const node of nodes) {
+    const parsedNodeId = Number((node as any)?.id);
+    if (Number.isFinite(parsedNodeId)) {
+      nodeIds.add(parsedNodeId);
+    }
+  }
+  return nodeIds;
+};
+
+const isNodeInActiveGraph = (nodeId: number): boolean => {
+  const activeNodeIds = getActiveGraphNodeIds();
+  if (activeNodeIds.size === 0) {
+    return true;
+  }
+  return activeNodeIds.has(nodeId);
+};
 
 const isPreviewImageFile = (value: unknown): value is NodeExecutionPreviewFile => {
   if (!value || typeof value !== 'object') return false;
@@ -39,7 +68,7 @@ const extractExecutionPreviewFiles = (container: unknown, depth = 0): NodeExecut
         files.push({
           filename: item.filename,
           subfolder: item.subfolder || '',
-          type: item.type || 'output'
+          type: normalizePreviewSourceType(item.type)
         });
       }
     }
@@ -64,6 +93,10 @@ export const useNodeExecutionPreviewStore = create<NodeExecutionPreviewState>((s
   previewsByNode: new Map(),
 
   setNodePreviews: (nodeId, files) => {
+    if (!isNodeInActiveGraph(nodeId)) {
+      return;
+    }
+
     set((state) => {
       const next = new Map(state.previewsByNode);
       next.set(nodeId, files);
@@ -80,6 +113,7 @@ globalWebSocketService.on('executed', (event: any) => {
     const data = event?.data || event;
     const nodeId = Number(data?.node);
     if (!Number.isFinite(nodeId)) return;
+    if (!isNodeInActiveGraph(nodeId)) return;
 
     const files = extractExecutionPreviewFiles(data?.output);
     if (files.length === 0) return;

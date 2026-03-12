@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Brush, Check, Eraser, Redo2, RotateCcw, Undo2, X, ZoomIn, ZoomOut } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 
@@ -74,6 +75,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
   onApply,
   onClose
 }) => {
+  const { t } = useTranslation();
   const baseCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const loadedImageRef = useRef<HTMLImageElement | null>(null);
@@ -186,7 +188,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
       const maskCanvas = maskCanvasRef.current;
       if (!baseCanvas || !maskCanvas) {
         setIsLoadingImage(false);
-        setErrorMessage('Could not initialize canvas.');
+        setErrorMessage(t('mask.errors.couldNotInitializeCanvas'));
         return;
       }
 
@@ -199,7 +201,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
       const maskCtx = maskCanvas.getContext('2d');
       if (!baseCtx || !maskCtx) {
         setIsLoadingImage(false);
-        setErrorMessage('Could not access drawing context.');
+        setErrorMessage(t('mask.errors.couldNotAccessContext'));
         return;
       }
 
@@ -237,7 +239,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
       setHasInitialMask(false);
       setIsLoadingImage(false);
       setIsCanvasReady(false);
-      setErrorMessage('Failed to load source image.');
+      setErrorMessage(t('mask.errors.failedToLoadSourceImage'));
       activePointersRef.current.clear();
       gestureRef.current.active = false;
       resetView();
@@ -249,7 +251,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
       image.onload = null;
       image.onerror = null;
     };
-  }, [isOpen, sourceImageUrl, resetView]);
+  }, [isOpen, sourceImageUrl, resetView, t]);
 
   useEffect(() => {
     if (!isCanvasReady) {
@@ -513,13 +515,13 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
     const sourceImageElement = loadedImageRef.current;
     const baseCanvas = baseCanvasRef.current;
     if (!sourceImageElement || !baseCanvas) {
-      throw new Error('Source image is unavailable.');
+      throw new Error(t('mask.errors.sourceImageUnavailable'));
     }
 
     const exportWidth = sourceImageSize.width || sourceImageElement.naturalWidth;
     const exportHeight = sourceImageSize.height || sourceImageElement.naturalHeight;
     if (exportWidth <= 0 || exportHeight <= 0) {
-      throw new Error('Invalid source image dimensions.');
+      throw new Error(t('mask.errors.invalidSourceDimensions'));
     }
 
     const maskBuildCanvas = document.createElement('canvas');
@@ -527,7 +529,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
     maskBuildCanvas.height = exportHeight;
     const maskBuildCtx = maskBuildCanvas.getContext('2d');
     if (!maskBuildCtx) {
-      throw new Error('Mask context is unavailable.');
+      throw new Error(t('mask.errors.maskContextUnavailable'));
     }
 
     const scaleX = exportWidth / Math.max(baseCanvas.width, 1);
@@ -540,7 +542,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
       initialMaskCanvas.height = Math.max(baseCanvas.height, 1);
       const initialMaskCtx = initialMaskCanvas.getContext('2d');
       if (!initialMaskCtx) {
-        throw new Error('Mask context is unavailable.');
+        throw new Error(t('mask.errors.maskContextUnavailable'));
       }
       initialMaskCtx.putImageData(initialMaskImageDataRef.current, 0, 0);
       maskBuildCtx.drawImage(initialMaskCanvas, 0, 0, exportWidth, exportHeight);
@@ -565,7 +567,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
 
     const exportCtx = exportCanvas.getContext('2d');
     if (!exportCtx) {
-      throw new Error('Export context is unavailable.');
+      throw new Error(t('mask.errors.exportContextUnavailable'));
     }
 
     exportCtx.clearRect(0, 0, exportWidth, exportHeight);
@@ -586,11 +588,11 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
     });
 
     if (!blob) {
-      throw new Error('Failed to export mask file.');
+      throw new Error(t('mask.errors.failedToExport'));
     }
 
     return new File([blob], `masked_${Date.now()}.png`, { type: 'image/png' });
-  }, [sourceImageSize.height, sourceImageSize.width, strokes]);
+  }, [sourceImageSize.height, sourceImageSize.width, strokes, t]);
 
   const handleApplyMask = async () => {
     if (!isCanvasReady || isApplying) {
@@ -602,7 +604,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
       const maskFile = await buildMaskFile();
       await onApply(maskFile);
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to apply mask.';
+      const message = error instanceof Error ? error.message : t('mask.errors.applyFailed');
       setErrorMessage(message);
     }
   };
@@ -615,9 +617,9 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
     <div className="fixed inset-0 z-[10010] flex flex-col bg-black/95">
       <div className="flex items-center justify-between border-b border-white/10 px-3 py-2">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-white">Mask Editor</h2>
+          <h2 className="text-sm font-semibold text-white">{t('mask.editorTitle')}</h2>
           <p className="truncate text-xs text-white/60">
-            {sourceLabel || 'Selected image'}
+            {sourceLabel || t('mask.selectedImage')}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -630,7 +632,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
             className="border-white/20 bg-transparent text-white hover:bg-white/10"
           >
             <X className="mr-1 h-4 w-4" />
-            Close
+            {t('mask.close')}
           </Button>
           <Button
             type="button"
@@ -640,7 +642,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
             className="bg-emerald-600 text-white hover:bg-emerald-500"
           >
             <Check className="mr-1 h-4 w-4" />
-            {isApplying ? 'Applying...' : 'Apply Mask'}
+            {isApplying ? t('mask.applyingMask') : t('mask.applyMask')}
           </Button>
         </div>
       </div>
@@ -656,7 +658,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
               className={tool === 'brush' ? 'bg-blue-600 hover:bg-blue-500' : 'border-white/20 bg-transparent text-white hover:bg-white/10'}
             >
               <Brush className="mr-1 h-4 w-4" />
-              Brush
+              {t('mask.brush')}
             </Button>
             <Button
               type="button"
@@ -666,7 +668,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
               className={tool === 'eraser' ? 'bg-orange-600 hover:bg-orange-500' : 'border-white/20 bg-transparent text-white hover:bg-white/10'}
             >
               <Eraser className="mr-1 h-4 w-4" />
-              Eraser
+              {t('mask.eraser')}
             </Button>
             <Button
               type="button"
@@ -697,7 +699,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
               className="border-white/20 bg-transparent text-white hover:bg-white/10"
             >
               <RotateCcw className="mr-1 h-4 w-4" />
-              Reset
+              {t('mask.reset')}
             </Button>
             <Button
               type="button"
@@ -708,7 +710,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
               className="border-white/20 bg-transparent text-white hover:bg-white/10"
             >
               <X className="mr-1 h-4 w-4" />
-              Clear Mask
+              {t('mask.clearMask')}
             </Button>
             <Button
               type="button"
@@ -735,13 +737,13 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
               onClick={resetView}
               className="border-white/20 bg-transparent text-white hover:bg-white/10"
             >
-              Reset View
+              {t('mask.resetView')}
             </Button>
           </div>
 
           <div className="flex items-center gap-3">
             <span className="min-w-[96px] text-xs text-white/80">
-              Brush Size: {Math.round(brushSize)}px
+              {t('mask.brushSize', { size: Math.round(brushSize) })}
             </span>
             <Slider
               value={[brushSize]}
@@ -786,12 +788,12 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
               </div>
               {!isCanvasReady && (
                 <div className="absolute inset-0 flex items-center justify-center text-sm text-white/70">
-                  {isLoadingImage ? 'Loading image...' : 'Preparing editor...'}
+                  {isLoadingImage ? t('mask.loadingImage') : t('mask.preparingEditor')}
                 </div>
               )}
             </div>
           ) : (
-            <div className="text-sm text-white/70">Select an image to start masking.</div>
+            <div className="text-sm text-white/70">{t('mask.selectImageToStart')}</div>
           )}
         </div>
       </div>

@@ -367,7 +367,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
   // Memoize the service instance to prevent infinite loops
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
-  const canUseMaskEditor = isFileSelectionMode && allowImages && enableMaskEditor && !!onMaskEditorApply;
+  const canUseMaskEditor = isFileSelectionMode && allowImages && enableMaskEditor && !!onMaskEditorApply && !!onFileSelect;
 
 
   const loadFiles = useCallback(async () => {
@@ -507,8 +507,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       setIsMaskPickMode(false);
     } catch (error) {
       console.error('Failed to apply mask file:', error);
-      setError('Failed to apply generated mask.');
       setIsApplyingMask(false);
+      throw error instanceof Error ? error : new Error('Failed to apply generated mask.');
     }
   }, [closeMaskEditor, onMaskEditorApply]);
 
@@ -679,12 +679,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       // In folder mode, select currently rendered files by default.
       const selectableFiles = visibleOnly ? visibleFiles : folderContent.files;
       const currentPathFilesKeys = selectableFiles.map(f => `${f.filename}-${f.subfolder}-${f.type}`);
-      const allCurrentFilesSelected = currentPathFilesKeys.every(key => selectedFiles.has(key));
+      const currentPathFolderKeys = folderContent.folders.map(folder => `folder:${folder.fullPath}`);
+      const currentPathSelectableKeys = [...currentPathFilesKeys, ...currentPathFolderKeys];
+      const allCurrentFilesSelected = currentPathSelectableKeys.length > 0 && currentPathSelectableKeys.every(key => selectedFiles.has(key));
 
       if (allCurrentFilesSelected) {
-        currentPathFilesKeys.forEach(key => newSelected.delete(key));
+        currentPathSelectableKeys.forEach(key => newSelected.delete(key));
       } else {
-        currentPathFilesKeys.forEach(key => newSelected.add(key));
+        currentPathSelectableKeys.forEach(key => newSelected.add(key));
       }
     } else {
       // Flat mode behavior

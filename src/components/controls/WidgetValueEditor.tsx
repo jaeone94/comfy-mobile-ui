@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { createPortal } from 'react-dom';
 import { X, Check, Edit, Image as ImageIcon, Video, Upload, Images, Copy } from 'lucide-react';
@@ -125,6 +125,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
   const [isLoadingMaskSource, setIsLoadingMaskSource] = useState(false);
   const [isApplyingMask, setIsApplyingMask] = useState(false);
   const { url: serverUrl } = useConnectionStore();
+  const comfyFileService = useMemo(
+    () => new ComfyFileService(serverUrl || 'http://localhost:8188'),
+    [serverUrl]
+  );
 
   // Debug logging for modal state changes
   React.useEffect(() => {
@@ -181,8 +185,6 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
     setIsLoadingMaskSource(true);
     try {
-      const fileService = new ComfyFileService(serverUrl || 'http://localhost:8188');
-
       let filename = currentValue;
       let subfolder = '';
       if (currentValue.includes('/')) {
@@ -199,11 +201,21 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
       let blob: Blob | null = null;
       for (const location of locations) {
-        blob = await fileService.downloadFile({
-          filename,
-          subfolder: location.subfolder,
-          type: location.type
-        });
+        try {
+          blob = await comfyFileService.downloadFile({
+            filename,
+            subfolder: location.subfolder,
+            type: location.type
+          });
+        } catch (downloadError) {
+          console.warn('Mask source lookup failed for location:', {
+            type: location.type,
+            subfolder: location.subfolder,
+            filename,
+            error: downloadError
+          });
+          continue;
+        }
         if (blob && blob.size > 0) {
           break;
         }
@@ -569,25 +581,23 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               )}
             </button>
             {isImageFile(currentValue) && onFileUploadDirect && (
-              <>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    e.preventDefault();
-                    void openMaskEditorForCurrentImage();
-                  }}
-                  disabled={(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource}
-                  className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg font-bold transition-all duration-200 active:scale-[0.98] border shadow-sm ${(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource
-                    ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-700 cursor-not-allowed'
-                    : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-800/50'
-                    }`}
-                >
-                  <Images className="w-4 h-4" />
-                  <span className="text-sm">
-                    {isLoadingMaskSource ? 'Loading image...' : isApplyingMask ? 'Applying mask...' : 'Mask Current Image'}
-                  </span>
-                </button>
-              </>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  e.preventDefault();
+                  void openMaskEditorForCurrentImage();
+                }}
+                disabled={(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource}
+                className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg font-bold transition-all duration-200 active:scale-[0.98] border shadow-sm ${(uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name) || isApplyingMask || isLoadingMaskSource
+                  ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-700 cursor-not-allowed'
+                  : 'bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/20 dark:hover:bg-blue-900/40 text-blue-600 dark:text-blue-400 border-blue-200/50 dark:border-blue-800/50'
+                  }`}
+              >
+                <Images className="w-4 h-4" />
+                <span className="text-sm">
+                  {isLoadingMaskSource ? t('mask.loadingImage') : isApplyingMask ? t('mask.applyingMask') : t('mask.maskCurrentImage')}
+                </span>
+              </button>
             )}
           </div>
         )}
@@ -735,14 +745,16 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
           document.body
         )
       }
-      <ImageMaskEditorModal
-        isOpen={showMaskEditor}
-        sourceImage={maskSourceImage}
-        sourceLabel={maskSourceImage?.name}
-        isApplying={isApplyingMask}
-        onApply={handleMaskApply}
-        onClose={closeMaskEditor}
-      />
+      {showMaskEditor && (
+        <ImageMaskEditorModal
+          isOpen={showMaskEditor}
+          sourceImage={maskSourceImage}
+          sourceLabel={maskSourceImage?.name}
+          isApplying={isApplyingMask}
+          onApply={handleMaskApply}
+          onClose={closeMaskEditor}
+        />
+      )}
     </div >
   );
 };

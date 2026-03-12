@@ -582,6 +582,34 @@
             "edit": "편집"
         }
     },
+    "mask": {
+        "editorTitle": "Mask Editor",
+        "selectedImage": "Selected image",
+        "close": "Close",
+        "applyMask": "Apply Mask",
+        "maskCurrentImage": "Mask Current Image",
+        "loadingImage": "Loading image...",
+        "applyingMask": "Applying mask...",
+        "brush": "Brush",
+        "eraser": "Eraser",
+        "reset": "Reset",
+        "clearMask": "Clear Mask",
+        "resetView": "Reset View",
+        "brushSize": "Brush Size: {{size}}px",
+        "preparingEditor": "Preparing editor...",
+        "selectImageToStart": "Select an image to start masking.",
+        "errors": {
+            "couldNotInitializeCanvas": "Could not initialize canvas.",
+            "couldNotAccessContext": "Could not access drawing context.",
+            "failedToLoadSourceImage": "Failed to load source image.",
+            "sourceImageUnavailable": "Source image is unavailable.",
+            "invalidSourceDimensions": "Invalid source image dimensions.",
+            "maskContextUnavailable": "Mask context is unavailable.",
+            "exportContextUnavailable": "Export context is unavailable.",
+            "failedToExport": "Failed to export mask file.",
+            "applyFailed": "Failed to apply mask."
+        }
+    },
     "gallery": {
         "title": "이미지 & 비디오",
         "selectFile": "파일 선택",
@@ -1546,3 +1574,6 @@
         }
     }
 }
+
+
+

@@ -369,7 +369,7 @@ export const useCanvasRenderer = ({
       window.removeEventListener('resize', resizeCanvas);
       canvas.removeEventListener('imageLoaded', handleImageLoaded);
     };
-  }, [workflow, viewport, nodeBounds, groupBounds, selectedNode, config, executionState, modifiedWidgetValues, executionNodePreviews, repositionMode, missingNodeIds]);
+  }, [workflow, viewport, nodeBounds, groupBounds, selectedNode, config, executionState, modifiedWidgetValues, executionNodePreviews, repositionMode, missingNodeIds, connectionMode, longPressState, subgraphDefinitions]);
 
   return {
     config,

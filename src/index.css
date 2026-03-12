@@ -246,8 +246,8 @@ canvas {
 
 /* PWA content area - height excluding safe areas */
 .pwa-content {
-  height: calc(var(--app-viewport-height) - var(--safe-top) - var(--safe-bottom));
-  min-height: calc(var(--app-viewport-height) - var(--safe-top) - var(--safe-bottom));
+  height: calc(var(--app-viewport-height) - var(--safe-top-effective) - var(--safe-bottom));
+  min-height: calc(var(--app-viewport-height) - var(--safe-top-effective) - var(--safe-bottom));
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
 }
@@ -294,6 +294,11 @@ canvas {
   padding-bottom: calc(var(--safe-bottom) + 1rem);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
+}
+
+.pwa-bottom-panel {
+  right: calc(1rem + var(--safe-right));
+  bottom: calc(1rem + var(--safe-bottom));
 }
 
 

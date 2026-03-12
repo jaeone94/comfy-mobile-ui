@@ -29,7 +29,7 @@ export const RepositionActionBar: React.FC<RepositionActionBarProps> = ({
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.95 }}
         transition={{ duration: 0.3, ease: "easeOut" }}
-        className="fixed right-4 sm:right-6 bottom-4 z-40 max-w-[calc(100vw-2rem)]"
+        className="fixed z-40 pwa-safe-area pwa-bottom-panel max-w-[calc(100vw-2rem)]"
       >
         <div className="bg-slate-600/40 backdrop-blur-3xl rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-4 relative">
           <div className="relative z-10">

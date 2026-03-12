@@ -266,6 +266,8 @@ async function loadComfyImage(source: string | NodeExecutionPreviewFile, nodeId?
     };
 
     img.onerror = () => {
+      failedImageTimestamps.set(cacheKey, Date.now());
+      console.warn('[Canvas] Image load failed', { cacheKey, targetFilename });
       imageLoadingPromises.delete(cacheKey);
       reject(new Error(`Failed to load image: ${targetFilename}`));
     };

@@ -189,7 +189,7 @@ export const WorkflowStackFooter: React.FC<WorkflowStackFooterProps> = ({
         setTimeout(loadQueueStatus, 500);
     };
 
-    const overlayBottomStyle = { bottom: 'calc(96px + env(safe-area-inset-bottom, 0px))' } as const;
+    const overlayBottomStyle = { bottom: 'calc(96px + var(--safe-bottom, 0px))' } as const;
 
     return (
         <div className="fixed bottom-0 left-0 right-0 z-50 pb-safe px-safe">
