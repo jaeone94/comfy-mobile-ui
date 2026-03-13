@@ -68,8 +68,101 @@ class GlobalWebSocketManager:
         self.lock = asyncio.Lock()
         self.original_send_sync = None
         self.original_send_bytes = None
+        self._serialization_warning_cache: Set[Any] = set()
         
         print("[GlobalWS] Initializing GlobalWebSocketManager...")
+
+    def _to_json_compatible(self, value: Any, depth: int = 0, seen: Optional[Set[int]] = None) -> Any:
+        """
+        Convert arbitrary Python values to JSON-compatible values for WS relay.
+        This affects only the mirrored mobile broadcast payload, not ComfyUI internals.
+        """
+        if seen is None:
+            seen = set()
+
+        if value is None or isinstance(value, (bool, int, float, str)):
+            return value
+
+        # Prevent deep/recursive structures from blowing up serialization.
+        if depth > 8:
+            return f"<max_depth:{type(value).__name__}>"
+
+        try:
+            object_id = id(value)
+            if object_id in seen:
+                return f"<recursive:{type(value).__name__}>"
+            seen.add(object_id)
+
+            if isinstance(value, dict):
+                return {
+                    str(k): self._to_json_compatible(v, depth + 1, seen)
+                    for k, v in value.items()
+                }
+
+            if isinstance(value, (list, tuple, set)):
+                return [self._to_json_compatible(v, depth + 1, seen) for v in value]
+
+            if isinstance(value, (bytes, bytearray, memoryview)):
+                return {
+                    "__type__": "bytes",
+                    "length": len(value)
+                }
+
+            # Handle PIL Image-like objects explicitly (common source of serializer errors).
+            value_type_name = type(value).__name__
+            if value_type_name == "Image":
+                mode = getattr(value, "mode", None)
+                size = getattr(value, "size", None)
+                if isinstance(size, tuple):
+                    size = list(size)
+                return {
+                    "__type__": "image",
+                    "class": value_type_name,
+                    "mode": mode,
+                    "size": size
+                }
+
+            # Numpy-like arrays/scalars if available.
+            if hasattr(value, "tolist") and callable(getattr(value, "tolist")):
+                try:
+                    return self._to_json_compatible(value.tolist(), depth + 1, seen)
+                except Exception:
+                    pass
+
+            if hasattr(value, "item") and callable(getattr(value, "item")):
+                try:
+                    return self._to_json_compatible(value.item(), depth + 1, seen)
+                except Exception:
+                    pass
+
+            # Final fallback for unknown objects.
+            return str(value)
+        except Exception:
+            return f"<unserializable:{type(value).__name__}>"
+
+    def _build_json_message(self, event: Any, data: Any) -> Optional[str]:
+        """
+        Build a JSON message string for WS clients.
+        First tries raw payload for fidelity; falls back to sanitized payload.
+        """
+        raw_message = {"type": event, "data": data}
+        try:
+            return json.dumps(raw_message)
+        except Exception as serialize_error:
+            cache_key = (event, type(data).__name__)
+            if cache_key not in self._serialization_warning_cache:
+                self._serialization_warning_cache.add(cache_key)
+                print(f"[GlobalWS] Falling back to safe serialization for message {event}: {serialize_error}")
+
+        safe_message = {
+            "type": self._to_json_compatible(event),
+            "data": self._to_json_compatible(data)
+        }
+        try:
+            return json.dumps(safe_message)
+        except Exception as safe_serialize_error:
+            print(f"[GlobalWS] Failed to serialize message {event} after fallback: {safe_serialize_error}")
+            return None
 
     def hook_comfyui_server(self):
         """
@@ -215,8 +308,10 @@ class GlobalWebSocketManager:
                     for event, data in self.last_events.items():
                         if event == 'execution_error':
                             continue
-                        message = {"type": event, "data": data}
-                        await ws.send_str(json.dumps(message))
+                        json_msg = self._build_json_message(event, data)
+                        if json_msg is None:
+                            continue
+                        await ws.send_str(json_msg)
                 except Exception as e:
                     print(f"[GlobalWS] Error replaying buffer: {e}")
 
@@ -231,16 +326,8 @@ class GlobalWebSocketManager:
         if not self.clients:
             return
 
-        # Prepare message in ComfyUI format
-        message = {
-            "type": event,
-            "data": data
-        }
-        
-        try:
-            json_msg = json.dumps(message)
-        except Exception as e:
-            print(f"[GlobalWS] Failed to serialize message {event}: {e}")
+        json_msg = self._build_json_message(event, data)
+        if json_msg is None:
             return
 
         # Broadcast to all clients
