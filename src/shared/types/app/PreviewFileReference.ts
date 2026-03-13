@@ -1,7 +1,3 @@
-export type PreviewFileReference =
-  | string
-  | {
-      filename: string;
-      subfolder?: string;
-      type?: 'input' | 'output' | 'temp';
-    };
+import type { NodeExecutionPreviewFile } from './NodeExecutionPreviewFile';
+
+export type PreviewFileReference = string | NodeExecutionPreviewFile;

@@ -9,6 +9,7 @@ Responsible for:
 
 import json
 import asyncio
+import math
 from typing import Set, Dict, Any, Optional
 from aiohttp import web
 
@@ -17,6 +18,11 @@ try:
 except ImportError:
     # Fallback for development/testing without running ComfyUI
     server = None
+
+try:
+    import numpy as np
+except Exception:
+    np = None
 
 class DummyWebSocket:
     """
@@ -72,7 +78,12 @@ class GlobalWebSocketManager:
         
         print("[GlobalWS] Initializing GlobalWebSocketManager...")
 
-    def _to_json_compatible(self, value: Any, depth: int = 0, seen: Optional[Set[int]] = None) -> Any:
+    def _to_json_compatible(
+        self,
+        value: Any,
+        depth: int = 0,
+        seen: Optional[Set[int]] = None
+    ) -> Any:
         """
         Convert arbitrary Python values to JSON-compatible values for WS relay.
         This affects only the mirrored mobile broadcast payload, not ComfyUI internals.
@@ -80,19 +91,25 @@ class GlobalWebSocketManager:
         if seen is None:
             seen = set()
 
-        if value is None or isinstance(value, (bool, int, float, str)):
+        if value is None or isinstance(value, (bool, int, str)):
             return value
+
+        if isinstance(value, float):
+            return value if math.isfinite(value) else None
+
+        if np is not None and isinstance(value, np.floating):
+            float_value = float(value)
+            return float_value if math.isfinite(float_value) else None
 
         # Prevent deep/recursive structures from blowing up serialization.
         if depth > 8:
             return f"<max_depth:{type(value).__name__}>"
 
+        object_id = id(value)
+        if object_id in seen:
+            return f"<recursive:{type(value).__name__}>"
+        seen.add(object_id)
         try:
-            object_id = id(value)
-            if object_id in seen:
-                return f"<recursive:{type(value).__name__}>"
-            seen.add(object_id)
-
             if isinstance(value, dict):
                 return {
                     str(k): self._to_json_compatible(v, depth + 1, seen)
@@ -139,6 +156,8 @@ class GlobalWebSocketManager:
             return str(value)
         except Exception:
             return f"<unserializable:{type(value).__name__}>"
+        finally:
+            seen.discard(object_id)
 
     def _build_json_message(self, event: Any, data: Any) -> Optional[str]:
         """
@@ -146,20 +165,26 @@ class GlobalWebSocketManager:
         First tries raw payload for fidelity; falls back to sanitized payload.
         """
         raw_message = {"type": event, "data": data}
+        fallback_reason: Optional[str] = None
         try:
-            return json.dumps(raw_message)
+            raw_json = json.dumps(raw_message)
+            if "NaN" not in raw_json and "Infinity" not in raw_json:
+                return raw_json
+            fallback_reason = "contains non-finite float values"
         except Exception as serialize_error:
-            cache_key = (event, type(data).__name__)
-            if cache_key not in self._serialization_warning_cache:
-                self._serialization_warning_cache.add(cache_key)
-                print(f"[GlobalWS] Falling back to safe serialization for message {event}: {serialize_error}")
+            fallback_reason = str(serialize_error)
+
+        cache_key = (event, type(data).__name__, fallback_reason)
+        if cache_key not in self._serialization_warning_cache:
+            self._serialization_warning_cache.add(cache_key)
+            print(f"[GlobalWS] Falling back to safe serialization for message {event}: {fallback_reason}")
 
         safe_message = {
             "type": self._to_json_compatible(event),
             "data": self._to_json_compatible(data)
         }
         try:
-            return json.dumps(safe_message)
+            return json.dumps(safe_message, allow_nan=False)
         except Exception as safe_serialize_error:
             print(f"[GlobalWS] Failed to serialize message {event} after fallback: {safe_serialize_error}")
             return None

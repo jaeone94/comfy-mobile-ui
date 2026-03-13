@@ -190,11 +190,6 @@ const StackNode: React.FC<StackNodeProps> = ({ node, widgetEditor, onModeChange,
     const latestExecutionPreview = executionNodePreviewFiles.length > 0
         ? executionNodePreviewFiles[executionNodePreviewFiles.length - 1]
         : null;
-    const latestExecutionPreviewPath = latestExecutionPreview
-        ? (latestExecutionPreview.subfolder
-            ? `${latestExecutionPreview.subfolder}/${latestExecutionPreview.filename}`
-            : latestExecutionPreview.filename)
-        : '';
 
     const [fileSelectionState, setFileSelectionState] = useState<{
         isOpen: boolean;
@@ -347,8 +342,8 @@ const StackNode: React.FC<StackNodeProps> = ({ node, widgetEditor, onModeChange,
                             imagePreview={latestExecutionPreview}
                             isFromExecution={true}
                             onClick={() => {
-                                if (latestExecutionPreviewPath) {
-                                    fileOperations.handleFilePreview(latestExecutionPreviewPath);
+                                if (latestExecutionPreview) {
+                                    fileOperations.handleFilePreview(latestExecutionPreview);
                                 }
                             }}
                             themeOverride={{
