@@ -330,7 +330,7 @@ class GlobalWebSocketManager:
                     # ComfyUI usually handles events as they come.
                     
                     # Logic: just send all buffered events
-                    for event, data in self.last_events.items():
+                    for event, data in list(self.last_events.items()):
                         if event == 'execution_error':
                             continue
                         json_msg = self._build_json_message(event, data)
