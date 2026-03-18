@@ -388,15 +388,24 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     ];
 
     for (const location of locations) {
-      const blob = await comfyFileService.downloadFile({
-        filename,
-        subfolder: location.subfolder,
-        type: location.type
-      });
+      try {
+        const blob = await comfyFileService.downloadFile({
+          filename,
+          subfolder: location.subfolder,
+          type: location.type
+        });
 
-      if (blob) {
-        return new File([blob], filename, {
-          type: blob.type || 'image/png'
+        if (blob) {
+          return new File([blob], filename, {
+            type: blob.type || 'image/png'
+          });
+        }
+      } catch (downloadError) {
+        console.warn('Mask source lookup failed for location:', {
+          type: location.type,
+          subfolder: location.subfolder,
+          filename,
+          error: downloadError
         });
       }
     }
@@ -547,15 +556,20 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
     try {
       const uploadedPath = await onMaskEditorApply(file);
-      rememberMaskSourcePath(typeof uploadedPath === 'string' ? uploadedPath : null, maskSourceLabel);
+      if (typeof uploadedPath !== 'string') {
+        return;
+      }
+
+      rememberMaskSourcePath(uploadedPath, maskSourceLabel);
       closeMaskEditor();
       setIsMaskPickMode(false);
     } catch (error) {
       console.error('Failed to apply mask file:', error);
-      setIsApplyingMask(false);
       throw error instanceof Error ? error : new Error('Failed to apply generated mask.');
+    } finally {
+      setIsApplyingMask(false);
     }
-  }, [closeMaskEditor, onMaskEditorApply]);
+  }, [closeMaskEditor, maskSourceLabel, onMaskEditorApply]);
 
   useEffect(() => {
     if (!canUseMaskEditor || activeTab !== 'images') {
