@@ -15,6 +15,7 @@ import type { PreviewFileReference } from '@/shared/types/app/PreviewFileReferen
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 import { getGalleryPermissions } from '@/shared/utils/GalleryPermissionUtils';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
+import { rememberMaskSourcePath, resolveOriginalMaskSourcePath } from '@/shared/utils/MaskSourcePathStore';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { InlineImagePreview } from '@/components/media/InlineImagePreview';
 import { InlineVideoPreview } from '@/components/media/InlineVideoPreview';
@@ -53,7 +54,7 @@ interface WidgetValueEditorProps {
   onEditingValueChange: (value: any) => void;
   onFilePreview: (fileReference: PreviewFileReference) => void;
   onFileUpload: (nodeId: number, paramName: string) => void;
-  onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => Promise<void>;
+  onFileUploadDirect?: (nodeId: number, paramName: string, file: File) => Promise<string | null>;
   // Optional ComfyGraphNode context
   node?: ComfyGraphNode;
   widget?: IComfyWidget;
@@ -121,7 +122,8 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 }) => {
   const { t } = useTranslation();
   const [showAlbumModal, setShowAlbumModal] = useState(false);
-  const [maskSourceImage, setMaskSourceImage] = useState<File | null>(null);
+  const [maskBaseImage, setMaskBaseImage] = useState<File | null>(null);
+  const [maskInitialSourceImage, setMaskInitialSourceImage] = useState<File | null>(null);
   const [showMaskEditor, setShowMaskEditor] = useState(false);
   const [isLoadingMaskSource, setIsLoadingMaskSource] = useState(false);
   const [isApplyingMask, setIsApplyingMask] = useState(false);
@@ -175,8 +177,52 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   const closeMaskEditor = () => {
     setShowMaskEditor(false);
-    setMaskSourceImage(null);
+    setMaskBaseImage(null);
+    setMaskInitialSourceImage(null);
     setIsApplyingMask(false);
+  };
+
+  const downloadServerImageAsFile = async (path: string): Promise<File | null> => {
+    if (!comfyFileService) {
+      return null;
+    }
+
+    let filename = path;
+    let subfolder = '';
+    if (path.includes('/')) {
+      const lastSlashIndex = path.lastIndexOf('/');
+      subfolder = path.substring(0, lastSlashIndex);
+      filename = path.substring(lastSlashIndex + 1);
+    }
+
+    const locations: Array<{ type: 'input' | 'output' | 'temp'; subfolder: string }> = [
+      { type: 'input', subfolder },
+      { type: 'output', subfolder },
+      { type: 'temp', subfolder }
+    ];
+
+    for (const location of locations) {
+      try {
+        const blob = await comfyFileService.downloadFile({
+          filename,
+          subfolder: location.subfolder,
+          type: location.type
+        });
+
+        if (blob && blob.size > 0) {
+          return new File([blob], filename, { type: blob.type || 'image/png' });
+        }
+      } catch (downloadError) {
+        console.warn('Mask source lookup failed for location:', {
+          type: location.type,
+          subfolder: location.subfolder,
+          filename,
+          error: downloadError
+        });
+      }
+    }
+
+    return null;
   };
 
   const openMaskEditorForCurrentImage = async () => {
@@ -190,49 +236,21 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
     setIsLoadingMaskSource(true);
     try {
-      let filename = currentValue;
-      let subfolder = '';
-      if (currentValue.includes('/')) {
-        const lastSlashIndex = currentValue.lastIndexOf('/');
-        subfolder = currentValue.substring(0, lastSlashIndex);
-        filename = currentValue.substring(lastSlashIndex + 1);
-      }
+      const resolvedOriginalPath = resolveOriginalMaskSourcePath(currentValue) ?? currentValue;
+      const [currentImageFile, originalImageFile] = await Promise.all([
+        downloadServerImageAsFile(currentValue),
+        resolvedOriginalPath !== currentValue
+          ? downloadServerImageAsFile(resolvedOriginalPath)
+          : Promise.resolve<File | null>(null)
+      ]);
 
-      const locations: Array<{ type: 'input' | 'output' | 'temp'; subfolder: string }> = [
-        { type: 'input', subfolder },
-        { type: 'output', subfolder },
-        { type: 'temp', subfolder }
-      ];
-
-      let blob: Blob | null = null;
-      for (const location of locations) {
-        try {
-          blob = await comfyFileService.downloadFile({
-            filename,
-            subfolder: location.subfolder,
-            type: location.type
-          });
-        } catch (downloadError) {
-          console.warn('Mask source lookup failed for location:', {
-            type: location.type,
-            subfolder: location.subfolder,
-            filename,
-            error: downloadError
-          });
-          continue;
-        }
-        if (blob && blob.size > 0) {
-          break;
-        }
-      }
-
-      if (!blob || blob.size === 0) {
+      if (!currentImageFile) {
         toast.error(t('mask.errors.sourceImageUnavailable'));
         return;
       }
 
-      const sourceFile = new File([blob], filename, { type: blob.type || 'image/png' });
-      setMaskSourceImage(sourceFile);
+      setMaskBaseImage(originalImageFile ?? currentImageFile);
+      setMaskInitialSourceImage(currentImageFile);
       setShowMaskEditor(true);
     } catch (error) {
       console.error('Failed to prepare image for masking:', error);
@@ -250,7 +268,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
     setIsApplyingMask(true);
     try {
-      await onFileUploadDirect(nodeId, param.name, maskFile);
+      const uploadedPath = await onFileUploadDirect(nodeId, param.name, maskFile);
+      if (typeof currentValue === 'string') {
+        rememberMaskSourcePath(uploadedPath, currentValue);
+      }
       closeMaskEditor();
     } catch (error) {
       console.error('Mask upload failed:', error);
@@ -755,8 +776,9 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       {showMaskEditor && (
         <ImageMaskEditorModal
           isOpen={showMaskEditor}
-          sourceImage={maskSourceImage}
-          sourceLabel={maskSourceImage?.name}
+          sourceImage={maskBaseImage}
+          initialMaskSourceImage={maskInitialSourceImage}
+          sourceLabel={typeof currentValue === 'string' ? currentValue : maskBaseImage?.name}
           isApplying={isApplyingMask}
           onApply={handleMaskApply}
           onClose={closeMaskEditor}

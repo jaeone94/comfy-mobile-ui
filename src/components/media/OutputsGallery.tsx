@@ -13,6 +13,7 @@ import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { SimpleConfirmDialog } from '../ui/SimpleConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
+import { rememberMaskSourcePath, resolveOriginalMaskSourcePath } from '@/shared/utils/MaskSourcePathStore';
 import { ImageMaskEditorModal } from '@/components/media/ImageMaskEditorModal';
 
 
@@ -308,7 +309,7 @@ interface OutputsGalleryProps {
   allowVideos?: boolean;
   onFileSelect?: (filename: string) => void;
   enableMaskEditor?: boolean;
-  onMaskEditorApply?: (file: File) => Promise<void> | void;
+  onMaskEditorApply?: (file: File) => Promise<string | null> | string | null | void;
   onBackClick?: () => void;
   selectionTitle?: string;
   initialFolder?: FolderType;
@@ -359,7 +360,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const [isMaskPickMode, setIsMaskPickMode] = useState(false);
   const [isMaskEditorOpen, setIsMaskEditorOpen] = useState(false);
   const [isApplyingMask, setIsApplyingMask] = useState(false);
-  const [maskSourceImage, setMaskSourceImage] = useState<File | null>(null);
+  const [maskBaseImage, setMaskBaseImage] = useState<File | null>(null);
+  const [maskInitialSourceImage, setMaskInitialSourceImage] = useState<File | null>(null);
   const [maskSourceLabel, setMaskSourceLabel] = useState<string>('');
   const maskSourceInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -369,6 +371,38 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   // Memoize the service instance to prevent infinite loops
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
   const canUseMaskEditor = isFileSelectionMode && allowImages && enableMaskEditor && !!onMaskEditorApply && !!onFileSelect;
+
+  const downloadMaskImageAsFile = useCallback(async (path: string): Promise<File | null> => {
+    let filename = path;
+    let subfolder = '';
+    if (path.includes('/')) {
+      const lastSlashIndex = path.lastIndexOf('/');
+      subfolder = path.substring(0, lastSlashIndex);
+      filename = path.substring(lastSlashIndex + 1);
+    }
+
+    const locations: Array<{ type: 'input' | 'output' | 'temp'; subfolder: string }> = [
+      { type: 'input', subfolder },
+      { type: 'output', subfolder },
+      { type: 'temp', subfolder }
+    ];
+
+    for (const location of locations) {
+      const blob = await comfyFileService.downloadFile({
+        filename,
+        subfolder: location.subfolder,
+        type: location.type
+      });
+
+      if (blob) {
+        return new File([blob], filename, {
+          type: blob.type || 'image/png'
+        });
+      }
+    }
+
+    return null;
+  }, [comfyFileService]);
 
 
   const loadFiles = useCallback(async () => {
@@ -439,7 +473,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
   const closeMaskEditor = useCallback(() => {
     setIsMaskEditorOpen(false);
-    setMaskSourceImage(null);
+    setMaskBaseImage(null);
+    setMaskInitialSourceImage(null);
     setMaskSourceLabel('');
     setIsApplyingMask(false);
   }, []);
@@ -449,23 +484,29 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       setError(null);
       setLoading(true);
 
-      const blob = await comfyFileService.downloadFile({
+      const currentPath = file.subfolder ? `${file.subfolder}/${file.filename}` : file.filename;
+      const currentBlob = await comfyFileService.downloadFile({
         filename: file.filename,
         subfolder: file.subfolder,
         type: file.type
       });
 
-      if (!blob) {
+      if (!currentBlob) {
         toast.error(t('gallery.maskLoadError'));
         return;
       }
 
-      const sourceFile = new File([blob], file.filename, {
-        type: blob.type || 'image/png'
+      const currentFile = new File([currentBlob], file.filename, {
+        type: currentBlob.type || 'image/png'
       });
+      const resolvedOriginalPath = resolveOriginalMaskSourcePath(currentPath) ?? currentPath;
+      const originalFile = resolvedOriginalPath !== currentPath
+        ? await downloadMaskImageAsFile(resolvedOriginalPath)
+        : null;
 
-      setMaskSourceImage(sourceFile);
-      setMaskSourceLabel(file.subfolder ? `${file.subfolder}/${file.filename}` : file.filename);
+      setMaskBaseImage(originalFile ?? currentFile);
+      setMaskInitialSourceImage(currentFile);
+      setMaskSourceLabel(currentPath);
       setIsMaskEditorOpen(true);
     } catch (error) {
       console.error('Failed to load image for mask editor:', error);
@@ -473,7 +514,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [comfyFileService, t]);
+  }, [comfyFileService, downloadMaskImageAsFile, t]);
 
   const handleMaskSourceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -489,7 +530,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     }
 
     setError(null);
-    setMaskSourceImage(selectedFile);
+    setMaskBaseImage(selectedFile);
+    setMaskInitialSourceImage(selectedFile);
     setMaskSourceLabel(selectedFile.name);
     setIsMaskEditorOpen(true);
     event.target.value = '';
@@ -504,7 +546,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     setIsApplyingMask(true);
 
     try {
-      await onMaskEditorApply(file);
+      const uploadedPath = await onMaskEditorApply(file);
+      rememberMaskSourcePath(typeof uploadedPath === 'string' ? uploadedPath : null, maskSourceLabel);
       closeMaskEditor();
       setIsMaskPickMode(false);
     } catch (error) {
@@ -1483,7 +1526,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       {canUseMaskEditor && (
         <ImageMaskEditorModal
           isOpen={isMaskEditorOpen}
-          sourceImage={maskSourceImage}
+          sourceImage={maskBaseImage}
+          initialMaskSourceImage={maskInitialSourceImage}
           sourceLabel={maskSourceLabel}
           isApplying={isApplyingMask}
           onApply={handleMaskApply}

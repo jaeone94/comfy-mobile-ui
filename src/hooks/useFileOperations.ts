@@ -421,7 +421,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
   };
 
   // Handle direct file upload (from clipboard or album)
-  const handleFileUploadDirect = async (nodeId: number, paramName: string, file: File): Promise<void> => {
+  const handleFileUploadDirect = async (nodeId: number, paramName: string, file: File): Promise<string | null> => {
     
     // Validate file type based on the parameter
     // For now, we'll accept both images and videos unless restricted
@@ -436,7 +436,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
       setTimeout(() => {
         setUploadState({ isUploading: false });
       }, 4000);
-      return;
+      return null;
     }
     
     // Check file size (100MB limit)
@@ -453,7 +453,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
       setTimeout(() => {
         setUploadState({ isUploading: false });
       }, 4000);
-      return;
+      return null;
     }
     
     // Check server connection before upload
@@ -467,7 +467,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
           message: 'Cannot connect to ComfyUI server for file upload.',
           details: `Server URL: ${serverUrl || 'http://localhost:8188'}\nPlease ensure ComfyUI is running and accessible before uploading files.`
         });
-        return;
+        return null;
       }
     } catch (error) {
       console.error('❌ Server connection test failed:', error);
@@ -477,7 +477,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
         message: 'Failed to test server connection before upload.',
         details: `Error: ${error instanceof Error ? error.message : 'Unknown error'}\nServer: ${serverUrl || 'http://localhost:8188'}`
       });
-      return;
+      return null;
     }
     
     // Start upload with progress message
@@ -554,7 +554,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
         setTimeout(() => {
           setUploadState({ isUploading: false });
         }, 2000);
-        
+        return fullPath;
       } else {
         throw new Error('Upload failed - no response from server');
       }
@@ -576,6 +576,7 @@ export const useFileOperations = ({ onSetWidgetValue }: UseFileOperationsProps) 
         setUploadState({ isUploading: false });
       }, 4000);
     }
+    return null;
   };
 
   return {

@@ -21,6 +21,7 @@ interface MaskStroke {
 interface ImageMaskEditorModalProps {
   isOpen: boolean;
   sourceImage: File | Blob | null;
+  initialMaskSourceImage?: File | Blob | null;
   sourceLabel?: string;
   isApplying?: boolean;
   onApply: (maskFile: File) => Promise<void> | void;
@@ -32,6 +33,16 @@ const EXISTING_MASK_ALPHA_THRESHOLD = 250;
 const MASK_OVERLAY_ALPHA = 180;
 const MIN_VIEW_ZOOM = 1;
 const MAX_VIEW_ZOOM = 6;
+
+const loadImageFromUrl = (url: string): Promise<HTMLImageElement> => {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    image.decoding = 'async';
+    image.onload = () => resolve(image);
+    image.onerror = () => reject(new Error('Failed to load image.'));
+    image.src = url;
+  });
+};
 
 const drawStroke = (ctx: CanvasRenderingContext2D, stroke: MaskStroke) => {
   if (stroke.points.length === 0) {
@@ -70,6 +81,7 @@ const drawStroke = (ctx: CanvasRenderingContext2D, stroke: MaskStroke) => {
 export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
   isOpen,
   sourceImage,
+  initialMaskSourceImage = null,
   sourceLabel,
   isApplying = false,
   onApply,
@@ -85,6 +97,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
   const [strokes, setStrokes] = useState<MaskStroke[]>([]);
   const [redoStrokes, setRedoStrokes] = useState<MaskStroke[]>([]);
   const [sourceImageUrl, setSourceImageUrl] = useState<string | null>(null);
+  const [initialMaskSourceImageUrl, setInitialMaskSourceImageUrl] = useState<string | null>(null);
   const [isLoadingImage, setIsLoadingImage] = useState(false);
   const [isCanvasReady, setIsCanvasReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -126,6 +139,7 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
   useEffect(() => {
     if (!isOpen || !sourceImage) {
       setSourceImageUrl(null);
+      setInitialMaskSourceImageUrl(null);
       loadedImageRef.current = null;
       initialMaskImageDataRef.current = null;
       setSourceImageSize({ width: 0, height: 0 });
@@ -137,9 +151,16 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
     }
 
     const url = URL.createObjectURL(sourceImage);
+    const maskUrl = initialMaskSourceImage ? URL.createObjectURL(initialMaskSourceImage) : null;
     setSourceImageUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [isOpen, sourceImage]);
+    setInitialMaskSourceImageUrl(maskUrl);
+    return () => {
+      URL.revokeObjectURL(url);
+      if (maskUrl) {
+        URL.revokeObjectURL(maskUrl);
+      }
+    };
+  }, [initialMaskSourceImage, isOpen, resetView, sourceImage]);
 
   const redrawMaskLayer = useCallback((nextStrokes: MaskStroke[]) => {
     const maskCanvas = maskCanvasRef.current;
@@ -167,91 +188,121 @@ export const ImageMaskEditorModal: React.FC<ImageMaskEditorModalProps> = ({
       return;
     }
 
-    const image = new Image();
-    image.decoding = 'async';
     setIsLoadingImage(true);
     setErrorMessage(null);
+    let isCancelled = false;
 
-    image.onload = () => {
-      loadedImageRef.current = image;
-      setSourceImageSize({
-        width: image.naturalWidth,
-        height: image.naturalHeight
-      });
+    const initializeCanvas = async () => {
+      try {
+        const baseImage = await loadImageFromUrl(sourceImageUrl);
+        const maskReferenceImage = initialMaskSourceImageUrl && initialMaskSourceImageUrl !== sourceImageUrl
+          ? await loadImageFromUrl(initialMaskSourceImageUrl)
+          : baseImage;
 
-      const longestSide = Math.max(image.naturalWidth, image.naturalHeight, 1);
-      const scale = Math.min(1, MAX_CANVAS_DIMENSION / longestSide);
-      const canvasWidth = Math.max(1, Math.round(image.naturalWidth * scale));
-      const canvasHeight = Math.max(1, Math.round(image.naturalHeight * scale));
-
-      const baseCanvas = baseCanvasRef.current;
-      const maskCanvas = maskCanvasRef.current;
-      if (!baseCanvas || !maskCanvas) {
-        setIsLoadingImage(false);
-        setErrorMessage(t('mask.errors.couldNotInitializeCanvas'));
-        return;
-      }
-
-      baseCanvas.width = canvasWidth;
-      baseCanvas.height = canvasHeight;
-      maskCanvas.width = canvasWidth;
-      maskCanvas.height = canvasHeight;
-
-      const baseCtx = baseCanvas.getContext('2d');
-      const maskCtx = maskCanvas.getContext('2d');
-      if (!baseCtx || !maskCtx) {
-        setIsLoadingImage(false);
-        setErrorMessage(t('mask.errors.couldNotAccessContext'));
-        return;
-      }
-
-      baseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-      baseCtx.drawImage(image, 0, 0, canvasWidth, canvasHeight);
-
-      const sourcePixels = baseCtx.getImageData(0, 0, canvasWidth, canvasHeight).data;
-      const initialMaskImageData = maskCtx.createImageData(canvasWidth, canvasHeight);
-      let existingMaskPixelCount = 0;
-      for (let i = 0; i < sourcePixels.length; i += 4) {
-        if (sourcePixels[i + 3] < EXISTING_MASK_ALPHA_THRESHOLD) {
-          initialMaskImageData.data[i] = 255;
-          initialMaskImageData.data[i + 1] = 0;
-          initialMaskImageData.data[i + 2] = 0;
-          initialMaskImageData.data[i + 3] = MASK_OVERLAY_ALPHA;
-          existingMaskPixelCount++;
+        if (isCancelled) {
+          return;
         }
+
+        loadedImageRef.current = baseImage;
+        setSourceImageSize({
+          width: baseImage.naturalWidth,
+          height: baseImage.naturalHeight
+        });
+
+        const longestSide = Math.max(baseImage.naturalWidth, baseImage.naturalHeight, 1);
+        const scale = Math.min(1, MAX_CANVAS_DIMENSION / longestSide);
+        const canvasWidth = Math.max(1, Math.round(baseImage.naturalWidth * scale));
+        const canvasHeight = Math.max(1, Math.round(baseImage.naturalHeight * scale));
+
+        const baseCanvas = baseCanvasRef.current;
+        const maskCanvas = maskCanvasRef.current;
+        if (!baseCanvas || !maskCanvas) {
+          setIsLoadingImage(false);
+          setIsCanvasReady(false);
+          setErrorMessage(t('mask.errors.couldNotInitializeCanvas'));
+          return;
+        }
+
+        baseCanvas.width = canvasWidth;
+        baseCanvas.height = canvasHeight;
+        maskCanvas.width = canvasWidth;
+        maskCanvas.height = canvasHeight;
+
+        const baseCtx = baseCanvas.getContext('2d');
+        const maskCtx = maskCanvas.getContext('2d');
+        if (!baseCtx || !maskCtx) {
+          setIsLoadingImage(false);
+          setIsCanvasReady(false);
+          setErrorMessage(t('mask.errors.couldNotAccessContext'));
+          return;
+        }
+
+        baseCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+        baseCtx.drawImage(baseImage, 0, 0, canvasWidth, canvasHeight);
+
+        const maskReadCanvas = document.createElement('canvas');
+        maskReadCanvas.width = canvasWidth;
+        maskReadCanvas.height = canvasHeight;
+        const maskReadCtx = maskReadCanvas.getContext('2d');
+        if (!maskReadCtx) {
+          setIsLoadingImage(false);
+          setIsCanvasReady(false);
+          setErrorMessage(t('mask.errors.maskContextUnavailable'));
+          return;
+        }
+
+        maskReadCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+        maskReadCtx.drawImage(maskReferenceImage, 0, 0, canvasWidth, canvasHeight);
+
+        const sourcePixels = maskReadCtx.getImageData(0, 0, canvasWidth, canvasHeight).data;
+        const initialMaskImageData = maskCtx.createImageData(canvasWidth, canvasHeight);
+        let existingMaskPixelCount = 0;
+        for (let i = 0; i < sourcePixels.length; i += 4) {
+          if (sourcePixels[i + 3] < EXISTING_MASK_ALPHA_THRESHOLD) {
+            initialMaskImageData.data[i] = 255;
+            initialMaskImageData.data[i + 1] = 0;
+            initialMaskImageData.data[i + 2] = 0;
+            initialMaskImageData.data[i + 3] = MASK_OVERLAY_ALPHA;
+            existingMaskPixelCount++;
+          }
+        }
+
+        initialMaskImageDataRef.current = initialMaskImageData;
+        setHasInitialMask(existingMaskPixelCount > 0);
+        maskCtx.clearRect(0, 0, canvasWidth, canvasHeight);
+        if (existingMaskPixelCount > 0) {
+          maskCtx.putImageData(initialMaskImageData, 0, 0);
+        }
+
+        setStrokes([]);
+        setRedoStrokes([]);
+        setIsCanvasReady(true);
+        setIsLoadingImage(false);
+        resetView();
+      } catch {
+        if (isCancelled) {
+          return;
+        }
+
+        loadedImageRef.current = null;
+        initialMaskImageDataRef.current = null;
+        setSourceImageSize({ width: 0, height: 0 });
+        setHasInitialMask(false);
+        setIsLoadingImage(false);
+        setIsCanvasReady(false);
+        setErrorMessage(t('mask.errors.failedToLoadSourceImage'));
+        activePointersRef.current.clear();
+        gestureRef.current.active = false;
+        resetView();
       }
-      initialMaskImageDataRef.current = initialMaskImageData;
-      setHasInitialMask(existingMaskPixelCount > 0);
-      maskCtx.clearRect(0, 0, canvasWidth, canvasHeight);
-      maskCtx.putImageData(initialMaskImageData, 0, 0);
-
-      setStrokes([]);
-      setRedoStrokes([]);
-      setIsCanvasReady(true);
-      setIsLoadingImage(false);
-      resetView();
     };
 
-    image.onerror = () => {
-      loadedImageRef.current = null;
-      initialMaskImageDataRef.current = null;
-      setSourceImageSize({ width: 0, height: 0 });
-      setHasInitialMask(false);
-      setIsLoadingImage(false);
-      setIsCanvasReady(false);
-      setErrorMessage(t('mask.errors.failedToLoadSourceImage'));
-      activePointersRef.current.clear();
-      gestureRef.current.active = false;
-      resetView();
-    };
-
-    image.src = sourceImageUrl;
+    void initializeCanvas();
 
     return () => {
-      image.onload = null;
-      image.onerror = null;
+      isCancelled = true;
     };
-  }, [isOpen, sourceImageUrl, resetView, t]);
+  }, [initialMaskSourceImageUrl, isOpen, resetView, sourceImageUrl, t]);
 
   useEffect(() => {
     if (!isCanvasReady) {
