@@ -12,6 +12,7 @@ import { useConnectionStore } from '@/ui/store/connectionStore';
 import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { SimpleConfirmDialog } from '../ui/SimpleConfirmDialog';
 import { useNavigate } from 'react-router-dom';
+import { downloadServerImageAsFile } from '@/shared/utils/downloadServerImageAsFile';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 import { rememberMaskSourcePath, resolveOriginalMaskSourcePath } from '@/shared/utils/MaskSourcePathStore';
 import { ImageMaskEditorModal } from '@/components/media/ImageMaskEditorModal';
@@ -373,47 +374,6 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
   const canUseMaskEditor = isFileSelectionMode && allowImages && enableMaskEditor && !!onMaskEditorApply && !!onFileSelect;
 
-  const downloadMaskImageAsFile = useCallback(async (path: string): Promise<File | null> => {
-    let filename = path;
-    let subfolder = '';
-    if (path.includes('/')) {
-      const lastSlashIndex = path.lastIndexOf('/');
-      subfolder = path.substring(0, lastSlashIndex);
-      filename = path.substring(lastSlashIndex + 1);
-    }
-
-    const locations: Array<{ type: 'input' | 'output' | 'temp'; subfolder: string }> = [
-      { type: 'input', subfolder },
-      { type: 'output', subfolder },
-      { type: 'temp', subfolder }
-    ];
-
-    for (const location of locations) {
-      try {
-        const blob = await comfyFileService.downloadFile({
-          filename,
-          subfolder: location.subfolder,
-          type: location.type
-        });
-
-        if (blob && blob.size > 0) {
-          return new File([blob], filename, {
-            type: blob.type || 'image/png'
-          });
-        }
-      } catch (downloadError) {
-        console.warn('Mask source lookup failed for location:', {
-          type: location.type,
-          subfolder: location.subfolder,
-          filename,
-          error: downloadError
-        });
-      }
-    }
-
-    return null;
-  }, [comfyFileService]);
-
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -511,7 +471,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       });
       const resolvedOriginalPath = resolveOriginalMaskSourcePath(currentPath) ?? currentPath;
       const originalFile = resolvedOriginalPath !== currentPath
-        ? await downloadMaskImageAsFile(resolvedOriginalPath)
+        ? await downloadServerImageAsFile(comfyFileService, resolvedOriginalPath)
         : null;
 
       setMaskBaseImage(originalFile ?? currentFile);
@@ -524,7 +484,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     } finally {
       setLoading(false);
     }
-  }, [comfyFileService, downloadMaskImageAsFile, t]);
+  }, [comfyFileService, t]);
 
   const handleMaskSourceFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = event.target.files?.[0];
@@ -563,6 +523,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       }
 
       rememberMaskSourcePath(normalizedUploadedPath, maskSourceLabel);
+      if (isFileSelectionMode && typeof onFileSelect === 'function') {
+        onFileSelect(normalizedUploadedPath);
+      }
       closeMaskEditor();
       setIsMaskPickMode(false);
     } catch (error) {
@@ -571,7 +534,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     } finally {
       setIsApplyingMask(false);
     }
-  }, [closeMaskEditor, maskSourceLabel, onMaskEditorApply]);
+  }, [closeMaskEditor, isFileSelectionMode, maskSourceLabel, onFileSelect, onMaskEditorApply]);
 
   useEffect(() => {
     if (!canUseMaskEditor || activeTab !== 'images') {
@@ -1362,7 +1325,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                     <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px">
                       {visibleFiles.map((file, index) => (
                         <LazyImage
-                          key={`${file.filename}-${file.subfolder}-${file.type}`}
+                          key={`${file.filename}-${file.subfolder}-${file.type}-${file.modified}`}
                           file={file}
                           index={index}
                           onImageClick={handleFileClick}
@@ -1392,7 +1355,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                 >
                   {visibleFiles.map((file, index) => (
                     <LazyImage
-                      key={`${file.filename}-${file.subfolder}-${file.type}`}
+                      key={`${file.filename}-${file.subfolder}-${file.type}-${file.modified}`}
                       file={file}
                       index={index}
                       onImageClick={handleFileClick}

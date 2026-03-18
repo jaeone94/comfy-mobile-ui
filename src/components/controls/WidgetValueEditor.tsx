@@ -15,6 +15,7 @@ import type { PreviewFileReference } from '@/shared/types/app/PreviewFileReferen
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 import { getGalleryPermissions } from '@/shared/utils/GalleryPermissionUtils';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
+import { downloadServerImageAsFile } from '@/shared/utils/downloadServerImageAsFile';
 import { rememberMaskSourcePath, resolveOriginalMaskSourcePath } from '@/shared/utils/MaskSourcePathStore';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { InlineImagePreview } from '@/components/media/InlineImagePreview';
@@ -182,49 +183,6 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
     setIsApplyingMask(false);
   };
 
-  const downloadServerImageAsFile = async (path: string): Promise<File | null> => {
-    if (!comfyFileService) {
-      return null;
-    }
-
-    let filename = path;
-    let subfolder = '';
-    if (path.includes('/')) {
-      const lastSlashIndex = path.lastIndexOf('/');
-      subfolder = path.substring(0, lastSlashIndex);
-      filename = path.substring(lastSlashIndex + 1);
-    }
-
-    const locations: Array<{ type: 'input' | 'output' | 'temp'; subfolder: string }> = [
-      { type: 'input', subfolder },
-      { type: 'output', subfolder },
-      { type: 'temp', subfolder }
-    ];
-
-    for (const location of locations) {
-      try {
-        const blob = await comfyFileService.downloadFile({
-          filename,
-          subfolder: location.subfolder,
-          type: location.type
-        });
-
-        if (blob && blob.size > 0) {
-          return new File([blob], filename, { type: blob.type || 'image/png' });
-        }
-      } catch (downloadError) {
-        console.warn('Mask source lookup failed for location:', {
-          type: location.type,
-          subfolder: location.subfolder,
-          filename,
-          error: downloadError
-        });
-      }
-    }
-
-    return null;
-  };
-
   const openMaskEditorForCurrentImage = async () => {
     if (typeof currentValue !== 'string' || !isImageFile(currentValue)) {
       return;
@@ -238,9 +196,9 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
     try {
       const resolvedOriginalPath = resolveOriginalMaskSourcePath(currentValue) ?? currentValue;
       const [currentImageFile, originalImageFile] = await Promise.all([
-        downloadServerImageAsFile(currentValue),
+        downloadServerImageAsFile(comfyFileService, currentValue),
         resolvedOriginalPath !== currentValue
-          ? downloadServerImageAsFile(resolvedOriginalPath)
+          ? downloadServerImageAsFile(comfyFileService, resolvedOriginalPath)
           : Promise.resolve<File | null>(null)
       ]);
 

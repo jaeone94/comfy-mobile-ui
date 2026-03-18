@@ -110,6 +110,11 @@ export const useNodeExecutionPreviewStore = create<NodeExecutionPreviewState>((s
 
     set((state) => {
       const next = new Map(state.previewsByNode);
+      if (!files || files.length === 0) {
+        next.delete(nodeId);
+        return { previewsByNode: next };
+      }
+
       next.set(nodeId, files);
       return { previewsByNode: next };
     });
@@ -127,8 +132,6 @@ globalWebSocketService.on('executed', (event: any) => {
     if (!isNodeInActiveGraph(nodeId)) return;
 
     const files = extractExecutionPreviewFiles(data?.output);
-    if (files.length === 0) return;
-
     useNodeExecutionPreviewStore.getState().setNodePreviews(nodeId, files);
   } catch (error) {
     console.warn('[NodeExecutionPreviewStore] Failed to process executed previews:', error);
