@@ -21,6 +21,10 @@ const normalizePreviewSourceType = (value: unknown): NonNullable<NodeExecutionPr
   return 'output';
 };
 
+const normalizePathSegment = (value: unknown): string => {
+  return typeof value === 'string' ? value : '';
+};
+
 const getActiveGraphNodeIds = (): Set<number> => {
   const nodes = useGlobalStore.getState().getNodes?.() || [];
   const nodeIds = new Set<number>();
@@ -67,8 +71,8 @@ const extractExecutionPreviewFiles = (container: unknown, depth = 0): NodeExecut
       if (isPreviewImageFile(item)) {
         files.push({
           filename: item.filename,
-          subfolder: item.subfolder || '',
-          type: normalizePreviewSourceType(item.type)
+          subfolder: normalizePathSegment((item as any).subfolder),
+          type: normalizePreviewSourceType((item as any).type)
         });
       }
     }
@@ -82,8 +86,15 @@ const extractExecutionPreviewFiles = (container: unknown, depth = 0): NodeExecut
 
   const uniqueByPath = new Map<string, NodeExecutionPreviewFile>();
   for (const file of files) {
-    const key = `${file.type || 'output'}/${file.subfolder || ''}/${file.filename}`;
-    if (!uniqueByPath.has(key)) uniqueByPath.set(key, file);
+    if (typeof (file as any).filename !== 'string') {
+      continue;
+    }
+
+    const subfolder = normalizePathSegment((file as any).subfolder);
+    const key = `${(file as any).type || 'output'}/${subfolder}/${file.filename}`;
+    if (!uniqueByPath.has(key)) {
+      uniqueByPath.set(key, { ...file, subfolder });
+    }
   }
 
   return Array.from(uniqueByPath.values());

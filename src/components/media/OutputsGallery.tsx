@@ -90,10 +90,20 @@ const LazyImage: React.FC<LazyImageProps> = ({
   const { url: serverUrl } = useConnectionStore();
   // Service is now passed via props
 
-  // Intersection Observer for lazy loading (skip for first 12 items)
+  // Intersection Observer for lazy loading. Keep the reset and observe flow in one effect
+  // so newly mounted visible items do not get flipped back to "not in view".
   useEffect(() => {
-    // Skip lazy loading for first 12 items
-    if (index < 12) return;
+    if (index < 12) {
+      setIsInView(true);
+      return;
+    }
+
+    setIsInView(false);
+
+    const target = imgRef.current;
+    if (!target) {
+      return;
+    }
 
     const observer = new IntersectionObserver(
       ([entry]) => {
@@ -105,25 +115,16 @@ const LazyImage: React.FC<LazyImageProps> = ({
       { threshold: 0.1, rootMargin: '100px' }
     );
 
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
+    observer.observe(target);
 
-      // Check if element is already in view on mount
-      const rect = imgRef.current.getBoundingClientRect();
-      const isInitiallyVisible = rect.top >= 0 && rect.top <= window.innerHeight;
-      if (isInitiallyVisible) {
-        setIsInView(true);
-        observer.disconnect();
-      }
+    const rect = target.getBoundingClientRect();
+    const isInitiallyVisible = rect.bottom >= 0 && rect.top <= window.innerHeight;
+    if (isInitiallyVisible) {
+      setIsInView(true);
+      observer.disconnect();
     }
 
     return () => observer.disconnect();
-  }, [index]);
-
-  useEffect(() => {
-    if (index < 12) {
-      setIsInView(true);
-    }
   }, [index]);
 
 
@@ -395,7 +396,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
           type: location.type
         });
 
-        if (blob) {
+        if (blob && blob.size > 0) {
           return new File([blob], filename, {
             type: blob.type || 'image/png'
           });
@@ -556,11 +557,12 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
     try {
       const uploadedPath = await onMaskEditorApply(file);
-      if (typeof uploadedPath !== 'string') {
+      const normalizedUploadedPath = typeof uploadedPath === 'string' ? uploadedPath.trim() : '';
+      if (!normalizedUploadedPath) {
         return;
       }
 
-      rememberMaskSourcePath(uploadedPath, maskSourceLabel);
+      rememberMaskSourcePath(normalizedUploadedPath, maskSourceLabel);
       closeMaskEditor();
       setIsMaskPickMode(false);
     } catch (error) {

@@ -269,12 +269,13 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
     setIsApplyingMask(true);
     try {
       const uploadedPath = await onFileUploadDirect(nodeId, param.name, maskFile);
-      if (uploadedPath === null) {
+      const normalizedUploadedPath = typeof uploadedPath === 'string' ? uploadedPath.trim() : '';
+      if (!normalizedUploadedPath) {
         return;
       }
 
       if (typeof currentValue === 'string') {
-        rememberMaskSourcePath(uploadedPath, currentValue);
+        rememberMaskSourcePath(normalizedUploadedPath, currentValue);
       }
       closeMaskEditor();
     } catch (error) {
