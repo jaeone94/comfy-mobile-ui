@@ -74,11 +74,23 @@ const initializeService = () => {
 };
 
 /**
- * Generate unique prompt ID
+ * Generate UUID prompt ID accepted by recent ComfyUI versions.
  */
 const generatePromptId = (): string => {
-  return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  if (globalThis.crypto?.randomUUID) {
+    return globalThis.crypto.randomUUID();
+  }
+
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (char) => {
+    const random = Math.floor(Math.random() * 16);
+    const value = char === 'x' ? random : ((random % 4) + 8);
+    return value.toString(16);
+  });
 };
+
+const isUuid = (value: string): boolean => (
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+);
 
 /**
  * Subscribe to ConnectionStore changes to automatically update serverUrl
@@ -418,11 +430,12 @@ const submitPrompt = async (
  * This is the original submitPromptWithId function from ComfyApiClient_Old.ts
  */
 const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<void> => {
+  const normalizedPromptId = isUuid(promptId) ? promptId : generatePromptId();
   try {
     const payload = {
       prompt: apiWorkflow,
       client_id: globalWebSocketService.getState().clientId,
-      prompt_id: promptId
+      prompt_id: normalizedPromptId
     };
 
     const response = await axios.post<IComfyPromptResponse>(
@@ -457,7 +470,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
     }
 
   } catch (error) {
-    console.error(`Failed to submit prompt ${promptId.substring(0, 8)}:`, error);
+    console.error(`Failed to submit prompt ${normalizedPromptId.substring(0, 8)}:`, error);
 
     // For API response errors, emit execution_error event with raw response
     if (axios.isAxiosError(error) && error.response) {
@@ -485,7 +498,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
       // Emit execution_error event so ErrorViewer displays it
       globalWebSocketService.emit('execution_error', {
         type: 'execution_error',
-        promptId,
+        promptId: normalizedPromptId,
         error: apiErrorObject,
         timestamp: Date.now()
       });
@@ -503,7 +516,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
 
       globalWebSocketService.emit('execution_error', {
         type: 'execution_error',
-        promptId,
+        promptId: normalizedPromptId,
         error: networkErrorObject,
         timestamp: Date.now()
       });
@@ -521,7 +534,7 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
 
       globalWebSocketService.emit('execution_error', {
         type: 'execution_error',
-        promptId,
+        promptId: normalizedPromptId,
         error: genericErrorObject,
         timestamp: Date.now()
       });
