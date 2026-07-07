@@ -42,7 +42,7 @@
     "react-router-dom": "^7.7.1",
     "react-zoom-pan-pinch": "^3.7.0",
     "sonner": "^2.0.7",
-    "swiper": "^11.2.10",
+    "swiper": "^14.0.2",
     "tailwind-merge": "^3.3.1",
     "tw-animate-css": "^1.3.6",
     "workbox-window": "^7.3.0",
