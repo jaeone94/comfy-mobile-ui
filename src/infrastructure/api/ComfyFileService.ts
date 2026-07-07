@@ -816,13 +816,17 @@ export class ComfyFileService {
       }));
 
       const contentLength = response.headers['content-length'];
+      let size: number | undefined = undefined;
+      if (typeof contentLength === 'string') {
+        size = parseInt(contentLength, 10);
+      }
       const lastModified = response.headers['last-modified'];
 
       return {
         filename,
         subfolder,
         type,
-        size: contentLength ? parseInt(contentLength) : undefined,
+        size : size,
         lastModified: lastModified ? new Date(lastModified) : undefined
       };
     } catch (error) {
