@@ -1170,25 +1170,13 @@ const WorkflowEditor: React.FC = () => {
       const v2Bridge = getActiveCanvasBridge();
       if (v2Bridge?.isReady) {
         const officialJson = (await v2Bridge.getWorkflow()) as IComfyJson;
+        // Persist only — the legacy view rebuilds from storage on mode
+        // switch, so no graph reconstruction is needed here.
         const latestWorkflow = useGlobalStore.getState().workflow || workflow;
-        // Rebuild the legacy graph model from the official serialization so
-        // switching back to the legacy canvas reflects official-side edits.
-        let rebuiltGraph = latestWorkflow?.graph;
-        if (objectInfo) {
-          try {
-            const g = await WorkflowGraphService.createGraphFromWorkflow(officialJson, objectInfo);
-            if (g) {
-              wrapGraphNodesForLogging(g);
-              rebuiltGraph = g as any;
-            }
-          } catch (e) {
-            console.warn('[CanvasV2] graph rebuild on save failed:', e);
-          }
-        }
         const updatedWorkflow: IComfyWorkflow = {
           ...latestWorkflow!,
           workflow_json: officialJson,
-          graph: rebuiltGraph,
+          graph: latestWorkflow?.graph,
           modifiedAt: new Date()
         };
         await updateWorkflow(updatedWorkflow);
@@ -1344,16 +1332,19 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [workflow, widgetEditor, objectInfo, syncWorkflow]);
 
-  // Canvas v2: switching canvas modes checkpoints unsaved edits first —
-  // official-side edits via canvasDirty, legacy-side via pending widget mods.
+  // Canvas v2: data-driven mode switch. The persisted workflow JSON is the
+  // only boundary between the two canvases — no state carries over. Unsaved
+  // edits on the leaving side are intentionally discarded; only explicit
+  // saves cross. Both sides reload from storage on entry.
   const handleToggleCanvasMode = useCallback(async () => {
-    const dirty = officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications();
-    if (dirty) {
-      await handleSaveChanges();
-    }
+    widgetEditor.clearModifications();
     setCanvasDirty(false);
     setOfficialCanvasEnabled(!officialCanvasEnabled);
-  }, [officialCanvasEnabled, canvasDirty, widgetEditor, handleSaveChanges, setOfficialCanvasEnabled]);
+    // Rebuild the editor model (graph, bounds, sessions) from storage — the
+    // same path as the initial load, so the legacy canvas reflects whatever
+    // was last saved (including official-canvas saves) without a refresh.
+    await loadWorkflow(true);
+  }, [officialCanvasEnabled, widgetEditor, setOfficialCanvasEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
   // #endregion workflow storage actions
 
   // #region prompt actions

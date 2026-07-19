@@ -388,15 +388,25 @@ if (isEmbedded()) {
         try {
           linkCount = typeof g.links?.size === "number" ? g.links.size : Object.keys(g.links ?? {}).length;
         } catch {}
-        let fp = (g._nodes?.length ?? 0) * 100003 + linkCount * 1009;
+        // 32-bit integer hash — plain Number arithmetic loses low bits once
+        // the accumulator exceeds 2^53, which silently swallowed changes.
+        let fp = 0;
+        const mix = (x) => {
+          fp = ((fp * 31) + (x | 0)) | 0;
+        };
+        mix(g._nodes?.length ?? 0);
+        mix(linkCount);
         try {
           for (const n of g._nodes ?? []) {
-            fp = (fp + Number(n.id) * 31 + (n.pos?.[0] | 0) * 7 + (n.pos?.[1] | 0) * 3 + ((n.mode ?? 0) | 0) * 11) % 9007199254740991;
+            mix(Number(n.id));
+            mix(n.pos?.[0]);
+            mix(n.pos?.[1]);
+            mix(n.mode ?? 0);
             for (const w of n.widgets ?? []) {
               const v = w.value;
               const s = typeof v === "string" ? v : v == null ? "" : String(JSON.stringify(v) ?? "");
               for (let i = 0; i < s.length; i++) {
-                fp = (fp * 33 + s.charCodeAt(i)) % 9007199254740991;
+                mix(s.charCodeAt(i));
               }
             }
           }
