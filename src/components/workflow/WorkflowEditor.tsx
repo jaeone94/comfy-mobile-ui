@@ -661,6 +661,58 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [connectionMode]);
 
+  // Canvas v2: pull the official graph back into the editor model after
+  // structural edits made directly on the official canvas (links dragged,
+  // nodes moved/added/removed). Rides the session-store machinery so
+  // currentGraph/bounds refresh through the existing effect.
+  const resyncInFlightRef = useRef(false);
+  const resyncPendingRef = useRef(false);
+  const handleBridgeGraphMutated = useCallback(async () => {
+    const bridge = getActiveCanvasBridge();
+    if (!bridge?.isReady || !objectInfo) return;
+    if (resyncInFlightRef.current) {
+      resyncPendingRef.current = true;
+      return;
+    }
+    resyncInFlightRef.current = true;
+    try {
+      const officialJson = (await bridge.getWorkflow()) as IComfyJson;
+      const graph = await WorkflowGraphService.createGraphFromWorkflow(officialJson, objectInfo);
+      if (!graph) return;
+      wrapGraphNodesForLogging(graph);
+
+      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+      if (!latestWorkflow) return;
+      // In-memory refresh only — persisting stays behind the explicit save
+      const updatedWorkflow: IComfyWorkflow = {
+        ...latestWorkflow,
+        workflow_json: officialJson,
+        graph: graph as any,
+      };
+      syncWorkflow(updatedWorkflow);
+      setWorkflow(updatedWorkflow);
+
+      // Re-resolve the selection so the modal never holds a stale node object
+      if (selectedNode) {
+        const fresh = (graph as any).getNodeById?.(Number(selectedNode.id));
+        if (fresh) {
+          setSelectedNode(fresh);
+        } else {
+          setSelectedNode(null);
+          setIsNodePanelVisible(false);
+        }
+      }
+    } catch (e) {
+      console.warn('[CanvasV2] graph resync failed:', e);
+    } finally {
+      resyncInFlightRef.current = false;
+      if (resyncPendingRef.current) {
+        resyncPendingRef.current = false;
+        handleBridgeGraphMutated();
+      }
+    }
+  }, [objectInfo, workflow, selectedNode, syncWorkflow]);
+
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
     canvasRef,
@@ -3492,6 +3544,7 @@ const WorkflowEditor: React.FC = () => {
           workflowJson={workflow?.workflow_json ?? null}
           workflowKey={id ?? null}
           onNodeSelected={handleBridgeNodeSelected}
+          onGraphMutated={handleBridgeGraphMutated}
         />
       ) : (
         <WorkflowCanvas

@@ -166,6 +166,8 @@ async function handleGetPrompt(requestId) {
 // links, moving nodes, ...) — debounced so bursts collapse into one event.
 let mutatedTimer = null;
 function scheduleGraphMutated() {
+  // Shell-driven loads reconfigure the whole graph; the shell already knows.
+  if (applyingShellWorkflow) return;
   if (mutatedTimer) clearTimeout(mutatedTimer);
   mutatedTimer = setTimeout(() => {
     mutatedTimer = null;
@@ -365,6 +367,39 @@ if (isEmbedded()) {
         const id = node ? node.id : null;
         if (id !== lastSentSelectionId) reportSelection();
       }, 600);
+
+      // Structural-change catch-all: litegraph fires no hook for node moves
+      // (and graph.change() does not call onAfterChange), so poll a cheap
+      // fingerprint. Emits once, one tick after changes settle — a drag in
+      // progress does not spam events.
+      let fpLast = null;
+      let fpDirty = false;
+      setInterval(() => {
+        if (applyingShellWorkflow) return;
+        const g = app.graph;
+        if (!g) return;
+        let linkCount = 0;
+        try {
+          linkCount = typeof g.links?.size === "number" ? g.links.size : Object.keys(g.links ?? {}).length;
+        } catch {}
+        let fp = (g._nodes?.length ?? 0) * 100003 + linkCount * 1009;
+        try {
+          for (const n of g._nodes ?? []) {
+            fp = (fp + Number(n.id) * 31 + (n.pos?.[0] | 0) * 7 + (n.pos?.[1] | 0) * 3 + ((n.mode ?? 0) | 0) * 11) % 9007199254740991;
+          }
+        } catch {}
+        if (fpLast === null) {
+          fpLast = fp;
+          return;
+        }
+        if (fp !== fpLast) {
+          fpLast = fp;
+          fpDirty = true;
+        } else if (fpDirty) {
+          fpDirty = false;
+          scheduleGraphMutated();
+        }
+      }, 1000);
 
       // Announce readiness only after the frontend finished restoring its own
       // session (first afterConfigureGraph), or after a grace period when

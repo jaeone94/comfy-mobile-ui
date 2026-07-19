@@ -52,9 +52,13 @@ highlights render natively on the canvas.
 
 ## Known issues / not yet done
 
-1. Structural edits made on the official canvas (links/positions) reach the
-   editor's ComfyGraph only via save; `graph-mutated` events exist but the
-   editor doesn't consume them yet (modal can show stale connections).
+1. ~~Structural edits made on the official canvas reach the editor only via
+   save~~ → DONE: the bridge polls a graph fingerprint (nodes/links/pos/mode;
+   litegraph fires no hook for node moves) and emits a debounced
+   `graph-mutated` once changes settle; the editor pulls `get-workflow` and
+   rebuilds its ComfyGraph through the session store (`syncWorkflow`), keeping
+   NodeDetailModal/selection fresh. Verified: mode change via bridge →
+   exactly one event → resync without errors.
 2. Connection mode / reposition mode still operate on the legacy graph only —
    need bridge commands (`connect`, `disconnect`, `set-node-pos`) and rewiring
    of their apply paths.
