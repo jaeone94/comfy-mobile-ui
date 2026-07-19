@@ -40,6 +40,10 @@ import { WorkflowHeader } from '@/components/workflow/WorkflowHeader';
 import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
 // import { NodeInspector } from '@/components/canvas/NodeInspector'; // Replaced
 import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
+import CanvasHost from '@/components/canvas-v2/CanvasHost';
+import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
+import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
+import type { BridgeNode } from '@/shared/types/bridge';
 import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
@@ -632,6 +636,31 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [id, workflow, connectionMode, syncWorkflow, forceRender, t]);
 
+  // Canvas v2 (official canvas): feature flag + bridge selection routing.
+  // Selection events from the official canvas re-enter the exact same paths
+  // the legacy canvas uses (connection mode vs. node detail modal).
+  const officialCanvasEnabled = useCanvasV2Store((s) => s.officialCanvasEnabled);
+  const setOfficialCanvasEnabled = useCanvasV2Store((s) => s.setOfficialCanvasEnabled);
+  const handleBridgeNodeSelected = useCallback((payload: BridgeNode | null) => {
+    if (!payload) {
+      setSelectedNode(null);
+      setIsNodePanelVisible(false);
+      return;
+    }
+    const graph = comfyGraphRef.current;
+    const node = graph?.getNodeById?.(Number(payload.id));
+    if (!node) {
+      console.warn('[CanvasV2] selected node not found in editor graph:', payload.id);
+      return;
+    }
+    if (connectionMode.connectionMode.isActive) {
+      connectionMode.handleNodeSelection(node as any);
+    } else {
+      setSelectedNode(node as any);
+      setIsNodePanelVisible(true);
+    }
+  }, [connectionMode]);
+
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
     canvasRef,
@@ -1145,6 +1174,28 @@ const WorkflowEditor: React.FC = () => {
     setSaveSucceeded(false);
 
     try {
+      // Canvas v2: the official graph is the source of truth — serializing it
+      // preserves positions/links changed directly on the official canvas,
+      // and widget/mode edits were already mirrored into it.
+      const v2Bridge = getActiveCanvasBridge();
+      if (v2Bridge?.isReady) {
+        const officialJson = (await v2Bridge.getWorkflow()) as IComfyJson;
+        const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+        const updatedWorkflow: IComfyWorkflow = {
+          ...latestWorkflow!,
+          workflow_json: officialJson,
+          graph: latestWorkflow?.graph,
+          modifiedAt: new Date()
+        };
+        await updateWorkflow(updatedWorkflow);
+        setWorkflow(updatedWorkflow);
+        syncWorkflow(updatedWorkflow);
+        widgetEditor.clearModifications();
+        setIsSaving(false);
+        setSaveSucceeded(true);
+        setTimeout(() => setSaveSucceeded(false), 1500);
+        return;
+      }
 
       // Use ROOT Graph instance for serialization to prevent overwriting main workflow with subgraph
       // We must always save the entire project structure from the root
@@ -1328,12 +1379,22 @@ const WorkflowEditor: React.FC = () => {
         // Continue execution even if seed processing fails
       }
 
-      // Step 3: Create modified graph with current changes (including new seed values)
-      const originalGraph = comfyGraphRef.current;
-      const tempGraph = createModifiedGraph(originalGraph, widgetEditor.modifiedWidgetValues);
-
-      // Step 4: Convert modified graph to API format using our completed function      
-      const { apiWorkflow, nodeCount } = convertGraphToAPI(tempGraph);
+      // Step 3/4: Build the API-format prompt.
+      // Canvas v2: serialize through the official frontend (graphToPrompt) so
+      // custom-node semantics match ComfyUI exactly. Widget edits and seed
+      // changes were already mirrored into the official graph (postMessage
+      // ordering guarantees they land before this request).
+      let apiWorkflow: Record<string, any>;
+      const v2Bridge = getActiveCanvasBridge();
+      if (v2Bridge?.isReady) {
+        const promptData = await v2Bridge.getPrompt();
+        apiWorkflow = (promptData.output ?? {}) as Record<string, any>;
+      } else {
+        const originalGraph = comfyGraphRef.current;
+        const tempGraph = createModifiedGraph(originalGraph, widgetEditor.modifiedWidgetValues);
+        const converted = convertGraphToAPI(tempGraph);
+        apiWorkflow = converted.apiWorkflow;
+      }
 
       // Step 5: Submit to server with workflow tracking information
       const promptId = await ComfyUIService.executeWorkflow(apiWorkflow, {
@@ -2151,6 +2212,8 @@ const WorkflowEditor: React.FC = () => {
 
       // Update the node's mode immediately for real-time canvas update
       node.mode = mode;
+      // Canvas v2: mirror into the official graph (no-op when v2 inactive)
+      getActiveCanvasBridge()?.setNodeMode(nodeId, mode);
 
       // Update workflow_json for persistence
       const latestWorkflow = useGlobalStore.getState().workflow || workflow;
@@ -2211,6 +2274,12 @@ const WorkflowEditor: React.FC = () => {
 
     try {
       console.log('Updating node mode batch:', modifications);
+
+      // Canvas v2: mirror into the official graph (no-op when v2 inactive)
+      const v2Bridge = getActiveCanvasBridge();
+      if (v2Bridge?.isReady) {
+        modifications.forEach(({ nodeId, mode }) => v2Bridge.setNodeMode(nodeId, mode));
+      }
 
       const latestWorkflow = useGlobalStore.getState().workflow || workflow;
       const currentWorkflowJson = latestWorkflow?.workflow_json || workflow?.workflow_json;
@@ -3418,20 +3487,42 @@ const WorkflowEditor: React.FC = () => {
       />
 
       {/* Canvas */}
-      <WorkflowCanvas
-        containerRef={containerRef}
-        canvasRef={canvasRef}
-        isDragging={canvasInteraction.isDragging}
-        longPressState={canvasInteraction.longPressState}
-        onMouseDown={canvasInteraction.handleMouseDown}
-        onMouseMove={canvasInteraction.handleMouseMove}
-        onMouseUp={canvasInteraction.handleMouseUp}
-        onWheel={canvasInteraction.handleWheel}
-        onTouchStart={canvasInteraction.handleTouchStart}
-        onTouchMove={canvasInteraction.handleTouchMove}
-        onTouchEnd={canvasInteraction.handleTouchEnd}
-        onContextMenu={canvasInteraction.handleContextMenu}
-      />
+      {officialCanvasEnabled ? (
+        <CanvasHost
+          workflowJson={workflow?.workflow_json ?? null}
+          workflowKey={id ?? null}
+          onNodeSelected={handleBridgeNodeSelected}
+        />
+      ) : (
+        <WorkflowCanvas
+          containerRef={containerRef}
+          canvasRef={canvasRef}
+          isDragging={canvasInteraction.isDragging}
+          longPressState={canvasInteraction.longPressState}
+          onMouseDown={canvasInteraction.handleMouseDown}
+          onMouseMove={canvasInteraction.handleMouseMove}
+          onMouseUp={canvasInteraction.handleMouseUp}
+          onWheel={canvasInteraction.handleWheel}
+          onTouchStart={canvasInteraction.handleTouchStart}
+          onTouchMove={canvasInteraction.handleTouchMove}
+          onTouchEnd={canvasInteraction.handleTouchEnd}
+          onContextMenu={canvasInteraction.handleContextMenu}
+        />
+      )}
+
+      {/* Canvas v2 beta toggle */}
+      <button
+        onClick={() => setOfficialCanvasEnabled(!officialCanvasEnabled)}
+        className={cn(
+          'fixed right-3 top-16 z-30 rounded-full border px-2.5 py-1.5 text-[11px] font-medium shadow-lg backdrop-blur transition-colors',
+          officialCanvasEnabled
+            ? 'border-sky-500/60 bg-sky-600/80 text-white'
+            : 'border-slate-600/60 bg-slate-800/80 text-slate-300'
+        )}
+        title="Toggle official canvas (beta)"
+      >
+        {officialCanvasEnabled ? 'Official canvas β' : 'Legacy canvas'}
+      </button>
 
       {/* Floating Control Panel - Hidden during repositioning and connection mode */}
       {!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && (

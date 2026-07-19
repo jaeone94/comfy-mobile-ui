@@ -26,6 +26,7 @@ import StorageErrorBoundary from '@/components/error/StorageErrorBoundary';
 import { PromptHistory } from '@/components/history/PromptHistory';
 import { WorkflowStackPage } from '@/components/workflow/WorkflowStackPage';
 import { AppUpdate } from '@/components/server/AppUpdate';
+import CanvasLabPage from '@/components/canvas/CanvasLabPage';
 
 const AppRouter: React.FC = () => {
   const tryAutoConnect = useConnectionStore((state) => state.tryAutoConnect);
@@ -211,6 +212,7 @@ const AppRouter: React.FC = () => {
         <Route path="/settings/api-keys" element={<ApiKeyManagement />} />
         <Route path="/settings/widget-types" element={<CustomTypeManager />} />
         <Route path="/videos/download" element={<VideoDownloader />} />
+        <Route path="/canvas-lab" element={<CanvasLabPage />} />
       </Routes>
       <Toaster
         position="bottom-center"

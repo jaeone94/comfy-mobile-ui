@@ -57,3 +57,8 @@ comfy-mobile-ui-api-extension/.update_staging/
 
 # deploy
 deploy/
+# API Extension runtime artifacts (written when running from a symlinked checkout)
+comfy-mobile-ui-api-extension/**/__pycache__/
+comfy-mobile-ui-api-extension/__pycache__/
+comfy-mobile-ui-api-extension/comfyui_original_args.json
+comfy-mobile-ui-api-extension/watchdog.log

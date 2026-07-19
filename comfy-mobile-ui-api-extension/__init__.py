@@ -37,3 +37,8 @@ except Exception as e:
 # as this extension only provides API/Web functionality and no custom nodes.
 NODE_CLASS_MAPPINGS = {}
 NODE_DISPLAY_NAME_MAPPINGS = {}
+
+# Frontend bridge: JS in ./fe is loaded by the official ComfyUI frontend as a
+# regular extension (served at /extensions/<module_name>/). It activates only
+# when the frontend runs inside the mobile shell's iframe.
+WEB_DIRECTORY = "fe"

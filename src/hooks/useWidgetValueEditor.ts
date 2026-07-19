@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { graphChangeLogger } from '@/utils/GraphChangeLogger';
+import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
 import type { NodeWidgetModifications } from '@/shared/types/widgets/widgetModifications';
+
+// Canvas v2: mirror widget edits into the official graph inside the iframe.
+// No-op when the official canvas is not mounted (bridge is null).
+const mirrorToOfficialCanvas = (nodeId: number, paramName: string, value: any) => {
+  getActiveCanvasBridge()?.setWidgetValue(nodeId, paramName, value);
+};
 
 interface EditingParam {
   nodeId: number;
@@ -77,6 +84,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
       newMap.set(nodeId, nodeValues);
       return newMap;
     });
+    mirrorToOfficialCanvas(nodeId, paramName, editingValue);
 
     // Also save to ComfyGraphProcessor if available
     if (options?.processor) {
@@ -128,6 +136,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
       newMap.set(nodeId, nodeValues);
       return newMap;
     });
+    mirrorToOfficialCanvas(nodeId, paramName, value);
 
     // Also save to ComfyGraphProcessor if available
     if (options?.processor) {
@@ -250,6 +259,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
       newMap.set(nodeId, nodeValues);
       return newMap;
     });
+    mirrorToOfficialCanvas(nodeId, paramName, value);
 
     // Also save to ComfyGraphProcessor if available
     if (options?.processor) {
