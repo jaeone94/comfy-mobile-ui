@@ -43,7 +43,7 @@ import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
 import CanvasHost from '@/components/canvas-v2/CanvasHost';
 import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
 import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
-import type { BridgeNode } from '@/shared/types/bridge';
+import { Save } from 'lucide-react';
 import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
@@ -636,82 +636,20 @@ const WorkflowEditor: React.FC = () => {
     }
   }, [id, workflow, connectionMode, syncWorkflow, forceRender, t]);
 
-  // Canvas v2 (official canvas): feature flag + bridge selection routing.
-  // Selection events from the official canvas re-enter the exact same paths
-  // the legacy canvas uses (connection mode vs. node detail modal).
+  // Canvas v2 (official canvas): the official frontend owns ALL canvas
+  // interaction — selection, wiring validity, node moves, on-canvas widget
+  // edits. The shell does not mirror interactions back into legacy UI; it
+  // only tracks dirtiness (graph-mutated events) and persists on save or
+  // when switching canvas modes.
   const officialCanvasEnabled = useCanvasV2Store((s) => s.officialCanvasEnabled);
   const setOfficialCanvasEnabled = useCanvasV2Store((s) => s.setOfficialCanvasEnabled);
-  const handleBridgeNodeSelected = useCallback((payload: BridgeNode | null) => {
-    if (!payload) {
-      setSelectedNode(null);
-      setIsNodePanelVisible(false);
-      return;
-    }
-    const graph = comfyGraphRef.current;
-    const node = graph?.getNodeById?.(Number(payload.id));
-    if (!node) {
-      console.warn('[CanvasV2] selected node not found in editor graph:', payload.id);
-      return;
-    }
-    if (connectionMode.connectionMode.isActive) {
-      connectionMode.handleNodeSelection(node as any);
-    } else {
-      setSelectedNode(node as any);
-      setIsNodePanelVisible(true);
-    }
-  }, [connectionMode]);
-
-  // Canvas v2: pull the official graph back into the editor model after
-  // structural edits made directly on the official canvas (links dragged,
-  // nodes moved/added/removed). Rides the session-store machinery so
-  // currentGraph/bounds refresh through the existing effect.
-  const resyncInFlightRef = useRef(false);
-  const resyncPendingRef = useRef(false);
-  const handleBridgeGraphMutated = useCallback(async () => {
-    const bridge = getActiveCanvasBridge();
-    if (!bridge?.isReady || !objectInfo) return;
-    if (resyncInFlightRef.current) {
-      resyncPendingRef.current = true;
-      return;
-    }
-    resyncInFlightRef.current = true;
-    try {
-      const officialJson = (await bridge.getWorkflow()) as IComfyJson;
-      const graph = await WorkflowGraphService.createGraphFromWorkflow(officialJson, objectInfo);
-      if (!graph) return;
-      wrapGraphNodesForLogging(graph);
-
-      const latestWorkflow = useGlobalStore.getState().workflow || workflow;
-      if (!latestWorkflow) return;
-      // In-memory refresh only — persisting stays behind the explicit save
-      const updatedWorkflow: IComfyWorkflow = {
-        ...latestWorkflow,
-        workflow_json: officialJson,
-        graph: graph as any,
-      };
-      syncWorkflow(updatedWorkflow);
-      setWorkflow(updatedWorkflow);
-
-      // Re-resolve the selection so the modal never holds a stale node object
-      if (selectedNode) {
-        const fresh = (graph as any).getNodeById?.(Number(selectedNode.id));
-        if (fresh) {
-          setSelectedNode(fresh);
-        } else {
-          setSelectedNode(null);
-          setIsNodePanelVisible(false);
-        }
-      }
-    } catch (e) {
-      console.warn('[CanvasV2] graph resync failed:', e);
-    } finally {
-      resyncInFlightRef.current = false;
-      if (resyncPendingRef.current) {
-        resyncPendingRef.current = false;
-        handleBridgeGraphMutated();
-      }
-    }
-  }, [objectInfo, workflow, selectedNode, syncWorkflow]);
+  const [canvasDirty, setCanvasDirty] = useState(false);
+  const handleBridgeGraphMutated = useCallback(() => {
+    setCanvasDirty(true);
+  }, []);
+  useEffect(() => {
+    setCanvasDirty(false);
+  }, [id]);
 
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
@@ -1233,16 +1171,31 @@ const WorkflowEditor: React.FC = () => {
       if (v2Bridge?.isReady) {
         const officialJson = (await v2Bridge.getWorkflow()) as IComfyJson;
         const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+        // Rebuild the legacy graph model from the official serialization so
+        // switching back to the legacy canvas reflects official-side edits.
+        let rebuiltGraph = latestWorkflow?.graph;
+        if (objectInfo) {
+          try {
+            const g = await WorkflowGraphService.createGraphFromWorkflow(officialJson, objectInfo);
+            if (g) {
+              wrapGraphNodesForLogging(g);
+              rebuiltGraph = g as any;
+            }
+          } catch (e) {
+            console.warn('[CanvasV2] graph rebuild on save failed:', e);
+          }
+        }
         const updatedWorkflow: IComfyWorkflow = {
           ...latestWorkflow!,
           workflow_json: officialJson,
-          graph: latestWorkflow?.graph,
+          graph: rebuiltGraph,
           modifiedAt: new Date()
         };
         await updateWorkflow(updatedWorkflow);
         setWorkflow(updatedWorkflow);
         syncWorkflow(updatedWorkflow);
         widgetEditor.clearModifications();
+        setCanvasDirty(false);
         setIsSaving(false);
         setSaveSucceeded(true);
         setTimeout(() => setSaveSucceeded(false), 1500);
@@ -1389,7 +1342,18 @@ const WorkflowEditor: React.FC = () => {
       console.error('Failed to save workflow:', error);
       setIsSaving(false);
     }
-  }, [workflow, widgetEditor]);
+  }, [workflow, widgetEditor, objectInfo, syncWorkflow]);
+
+  // Canvas v2: switching canvas modes checkpoints unsaved edits first —
+  // official-side edits via canvasDirty, legacy-side via pending widget mods.
+  const handleToggleCanvasMode = useCallback(async () => {
+    const dirty = officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications();
+    if (dirty) {
+      await handleSaveChanges();
+    }
+    setCanvasDirty(false);
+    setOfficialCanvasEnabled(!officialCanvasEnabled);
+  }, [officialCanvasEnabled, canvasDirty, widgetEditor, handleSaveChanges, setOfficialCanvasEnabled]);
   // #endregion workflow storage actions
 
   // #region prompt actions
@@ -3543,7 +3507,6 @@ const WorkflowEditor: React.FC = () => {
         <CanvasHost
           workflowJson={workflow?.workflow_json ?? null}
           workflowKey={id ?? null}
-          onNodeSelected={handleBridgeNodeSelected}
           onGraphMutated={handleBridgeGraphMutated}
         />
       ) : (
@@ -3563,9 +3526,22 @@ const WorkflowEditor: React.FC = () => {
         />
       )}
 
+      {/* Canvas v2: dirty-state save button (official mode only) */}
+      {officialCanvasEnabled && canvasDirty && (
+        <button
+          onClick={handleSaveChanges}
+          disabled={isSaving}
+          className="fixed right-3 top-28 z-30 flex items-center gap-1.5 rounded-full border border-emerald-500/60 bg-emerald-600/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-emerald-500 disabled:opacity-50"
+          title="Save canvas changes to the workflow"
+        >
+          <Save className="h-3.5 w-3.5" />
+          Save
+        </button>
+      )}
+
       {/* Canvas v2 beta toggle */}
       <button
-        onClick={() => setOfficialCanvasEnabled(!officialCanvasEnabled)}
+        onClick={handleToggleCanvasMode}
         className={cn(
           'fixed right-3 top-16 z-30 rounded-full border px-2.5 py-1.5 text-[11px] font-medium shadow-lg backdrop-blur transition-colors',
           officialCanvasEnabled
@@ -3814,8 +3790,8 @@ const WorkflowEditor: React.FC = () => {
         />
       )}
 
-      {/* Workflow Controls Panel (Right Top) - Hidden during repositioning, connection mode, and full-screen preview */}
-      {(!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && !isLatentPreviewFullscreen) && (
+      {/* Workflow Controls Panel (Right Top) - Hidden during repositioning, connection mode, full-screen preview, and official canvas mode */}
+      {(!officialCanvasEnabled && !canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && !isLatentPreviewFullscreen) && (
         <FloatingControlsPanel
           onRandomizeSeeds={handleRandomizeSeeds}
           onShowGroupModer={() => setIsGroupModeModalOpen(true)}

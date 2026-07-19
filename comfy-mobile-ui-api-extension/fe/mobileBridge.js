@@ -129,6 +129,11 @@ function respond(requestId, ok, data, error) {
 let lastShellWorkflow = null;
 let applyingShellWorkflow = false;
 
+// Graph fingerprint state (structural-change detection). Reset after
+// shell-driven loads so a fresh load never reads as a user edit.
+let fpLast = null;
+let fpDirty = false;
+
 async function loadWorkflow({ workflow }) {
   if (!workflow) return;
   lastShellWorkflow = workflow;
@@ -141,6 +146,8 @@ async function loadWorkflow({ workflow }) {
     console.warn("[MobileBridge] load-workflow failed", e);
   } finally {
     applyingShellWorkflow = false;
+    fpLast = null;
+    fpDirty = false;
   }
 }
 
@@ -368,12 +375,11 @@ if (isEmbedded()) {
         if (id !== lastSentSelectionId) reportSelection();
       }, 600);
 
-      // Structural-change catch-all: litegraph fires no hook for node moves
-      // (and graph.change() does not call onAfterChange), so poll a cheap
-      // fingerprint. Emits once, one tick after changes settle — a drag in
+      // Change catch-all: litegraph fires no hook for node moves (and
+      // graph.change() does not call onAfterChange), so poll a cheap
+      // fingerprint over structure, positions, modes AND widget values.
+      // Emits once, one tick after changes settle — a drag or typing in
       // progress does not spam events.
-      let fpLast = null;
-      let fpDirty = false;
       setInterval(() => {
         if (applyingShellWorkflow) return;
         const g = app.graph;
@@ -386,6 +392,13 @@ if (isEmbedded()) {
         try {
           for (const n of g._nodes ?? []) {
             fp = (fp + Number(n.id) * 31 + (n.pos?.[0] | 0) * 7 + (n.pos?.[1] | 0) * 3 + ((n.mode ?? 0) | 0) * 11) % 9007199254740991;
+            for (const w of n.widgets ?? []) {
+              const v = w.value;
+              const s = typeof v === "string" ? v : v == null ? "" : String(JSON.stringify(v) ?? "");
+              for (let i = 0; i < s.length; i++) {
+                fp = (fp * 33 + s.charCodeAt(i)) % 9007199254740991;
+              }
+            }
           }
         } catch {}
         if (fpLast === null) {

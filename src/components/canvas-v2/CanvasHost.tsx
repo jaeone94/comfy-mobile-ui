@@ -13,7 +13,7 @@ interface CanvasHostProps {
   workflowJson: IComfyJson | null | undefined;
   /** Identity of the workflow (route id); re-sends load-workflow when it changes. */
   workflowKey: string | null | undefined;
-  onNodeSelected: (node: BridgeNode | null) => void;
+  onNodeSelected?: (node: BridgeNode | null) => void;
   onReady?: (summary: BridgeGraphSummary) => void;
   onGraphMutated?: () => void;
 }
@@ -57,7 +57,7 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
       callbacksRef.current.onReady?.(summary);
     });
     const offSelection = client.on('selectionChanged', (node) => {
-      callbacksRef.current.onNodeSelected(node);
+      callbacksRef.current.onNodeSelected?.(node);
     });
     const offMutated = client.on('graphMutated', () => {
       callbacksRef.current.onGraphMutated?.();

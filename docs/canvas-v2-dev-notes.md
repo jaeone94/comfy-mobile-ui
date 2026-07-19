@@ -50,6 +50,20 @@ Import from server → open editor → toggle β → node select → NodeDetailM
 IndexedDB holds the official serialization → reload restores it. Missing-model
 highlights render natively on the canvas.
 
+## Strategy update (2nd slice)
+
+Official-canvas mode is now a PURE official editing surface: the FE owns all
+canvas interaction (selection, wiring validity, moves, on-canvas widget
+edits) — no selection→modal routing, no legacy mirrors of interactions, and
+the right action rail is hidden (queue bar stays). The shell only tracks
+dirtiness — the bridge fingerprint now covers widget values too — shows a
+Save button, and persists via `get-workflow` (rebuilding the legacy graph
+model on save). Switching canvas modes auto-saves pending edits on either
+side, so both canvases always resume from the same workflow JSON. Bridge
+files are served with `Cache-Control: no-cache` (partitioned browser caches
+made stale bridge modules unrecoverable client-side). This supersedes the
+earlier connection/reposition-mode rewiring plan — deleted from the backlog.
+
 ## Known issues / not yet done
 
 1. ~~Structural edits made on the official canvas reach the editor only via
