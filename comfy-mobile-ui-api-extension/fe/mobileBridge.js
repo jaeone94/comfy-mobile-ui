@@ -483,6 +483,40 @@ function setupNodeFocusMode() {
 
   const updateFocusTransform = () => {
     if (!focused) return;
+    try {
+      updateFocusTransformInner();
+    } catch (e) {
+      // Never leave a ghost overlay (dimmed screen with no card): any
+      // failure closes cleanly, which also tells the shell to hide.
+      console.warn("[MobileBridge] focus transform failed — closing", e);
+      unfocusNode();
+      return;
+    }
+    rafId = requestAnimationFrame(updateFocusTransform);
+  };
+
+  const updateFocusTransformInner = () => {
+    // Vue re-renders can replace the node element mid-focus (e.g. after a
+    // drag attempt): re-attach to the fresh element, or close cleanly so
+    // the shell never gets stuck showing an empty overlay.
+    if (!focused.isConnected) {
+      const nodeId = focused.getAttribute("data-node-id");
+      const fresh = nodeId
+        ? document.querySelector(`.lg-node[data-node-id="${nodeId}"]`)
+        : null;
+      if (fresh) {
+        fresh.classList.add("cmu-focused");
+        focused = fresh;
+      } else {
+        unfocusNode();
+        return;
+      }
+    }
+    // Vue's class-binding patches strip externally added classes on
+    // re-render (observed after drag attempts) — re-assert every frame.
+    if (!focused.classList.contains("cmu-focused")) {
+      focused.classList.add("cmu-focused");
+    }
     const { z, tx, ty } = paneTransform();
     const width =
       parseFloat(getComputedStyle(focused).getPropertyValue("--node-width")) ||
@@ -501,7 +535,6 @@ function setupNodeFocusMode() {
     focused.style.setProperty("--cmu-fy", `${screenY / z - ty}px`);
     focused.style.setProperty("--cmu-fz", `${fs / z}`);
     focused.style.setProperty("--cmu-max-h", `${(window.innerHeight * 0.72) / fs}px`);
-    rafId = requestAnimationFrame(updateFocusTransform);
   };
 
   const focusNode = (el) => {
@@ -528,6 +561,11 @@ function setupNodeFocusMode() {
     post("focus-dismissed", { nodeId, overlay: wasOverlay });
   };
 
+  const isInteractive = (t) =>
+    !!t?.closest?.(
+      'input, textarea, select, button, a, [contenteditable], [role="combobox"], [role="button"], [role="listbox"], [role="option"], [role="slider"], [data-testid="node-widgets"]'
+    );
+
   document.addEventListener(
     "pointerdown",
     (event) => {
@@ -535,6 +573,36 @@ function setupNodeFocusMode() {
       downX = event.clientX;
       downY = event.clientY;
       downTime = performance.now();
+      // The focused card is a modal: dragging it (or starting link drags
+      // from its slots) makes no sense and detaches the element via Vue
+      // re-renders. Swallow non-widget pointerdowns inside the card.
+      if (
+        focused &&
+        event.target instanceof Element &&
+        focused.contains(event.target) &&
+        !isInteractive(event.target)
+      ) {
+        event.stopPropagation();
+        // Vue's drag/re-render pipeline strips our pin in ways that cannot
+        // be reliably fought — if this turns into a drag, close CLEANLY
+        // (clears the dim/overlay and notifies the shell) instead of ever
+        // leaving a ghost background.
+        const sx = event.clientX;
+        const sy = event.clientY;
+        const onMove = (ev) => {
+          if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 12) {
+            cleanup();
+            unfocusNode();
+          }
+        };
+        const onUp = () => cleanup();
+        const cleanup = () => {
+          document.removeEventListener("pointermove", onMove, true);
+          document.removeEventListener("pointerup", onUp, true);
+        };
+        document.addEventListener("pointermove", onMove, true);
+        document.addEventListener("pointerup", onUp, true);
+      }
     },
     true
   );
