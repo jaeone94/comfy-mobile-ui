@@ -325,6 +325,31 @@ const EMBED_CSS = `
 .graph-canvas-panel .p-buttongroup {
   display: none !important;
 }
+/* ---- Nodes 2.0 (Vue DOM nodes) simplification ---- */
+/* Off-screen culling: browser skips layout/paint for nodes outside the
+   viewport (the fork mounts every node with no culling). */
+.lg-node[data-node-id] {
+  content-visibility: auto;
+  contain-intrinsic-size: var(--node-width, 220px) var(--node-height, 120px);
+  box-shadow: none !important;
+  filter: none !important;
+}
+.lg-node[data-node-id] *,
+.lg-node[data-node-id] {
+  transition: none !important;
+  animation: none !important;
+}
+/* Zoom LOD (driven by data-cmu-zoom on <html>): when zoomed far out, stop
+   painting widget internals — headers/slots keep the graph readable. */
+html[data-cmu-zoom="far"] [data-testid="node-widgets"] {
+  visibility: hidden !important;
+}
+html[data-cmu-zoom="far"] .lg-node[data-node-id] {
+  font-size: 0 !important;
+}
+html[data-cmu-zoom="far"] .lg-node-header {
+  font-size: 12px !important;
+}
 /* floating top-row cards added by other extensions (e.g. devtools) */
 .pointer-events-auto.h-12.shadow-interface {
   display: none !important;
@@ -387,14 +412,32 @@ function handleShellMessage(event) {
 // flags cut fill-rate and memory — the usual cause of iOS tab reloads.
 const DPR_CAP = 1.5;
 const FPS_IDLE = 30;
-const FPS_INTERACTING = 15;
-const SETTLE_MS = 250;
 
 // Dynamic link mode: straight normally, hidden while pinching/panning.
 // Pinned via defineProperty because the FE re-applies the user's
 // LinkRenderMode setting after setup and would overwrite plain assignment.
 let cmuLinksMode = 0; // LiteGraph.STRAIGHT_LINK
 let cmuFps = 30;
+
+// Force the classic canvas renderer in embeds: Nodes 2.0 mounts every node
+// as DOM with no culling — the main mobile perf cost — while the classic
+// path benefits from the LOD pins below. NOTE: the FE reads this setting at
+// init and offers no non-persistent override, so this writes the user
+// setting (shared with desktop for the same ComfyUI user) and reloads once.
+async function forceClassicNodes() {
+  try {
+    if (sessionStorage.getItem("cmuForcedClassic")) return;
+    const setting = app.extensionManager?.setting;
+    if (!setting?.get || !setting?.set) return;
+    if (setting.get("Comfy.VueNodes.Enabled") === true) {
+      sessionStorage.setItem("cmuForcedClassic", "1");
+      await setting.set("Comfy.VueNodes.Enabled", false);
+      location.reload();
+    }
+  } catch (e) {
+    console.warn("[MobileBridge] force classic nodes failed", e);
+  }
+}
 
 function applyPerformanceMode() {
   const canvas = app.canvas;
@@ -463,79 +506,41 @@ function applyPerformanceMode() {
     }
     // Classic-canvas LOD: _min_font_size_for_lod is the SOURCE the zoom
     // threshold is recomputed from — raising it makes low-quality (which
-    // skips text/shadows in this fork's canvas path) engage much earlier.
-    // No effect in Vue-nodes mode where nodes are DOM.
+    // skips text/shadows in this fork's canvas path) engage earlier.
+    // 14 => simplified below ~58% zoom on a DPR-3 phone (~71% on DPR-2).
     try {
       Object.defineProperty(canvas, "min_font_size_for_lod", {
         configurable: true,
-        get: () => 24,
+        get: () => 14,
         set: () => {},
       });
     } catch {}
-    canvas._min_font_size_for_lod = 24;
+    canvas._min_font_size_for_lod = 14;
     canvas.updateLowQualityThreshold?.();
   } catch (e) {
     console.warn("[MobileBridge] perf flags failed", e);
   }
 
-  // 3) Interaction governor: while pinch-zooming/panning, drop FPS, hide
-  //    links, throttle the background canvas, and (in Vue-nodes mode) pause
-  //    canvas drawing entirely — DOM nodes keep tracking via CSS transform.
-  try {
-    const HIDDEN_LINK =
-      window.LiteGraph?.HIDDEN_LINK ?? window.LiteGraph?.LinkRenderType?.HIDDEN_LINK ?? 3;
-    let settleTimer = null;
-    const transformPane = () =>
-      document.querySelector('[data-testid="transform-pane"]');
-    const begin = () => {
-      if (canvas.__cmuInteracting) return;
-      canvas.__cmuInteracting = true;
-      setFps(FPS_INTERACTING);
-      cmuLinksMode = HIDDEN_LINK;
-      if (vueMode) {
-        canvas.pause_rendering = true;
-        // DOM nodes are the re-rasterization cost while the transform layer
-        // scales — hide them for the duration of the gesture.
-        const pane = transformPane();
-        if (pane) pane.style.visibility = "hidden";
-      }
-    };
-    const end = () => {
-      canvas.__cmuInteracting = false;
-      setFps(FPS_IDLE);
-      cmuLinksMode = 0;
-      if (vueMode) {
-        canvas.pause_rendering = false;
-        const pane = transformPane();
-        if (pane) pane.style.visibility = "";
-      }
-      canvas.setDirty?.(true, true);
-    };
-    const poke = () => {
-      begin();
-      if (settleTimer) clearTimeout(settleTimer);
-      settleTimer = setTimeout(end, SETTLE_MS);
-    };
-    window.addEventListener("wheel", poke, { passive: true, capture: true });
-    window.addEventListener("touchmove", poke, { passive: true, capture: true });
+  // (Interaction-time hiding of nodes/links was removed by request: content
+  //  vanishing mid-gesture read as a bug. Perf now relies on the DPR cap,
+  //  the 30fps pin, classic-canvas LOD and the DOM simplification CSS.)
 
-    // Throttle the expensive background pass (grid + links) mid-interaction
-    const proto = Object.getPrototypeOf(canvas);
-    if (proto?.drawBackCanvas && !proto.__cmuBgThrottled) {
-      proto.__cmuBgThrottled = true;
-      const origBack = proto.drawBackCanvas;
-      let lastBack = 0;
-      proto.drawBackCanvas = function (...args) {
-        if (this.__cmuInteracting) {
-          const now = performance.now();
-          if (now - lastBack < 66) return; // ~15fps background while interacting
-          lastBack = now;
-        }
-        return origBack.apply(this, args);
-      };
-    }
+  // 4) Zoom-tier attribute for the CSS DOM-LOD (Vue nodes): below 50% zoom
+  //    widget internals stop painting entirely.
+  try {
+    let lastTier = "";
+    const updateZoomTier = () => {
+      const scale = canvas.ds?.scale ?? 1;
+      const tier = scale < 0.5 ? "far" : "near";
+      if (tier !== lastTier) {
+        lastTier = tier;
+        document.documentElement.dataset.cmuZoom = tier;
+      }
+    };
+    updateZoomTier();
+    setInterval(updateZoomTier, 300);
   } catch (e) {
-    console.warn("[MobileBridge] interaction governor failed", e);
+    console.warn("[MobileBridge] zoom tier failed", e);
   }
 
   canvas.setDirty?.(true, true);
@@ -547,6 +552,7 @@ if (isEmbedded()) {
     name: "ComfyMobile.CanvasBridge",
     setup() {
       injectCss();
+      forceClassicNodes();
       applyPerformanceMode();
       window.addEventListener("message", handleShellMessage);
 
