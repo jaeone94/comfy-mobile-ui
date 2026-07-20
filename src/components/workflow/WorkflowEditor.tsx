@@ -1344,6 +1344,10 @@ const WorkflowEditor: React.FC = () => {
     // same path as the initial load, so the legacy canvas reflects whatever
     // was last saved (including official-canvas saves) without a refresh.
     await loadWorkflow(true);
+    // The legacy renderer caches node card imagery per node id; stale entries
+    // survive the reload and keep drawing old widget previews until cleared.
+    clearNodeImageCache();
+    canvasRef.current?.dispatchEvent(new Event('imageLoaded'));
   }, [officialCanvasEnabled, widgetEditor, setOfficialCanvasEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
   // #endregion workflow storage actions
 

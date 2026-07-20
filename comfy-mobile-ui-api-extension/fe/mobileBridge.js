@@ -19,12 +19,20 @@ function isEmbedded() {
   }
 }
 
-// Lab note: targetOrigin is '*' because the shell runs on a different origin
-// during development (vite :5173 vs server :8188). Lock this down to the
-// shell origin before shipping anything real.
+// Outbound messages target the embedding shell's origin. Seeded from the
+// referrer (the parent page), then pinned to the first valid shell message's
+// origin; other origins are ignored from then on.
+let shellOrigin = (() => {
+  try {
+    return document.referrer ? new URL(document.referrer).origin : "*";
+  } catch {
+    return "*";
+  }
+})();
+
 function post(type, payload) {
   try {
-    window.parent.postMessage({ source: BRIDGE_SOURCE, type, payload }, "*");
+    window.parent.postMessage({ source: BRIDGE_SOURCE, type, payload }, shellOrigin);
   } catch (e) {
     console.warn("[MobileBridge] postMessage failed", e);
   }
@@ -288,6 +296,10 @@ const EMBED_CSS = `
 .pointer-events-auto.h-12.shadow-interface {
   display: none !important;
 }
+/* top-right overlay column: alert banners ("View details"), toggles */
+.mx-1.flex.flex-col.items-end.gap-1 {
+  display: none !important;
+}
 `;
 
 function injectCss() {
@@ -301,6 +313,8 @@ function injectCss() {
 function handleShellMessage(event) {
   const msg = event.data;
   if (!msg || msg.source !== SHELL_SOURCE) return;
+  if (shellOrigin === "*") shellOrigin = event.origin;
+  else if (event.origin !== shellOrigin) return;
   switch (msg.type) {
     case "get-state":
       post("graph-changed", graphSummary());
