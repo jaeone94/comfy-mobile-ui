@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge';
 
 import {
     RefreshCw, X, ExternalLink, Play, Image as ImageIcon, SlidersHorizontal, Edit3, Check,
-    Copy, Minimize2, Maximize2, Palette, VolumeX, Shuffle, MousePointer2, Trash2
+    Copy, Minimize2, Maximize2, Palette, VolumeX, Shuffle, MousePointer2, Trash2, Puzzle
 } from 'lucide-react';
+import type { BridgeNode } from '@/shared/types/bridge';
 import { INodeWithMetadata, IProcessedParameter } from '@/shared/types/comfy/IComfyObjectInfo';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 import { GroupInspector } from '@/components/canvas/GroupInspector';
@@ -105,6 +106,14 @@ interface NodeDetailModalProps {
     onEnterSubgraph?: (nodeType: string, title: string) => void;
     subgraphDefinition?: any;
     onNodeModeChangeBatch?: (modifications: { nodeId: number, mode: number }[]) => void;
+    // Compatibility mode: widgets rendered from the LIVE official node over
+    // the bridge — receives extension-driven widget changes as results
+    compatAvailable?: boolean;
+    compatMode?: boolean;
+    bridgeNode?: BridgeNode | null;
+    onToggleCompatMode?: () => void;
+    onCompatWidgetChange?: (widgetName: string, value: any) => void;
+    onCompatTriggerWidget?: (widgetName: string) => void;
 }
 
 export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
@@ -150,7 +159,13 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     onDisconnectOutput,
     onEnterSubgraph,
     subgraphDefinition,
-    onNodeModeChangeBatch
+    onNodeModeChangeBatch,
+    compatAvailable = false,
+    compatMode = false,
+    bridgeNode = null,
+    onToggleCompatMode,
+    onCompatWidgetChange,
+    onCompatTriggerWidget
 }) => {
     const { t } = useTranslation();
     const nodeId = typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id;
@@ -495,6 +510,123 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
             </h3>
         </div>
     );
+
+    // ---- Compatibility mode: widgets from the LIVE official node ----
+    // The official graph runs extension behaviors (button callbacks, dynamic
+    // widget creation); we render whatever it currently reports.
+    const renderCompatWidget = (w: NonNullable<BridgeNode['widgets']>[number]) => {
+        const inputBase = 'w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500';
+        if (w.type === 'button') {
+            return (
+                <button
+                    onClick={() => onCompatTriggerWidget?.(w.name)}
+                    className="w-full rounded-lg border border-sky-600/50 bg-sky-600/20 px-3 py-2.5 text-sm font-medium text-sky-300 hover:bg-sky-600/30 transition-all active:scale-[0.99]"
+                >
+                    {w.name}
+                </button>
+            );
+        }
+        if (Array.isArray(w.options?.values)) {
+            return (
+                <select
+                    className={inputBase}
+                    value={String(w.value ?? '')}
+                    onChange={(e) => onCompatWidgetChange?.(w.name, e.target.value)}
+                >
+                    {w.options.values.map((v: any, i: number) => (
+                        <option key={`${String(v)}-${i}`} value={String(v)}>{String(v)}</option>
+                    ))}
+                </select>
+            );
+        }
+        if (w.type === 'number' || w.type === 'slider') {
+            return (
+                <input
+                    type="number"
+                    className={inputBase}
+                    value={typeof w.value === 'number' ? w.value : Number(w.value ?? 0)}
+                    min={w.options?.min}
+                    max={w.options?.max}
+                    step={w.options?.step ?? 1}
+                    onChange={(e) => onCompatWidgetChange?.(w.name, Number(e.target.value))}
+                />
+            );
+        }
+        if (w.type === 'toggle') {
+            return (
+                <button
+                    onClick={() => onCompatWidgetChange?.(w.name, !w.value)}
+                    className={`h-7 w-12 rounded-full transition-colors ${w.value ? 'bg-sky-500' : 'bg-slate-600'}`}
+                >
+                    <span className={`block h-5 w-5 rounded-full bg-white transition-transform ${w.value ? 'translate-x-6' : 'translate-x-1'}`} />
+                </button>
+            );
+        }
+        if (w.type === 'customtext' || w.options?.multiline) {
+            return (
+                <textarea
+                    className={`${inputBase} min-h-[96px] resize-y`}
+                    value={String(w.value ?? '')}
+                    onChange={(e) => onCompatWidgetChange?.(w.name, e.target.value)}
+                />
+            );
+        }
+        if (w.type === 'text' || w.type === 'string') {
+            return (
+                <input
+                    type="text"
+                    className={inputBase}
+                    value={String(w.value ?? '')}
+                    onChange={(e) => onCompatWidgetChange?.(w.name, e.target.value)}
+                />
+            );
+        }
+        return (
+            <div className="rounded-lg bg-slate-800/60 px-3 py-2 text-xs text-slate-400 break-all">
+                {w.type}: {JSON.stringify(w.value)}
+            </div>
+        );
+    };
+
+    const renderCompatSection = () => {
+        if (!bridgeNode) {
+            return (
+                <div className="mt-8 p-6 rounded-xl border border-sky-500/20 bg-sky-500/5 text-sm text-slate-400 flex items-center gap-3">
+                    <RefreshCw className="w-4 h-4 animate-spin text-sky-400" />
+                    Loading official node…
+                </div>
+            );
+        }
+        return (
+            <div className="space-y-4">
+                {renderSectionHeader(
+                    t('node.parameters'),
+                    bridgeNode.widgets.length,
+                    <Puzzle className="w-4 h-4 text-sky-400" />
+                )}
+                {bridgeNode.imgs.length > 0 && (
+                    <div className="flex gap-2 overflow-x-auto mb-4">
+                        {bridgeNode.imgs.map((src, i) => (
+                            <img key={i} src={src} alt="" className="h-24 w-24 rounded-lg object-cover border border-slate-700" />
+                        ))}
+                    </div>
+                )}
+                <div className="space-y-4">
+                    {bridgeNode.widgets.map((w) => (
+                        <div key={w.name}>
+                            {w.type !== 'button' && (
+                                <label className="mb-1.5 block text-xs font-medium text-slate-400">{w.name}</label>
+                            )}
+                            {renderCompatWidget(w)}
+                        </div>
+                    ))}
+                    {bridgeNode.widgets.length === 0 && (
+                        <div className="text-sm text-slate-400">No widgets on the official node.</div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     const renderParameterSection = (title: string, params: IProcessedParameter[], icon?: React.ReactNode, isWidgetValues: boolean = false) => {
         if (!params || params.length === 0) return null;
@@ -945,6 +1077,23 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                             ))}
                                         </div>
 
+                                        {onToggleCompatMode && (
+                                            <>
+                                                <div className="w-[1px] h-6 bg-white/10 mx-1" />
+                                                <button
+                                                    onClick={onToggleCompatMode}
+                                                    disabled={!compatAvailable}
+                                                    className={`w-12 h-12 rounded-full shadow-xl border flex items-center justify-center transition-all active:scale-95 disabled:opacity-30 ${compatMode
+                                                        ? 'bg-sky-600/30 border-sky-500/50 text-sky-300'
+                                                        : 'bg-[#374151] border-white/10 text-white/80 hover:text-white'
+                                                        }`}
+                                                    title="Compatibility mode (official widgets)"
+                                                >
+                                                    <Puzzle className="w-5 h-5" />
+                                                </button>
+                                            </>
+                                        )}
+
                                         <div className="w-[1px] h-6 bg-white/10 mx-1" />
 
                                         <button
@@ -1170,7 +1319,9 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 {/* Main Stack */}
                                 <div className="space-y-8">
                                     {/* Widgets / Controls */}
-                                    {widgets.length > 0 ? (
+                                    {compatMode ? (
+                                        renderCompatSection()
+                                    ) : widgets.length > 0 ? (
                                         renderParameterSection(t('node.parameters'), widgets, <SlidersHorizontal className="w-4 h-4" />, true)
                                     ) : (
                                         selectedNode.widgets_values && (

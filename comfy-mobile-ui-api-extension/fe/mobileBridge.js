@@ -210,6 +210,89 @@ async function handleGetPrompt(requestId) {
   }
 }
 
+// ---- Detail-modal compatibility mode primitives ----
+// The shell renders ITS OWN modal UI from live official node data: it reads
+// the node (get-node), writes values (set-widget-value), invokes button
+// widgets so extension logic runs officially (trigger-widget), and watches
+// the node so dynamically added/changed widgets stream back (node-changed).
+
+function handleGetNode(requestId, { nodeId } = {}) {
+  try {
+    const node = app.graph?.getNodeById?.(nodeId);
+    if (!node) {
+      respond(requestId, false, undefined, `node ${nodeId} not found`);
+      return;
+    }
+    respond(requestId, true, serializeNode(node));
+  } catch (e) {
+    respond(requestId, false, undefined, String(e?.message ?? e));
+  }
+}
+
+function triggerWidget({ nodeId, widgetName } = {}) {
+  const node = app.graph?.getNodeById?.(nodeId);
+  const widget = node?.widgets?.find((w) => w.name === widgetName);
+  if (!node || !widget) {
+    console.warn("[MobileBridge] trigger-widget: not found", nodeId, widgetName);
+    return;
+  }
+  try {
+    widget.callback?.(widget.value, app.canvas, node, undefined, undefined);
+    node.setDirtyCanvas?.(true, true);
+  } catch (e) {
+    console.warn("[MobileBridge] trigger-widget failed", e);
+  }
+}
+
+let watchedNodeId = null;
+let watchedFp = null;
+
+function nodeFingerprint(node) {
+  let fp = 0;
+  const mix = (x) => {
+    fp = ((fp * 31) + (x | 0)) | 0;
+  };
+  const mixStr = (s) => {
+    for (let i = 0; i < s.length; i++) mix(s.charCodeAt(i));
+  };
+  mix((node.widgets ?? []).length);
+  mix(node.mode ?? 0);
+  mixStr(String(node.title ?? ""));
+  for (const w of node.widgets ?? []) {
+    mixStr(String(w.name ?? ""));
+    mixStr(String(w.type ?? ""));
+    const v = w.value;
+    mixStr(typeof v === "string" ? v : v == null ? "" : String(JSON.stringify(v) ?? ""));
+  }
+  mix((node.imgs ?? []).length);
+  return fp;
+}
+
+function pollWatchedNode() {
+  if (watchedNodeId == null) return;
+  const node = app.graph?.getNodeById?.(watchedNodeId);
+  if (!node) {
+    watchedNodeId = null;
+    watchedFp = null;
+    post("node-changed", null);
+    return;
+  }
+  let fp = null;
+  try {
+    fp = nodeFingerprint(node);
+  } catch {
+    return;
+  }
+  if (watchedFp === null) {
+    watchedFp = fp;
+    return;
+  }
+  if (fp !== watchedFp) {
+    watchedFp = fp;
+    post("node-changed", serializeNode(node));
+  }
+}
+
 // Structural graph changes made directly on the official canvas (dragging
 // links, moving nodes, ...) — debounced so bursts collapse into one event.
 let mutatedTimer = null;
@@ -325,61 +408,6 @@ const EMBED_CSS = `
 .graph-canvas-panel .p-buttongroup {
   display: none !important;
 }
-/* ---- Focused-node modal: the official node DOM itself, centered ---- */
-html.cmu-node-focus .lg-node[data-node-id]:not(.cmu-focused) {
-  opacity: 0.12 !important;
-  pointer-events: none !important;
-}
-.lg-node.cmu-focused {
-  transform: translate(var(--cmu-fx), var(--cmu-fy)) scale(var(--cmu-fz)) !important;
-  transform-origin: 0 0 !important;
-  z-index: 10000 !important;
-  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.65) !important;
-  border-radius: 14px !important;
-  content-visibility: visible !important;
-}
-.lg-node.cmu-focused [data-testid^="node-body"] {
-  max-height: var(--cmu-max-h, 60vh);
-  overflow-y: auto !important;
-  overscroll-behavior: contain;
-}
-/* node-attached floating toolbars must not hover over (or close) the card */
-html.cmu-node-focus .selection-toolbox,
-html.cmu-node-focus [class*="selection-toolbox"],
-html.cmu-node-focus [data-testid="selection-toolbox"] {
-  display: none !important;
-}
-/* teleported widget popups (combo/asset pickers) must stack above the card */
-html.cmu-node-focus .p-connected-overlay,
-html.cmu-node-focus .p-select-overlay,
-html.cmu-node-focus .p-multiselect-overlay,
-html.cmu-node-focus .p-autocomplete-overlay,
-html.cmu-node-focus .p-popover,
-html.cmu-node-focus .p-datepicker-panel,
-html.cmu-node-focus .p-overlay {
-  z-index: 20000 !important;
-}
-/* Overlay mode (shell-driven focus): the iframe becomes a transparent
-   modal layer — only the focused card is visible, the shell's own canvas
-   shows through behind it. */
-html.cmu-overlay-mode,
-html.cmu-overlay-mode body,
-html.cmu-overlay-mode #vue-app,
-html.cmu-overlay-mode main,
-html.cmu-overlay-mode .comfyui-body,
-html.cmu-overlay-mode #graph-canvas-container,
-html.cmu-overlay-mode .p-splitter,
-html.cmu-overlay-mode .p-splitterpanel,
-html.cmu-overlay-mode .graph-canvas-panel {
-  background: transparent !important;
-}
-html.cmu-overlay-mode #graph-canvas-container canvas {
-  visibility: hidden !important;
-}
-html.cmu-overlay-mode .lg-node[data-node-id]:not(.cmu-focused) {
-  opacity: 0 !important;
-  pointer-events: none !important;
-}
 /* floating top-row cards added by other extensions (e.g. devtools) */
 .pointer-events-auto.h-12.shadow-interface {
   display: none !important;
@@ -417,6 +445,20 @@ function handleShellMessage(event) {
     case "get-prompt":
       handleGetPrompt(msg.requestId);
       break;
+    case "get-node":
+      handleGetNode(msg.requestId, msg.payload ?? {});
+      break;
+    case "trigger-widget":
+      triggerWidget(msg.payload ?? {});
+      break;
+    case "watch-node":
+      watchedNodeId = msg.payload?.nodeId ?? null;
+      watchedFp = null;
+      break;
+    case "unwatch-node":
+      watchedNodeId = null;
+      watchedFp = null;
+      break;
     case "set-widget-value":
       applyWidgetValue(msg.payload ?? {});
       break;
@@ -425,14 +467,6 @@ function handleShellMessage(event) {
       break;
     case "select-node":
       selectNodeById(msg.payload ?? {});
-      break;
-    case "focus-node": {
-      const ok = nodeFocusApi?.focusById(msg.payload?.nodeId, msg.payload?.overlay !== false);
-      if (!ok) console.warn("[MobileBridge] focus-node: node not found", msg.payload?.nodeId);
-      break;
-    }
-    case "unfocus-node":
-      nodeFocusApi?.unfocus();
       break;
     case "queue-prompt":
       queuePrompt();
@@ -459,212 +493,9 @@ function handleShellMessage(event) {
 // compute the pane-local translate/scale that lands the node at the screen
 // position we want, and re-derive it every frame while focused so background
 // pan/zoom cannot drift the card.
-let nodeFocusApi = null;
-
-function setupNodeFocusMode() {
-  let focused = null;
-  let rafId = null;
-  let downX = 0;
-  let downY = 0;
-  let downTime = 0;
-  let downNode = null;
-
-  const paneTransform = () => {
-    const el = document.querySelector('[data-testid="transform-pane"]');
-    const t = el?.style?.transform ?? "";
-    const scale = /scale3d\(([\d.eE+-]+)/.exec(t);
-    const trans = /translate3d\((-?[\d.eE+-]+)px,\s*(-?[\d.eE+-]+)px/.exec(t);
-    return {
-      z: scale ? Number(scale[1]) : 1,
-      tx: trans ? Number(trans[1]) : 0,
-      ty: trans ? Number(trans[2]) : 0,
-    };
-  };
-
-  const updateFocusTransform = () => {
-    if (!focused) return;
-    try {
-      updateFocusTransformInner();
-    } catch (e) {
-      // Never leave a ghost overlay (dimmed screen with no card): any
-      // failure closes cleanly, which also tells the shell to hide.
-      console.warn("[MobileBridge] focus transform failed — closing", e);
-      unfocusNode();
-      return;
-    }
-    rafId = requestAnimationFrame(updateFocusTransform);
-  };
-
-  const updateFocusTransformInner = () => {
-    // Vue re-renders can replace the node element mid-focus (e.g. after a
-    // drag attempt): re-attach to the fresh element, or close cleanly so
-    // the shell never gets stuck showing an empty overlay.
-    if (!focused.isConnected) {
-      const nodeId = focused.getAttribute("data-node-id");
-      const fresh = nodeId
-        ? document.querySelector(`.lg-node[data-node-id="${nodeId}"]`)
-        : null;
-      if (fresh) {
-        fresh.classList.add("cmu-focused");
-        focused = fresh;
-      } else {
-        unfocusNode();
-        return;
-      }
-    }
-    // Vue's class-binding patches strip externally added classes on
-    // re-render (observed after drag attempts) — re-assert every frame.
-    if (!focused.classList.contains("cmu-focused")) {
-      focused.classList.add("cmu-focused");
-    }
-    const { z, tx, ty } = paneTransform();
-    const width =
-      parseFloat(getComputedStyle(focused).getPropertyValue("--node-width")) ||
-      focused.offsetWidth ||
-      300;
-    // Consistent card width regardless of the node's intrinsic width, and
-    // vertically near-centered (slightly above true center reads best).
-    const cardW = Math.min(window.innerWidth * 0.92, 440);
-    const fs = Math.min(cardW / width, 1.6);
-    const nodeH = focused.offsetHeight || 400;
-    const targetH = Math.min(nodeH * fs, window.innerHeight * 0.72);
-    const screenX = (window.innerWidth - width * fs) / 2;
-    const screenY = Math.max(16, (window.innerHeight - targetH) * 0.42);
-    // pane transform is scale(z) translate(tx,ty): screen = z * (p + t)
-    focused.style.setProperty("--cmu-fx", `${screenX / z - tx}px`);
-    focused.style.setProperty("--cmu-fy", `${screenY / z - ty}px`);
-    focused.style.setProperty("--cmu-fz", `${fs / z}`);
-    focused.style.setProperty("--cmu-max-h", `${(window.innerHeight * 0.72) / fs}px`);
-  };
-
-  const focusNode = (el) => {
-    focused = el;
-    el.classList.add("cmu-focused");
-    document.documentElement.classList.add("cmu-node-focus");
-    updateFocusTransform();
-  };
-
-  const unfocusNode = () => {
-    if (!focused) return;
-    const nodeId = focused.getAttribute("data-node-id");
-    if (rafId) cancelAnimationFrame(rafId);
-    rafId = null;
-    focused.classList.remove("cmu-focused");
-    for (const prop of ["--cmu-fx", "--cmu-fy", "--cmu-fz", "--cmu-max-h"]) {
-      focused.style.removeProperty(prop);
-    }
-    document.documentElement.classList.remove("cmu-node-focus");
-    const wasOverlay = document.documentElement.classList.contains("cmu-overlay-mode");
-    document.documentElement.classList.remove("cmu-overlay-mode");
-    focused = null;
-    // Tell the shell so it can hide the iframe layer and resync the node
-    post("focus-dismissed", { nodeId, overlay: wasOverlay });
-  };
-
-  const isInteractive = (t) =>
-    !!t?.closest?.(
-      'input, textarea, select, button, a, [contenteditable], [role="combobox"], [role="button"], [role="listbox"], [role="option"], [role="slider"], [data-testid="node-widgets"]'
-    );
-
-  document.addEventListener(
-    "pointerdown",
-    (event) => {
-      downNode = event.target?.closest?.(".lg-node[data-node-id]") ?? null;
-      downX = event.clientX;
-      downY = event.clientY;
-      downTime = performance.now();
-      // The focused card is a modal: dragging it (or starting link drags
-      // from its slots) makes no sense and detaches the element via Vue
-      // re-renders. Swallow non-widget pointerdowns inside the card.
-      if (
-        focused &&
-        event.target instanceof Element &&
-        focused.contains(event.target) &&
-        !isInteractive(event.target)
-      ) {
-        event.stopPropagation();
-        // Vue's drag/re-render pipeline strips our pin in ways that cannot
-        // be reliably fought — if this turns into a drag, close CLEANLY
-        // (clears the dim/overlay and notifies the shell) instead of ever
-        // leaving a ghost background.
-        const sx = event.clientX;
-        const sy = event.clientY;
-        const onMove = (ev) => {
-          if (Math.hypot(ev.clientX - sx, ev.clientY - sy) > 12) {
-            cleanup();
-            unfocusNode();
-          }
-        };
-        const onUp = () => cleanup();
-        const cleanup = () => {
-          document.removeEventListener("pointermove", onMove, true);
-          document.removeEventListener("pointerup", onUp, true);
-        };
-        document.addEventListener("pointermove", onMove, true);
-        document.addEventListener("pointerup", onUp, true);
-      }
-    },
-    true
-  );
-
-  document.addEventListener(
-    "click",
-    (event) => {
-      if (focused) {
-        const target = event.target;
-        // Vue re-renders can detach the tapped element between pointerdown
-        // and click — a detached target is NOT an outside tap.
-        if (!(target instanceof Element) || !target.isConnected) return;
-        // clicks inside the focused card pass through to the real widgets
-        if (focused.contains(target)) return;
-        // Teleported layers (combo/asset pickers, dialogs, menus) are
-        // portaled to <body>, OUTSIDE #vue-app — interacting with them must
-        // never dismiss the card. A tap landing on bare body/html (e.g. the
-        // hidden-canvas area in overlay mode) IS an outside tap though.
-        const bareBackground = target === document.body || target === document.documentElement;
-        if (!bareBackground && !target.closest("#vue-app")) return;
-        // coordinate fallback: DOM churn aside, a tap landing on the card's
-        // rect is never an outside tap
-        const rect = focused.getBoundingClientRect();
-        if (
-          event.clientX >= rect.left &&
-          event.clientX <= rect.right &&
-          event.clientY >= rect.top &&
-          event.clientY <= rect.bottom
-        ) {
-          return;
-        }
-        event.preventDefault();
-        event.stopPropagation();
-        unfocusNode();
-        return;
-      }
-      const node = event.target?.closest?.(".lg-node[data-node-id]");
-      if (!node || node !== downNode) return;
-      const moved = Math.hypot(event.clientX - downX, event.clientY - downY);
-      if (moved > 8 || performance.now() - downTime > 600) return; // drag, not tap
-      event.preventDefault();
-      event.stopPropagation();
-      focusNode(node);
-    },
-    true
-  );
-
-  window.addEventListener("keydown", (event) => {
-    if (event.key === "Escape") unfocusNode();
-  });
-
-  nodeFocusApi = {
-    focusById(nodeId, overlay) {
-      const el = document.querySelector(`.lg-node[data-node-id="${nodeId}"]`);
-      if (!el) return false;
-      if (overlay) document.documentElement.classList.add("cmu-overlay-mode");
-      focusNode(el);
-      return true;
-    },
-    unfocus: unfocusNode,
-  };
-}
+// (Focused-node overlay feature removed — replaced by the detail-modal
+//  compatibility mode, which reads node data over the bridge instead of
+//  showing the official DOM.)
 
 
 
@@ -673,41 +504,58 @@ if (isEmbedded()) {
     name: "ComfyMobile.CanvasBridge",
     setup() {
       injectCss();
-      setupNodeFocusMode();
       window.addEventListener("message", handleShellMessage);
 
-      // Primary signal: litegraph selection callback (chain any existing one)
-      const canvas = app.canvas;
-      if (canvas) {
-        const original = canvas.onSelectionChange;
-        canvas.onSelectionChange = function (...args) {
-          original?.apply(this, args);
-          queueMicrotask(reportSelection);
-        };
-      }
-
-      // Structural change signal for the shell's stale-state handling
-      const graph = app.graph;
-      if (graph) {
-        const originalAfterChange = graph.onAfterChange;
-        graph.onAfterChange = function (...args) {
-          originalAfterChange?.apply(this, args);
-          scheduleGraphMutated();
-        };
-        const originalConnectionChange = graph.onConnectionChange;
-        graph.onConnectionChange = function (...args) {
-          originalConnectionChange?.apply(this, args);
-          scheduleGraphMutated();
-        };
-      }
+      // Register the polls FIRST — they are the load-bearing signals and
+      // must survive any failure in the optional hook chaining below.
 
       // Fallback: light polling in case the callback is missed by a
       // frontend version. Only fires when the selected node id changes.
       setInterval(() => {
-        const node = selectedNode();
-        const id = node ? node.id : null;
-        if (id !== lastSentSelectionId) reportSelection();
+        try {
+          const node = selectedNode();
+          const id = node ? node.id : null;
+          if (id !== lastSentSelectionId) reportSelection();
+        } catch {}
       }, 600);
+
+      // Compat-mode node watch: streams widget/value/structure changes of
+      // the node the shell's detail modal is showing (fast — powers live
+      // "extension added a widget" updates).
+      setInterval(pollWatchedNode, 300);
+
+      // Primary signal: litegraph selection callback (chain any existing one)
+      try {
+        const canvas = app.canvas;
+        if (canvas) {
+          const original = canvas.onSelectionChange;
+          canvas.onSelectionChange = function (...args) {
+            original?.apply(this, args);
+            queueMicrotask(reportSelection);
+          };
+        }
+      } catch (e) {
+        console.warn("[MobileBridge] selection hook failed", e);
+      }
+
+      // Structural change signal for the shell's stale-state handling
+      try {
+        const graph = app.graph;
+        if (graph) {
+          const originalAfterChange = graph.onAfterChange;
+          graph.onAfterChange = function (...args) {
+            originalAfterChange?.apply(this, args);
+            scheduleGraphMutated();
+          };
+          const originalConnectionChange = graph.onConnectionChange;
+          graph.onConnectionChange = function (...args) {
+            originalConnectionChange?.apply(this, args);
+            scheduleGraphMutated();
+          };
+        }
+      } catch (e) {
+        console.warn("[MobileBridge] graph hooks failed", e);
+      }
 
       // Change catch-all: litegraph fires no hook for node moves (and
       // graph.change() does not call onAfterChange), so poll a cheap

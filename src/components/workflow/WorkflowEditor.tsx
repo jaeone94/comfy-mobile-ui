@@ -44,6 +44,7 @@ import CanvasHost from '@/components/canvas-v2/CanvasHost';
 import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
 import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
 import { Save } from 'lucide-react';
+import type { BridgeNode } from '@/shared/types/bridge';
 import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
@@ -651,42 +652,87 @@ const WorkflowEditor: React.FC = () => {
     setCanvasDirty(false);
   }, [id]);
 
-  // Hybrid detail view (legacy mode): the hidden official iframe becomes a
-  // transparent modal layer showing the real official node DOM. On dismiss,
-  // pull that node's values back into the legacy model so canvas previews
-  // stay fresh.
-  const [officialModalNodeId, setOfficialModalNodeId] = useState<number | null>(null);
-  const handleFocusDismissed = useCallback(
-    async (payload: { nodeId: string | number | null; overlay?: boolean } | null) => {
-      setOfficialModalNodeId(null);
-      const nodeId = Number(payload?.nodeId);
-      if (!nodeId) return;
-      const bridge = getActiveCanvasBridge();
-      if (!bridge?.isReady) return;
-      try {
-        const officialJson = (await bridge.getWorkflow()) as IComfyJson;
-        const officialNode: any = officialJson?.nodes?.find((n: any) => Number(n.id) === nodeId);
-        const legacyNode: any = comfyGraphRef.current?.getNodeById?.(nodeId);
-        if (!officialNode || !legacyNode) return;
-        if (Array.isArray(officialNode.widgets_values)) {
-          legacyNode.widgets_values = officialNode.widgets_values;
-          if (Array.isArray(legacyNode.widgets)) {
-            legacyNode.widgets.forEach((w: any, i: number) => {
-              if (i < officialNode.widgets_values.length) {
-                w.value = officialNode.widgets_values[i];
-              }
-            });
-          }
+  // Detail-modal compatibility mode: the modal keeps OUR UI but renders its
+  // widget list from the live official node (hidden iframe engine). Edits go
+  // back over the bridge; extension-driven widget changes (e.g. "add widget"
+  // buttons) stream in via node-changed and re-render — we receive results,
+  // never re-implement behaviors.
+  const [compatMode, setCompatMode] = useState(false);
+  const [compatNode, setCompatNode] = useState<BridgeNode | null>(null);
+
+  const syncLegacyNodeFromBridge = useCallback(
+    (bridgeNode: BridgeNode | null) => {
+      if (!bridgeNode) return;
+      const legacyNode: any = comfyGraphRef.current?.getNodeById?.(Number(bridgeNode.id));
+      if (!legacyNode) return;
+      if (Array.isArray(legacyNode.widgets)) {
+        for (const w of legacyNode.widgets) {
+          const src = bridgeNode.widgets.find((x) => x.name === w.name);
+          if (src) w.value = src.value;
         }
-        if (typeof officialNode.mode === 'number') legacyNode.mode = officialNode.mode;
-        clearNodeImageCache(nodeId);
-        canvasRef.current?.dispatchEvent(new Event('imageLoaded'));
-        forceRender();
-      } catch (e) {
-        console.warn('[CanvasV2] node resync after modal failed:', e);
+        if (Array.isArray(legacyNode.widgets_values)) {
+          legacyNode.widgets_values = legacyNode.widgets.map((w: any) => w.value);
+        }
       }
+      if (typeof bridgeNode.mode === 'number') legacyNode.mode = bridgeNode.mode;
+      clearNodeImageCache(Number(bridgeNode.id));
+      canvasRef.current?.dispatchEvent(new Event('imageLoaded'));
+      forceRender();
     },
     [forceRender]
+  );
+
+  const handleBridgeNodeChanged = useCallback(
+    (bridgeNode: BridgeNode | null) => {
+      setCompatNode(bridgeNode);
+      syncLegacyNodeFromBridge(bridgeNode);
+    },
+    [syncLegacyNodeFromBridge]
+  );
+
+  // Fetch + watch the selected node while compat mode is on
+  useEffect(() => {
+    const bridge = getActiveCanvasBridge();
+    const nodeId = selectedNode != null ? Number(selectedNode.id) : null;
+    if (!compatMode || nodeId == null || Number.isNaN(nodeId) || !bridge?.isReady) {
+      setCompatNode(null);
+      return;
+    }
+    let cancelled = false;
+    bridge
+      .getNode(nodeId)
+      .then((node) => {
+        if (!cancelled) setCompatNode(node);
+      })
+      .catch((e) => console.warn('[CanvasV2] get-node failed:', e));
+    bridge.watchNode(nodeId);
+    return () => {
+      cancelled = true;
+      bridge.unwatchNode();
+    };
+  }, [compatMode, selectedNode]);
+
+  const handleCompatWidgetChange = useCallback(
+    (widgetName: string, value: any) => {
+      const bridge = getActiveCanvasBridge();
+      if (!bridge?.isReady || selectedNode == null) return;
+      bridge.setWidgetValue(Number(selectedNode.id), widgetName, value);
+      setCompatNode((prev) =>
+        prev
+          ? { ...prev, widgets: prev.widgets.map((w) => (w.name === widgetName ? { ...w, value } : w)) }
+          : prev
+      );
+    },
+    [selectedNode]
+  );
+
+  const handleCompatTriggerWidget = useCallback(
+    (widgetName: string) => {
+      const bridge = getActiveCanvasBridge();
+      if (!bridge?.isReady || selectedNode == null) return;
+      bridge.triggerWidget(Number(selectedNode.id), widgetName);
+    },
+    [selectedNode]
   );
 
   // Canvas interaction hook
@@ -700,11 +746,6 @@ const WorkflowEditor: React.FC = () => {
       if (connectionMode.connectionMode.isActive && node) {
         // Handle node selection for connection mode
         connectionMode.handleNodeSelection(node as any);
-      } else if (node && !officialCanvasEnabled && getActiveCanvasBridge()?.isReady) {
-        // Hybrid detail view: open the official node DOM overlay instead of
-        // the legacy NodeDetailModal (which stays as the no-bridge fallback)
-        setOfficialModalNodeId(Number(node.id));
-        getActiveCanvasBridge()?.focusNode(Number(node.id));
       } else {
         // Normal node selection for inspector
         setSelectedNode(node);
@@ -3550,6 +3591,7 @@ const WorkflowEditor: React.FC = () => {
           workflowJson={workflow?.workflow_json ?? null}
           workflowKey={id ?? null}
           onGraphMutated={handleBridgeGraphMutated}
+          onNodeChanged={handleBridgeNodeChanged}
         />
       ) : (
         <WorkflowCanvas
@@ -3568,20 +3610,15 @@ const WorkflowEditor: React.FC = () => {
         />
       )}
 
-      {/* Hybrid detail view: hidden official engine + modal overlay (legacy mode) */}
+      {/* Hidden official engine (legacy mode): powers the detail modal's
+          compatibility mode — pure data, never shown */}
       {!officialCanvasEnabled && (
-        <div
-          className={
-            officialModalNodeId != null
-              ? 'fixed inset-0 z-[70]'
-              : 'pointer-events-none invisible fixed inset-0 -z-10'
-          }
-        >
+        <div className="pointer-events-none invisible fixed inset-0 -z-10">
           <CanvasHost
             workflowJson={workflow?.workflow_json ?? null}
             workflowKey={id ?? null}
             onGraphMutated={handleBridgeGraphMutated}
-            onFocusDismissed={handleFocusDismissed}
+            onNodeChanged={handleBridgeNodeChanged}
           />
         </div>
       )}
@@ -3935,6 +3972,12 @@ const WorkflowEditor: React.FC = () => {
           onFileUploadDirect={fileOperations.handleFileUploadDirect}
           onNodeModeChange={handleNodeModeChange}
           setWidgetValue={widgetEditor.setWidgetValue}
+          compatAvailable={!!getActiveCanvasBridge()?.isReady}
+          compatMode={compatMode}
+          bridgeNode={compatNode}
+          onToggleCompatMode={() => setCompatMode((v) => !v)}
+          onCompatWidgetChange={handleCompatWidgetChange}
+          onCompatTriggerWidget={handleCompatTriggerWidget}
           onNavigateToNode={(nodeId: number) => {
             // Use shared navigation function from useCanvasInteraction
             canvasInteraction.handleNavigateToNode(nodeId);

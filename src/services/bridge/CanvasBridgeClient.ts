@@ -14,7 +14,7 @@ interface BridgeEventHandlers {
   graphMutated: () => void;
   selectionChanged: (node: BridgeNode | null) => void;
   queueResult: (result: BridgeQueueResult) => void;
-  focusDismissed: (payload: { nodeId: string | number | null; overlay?: boolean }) => void;
+  nodeChanged: (node: BridgeNode | null) => void;
 }
 
 type EventName = keyof BridgeEventHandlers;
@@ -35,7 +35,7 @@ export class CanvasBridgeClient {
     graphMutated: new Set(),
     selectionChanged: new Set(),
     queueResult: new Set(),
-    focusDismissed: new Set(),
+    nodeChanged: new Set(),
   };
   private pending = new Map<
     string,
@@ -109,8 +109,8 @@ export class CanvasBridgeClient {
       case 'queue-result':
         this.emit('queueResult', msg.payload);
         break;
-      case 'focus-dismissed':
-        this.emit('focusDismissed', msg.payload);
+      case 'node-changed':
+        this.emit('nodeChanged', msg.payload);
         break;
       case 'response': {
         const entry = this.pending.get(msg.requestId);
@@ -134,6 +134,10 @@ export class CanvasBridgeClient {
   }
 
   private request<T>(type: string): Promise<T> {
+    return this.requestWithPayload<T>(type, undefined);
+  }
+
+  private requestWithPayload<T>(type: string, payload: unknown): Promise<T> {
     const requestId = `req-${++this.requestSeq}-${Date.now()}`;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
@@ -141,7 +145,7 @@ export class CanvasBridgeClient {
         reject(new Error(`Bridge request timed out: ${type}`));
       }, REQUEST_TIMEOUT_MS);
       this.pending.set(requestId, { resolve: resolve as (data: unknown) => void, reject, timer });
-      this.post({ type, requestId });
+      this.post(payload === undefined ? { type, requestId } : { type, requestId, payload });
     });
   }
 
@@ -171,13 +175,23 @@ export class CanvasBridgeClient {
     this.post({ type: 'fit-view' });
   }
 
-  /** Open the official node DOM as a centered overlay card (hybrid modal). */
-  focusNode(nodeId: number | string, overlay = true) {
-    this.post({ type: 'focus-node', payload: { nodeId, overlay } });
+  /** Fresh serialization of a single node (detail-modal compat mode). */
+  getNode(nodeId: number | string): Promise<BridgeNode> {
+    return this.requestWithPayload<BridgeNode>('get-node', { nodeId });
   }
 
-  unfocusNode() {
-    this.post({ type: 'unfocus-node' });
+  /** Invoke a button widget's callback so extension logic runs officially. */
+  triggerWidget(nodeId: number | string, widgetName: string) {
+    this.post({ type: 'trigger-widget', payload: { nodeId, widgetName } });
+  }
+
+  /** Stream node-changed events for the node the detail modal is showing. */
+  watchNode(nodeId: number | string) {
+    this.post({ type: 'watch-node', payload: { nodeId } });
+  }
+
+  unwatchNode() {
+    this.post({ type: 'unwatch-node' });
   }
 
   /** Serialize the official graph (workflow-format JSON). */
