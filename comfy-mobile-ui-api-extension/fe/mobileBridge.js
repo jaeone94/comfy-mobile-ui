@@ -416,6 +416,15 @@ html.cmu-lod2 .lg-node:not(${LIVE_NODE})::before,
 html.cmu-lod2 .lg-node:not(${LIVE_NODE})::after {
   content: none !important;
 }
+/* Keep the node layer permanently promoted while simplified. The frontend
+   toggles will-change off 256ms after each gesture (useTransformSettling),
+   so repeated small pinches demote+re-promote the layer — every cycle
+   forces a full re-raster of the visible tiles. Pinning will-change lets
+   the compositor stretch the cached raster during the gesture instead. */
+html.cmu-lod1 [data-testid="transform-pane"],
+html.cmu-lod2 [data-testid="transform-pane"] {
+  will-change: transform !important;
+}
 `;
 
 let liteEnabled = false;
