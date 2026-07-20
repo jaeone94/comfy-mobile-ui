@@ -375,6 +375,22 @@ html[data-cmu-zoom="far"] .lg-node.cmu-focused {
 html[data-cmu-zoom="far"] .lg-node.cmu-focused [data-testid="node-widgets"] {
   visibility: visible !important;
 }
+/* Overlay mode (shell-driven focus): the iframe becomes a transparent
+   modal layer — only the focused card is visible, the shell's own canvas
+   shows through behind it. */
+html.cmu-overlay-mode,
+html.cmu-overlay-mode body,
+html.cmu-overlay-mode #vue-app,
+html.cmu-overlay-mode .comfyui-body {
+  background: transparent !important;
+}
+html.cmu-overlay-mode #graph-canvas-container canvas {
+  visibility: hidden !important;
+}
+html.cmu-overlay-mode .lg-node[data-node-id]:not(.cmu-focused) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
 /* floating top-row cards added by other extensions (e.g. devtools) */
 .pointer-events-auto.h-12.shadow-interface {
   display: none !important;
@@ -420,6 +436,14 @@ function handleShellMessage(event) {
       break;
     case "select-node":
       selectNodeById(msg.payload ?? {});
+      break;
+    case "focus-node": {
+      const ok = nodeFocusApi?.focusById(msg.payload?.nodeId, msg.payload?.overlay !== false);
+      if (!ok) console.warn("[MobileBridge] focus-node: node not found", msg.payload?.nodeId);
+      break;
+    }
+    case "unfocus-node":
+      nodeFocusApi?.unfocus();
       break;
     case "queue-prompt":
       queuePrompt();
@@ -473,6 +497,8 @@ async function forceVueNodes() {
 // compute the pane-local translate/scale that lands the node at the screen
 // position we want, and re-derive it every frame while focused so background
 // pan/zoom cannot drift the card.
+let nodeFocusApi = null;
+
 function setupNodeFocusMode() {
   let focused = null;
   let rafId = null;
@@ -520,6 +546,7 @@ function setupNodeFocusMode() {
 
   const unfocusNode = () => {
     if (!focused) return;
+    const nodeId = focused.getAttribute("data-node-id");
     if (rafId) cancelAnimationFrame(rafId);
     rafId = null;
     focused.classList.remove("cmu-focused");
@@ -527,7 +554,11 @@ function setupNodeFocusMode() {
       focused.style.removeProperty(prop);
     }
     document.documentElement.classList.remove("cmu-node-focus");
+    const wasOverlay = document.documentElement.classList.contains("cmu-overlay-mode");
+    document.documentElement.classList.remove("cmu-overlay-mode");
     focused = null;
+    // Tell the shell so it can hide the iframe layer and resync the node
+    post("focus-dismissed", { nodeId, overlay: wasOverlay });
   };
 
   document.addEventListener(
@@ -567,6 +598,17 @@ function setupNodeFocusMode() {
   window.addEventListener("keydown", (event) => {
     if (event.key === "Escape") unfocusNode();
   });
+
+  nodeFocusApi = {
+    focusById(nodeId, overlay) {
+      const el = document.querySelector(`.lg-node[data-node-id="${nodeId}"]`);
+      if (!el) return false;
+      if (overlay) document.documentElement.classList.add("cmu-overlay-mode");
+      focusNode(el);
+      return true;
+    },
+    unfocus: unfocusNode,
+  };
 }
 
 function applyPerformanceMode() {
