@@ -421,9 +421,19 @@ html.cmu-lod2 .lg-node:not(${LIVE_NODE})::after {
    so repeated small pinches demote+re-promote the layer — every cycle
    forces a full re-raster of the visible tiles. Pinning will-change lets
    the compositor stretch the cached raster during the gesture instead. */
-html.cmu-lod1 [data-testid="transform-pane"],
-html.cmu-lod2 [data-testid="transform-pane"] {
+html.cmu-lod1 [data-testid="transform-pane"] {
   will-change: transform !important;
+}
+/* LOD2 goes full legacy-pipeline: the DOM pane is excluded from painting
+   entirely (geometry is preserved, so DOM-measured link endpoints keep
+   working) and the bridge draws node proxies straight onto the litegraph
+   canvas instead — zooming re-rasters nothing. The selected node is
+   re-shown and stays a fully editable official node. */
+html.cmu-lod2 [data-testid="transform-pane"] {
+  visibility: hidden !important;
+}
+html.cmu-lod2 .lg-node${LIVE_NODE} {
+  visibility: visible !important;
 }
 `;
 
@@ -436,7 +446,57 @@ function applyLod(tier) {
   const cls = document.documentElement.classList;
   cls.toggle("cmu-lod1", tier === 1);
   cls.toggle("cmu-lod2", tier === 2);
+  // Entering LOD2 must paint the canvas proxies; leaving it must erase them
+  app.canvas?.setDirty?.(true, true);
   console.log("[MobileBridge] lite nodes LOD ->", tier);
+}
+
+// LOD2 node proxies, drawn immediate-mode on the litegraph canvas (graph
+// space, over links) — the same bounded-bitmap pipeline the legacy mobile
+// canvas uses, so zooming costs a trivial redraw instead of a DOM re-raster.
+const LITE_TITLE_HEIGHT = 30;
+function drawLiteRects(ctx) {
+  if (liteLod !== 2) return;
+  const nodes = app.graph?._nodes;
+  if (!nodes) return;
+  const selected = app.canvas?.selected_nodes ?? {};
+  ctx.save();
+  for (const n of nodes) {
+    if (selected[n.id]) continue; // rendered live by the DOM instead
+    let x, y, w, h;
+    try {
+      const b = typeof n.getBounding === "function" ? n.getBounding() : null;
+      if (b) {
+        x = b[0]; y = b[1]; w = b[2]; h = b[3];
+      } else {
+        x = n.pos[0];
+        y = n.pos[1] - LITE_TITLE_HEIGHT;
+        w = n.size[0];
+        h = n.size[1] + LITE_TITLE_HEIGHT;
+      }
+    } catch {
+      continue;
+    }
+    let color = n.bgcolor || n.color || "#374151";
+    let alpha = 1;
+    if (n.mode === 2) {
+      color = "#3b82f6"; // muted — legacy blue
+      alpha = 0.35;
+    } else if (n.mode === 4) {
+      color = "#9333ea"; // bypassed — legacy purple
+      alpha = 0.35;
+    }
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, w, h, 4);
+    else ctx.rect(x, y, w, h);
+    ctx.fill();
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.restore();
 }
 
 // Hysteresis: enter thresholds are stricter than exit thresholds so pinching
@@ -619,6 +679,25 @@ if (isEmbedded()) {
         }
       } catch (e) {
         console.warn("[MobileBridge] graph hooks failed", e);
+      }
+
+      // LOD2 proxy renderer: chain the canvas foreground hook (a null-by-
+      // default user hook — unlike prototype methods, chaining it is the
+      // supported extension pattern). Internal try keeps any drawing error
+      // from ever aborting the frontend's draw loop.
+      try {
+        const canvas = app.canvas;
+        if (canvas) {
+          const originalDrawFg = canvas.onDrawForeground;
+          canvas.onDrawForeground = function (ctx, area) {
+            originalDrawFg?.call(this, ctx, area);
+            try {
+              drawLiteRects(ctx);
+            } catch {}
+          };
+        }
+      } catch (e) {
+        console.warn("[MobileBridge] draw hook failed", e);
       }
 
       // Change catch-all: litegraph fires no hook for node moves (and
