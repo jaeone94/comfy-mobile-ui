@@ -421,6 +421,10 @@ function applyPerformanceMode() {
     canvas._lowQualityZoomThreshold = 1.0;
     canvas.low_quality_zoom_threshold = 1.0;
     canvas.low_quality_rendering_threshold = 1.0;
+    // NOTE: text is still drawn in this fork's low-quality mode. Nodes are
+    // blitted from pre-rendered bitmap caches, so neither drawNode nor 2D
+    // context patching can strip text — proper text-LOD needs the fork's
+    // node-bitmap cache invalidation hook (future work).
     canvas.setDirty?.(true, true);
   } catch (e) {
     console.warn("[MobileBridge] perf flags failed", e);
