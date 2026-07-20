@@ -343,6 +343,22 @@ html.cmu-node-focus .lg-node[data-node-id]:not(.cmu-focused) {
   overflow-y: auto !important;
   overscroll-behavior: contain;
 }
+/* node-attached floating toolbars must not hover over (or close) the card */
+html.cmu-node-focus .selection-toolbox,
+html.cmu-node-focus [class*="selection-toolbox"],
+html.cmu-node-focus [data-testid="selection-toolbox"] {
+  display: none !important;
+}
+/* teleported widget popups (combo/asset pickers) must stack above the card */
+html.cmu-node-focus .p-connected-overlay,
+html.cmu-node-focus .p-select-overlay,
+html.cmu-node-focus .p-multiselect-overlay,
+html.cmu-node-focus .p-autocomplete-overlay,
+html.cmu-node-focus .p-popover,
+html.cmu-node-focus .p-datepicker-panel,
+html.cmu-node-focus .p-overlay {
+  z-index: 20000 !important;
+}
 /* Overlay mode (shell-driven focus): the iframe becomes a transparent
    modal layer — only the focused card is visible, the shell's own canvas
    shows through behind it. */
@@ -472,9 +488,14 @@ function setupNodeFocusMode() {
       parseFloat(getComputedStyle(focused).getPropertyValue("--node-width")) ||
       focused.offsetWidth ||
       300;
-    const fs = Math.min(1.25, (window.innerWidth * 0.92) / width);
+    // Consistent card width regardless of the node's intrinsic width, and
+    // vertically near-centered (slightly above true center reads best).
+    const cardW = Math.min(window.innerWidth * 0.92, 440);
+    const fs = Math.min(cardW / width, 1.6);
+    const nodeH = focused.offsetHeight || 400;
+    const targetH = Math.min(nodeH * fs, window.innerHeight * 0.72);
     const screenX = (window.innerWidth - width * fs) / 2;
-    const screenY = Math.max(16, window.innerHeight * 0.08);
+    const screenY = Math.max(16, (window.innerHeight - targetH) * 0.42);
     // pane transform is scale(z) translate(tx,ty): screen = z * (p + t)
     focused.style.setProperty("--cmu-fx", `${screenX / z - tx}px`);
     focused.style.setProperty("--cmu-fy", `${screenY / z - ty}px`);
@@ -522,12 +543,32 @@ function setupNodeFocusMode() {
     "click",
     (event) => {
       if (focused) {
+        const target = event.target;
+        // Vue re-renders can detach the tapped element between pointerdown
+        // and click — a detached target is NOT an outside tap.
+        if (!(target instanceof Element) || !target.isConnected) return;
         // clicks inside the focused card pass through to the real widgets
-        if (!focused.contains(event.target)) {
-          event.preventDefault();
-          event.stopPropagation();
-          unfocusNode();
+        if (focused.contains(target)) return;
+        // Teleported layers (combo/asset pickers, dialogs, menus) are
+        // portaled to <body>, OUTSIDE #vue-app — interacting with them must
+        // never dismiss the card. A tap landing on bare body/html (e.g. the
+        // hidden-canvas area in overlay mode) IS an outside tap though.
+        const bareBackground = target === document.body || target === document.documentElement;
+        if (!bareBackground && !target.closest("#vue-app")) return;
+        // coordinate fallback: DOM churn aside, a tap landing on the card's
+        // rect is never an outside tap
+        const rect = focused.getBoundingClientRect();
+        if (
+          event.clientX >= rect.left &&
+          event.clientX <= rect.right &&
+          event.clientY >= rect.top &&
+          event.clientY <= rect.bottom
+        ) {
+          return;
         }
+        event.preventDefault();
+        event.stopPropagation();
+        unfocusNode();
         return;
       }
       const node = event.target?.closest?.(".lg-node[data-node-id]");
