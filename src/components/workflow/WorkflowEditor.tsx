@@ -1367,7 +1367,11 @@ const WorkflowEditor: React.FC = () => {
       const { url: serverUrl } = useConnectionStore.getState();
       const modifiedValues = widgetEditor.modifiedWidgetValues;
 
-      try {
+      // Canvas v2: seed handling (control_after_generate) runs inside the
+      // bridge right before graphToPrompt — the legacy-model path would
+      // double-randomize and desync, so skip it when the bridge is active.
+      const v2Bridge = getActiveCanvasBridge();
+      if (!v2Bridge?.isReady) try {
         const seedChanges = await autoChangeSeed(workflow, nodeMetadata, {
           getWidgetValue: (nodeId: number, paramName: string, defaultValue: any) => {
             const value = widgetEditor.getWidgetValue(nodeId, paramName, defaultValue);
@@ -1396,7 +1400,6 @@ const WorkflowEditor: React.FC = () => {
       // changes were already mirrored into the official graph (postMessage
       // ordering guarantees they land before this request).
       let apiWorkflow: Record<string, any>;
-      const v2Bridge = getActiveCanvasBridge();
       if (v2Bridge?.isReady) {
         const promptData = await v2Bridge.getPrompt();
         apiWorkflow = (promptData.output ?? {}) as Record<string, any>;

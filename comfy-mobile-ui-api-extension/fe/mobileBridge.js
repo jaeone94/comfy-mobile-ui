@@ -168,8 +168,41 @@ async function handleGetWorkflow(requestId) {
   }
 }
 
+// Official-mode queueing runs from the shell, so the frontend's own
+// control_after_generate handling never fires — apply it here right before
+// serializing. New seeds also mark the canvas dirty (fingerprint poll), so
+// the user can persist them with Save.
+function applyControlAfterGenerate() {
+  try {
+    for (const n of app.graph?._nodes ?? []) {
+      const widgets = n.widgets ?? [];
+      for (let i = 0; i < widgets.length; i++) {
+        const w = widgets[i];
+        if (w.name !== "control_after_generate" || w.value === "fixed") continue;
+        const target = widgets[i - 1];
+        if (!target || typeof target.value !== "number") continue;
+        const max = Math.min(
+          typeof target.options?.max === "number" ? target.options.max : Number.MAX_SAFE_INTEGER,
+          Number.MAX_SAFE_INTEGER
+        );
+        const min = typeof target.options?.min === "number" ? target.options.min : 0;
+        if (w.value === "randomize") target.value = Math.floor(Math.random() * (max - min)) + min;
+        else if (w.value === "increment") target.value = Math.min(target.value + 1, max);
+        else if (w.value === "decrement") target.value = Math.max(target.value - 1, min);
+        try {
+          target.callback?.(target.value, app.canvas, n);
+        } catch {}
+      }
+    }
+    app.graph?.setDirtyCanvas?.(true, true);
+  } catch (e) {
+    console.warn("[MobileBridge] control_after_generate failed", e);
+  }
+}
+
 async function handleGetPrompt(requestId) {
   try {
+    applyControlAfterGenerate();
     const p = await app.graphToPrompt();
     respond(requestId, true, { workflow: safeClone(p.workflow), output: safeClone(p.output) });
   } catch (e) {
