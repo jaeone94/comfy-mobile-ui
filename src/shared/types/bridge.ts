@@ -81,10 +81,6 @@ export type BridgeEventMessage =
   | { source: typeof BRIDGE_SOURCE; type: 'graph-mutated'; payload: Record<string, never> }
   | { source: typeof BRIDGE_SOURCE; type: 'selection-changed'; payload: BridgeNode | null }
   | { source: typeof BRIDGE_SOURCE; type: 'queue-result'; payload: BridgeQueueResult }
-  | { source: typeof BRIDGE_SOURCE; type: 'node-changed'; payload: BridgeNode | null }
-  | { source: typeof BRIDGE_SOURCE; type: 'pin-size'; payload: { width: number; height: number } }
-  | { source: typeof BRIDGE_SOURCE; type: 'portal-open'; payload: Record<string, never> }
-  | { source: typeof BRIDGE_SOURCE; type: 'portal-closed'; payload: Record<string, never> }
   | {
       source: typeof BRIDGE_SOURCE;
       type: 'response';
@@ -107,16 +103,6 @@ export type ShellCommandMessage =
     }
   | { source: typeof SHELL_SOURCE; type: 'set-node-mode'; payload: { nodeId: number | string; mode: number } }
   | { source: typeof SHELL_SOURCE; type: 'queue-prompt' }
-  | { source: typeof SHELL_SOURCE; type: 'get-node'; requestId: string; payload: { nodeId: number | string } }
-  | {
-      source: typeof SHELL_SOURCE;
-      type: 'trigger-widget';
-      payload: { nodeId: number | string; widgetName: string };
-    }
-  | { source: typeof SHELL_SOURCE; type: 'watch-node'; payload: { nodeId: number | string } }
-  | { source: typeof SHELL_SOURCE; type: 'unwatch-node' }
-  | { source: typeof SHELL_SOURCE; type: 'pin-node-body'; payload: { nodeId: number | string } }
-  | { source: typeof SHELL_SOURCE; type: 'unpin-node-body' }
   | { source: typeof SHELL_SOURCE; type: 'fit-view' }
   | { source: typeof SHELL_SOURCE; type: 'get-workflow'; requestId: string }
   | { source: typeof SHELL_SOURCE; type: 'get-prompt'; requestId: string };
