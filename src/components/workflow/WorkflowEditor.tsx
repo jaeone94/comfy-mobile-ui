@@ -660,26 +660,26 @@ const WorkflowEditor: React.FC = () => {
   const [compatMode, setCompatMode] = useState(false);
   const [compatNode, setCompatNode] = useState<BridgeNode | null>(null);
 
+  // Official-side changes are NOT applied to the legacy graph directly —
+  // they are recorded as pending modifications (same space legacy edits
+  // use), so the green save button appears and the existing save pipeline
+  // persists them.
   const syncLegacyNodeFromBridge = useCallback(
     (bridgeNode: BridgeNode | null) => {
       if (!bridgeNode) return;
-      const legacyNode: any = comfyGraphRef.current?.getNodeById?.(Number(bridgeNode.id));
-      if (!legacyNode) return;
-      if (Array.isArray(legacyNode.widgets)) {
-        for (const w of legacyNode.widgets) {
-          const src = bridgeNode.widgets.find((x) => x.name === w.name);
-          if (src) w.value = src.value;
-        }
-        if (Array.isArray(legacyNode.widgets_values)) {
-          legacyNode.widgets_values = legacyNode.widgets.map((w: any) => w.value);
+      const nodeId = Number(bridgeNode.id);
+      const legacyNode: any = comfyGraphRef.current?.getNodeById?.(nodeId);
+      for (const src of bridgeNode.widgets) {
+        if (src.type === 'button') continue;
+        const legacyWidget = legacyNode?.widgets?.find?.((w: any) => w.name === src.name);
+        const originalValue = legacyWidget ? legacyWidget.value : undefined;
+        const currentValue = widgetEditor.getWidgetValue(nodeId, src.name, originalValue);
+        if (currentValue !== src.value) {
+          widgetEditor.setModifiedWidgetValue(nodeId, src.name, src.value);
         }
       }
-      if (typeof bridgeNode.mode === 'number') legacyNode.mode = bridgeNode.mode;
-      clearNodeImageCache(Number(bridgeNode.id));
-      canvasRef.current?.dispatchEvent(new Event('imageLoaded'));
-      forceRender();
     },
-    [forceRender]
+    [widgetEditor]
   );
 
   const handleBridgeNodeChanged = useCallback(
@@ -714,16 +714,17 @@ const WorkflowEditor: React.FC = () => {
 
   const handleCompatWidgetChange = useCallback(
     (widgetName: string, value: any) => {
-      const bridge = getActiveCanvasBridge();
-      if (!bridge?.isReady || selectedNode == null) return;
-      bridge.setWidgetValue(Number(selectedNode.id), widgetName, value);
+      if (selectedNode == null) return;
+      // Same pipeline as legacy edits: records the pending modification
+      // (green save button) and mirrors into the official graph internally.
+      widgetEditor.setWidgetValue(Number(selectedNode.id), widgetName, value);
       setCompatNode((prev) =>
         prev
           ? { ...prev, widgets: prev.widgets.map((w) => (w.name === widgetName ? { ...w, value } : w)) }
           : prev
       );
     },
-    [selectedNode]
+    [selectedNode, widgetEditor]
   );
 
   const handleCompatTriggerWidget = useCallback(
