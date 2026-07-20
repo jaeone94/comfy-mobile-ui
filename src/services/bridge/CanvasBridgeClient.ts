@@ -15,6 +15,8 @@ interface BridgeEventHandlers {
   selectionChanged: (node: BridgeNode | null) => void;
   queueResult: (result: BridgeQueueResult) => void;
   nodeChanged: (node: BridgeNode | null) => void;
+  pinSize: (size: { width: number; height: number }) => void;
+  portalToggle: (open: boolean) => void;
 }
 
 type EventName = keyof BridgeEventHandlers;
@@ -36,6 +38,8 @@ export class CanvasBridgeClient {
     selectionChanged: new Set(),
     queueResult: new Set(),
     nodeChanged: new Set(),
+    pinSize: new Set(),
+    portalToggle: new Set(),
   };
   private pending = new Map<
     string,
@@ -111,6 +115,15 @@ export class CanvasBridgeClient {
         break;
       case 'node-changed':
         this.emit('nodeChanged', msg.payload);
+        break;
+      case 'pin-size':
+        this.emit('pinSize', msg.payload);
+        break;
+      case 'portal-open':
+        this.emit('portalToggle', true);
+        break;
+      case 'portal-closed':
+        this.emit('portalToggle', false);
         break;
       case 'response': {
         const entry = this.pending.get(msg.requestId);
@@ -192,6 +205,15 @@ export class CanvasBridgeClient {
 
   unwatchNode() {
     this.post({ type: 'unwatch-node' });
+  }
+
+  /** Pin a node's body DOM to fill the iframe viewport (pinpoint embed). */
+  pinNodeBody(nodeId: number | string) {
+    this.post({ type: 'pin-node-body', payload: { nodeId } });
+  }
+
+  unpinNodeBody() {
+    this.post({ type: 'unpin-node-body' });
   }
 
   /** Serialize the official graph (workflow-format JSON). */

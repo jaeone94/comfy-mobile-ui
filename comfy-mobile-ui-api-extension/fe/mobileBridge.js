@@ -210,6 +210,113 @@ async function handleGetPrompt(requestId) {
   }
 }
 
+// ---- Pinpoint node-body embed ----
+// The shell positions the (otherwise hidden) iframe exactly over the detail
+// modal's compat area; we pin the target node's BODY container to fill the
+// iframe viewport and hide everything else. Custom widgets of any kind stay
+// 100% functional because they ARE the official DOM.
+let pinnedNodeId = null;
+let pinRaf = null;
+let lastPinSize = null;
+let portalObserver = null;
+let lastPortalOpen = false;
+
+const PORTAL_SELECTOR =
+  ".p-select-overlay, .p-connected-overlay, .p-popover, .p-multiselect-overlay, .p-autocomplete-overlay, .p-contextmenu, .p-menu, dialog[open], [class*='rgthree'][class*='dialog']";
+
+function paneTransformValues() {
+  const el = document.querySelector('[data-testid="transform-pane"]');
+  const t = el?.style?.transform ?? "";
+  const scale = /scale3d\(([\d.eE+-]+)/.exec(t);
+  const trans = /translate3d\((-?[\d.eE+-]+)px,\s*(-?[\d.eE+-]+)px/.exec(t);
+  return {
+    z: scale ? Number(scale[1]) : 1,
+    tx: trans ? Number(trans[1]) : 0,
+    ty: trans ? Number(trans[2]) : 0,
+  };
+}
+
+function pinFrame() {
+  if (pinnedNodeId == null) return;
+  try {
+    const el = document.querySelector(`.lg-node[data-node-id="${pinnedNodeId}"]`);
+    const body = el?.querySelector('[data-testid^="node-body"]');
+    if (el && body) {
+      if (!el.classList.contains("cmu-pinned")) el.classList.add("cmu-pinned");
+      // body offset inside the node root
+      let ox = 0;
+      let oy = 0;
+      let n = body;
+      while (n && n !== el) {
+        ox += n.offsetLeft ?? 0;
+        oy += n.offsetTop ?? 0;
+        n = n.offsetParent;
+      }
+      const { z, tx, ty } = paneTransformValues();
+      const bodyW = body.offsetWidth || 1;
+      const bodyH = body.offsetHeight || 1;
+      // Fit the area width but never blow small nodes up (cap), centering
+      // any leftover width.
+      const finalScale = Math.min(window.innerWidth / bodyW, 1.4);
+      const nodeScale = finalScale / z;
+      const leftover = Math.max(0, window.innerWidth - bodyW * finalScale) / 2;
+      el.style.setProperty("--cmu-px", `${leftover / z - tx - nodeScale * ox}px`);
+      el.style.setProperty("--cmu-py", `${-ty - nodeScale * oy}px`);
+      el.style.setProperty("--cmu-pz", `${nodeScale}`);
+      if (!lastPinSize || lastPinSize.w !== bodyW || lastPinSize.h !== bodyH) {
+        lastPinSize = { w: bodyW, h: bodyH };
+        post("pin-size", { width: bodyW, height: bodyH });
+      }
+    }
+  } catch (e) {
+    console.warn("[MobileBridge] pin frame failed", e);
+  }
+  pinRaf = requestAnimationFrame(pinFrame);
+}
+
+function setPinnedNode(nodeId) {
+  clearPinnedNode(false);
+  pinnedNodeId = nodeId;
+  document.documentElement.classList.add("cmu-pin-mode");
+  if (!portalObserver) {
+    const anyVisiblePortal = () =>
+      [...document.querySelectorAll(PORTAL_SELECTOR)].some(
+        (el) => el.getClientRects().length > 0
+      );
+    portalObserver = new MutationObserver(() => {
+      const open = anyVisiblePortal();
+      if (open !== lastPortalOpen) {
+        lastPortalOpen = open;
+        post(open ? "portal-open" : "portal-closed", {});
+      }
+    });
+    portalObserver.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ["style", "class", "open"] });
+  }
+  if (pinRaf) cancelAnimationFrame(pinRaf);
+  pinRaf = requestAnimationFrame(pinFrame);
+}
+
+function clearPinnedNode(notifyShell = true) {
+  if (pinRaf) cancelAnimationFrame(pinRaf);
+  pinRaf = null;
+  if (pinnedNodeId != null) {
+    const el = document.querySelector(`.lg-node[data-node-id="${pinnedNodeId}"]`);
+    el?.classList.remove("cmu-pinned");
+    for (const prop of ["--cmu-px", "--cmu-py", "--cmu-pz"]) el?.style.removeProperty(prop);
+  }
+  pinnedNodeId = null;
+  lastPinSize = null;
+  document.documentElement.classList.remove("cmu-pin-mode");
+  if (portalObserver) {
+    portalObserver.disconnect();
+    portalObserver = null;
+  }
+  if (lastPortalOpen) {
+    lastPortalOpen = false;
+    if (notifyShell) post("portal-closed", {});
+  }
+}
+
 // ---- Detail-modal compatibility mode primitives ----
 // The shell renders ITS OWN modal UI from live official node data: it reads
 // the node (get-node), writes values (set-widget-value), invokes button
@@ -437,6 +544,37 @@ const EMBED_CSS = `
 .mx-1.flex.flex-col.items-end.gap-1 {
   display: none !important;
 }
+/* ---- Pinpoint node-body embed (cmu-pin-mode) ---- */
+html.cmu-pin-mode,
+html.cmu-pin-mode body,
+html.cmu-pin-mode #vue-app,
+html.cmu-pin-mode main,
+html.cmu-pin-mode .comfyui-body,
+html.cmu-pin-mode #graph-canvas-container,
+html.cmu-pin-mode .p-splitter,
+html.cmu-pin-mode .p-splitterpanel,
+html.cmu-pin-mode .graph-canvas-panel {
+  background: transparent !important;
+}
+html.cmu-pin-mode #graph-canvas-container canvas {
+  visibility: hidden !important;
+}
+html.cmu-pin-mode .lg-node[data-node-id]:not(.cmu-pinned) {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+html.cmu-pin-mode [data-testid="transform-pane"] {
+  z-index: 100;
+}
+.lg-node.cmu-pinned {
+  transform: translate(var(--cmu-px), var(--cmu-py)) scale(var(--cmu-pz)) !important;
+  transform-origin: 0 0 !important;
+  z-index: 10000 !important;
+  box-shadow: none !important;
+}
+.lg-node.cmu-pinned .lg-node-header {
+  visibility: hidden !important;
+}
 `;
 
 function injectCss() {
@@ -475,6 +613,12 @@ function handleShellMessage(event) {
     case "watch-node":
       watchedNodeId = msg.payload?.nodeId ?? null;
       watchedFp = null;
+      break;
+    case "pin-node-body":
+      setPinnedNode(msg.payload?.nodeId ?? null);
+      break;
+    case "unpin-node-body":
+      clearPinnedNode();
       break;
     case "unwatch-node":
       watchedNodeId = null;

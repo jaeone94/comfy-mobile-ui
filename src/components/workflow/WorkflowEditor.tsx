@@ -41,6 +41,7 @@ import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
 // import { NodeInspector } from '@/components/canvas/NodeInspector'; // Replaced
 import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
 import CanvasHost from '@/components/canvas-v2/CanvasHost';
+import CompatDetailPanel from '@/components/canvas-v2/CompatDetailPanel';
 import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
 import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
 import { Save } from 'lucide-react';
@@ -652,18 +653,12 @@ const WorkflowEditor: React.FC = () => {
     setCanvasDirty(false);
   }, [id]);
 
-  // Detail-modal compatibility mode: the modal keeps OUR UI but renders its
-  // widget list from the live official node (hidden iframe engine). Edits go
-  // back over the bridge; extension-driven widget changes (e.g. "add widget"
-  // buttons) stream in via node-changed and re-render — we receive results,
-  // never re-implement behaviors.
-  const [compatMode, setCompatMode] = useState(false);
-  const [compatNode, setCompatNode] = useState<BridgeNode | null>(null);
+  // Compatibility detail panel: an always-mounted panel (CompatDetailPanel)
+  // hosts the official iframe as a REAL layout child and pins the selected
+  // node's body DOM into it. Values edited there flow back as pending
+  // modifications via node-changed (green save button), never direct writes.
+  const [compatPanelOpen, setCompatPanelOpen] = useState(false);
 
-  // Official-side changes are NOT applied to the legacy graph directly —
-  // they are recorded as pending modifications (same space legacy edits
-  // use), so the green save button appears and the existing save pipeline
-  // persists them.
   const syncLegacyNodeFromBridge = useCallback(
     (bridgeNode: BridgeNode | null) => {
       if (!bridgeNode) return;
@@ -684,56 +679,9 @@ const WorkflowEditor: React.FC = () => {
 
   const handleBridgeNodeChanged = useCallback(
     (bridgeNode: BridgeNode | null) => {
-      setCompatNode(bridgeNode);
       syncLegacyNodeFromBridge(bridgeNode);
     },
     [syncLegacyNodeFromBridge]
-  );
-
-  // Fetch + watch the selected node while compat mode is on
-  useEffect(() => {
-    const bridge = getActiveCanvasBridge();
-    const nodeId = selectedNode != null ? Number(selectedNode.id) : null;
-    if (!compatMode || nodeId == null || Number.isNaN(nodeId) || !bridge?.isReady) {
-      setCompatNode(null);
-      return;
-    }
-    let cancelled = false;
-    bridge
-      .getNode(nodeId)
-      .then((node) => {
-        if (!cancelled) setCompatNode(node);
-      })
-      .catch((e) => console.warn('[CanvasV2] get-node failed:', e));
-    bridge.watchNode(nodeId);
-    return () => {
-      cancelled = true;
-      bridge.unwatchNode();
-    };
-  }, [compatMode, selectedNode]);
-
-  const handleCompatWidgetChange = useCallback(
-    (widgetName: string, value: any) => {
-      if (selectedNode == null) return;
-      // Same pipeline as legacy edits: records the pending modification
-      // (green save button) and mirrors into the official graph internally.
-      widgetEditor.setWidgetValue(Number(selectedNode.id), widgetName, value);
-      setCompatNode((prev) =>
-        prev
-          ? { ...prev, widgets: prev.widgets.map((w) => (w.name === widgetName ? { ...w, value } : w)) }
-          : prev
-      );
-    },
-    [selectedNode, widgetEditor]
-  );
-
-  const handleCompatTriggerWidget = useCallback(
-    (widgetName: string) => {
-      const bridge = getActiveCanvasBridge();
-      if (!bridge?.isReady || selectedNode == null) return;
-      bridge.triggerWidget(Number(selectedNode.id), widgetName);
-    },
-    [selectedNode]
   );
 
   // Canvas interaction hook
@@ -3611,17 +3559,25 @@ const WorkflowEditor: React.FC = () => {
         />
       )}
 
-      {/* Hidden official engine (legacy mode): powers the detail modal's
-          compatibility mode — pure data, never shown */}
+      {/* Compatibility detail panel (legacy mode): always mounted — the
+          official iframe lives inside it as a real child and doubles as the
+          hidden data engine when the panel is closed */}
       {!officialCanvasEnabled && (
-        <div className="pointer-events-none invisible fixed inset-0 -z-10">
-          <CanvasHost
-            workflowJson={workflow?.workflow_json ?? null}
-            workflowKey={id ?? null}
-            onGraphMutated={handleBridgeGraphMutated}
-            onNodeChanged={handleBridgeNodeChanged}
-          />
-        </div>
+        <CompatDetailPanel
+          open={compatPanelOpen && selectedNode != null}
+          nodeId={selectedNode != null ? Number(selectedNode.id) : null}
+          nodeTitle={String(selectedNode?.title ?? selectedNode?.type ?? '')}
+          nodeType={String(selectedNode?.type ?? '')}
+          workflowJson={workflow?.workflow_json ?? null}
+          workflowKey={id ?? null}
+          onClose={() => setCompatPanelOpen(false)}
+          onSwitchToLegacy={() => {
+            setCompatPanelOpen(false);
+            setIsNodePanelVisible(true);
+          }}
+          onGraphMutated={handleBridgeGraphMutated}
+          onNodeChanged={handleBridgeNodeChanged}
+        />
       )}
 
       {/* Canvas v2: dirty-state save button (official mode only) */}
@@ -3974,11 +3930,11 @@ const WorkflowEditor: React.FC = () => {
           onNodeModeChange={handleNodeModeChange}
           setWidgetValue={widgetEditor.setWidgetValue}
           compatAvailable={!!getActiveCanvasBridge()?.isReady}
-          compatMode={compatMode}
-          bridgeNode={compatNode}
-          onToggleCompatMode={() => setCompatMode((v) => !v)}
-          onCompatWidgetChange={handleCompatWidgetChange}
-          onCompatTriggerWidget={handleCompatTriggerWidget}
+          onToggleCompatMode={() => {
+            // Hand off to the always-mounted compatibility panel
+            setIsNodePanelVisible(false);
+            setCompatPanelOpen(true);
+          }}
           onNavigateToNode={(nodeId: number) => {
             // Use shared navigation function from useCanvasInteraction
             canvasInteraction.handleNavigateToNode(nodeId);

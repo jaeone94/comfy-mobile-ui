@@ -114,6 +114,9 @@ interface NodeDetailModalProps {
     onToggleCompatMode?: () => void;
     onCompatWidgetChange?: (widgetName: string, value: any) => void;
     onCompatTriggerWidget?: (widgetName: string) => void;
+    // Pinpoint embed: the official node-body DOM is overlaid on this area
+    compatAreaRef?: (el: HTMLDivElement | null) => void;
+    compatAreaHeight?: number;
 }
 
 export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
@@ -165,7 +168,9 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     bridgeNode = null,
     onToggleCompatMode,
     onCompatWidgetChange,
-    onCompatTriggerWidget
+    onCompatTriggerWidget,
+    compatAreaRef,
+    compatAreaHeight
 }) => {
     const { t } = useTranslation();
     const nodeId = typeof selectedNode.id === 'string' ? parseInt(selectedNode.id) : selectedNode.id;
@@ -653,6 +658,25 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     };
 
     const renderCompatSection = () => {
+        // Pinpoint embed (preferred): the REAL official node-body DOM is
+        // overlaid on this reserved area by the shell — any extension's
+        // custom widgets work as-is, nothing is re-implemented.
+        if (compatAreaRef) {
+            return (
+                <div className="space-y-4">
+                    {renderSectionHeader(
+                        t('node.parameters'),
+                        undefined,
+                        <Puzzle className="w-4 h-4 text-sky-400" />
+                    )}
+                    <div
+                        ref={compatAreaRef}
+                        style={{ height: compatAreaHeight ?? 240 }}
+                        className="relative w-full overflow-hidden rounded-xl border border-sky-500/20 bg-slate-900/30"
+                    />
+                </div>
+            );
+        }
         if (!bridgeNode) {
             return (
                 <div className="mt-8 p-6 rounded-xl border border-sky-500/20 bg-sky-500/5 text-sm text-slate-400 flex items-center gap-3">

@@ -17,6 +17,8 @@ interface CanvasHostProps {
   onReady?: (summary: BridgeGraphSummary) => void;
   onGraphMutated?: () => void;
   onNodeChanged?: (node: BridgeNode | null) => void;
+  onPinSize?: (size: { width: number; height: number }) => void;
+  onPortalToggle?: (open: boolean) => void;
 }
 
 /**
@@ -31,6 +33,8 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
   onReady,
   onGraphMutated,
   onNodeChanged,
+  onPinSize,
+  onPortalToggle,
 }) => {
   const storedUrl = useConnectionStore((s) => s.url);
   const serverUrl = useMemo(
@@ -44,8 +48,8 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
   const loadedKeyRef = useRef<string | null>(null);
 
   // Keep latest callbacks without re-creating the client
-  const callbacksRef = useRef({ onNodeSelected, onReady, onGraphMutated, onNodeChanged });
-  callbacksRef.current = { onNodeSelected, onReady, onGraphMutated, onNodeChanged };
+  const callbacksRef = useRef({ onNodeSelected, onReady, onGraphMutated, onNodeChanged, onPinSize, onPortalToggle });
+  callbacksRef.current = { onNodeSelected, onReady, onGraphMutated, onNodeChanged, onPinSize, onPortalToggle };
 
   useEffect(() => {
     const client = new CanvasBridgeClient(serverUrl);
@@ -67,12 +71,20 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
     const offNodeChanged = client.on('nodeChanged', (node) => {
       callbacksRef.current.onNodeChanged?.(node);
     });
+    const offPinSize = client.on('pinSize', (size) => {
+      callbacksRef.current.onPinSize?.(size);
+    });
+    const offPortal = client.on('portalToggle', (open) => {
+      callbacksRef.current.onPortalToggle?.(open);
+    });
 
     return () => {
       offReady();
       offSelection();
       offMutated();
       offNodeChanged();
+      offPinSize();
+      offPortal();
       client.dispose();
       if (clientRef.current === client) clientRef.current = null;
       setActiveCanvasBridge(null);
