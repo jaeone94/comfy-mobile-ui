@@ -419,23 +419,25 @@ const FPS_IDLE = 30;
 let cmuLinksMode = 0; // LiteGraph.STRAIGHT_LINK
 let cmuFps = 30;
 
-// Force the classic canvas renderer in embeds: Nodes 2.0 mounts every node
-// as DOM with no culling — the main mobile perf cost — while the classic
-// path benefits from the LOD pins below. NOTE: the FE reads this setting at
-// init and offers no non-persistent override, so this writes the user
-// setting (shared with desktop for the same ComfyUI user) and reloads once.
-async function forceClassicNodes() {
+// Force Nodes 2.0 (Vue DOM nodes) in embeds: the classic canvas renderer
+// may be removed from the official FE eventually, so the mobile shell
+// standardizes on Vue nodes and optimizes that path (DOM simplification
+// CSS below: off-screen culling, zoom LOD, no shadows/transitions).
+// NOTE: the FE reads this setting at init and offers no non-persistent
+// override, so this writes the user setting (shared with desktop for the
+// same ComfyUI user) and reloads once.
+async function forceVueNodes() {
   try {
-    if (sessionStorage.getItem("cmuForcedClassic")) return;
+    if (sessionStorage.getItem("cmuForcedVue")) return;
     const setting = app.extensionManager?.setting;
     if (!setting?.get || !setting?.set) return;
-    if (setting.get("Comfy.VueNodes.Enabled") === true) {
-      sessionStorage.setItem("cmuForcedClassic", "1");
-      await setting.set("Comfy.VueNodes.Enabled", false);
+    if (setting.get("Comfy.VueNodes.Enabled") !== true) {
+      sessionStorage.setItem("cmuForcedVue", "1");
+      await setting.set("Comfy.VueNodes.Enabled", true);
       location.reload();
     }
   } catch (e) {
-    console.warn("[MobileBridge] force classic nodes failed", e);
+    console.warn("[MobileBridge] force vue nodes failed", e);
   }
 }
 
@@ -552,7 +554,7 @@ if (isEmbedded()) {
     name: "ComfyMobile.CanvasBridge",
     setup() {
       injectCss();
-      forceClassicNodes();
+      forceVueNodes();
       applyPerformanceMode();
       window.addEventListener("message", handleShellMessage);
 
