@@ -386,49 +386,160 @@ function handleShellMessage(event) {
 // resolution. The node canvas is raster (CSS cannot simplify it), but these
 // flags cut fill-rate and memory — the usual cause of iOS tab reloads.
 const DPR_CAP = 1.5;
+const FPS_IDLE = 30;
+const FPS_INTERACTING = 15;
+const SETTLE_MS = 250;
+
+// Dynamic link mode: straight normally, hidden while pinching/panning.
+// Pinned via defineProperty because the FE re-applies the user's
+// LinkRenderMode setting after setup and would overwrite plain assignment.
+let cmuLinksMode = 0; // LiteGraph.STRAIGHT_LINK
+let cmuFps = 30;
 
 function applyPerformanceMode() {
+  const canvas = app.canvas;
+  if (!canvas) return;
+  const vueMode = !!window.LiteGraph?.vueNodesMode;
+
+  // 1) Cap the canvas backing-store DPR (scoped to resizeCanvas so the rest
+  //    of the app keeps the real value). At DPR 3 -> 1.5 this is ~4x less
+  //    canvas memory and fill work — the main tab-reload lever.
   try {
-    if (window.devicePixelRatio > DPR_CAP) {
-      Object.defineProperty(window, "devicePixelRatio", {
-        get: () => DPR_CAP,
-        configurable: true,
-      });
+    const realDprDesc = { configurable: true, get: () => window.__cmuRealDpr };
+    window.__cmuRealDpr = window.devicePixelRatio;
+    if (typeof app.resizeCanvas === "function" && !app.__cmuDprWrapped) {
+      app.__cmuDprWrapped = true;
+      const origResize = app.resizeCanvas.bind(app);
+      app.resizeCanvas = function (el) {
+        window.__cmuRealDpr = window.devicePixelRatio;
+        try {
+          Object.defineProperty(window, "devicePixelRatio", {
+            configurable: true,
+            get: () => Math.min(window.__cmuRealDpr, DPR_CAP),
+          });
+          return origResize(el);
+        } finally {
+          Object.defineProperty(window, "devicePixelRatio", realDprDesc);
+        }
+      };
       window.dispatchEvent(new Event("resize"));
     }
   } catch (e) {
     console.warn("[MobileBridge] DPR cap failed", e);
   }
+
+  // 2) Static cheap-render flags. The FE re-applies user settings AFTER
+  //    extension setup (observed for LinkRenderMode, MaximumFps and
+  //    MinFontSizeForLOD), so every value it can overwrite is pinned with an
+  //    instance-level accessor whose setter is a no-op; the real backing
+  //    fields are driven by us directly.
+  const setFps = (fps) => {
+    cmuFps = fps;
+    try {
+      canvas._maximumFrameGap = fps > 0 ? 1000 / fps : 0;
+    } catch {}
+  };
   try {
-    const canvas = app.canvas;
-    if (!canvas) return;
     canvas.render_shadows = false;
     canvas.render_connection_arrows = false;
     canvas.render_curved_connections = false;
-    // The FE re-applies the user's LinkRenderMode setting after setup and
-    // overwrites a plain assignment — pin the property so straight links win.
+    canvas.set_canvas_dirty_on_mouse_event = false;
+    try {
+      Object.defineProperty(canvas, "maximumFps", {
+        configurable: true,
+        get: () => cmuFps,
+        set: () => {},
+      });
+    } catch {}
+    setFps(FPS_IDLE);
     try {
       Object.defineProperty(canvas, "links_render_mode", {
-        get: () => 0, // LiteGraph.STRAIGHT_LINK
-        set: () => {},
         configurable: true,
+        get: () => cmuLinksMode,
+        set: () => {},
       });
     } catch {
-      canvas.links_render_mode = 0;
+      canvas.links_render_mode = cmuLinksMode;
     }
-    // Simplified node rendering below ~100% zoom (real field is the
-    // underscored one in this fork; keep the public names as fallbacks)
-    canvas._lowQualityZoomThreshold = 1.0;
-    canvas.low_quality_zoom_threshold = 1.0;
-    canvas.low_quality_rendering_threshold = 1.0;
-    // NOTE: text is still drawn in this fork's low-quality mode. Nodes are
-    // blitted from pre-rendered bitmap caches, so neither drawNode nor 2D
-    // context patching can strip text — proper text-LOD needs the fork's
-    // node-bitmap cache invalidation hook (future work).
-    canvas.setDirty?.(true, true);
+    // Classic-canvas LOD: _min_font_size_for_lod is the SOURCE the zoom
+    // threshold is recomputed from — raising it makes low-quality (which
+    // skips text/shadows in this fork's canvas path) engage much earlier.
+    // No effect in Vue-nodes mode where nodes are DOM.
+    try {
+      Object.defineProperty(canvas, "min_font_size_for_lod", {
+        configurable: true,
+        get: () => 24,
+        set: () => {},
+      });
+    } catch {}
+    canvas._min_font_size_for_lod = 24;
+    canvas.updateLowQualityThreshold?.();
   } catch (e) {
     console.warn("[MobileBridge] perf flags failed", e);
   }
+
+  // 3) Interaction governor: while pinch-zooming/panning, drop FPS, hide
+  //    links, throttle the background canvas, and (in Vue-nodes mode) pause
+  //    canvas drawing entirely — DOM nodes keep tracking via CSS transform.
+  try {
+    const HIDDEN_LINK =
+      window.LiteGraph?.HIDDEN_LINK ?? window.LiteGraph?.LinkRenderType?.HIDDEN_LINK ?? 3;
+    let settleTimer = null;
+    const transformPane = () =>
+      document.querySelector('[data-testid="transform-pane"]');
+    const begin = () => {
+      if (canvas.__cmuInteracting) return;
+      canvas.__cmuInteracting = true;
+      setFps(FPS_INTERACTING);
+      cmuLinksMode = HIDDEN_LINK;
+      if (vueMode) {
+        canvas.pause_rendering = true;
+        // DOM nodes are the re-rasterization cost while the transform layer
+        // scales — hide them for the duration of the gesture.
+        const pane = transformPane();
+        if (pane) pane.style.visibility = "hidden";
+      }
+    };
+    const end = () => {
+      canvas.__cmuInteracting = false;
+      setFps(FPS_IDLE);
+      cmuLinksMode = 0;
+      if (vueMode) {
+        canvas.pause_rendering = false;
+        const pane = transformPane();
+        if (pane) pane.style.visibility = "";
+      }
+      canvas.setDirty?.(true, true);
+    };
+    const poke = () => {
+      begin();
+      if (settleTimer) clearTimeout(settleTimer);
+      settleTimer = setTimeout(end, SETTLE_MS);
+    };
+    window.addEventListener("wheel", poke, { passive: true, capture: true });
+    window.addEventListener("touchmove", poke, { passive: true, capture: true });
+
+    // Throttle the expensive background pass (grid + links) mid-interaction
+    const proto = Object.getPrototypeOf(canvas);
+    if (proto?.drawBackCanvas && !proto.__cmuBgThrottled) {
+      proto.__cmuBgThrottled = true;
+      const origBack = proto.drawBackCanvas;
+      let lastBack = 0;
+      proto.drawBackCanvas = function (...args) {
+        if (this.__cmuInteracting) {
+          const now = performance.now();
+          if (now - lastBack < 66) return; // ~15fps background while interacting
+          lastBack = now;
+        }
+        return origBack.apply(this, args);
+      };
+    }
+  } catch (e) {
+    console.warn("[MobileBridge] interaction governor failed", e);
+  }
+
+  canvas.setDirty?.(true, true);
+  console.log("[MobileBridge] perf mode active (vueNodes:", vueMode, ")");
 }
 
 if (isEmbedded()) {
