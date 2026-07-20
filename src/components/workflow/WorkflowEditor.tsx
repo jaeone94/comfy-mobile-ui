@@ -41,7 +41,6 @@ import { WorkflowCanvas } from '@/components/canvas/WorkflowCanvas';
 // import { NodeInspector } from '@/components/canvas/NodeInspector'; // Replaced
 import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
 import CanvasHost from '@/components/canvas-v2/CanvasHost';
-import CompatDetailPanel from '@/components/canvas-v2/CompatDetailPanel';
 import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
 import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
 import { Save } from 'lucide-react';
@@ -652,37 +651,6 @@ const WorkflowEditor: React.FC = () => {
   useEffect(() => {
     setCanvasDirty(false);
   }, [id]);
-
-  // Compatibility detail panel: an always-mounted panel (CompatDetailPanel)
-  // hosts the official iframe as a REAL layout child and pins the selected
-  // node's body DOM into it. Values edited there flow back as pending
-  // modifications via node-changed (green save button), never direct writes.
-  const [compatPanelOpen, setCompatPanelOpen] = useState(false);
-
-  const syncLegacyNodeFromBridge = useCallback(
-    (bridgeNode: BridgeNode | null) => {
-      if (!bridgeNode) return;
-      const nodeId = Number(bridgeNode.id);
-      const legacyNode: any = comfyGraphRef.current?.getNodeById?.(nodeId);
-      for (const src of bridgeNode.widgets) {
-        if (src.type === 'button') continue;
-        const legacyWidget = legacyNode?.widgets?.find?.((w: any) => w.name === src.name);
-        const originalValue = legacyWidget ? legacyWidget.value : undefined;
-        const currentValue = widgetEditor.getWidgetValue(nodeId, src.name, originalValue);
-        if (currentValue !== src.value) {
-          widgetEditor.setModifiedWidgetValue(nodeId, src.name, src.value);
-        }
-      }
-    },
-    [widgetEditor]
-  );
-
-  const handleBridgeNodeChanged = useCallback(
-    (bridgeNode: BridgeNode | null) => {
-      syncLegacyNodeFromBridge(bridgeNode);
-    },
-    [syncLegacyNodeFromBridge]
-  );
 
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
@@ -3540,7 +3508,6 @@ const WorkflowEditor: React.FC = () => {
           workflowJson={workflow?.workflow_json ?? null}
           workflowKey={id ?? null}
           onGraphMutated={handleBridgeGraphMutated}
-          onNodeChanged={handleBridgeNodeChanged}
         />
       ) : (
         <WorkflowCanvas
@@ -3556,27 +3523,6 @@ const WorkflowEditor: React.FC = () => {
           onTouchMove={canvasInteraction.handleTouchMove}
           onTouchEnd={canvasInteraction.handleTouchEnd}
           onContextMenu={canvasInteraction.handleContextMenu}
-        />
-      )}
-
-      {/* Compatibility detail panel (legacy mode): always mounted — the
-          official iframe lives inside it as a real child and doubles as the
-          hidden data engine when the panel is closed */}
-      {!officialCanvasEnabled && (
-        <CompatDetailPanel
-          open={compatPanelOpen && selectedNode != null}
-          nodeId={selectedNode != null ? Number(selectedNode.id) : null}
-          nodeTitle={String(selectedNode?.title ?? selectedNode?.type ?? '')}
-          nodeType={String(selectedNode?.type ?? '')}
-          workflowJson={workflow?.workflow_json ?? null}
-          workflowKey={id ?? null}
-          onClose={() => setCompatPanelOpen(false)}
-          onSwitchToLegacy={() => {
-            setCompatPanelOpen(false);
-            setIsNodePanelVisible(true);
-          }}
-          onGraphMutated={handleBridgeGraphMutated}
-          onNodeChanged={handleBridgeNodeChanged}
         />
       )}
 
@@ -3929,12 +3875,6 @@ const WorkflowEditor: React.FC = () => {
           onFileUploadDirect={fileOperations.handleFileUploadDirect}
           onNodeModeChange={handleNodeModeChange}
           setWidgetValue={widgetEditor.setWidgetValue}
-          compatAvailable={!!getActiveCanvasBridge()?.isReady}
-          onToggleCompatMode={() => {
-            // Hand off to the always-mounted compatibility panel
-            setIsNodePanelVisible(false);
-            setCompatPanelOpen(true);
-          }}
           onNavigateToNode={(nodeId: number) => {
             // Use shared navigation function from useCanvasInteraction
             canvasInteraction.handleNavigateToNode(nodeId);
