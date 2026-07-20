@@ -16,6 +16,7 @@ interface CanvasHostProps {
   onNodeSelected?: (node: BridgeNode | null) => void;
   onReady?: (summary: BridgeGraphSummary) => void;
   onGraphMutated?: () => void;
+  onFocusDismissed?: (payload: { nodeId: string | number | null; overlay?: boolean }) => void;
 }
 
 /**
@@ -29,6 +30,7 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
   onNodeSelected,
   onReady,
   onGraphMutated,
+  onFocusDismissed,
 }) => {
   const storedUrl = useConnectionStore((s) => s.url);
   const serverUrl = useMemo(
@@ -42,8 +44,8 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
   const loadedKeyRef = useRef<string | null>(null);
 
   // Keep latest callbacks without re-creating the client
-  const callbacksRef = useRef({ onNodeSelected, onReady, onGraphMutated });
-  callbacksRef.current = { onNodeSelected, onReady, onGraphMutated };
+  const callbacksRef = useRef({ onNodeSelected, onReady, onGraphMutated, onFocusDismissed });
+  callbacksRef.current = { onNodeSelected, onReady, onGraphMutated, onFocusDismissed };
 
   useEffect(() => {
     const client = new CanvasBridgeClient(serverUrl);
@@ -62,11 +64,15 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
     const offMutated = client.on('graphMutated', () => {
       callbacksRef.current.onGraphMutated?.();
     });
+    const offFocusDismissed = client.on('focusDismissed', (payload) => {
+      callbacksRef.current.onFocusDismissed?.(payload);
+    });
 
     return () => {
       offReady();
       offSelection();
       offMutated();
+      offFocusDismissed();
       client.dispose();
       if (clientRef.current === client) clientRef.current = null;
       setActiveCanvasBridge(null);

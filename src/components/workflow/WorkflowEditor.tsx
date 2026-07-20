@@ -651,6 +651,44 @@ const WorkflowEditor: React.FC = () => {
     setCanvasDirty(false);
   }, [id]);
 
+  // Hybrid detail view (legacy mode): the hidden official iframe becomes a
+  // transparent modal layer showing the real official node DOM. On dismiss,
+  // pull that node's values back into the legacy model so canvas previews
+  // stay fresh.
+  const [officialModalNodeId, setOfficialModalNodeId] = useState<number | null>(null);
+  const handleFocusDismissed = useCallback(
+    async (payload: { nodeId: string | number | null; overlay?: boolean } | null) => {
+      setOfficialModalNodeId(null);
+      const nodeId = Number(payload?.nodeId);
+      if (!nodeId) return;
+      const bridge = getActiveCanvasBridge();
+      if (!bridge?.isReady) return;
+      try {
+        const officialJson = (await bridge.getWorkflow()) as IComfyJson;
+        const officialNode: any = officialJson?.nodes?.find((n: any) => Number(n.id) === nodeId);
+        const legacyNode: any = comfyGraphRef.current?.getNodeById?.(nodeId);
+        if (!officialNode || !legacyNode) return;
+        if (Array.isArray(officialNode.widgets_values)) {
+          legacyNode.widgets_values = officialNode.widgets_values;
+          if (Array.isArray(legacyNode.widgets)) {
+            legacyNode.widgets.forEach((w: any, i: number) => {
+              if (i < officialNode.widgets_values.length) {
+                w.value = officialNode.widgets_values[i];
+              }
+            });
+          }
+        }
+        if (typeof officialNode.mode === 'number') legacyNode.mode = officialNode.mode;
+        clearNodeImageCache(nodeId);
+        canvasRef.current?.dispatchEvent(new Event('imageLoaded'));
+        forceRender();
+      } catch (e) {
+        console.warn('[CanvasV2] node resync after modal failed:', e);
+      }
+    },
+    [forceRender]
+  );
+
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
     canvasRef,
@@ -662,6 +700,11 @@ const WorkflowEditor: React.FC = () => {
       if (connectionMode.connectionMode.isActive && node) {
         // Handle node selection for connection mode
         connectionMode.handleNodeSelection(node as any);
+      } else if (node && !officialCanvasEnabled && getActiveCanvasBridge()?.isReady) {
+        // Hybrid detail view: open the official node DOM overlay instead of
+        // the legacy NodeDetailModal (which stays as the no-bridge fallback)
+        setOfficialModalNodeId(Number(node.id));
+        getActiveCanvasBridge()?.focusNode(Number(node.id));
       } else {
         // Normal node selection for inspector
         setSelectedNode(node);
@@ -1168,7 +1211,7 @@ const WorkflowEditor: React.FC = () => {
       // preserves positions/links changed directly on the official canvas,
       // and widget/mode edits were already mirrored into it.
       const v2Bridge = getActiveCanvasBridge();
-      if (v2Bridge?.isReady) {
+      if (officialCanvasEnabled && v2Bridge?.isReady) {
         const officialJson = (await v2Bridge.getWorkflow()) as IComfyJson;
         // Persist only — the legacy view rebuilds from storage on mode
         // switch, so no graph reconstruction is needed here.
@@ -1330,7 +1373,7 @@ const WorkflowEditor: React.FC = () => {
       console.error('Failed to save workflow:', error);
       setIsSaving(false);
     }
-  }, [workflow, widgetEditor, objectInfo, syncWorkflow]);
+  }, [workflow, widgetEditor, objectInfo, syncWorkflow, officialCanvasEnabled]);
 
   // Canvas v2: data-driven mode switch. The persisted workflow JSON is the
   // only boundary between the two canvases — no state carries over. Unsaved
@@ -1369,9 +1412,10 @@ const WorkflowEditor: React.FC = () => {
 
       // Canvas v2: seed handling (control_after_generate) runs inside the
       // bridge right before graphToPrompt — the legacy-model path would
-      // double-randomize and desync, so skip it when the bridge is active.
+      // double-randomize and desync, so skip it when executing via bridge.
       const v2Bridge = getActiveCanvasBridge();
-      if (!v2Bridge?.isReady) try {
+      const useOfficialPrompt = officialCanvasEnabled && !!v2Bridge?.isReady;
+      if (!useOfficialPrompt) try {
         const seedChanges = await autoChangeSeed(workflow, nodeMetadata, {
           getWidgetValue: (nodeId: number, paramName: string, defaultValue: any) => {
             const value = widgetEditor.getWidgetValue(nodeId, paramName, defaultValue);
@@ -1400,7 +1444,7 @@ const WorkflowEditor: React.FC = () => {
       // changes were already mirrored into the official graph (postMessage
       // ordering guarantees they land before this request).
       let apiWorkflow: Record<string, any>;
-      if (v2Bridge?.isReady) {
+      if (useOfficialPrompt && v2Bridge) {
         const promptData = await v2Bridge.getPrompt();
         apiWorkflow = (promptData.output ?? {}) as Record<string, any>;
       } else {
@@ -3522,6 +3566,24 @@ const WorkflowEditor: React.FC = () => {
           onTouchEnd={canvasInteraction.handleTouchEnd}
           onContextMenu={canvasInteraction.handleContextMenu}
         />
+      )}
+
+      {/* Hybrid detail view: hidden official engine + modal overlay (legacy mode) */}
+      {!officialCanvasEnabled && (
+        <div
+          className={
+            officialModalNodeId != null
+              ? 'fixed inset-0 z-[70]'
+              : 'pointer-events-none invisible fixed inset-0 -z-10'
+          }
+        >
+          <CanvasHost
+            workflowJson={workflow?.workflow_json ?? null}
+            workflowKey={id ?? null}
+            onGraphMutated={handleBridgeGraphMutated}
+            onFocusDismissed={handleFocusDismissed}
+          />
+        </div>
       )}
 
       {/* Canvas v2: dirty-state save button (official mode only) */}

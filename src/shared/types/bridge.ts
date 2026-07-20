@@ -83,6 +83,11 @@ export type BridgeEventMessage =
   | { source: typeof BRIDGE_SOURCE; type: 'queue-result'; payload: BridgeQueueResult }
   | {
       source: typeof BRIDGE_SOURCE;
+      type: 'focus-dismissed';
+      payload: { nodeId: string | number | null; overlay?: boolean };
+    }
+  | {
+      source: typeof BRIDGE_SOURCE;
       type: 'response';
       requestId: string;
       payload: { ok: boolean; data?: unknown; error?: string };
@@ -103,6 +108,12 @@ export type ShellCommandMessage =
     }
   | { source: typeof SHELL_SOURCE; type: 'set-node-mode'; payload: { nodeId: number | string; mode: number } }
   | { source: typeof SHELL_SOURCE; type: 'queue-prompt' }
+  | {
+      source: typeof SHELL_SOURCE;
+      type: 'focus-node';
+      payload: { nodeId: number | string; overlay?: boolean };
+    }
+  | { source: typeof SHELL_SOURCE; type: 'unfocus-node' }
   | { source: typeof SHELL_SOURCE; type: 'fit-view' }
   | { source: typeof SHELL_SOURCE; type: 'get-workflow'; requestId: string }
   | { source: typeof SHELL_SOURCE; type: 'get-prompt'; requestId: string };

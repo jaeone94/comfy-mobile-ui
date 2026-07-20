@@ -14,6 +14,7 @@ interface BridgeEventHandlers {
   graphMutated: () => void;
   selectionChanged: (node: BridgeNode | null) => void;
   queueResult: (result: BridgeQueueResult) => void;
+  focusDismissed: (payload: { nodeId: string | number | null; overlay?: boolean }) => void;
 }
 
 type EventName = keyof BridgeEventHandlers;
@@ -34,6 +35,7 @@ export class CanvasBridgeClient {
     graphMutated: new Set(),
     selectionChanged: new Set(),
     queueResult: new Set(),
+    focusDismissed: new Set(),
   };
   private pending = new Map<
     string,
@@ -107,6 +109,9 @@ export class CanvasBridgeClient {
       case 'queue-result':
         this.emit('queueResult', msg.payload);
         break;
+      case 'focus-dismissed':
+        this.emit('focusDismissed', msg.payload);
+        break;
       case 'response': {
         const entry = this.pending.get(msg.requestId);
         if (!entry) return;
@@ -164,6 +169,15 @@ export class CanvasBridgeClient {
 
   fitView() {
     this.post({ type: 'fit-view' });
+  }
+
+  /** Open the official node DOM as a centered overlay card (hybrid modal). */
+  focusNode(nodeId: number | string, overlay = true) {
+    this.post({ type: 'focus-node', payload: { nodeId, overlay } });
+  }
+
+  unfocusNode() {
+    this.post({ type: 'unfocus-node' });
   }
 
   /** Serialize the official graph (workflow-format JSON). */

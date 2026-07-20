@@ -349,7 +349,12 @@ html.cmu-node-focus .lg-node[data-node-id]:not(.cmu-focused) {
 html.cmu-overlay-mode,
 html.cmu-overlay-mode body,
 html.cmu-overlay-mode #vue-app,
-html.cmu-overlay-mode .comfyui-body {
+html.cmu-overlay-mode main,
+html.cmu-overlay-mode .comfyui-body,
+html.cmu-overlay-mode #graph-canvas-container,
+html.cmu-overlay-mode .p-splitter,
+html.cmu-overlay-mode .p-splitterpanel,
+html.cmu-overlay-mode .graph-canvas-panel {
   background: transparent !important;
 }
 html.cmu-overlay-mode #graph-canvas-container canvas {
