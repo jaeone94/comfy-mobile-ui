@@ -239,11 +239,14 @@ function paneTransformValues() {
 function pinFrame() {
   if (pinnedNodeId == null) return;
   try {
+    const node = app.graph?.getNodeById?.(pinnedNodeId);
     const el = document.querySelector(`.lg-node[data-node-id="${pinnedNodeId}"]`);
     const body = el?.querySelector('[data-testid^="node-body"]');
-    if (el && body) {
+    const canvas = app.canvas;
+    if (node && el && body && canvas?.ds) {
       if (!el.classList.contains("cmu-pinned")) el.classList.add("cmu-pinned");
-      // body offset inside the node root
+      // Body offset within the node root — DOM layout units == graph units
+      // (the TransformPane scales the whole tree visually).
       let ox = 0;
       let oy = 0;
       let n = body;
@@ -252,17 +255,18 @@ function pinFrame() {
         oy += n.offsetTop ?? 0;
         n = n.offsetParent;
       }
-      const { z, tx, ty } = paneTransformValues();
       const bodyW = body.offsetWidth || 1;
       const bodyH = body.offsetHeight || 1;
-      // Fit the area width but never blow small nodes up (cap), centering
-      // any leftover width.
-      const finalScale = Math.min(window.innerWidth / bodyW, 1.4);
-      const nodeScale = finalScale / z;
-      const leftover = Math.max(0, window.innerWidth - bodyW * finalScale) / 2;
-      el.style.setProperty("--cmu-px", `${leftover / z - tx - nodeScale * ox}px`);
-      el.style.setProperty("--cmu-py", `${-ty - nodeScale * oy}px`);
-      el.style.setProperty("--cmu-pz", `${nodeScale}`);
+      const worldX = (node.pos?.[0] ?? 0) + ox;
+      const worldY = (node.pos?.[1] ?? 0) + oy;
+      // Frame the viewport on the body: BOTH the DOM layer and the litegraph
+      // canvas (which draws extension custom widgets) follow ds, so they
+      // stay aligned with zero per-element transforms.
+      const scale = Math.min(window.innerWidth / bodyW, 1.6);
+      const leftoverWorld = Math.max(0, window.innerWidth / scale - bodyW) / 2;
+      canvas.ds.scale = scale;
+      canvas.ds.offset = [-worldX + leftoverWorld, -worldY];
+      canvas.setDirty?.(true, true);
       if (!lastPinSize || lastPinSize.w !== bodyW || lastPinSize.h !== bodyH) {
         lastPinSize = { w: bodyW, h: bodyH };
         post("pin-size", { width: bodyW, height: bodyH });
@@ -302,7 +306,6 @@ function clearPinnedNode(notifyShell = true) {
   if (pinnedNodeId != null) {
     const el = document.querySelector(`.lg-node[data-node-id="${pinnedNodeId}"]`);
     el?.classList.remove("cmu-pinned");
-    for (const prop of ["--cmu-px", "--cmu-py", "--cmu-pz"]) el?.style.removeProperty(prop);
   }
   pinnedNodeId = null;
   lastPinSize = null;
@@ -556,9 +559,6 @@ html.cmu-pin-mode .p-splitterpanel,
 html.cmu-pin-mode .graph-canvas-panel {
   background: transparent !important;
 }
-html.cmu-pin-mode #graph-canvas-container canvas {
-  visibility: hidden !important;
-}
 html.cmu-pin-mode .lg-node[data-node-id]:not(.cmu-pinned) {
   opacity: 0 !important;
   pointer-events: none !important;
@@ -567,8 +567,6 @@ html.cmu-pin-mode [data-testid="transform-pane"] {
   z-index: 100;
 }
 .lg-node.cmu-pinned {
-  transform: translate(var(--cmu-px), var(--cmu-py)) scale(var(--cmu-pz)) !important;
-  transform-origin: 0 0 !important;
   z-index: 10000 !important;
   box-shadow: none !important;
 }
