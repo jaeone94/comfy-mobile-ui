@@ -382,11 +382,46 @@ function handleShellMessage(event) {
   }
 }
 
+// Mobile performance mode: cheaper litegraph rendering + capped canvas
+// resolution. The node canvas is raster (CSS cannot simplify it), but these
+// flags cut fill-rate and memory — the usual cause of iOS tab reloads.
+const DPR_CAP = 1.5;
+
+function applyPerformanceMode() {
+  try {
+    if (window.devicePixelRatio > DPR_CAP) {
+      Object.defineProperty(window, "devicePixelRatio", {
+        get: () => DPR_CAP,
+        configurable: true,
+      });
+      window.dispatchEvent(new Event("resize"));
+    }
+  } catch (e) {
+    console.warn("[MobileBridge] DPR cap failed", e);
+  }
+  try {
+    const canvas = app.canvas;
+    if (!canvas) return;
+    canvas.render_shadows = false;
+    canvas.render_connection_arrows = false;
+    canvas.render_curved_connections = false;
+    const LG = window.LiteGraph;
+    if (LG && typeof LG.STRAIGHT_LINK === "number") canvas.links_render_mode = LG.STRAIGHT_LINK;
+    // Draw simplified nodes below ~100% zoom (both property names, per fork)
+    canvas.low_quality_zoom_threshold = 1.0;
+    canvas.low_quality_rendering_threshold = 1.0;
+    canvas.setDirty?.(true, true);
+  } catch (e) {
+    console.warn("[MobileBridge] perf flags failed", e);
+  }
+}
+
 if (isEmbedded()) {
   app.registerExtension({
     name: "ComfyMobile.CanvasBridge",
     setup() {
       injectCss();
+      applyPerformanceMode();
       window.addEventListener("message", handleShellMessage);
 
       // Primary signal: litegraph selection callback (chain any existing one)
