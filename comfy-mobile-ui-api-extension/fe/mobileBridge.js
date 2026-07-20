@@ -325,31 +325,6 @@ const EMBED_CSS = `
 .graph-canvas-panel .p-buttongroup {
   display: none !important;
 }
-/* ---- Nodes 2.0 (Vue DOM nodes) simplification ---- */
-/* Off-screen culling: browser skips layout/paint for nodes outside the
-   viewport (the fork mounts every node with no culling). */
-.lg-node[data-node-id] {
-  content-visibility: auto;
-  contain-intrinsic-size: var(--node-width, 220px) var(--node-height, 120px);
-  box-shadow: none !important;
-  filter: none !important;
-}
-.lg-node[data-node-id] *,
-.lg-node[data-node-id] {
-  transition: none !important;
-  animation: none !important;
-}
-/* Zoom LOD (driven by data-cmu-zoom on <html>): when zoomed far out, stop
-   painting widget internals — headers/slots keep the graph readable. */
-html[data-cmu-zoom="far"] [data-testid="node-widgets"] {
-  visibility: hidden !important;
-}
-html[data-cmu-zoom="far"] .lg-node[data-node-id] {
-  font-size: 0 !important;
-}
-html[data-cmu-zoom="far"] .lg-node-header {
-  font-size: 12px !important;
-}
 /* ---- Focused-node modal: the official node DOM itself, centered ---- */
 html.cmu-node-focus .lg-node[data-node-id]:not(.cmu-focused) {
   opacity: 0.12 !important;
@@ -367,13 +342,6 @@ html.cmu-node-focus .lg-node[data-node-id]:not(.cmu-focused) {
   max-height: var(--cmu-max-h, 60vh);
   overflow-y: auto !important;
   overscroll-behavior: contain;
-}
-/* the modal must never be LOD-simplified */
-html[data-cmu-zoom="far"] .lg-node.cmu-focused {
-  font-size: 12px !important;
-}
-html[data-cmu-zoom="far"] .lg-node.cmu-focused [data-testid="node-widgets"] {
-  visibility: visible !important;
 }
 /* Overlay mode (shell-driven focus): the iframe becomes a transparent
    modal layer — only the focused card is visible, the shell's own canvas
@@ -459,36 +427,9 @@ function handleShellMessage(event) {
 // Mobile performance mode: cheaper litegraph rendering + capped canvas
 // resolution. The node canvas is raster (CSS cannot simplify it), but these
 // flags cut fill-rate and memory — the usual cause of iOS tab reloads.
-const DPR_CAP = 1.5;
-const FPS_IDLE = 30;
-
-// Dynamic link mode: straight normally, hidden while pinching/panning.
-// Pinned via defineProperty because the FE re-applies the user's
-// LinkRenderMode setting after setup and would overwrite plain assignment.
-let cmuLinksMode = 0; // LiteGraph.STRAIGHT_LINK
-let cmuFps = 30;
-
-// Force Nodes 2.0 (Vue DOM nodes) in embeds: the classic canvas renderer
-// may be removed from the official FE eventually, so the mobile shell
-// standardizes on Vue nodes and optimizes that path (DOM simplification
-// CSS below: off-screen culling, zoom LOD, no shadows/transitions).
-// NOTE: the FE reads this setting at init and offers no non-persistent
-// override, so this writes the user setting (shared with desktop for the
-// same ComfyUI user) and reloads once.
-async function forceVueNodes() {
-  try {
-    if (sessionStorage.getItem("cmuForcedVue")) return;
-    const setting = app.extensionManager?.setting;
-    if (!setting?.get || !setting?.set) return;
-    if (setting.get("Comfy.VueNodes.Enabled") !== true) {
-      sessionStorage.setItem("cmuForcedVue", "1");
-      await setting.set("Comfy.VueNodes.Enabled", true);
-      location.reload();
-    }
-  } catch (e) {
-    console.warn("[MobileBridge] force vue nodes failed", e);
-  }
-}
+// (Vue-node performance experiments removed — the official canvas renders
+//  stock. The focused-node modal below requires Nodes 2.0 to be enabled in
+//  the frontend settings; it no-ops gracefully in classic mode.)
 
 // Focused-node modal: tapping a node re-styles the official Vue node DOM
 // itself into a centered, enlarged, scrollable card (all widgets stay the
@@ -611,121 +552,13 @@ function setupNodeFocusMode() {
   };
 }
 
-function applyPerformanceMode() {
-  const canvas = app.canvas;
-  if (!canvas) return;
-  const vueMode = !!window.LiteGraph?.vueNodesMode;
 
-  // 1) Cap the canvas backing-store DPR (scoped to resizeCanvas so the rest
-  //    of the app keeps the real value). At DPR 3 -> 1.5 this is ~4x less
-  //    canvas memory and fill work — the main tab-reload lever.
-  try {
-    const realDprDesc = { configurable: true, get: () => window.__cmuRealDpr };
-    window.__cmuRealDpr = window.devicePixelRatio;
-    if (typeof app.resizeCanvas === "function" && !app.__cmuDprWrapped) {
-      app.__cmuDprWrapped = true;
-      const origResize = app.resizeCanvas.bind(app);
-      app.resizeCanvas = function (el) {
-        window.__cmuRealDpr = window.devicePixelRatio;
-        try {
-          Object.defineProperty(window, "devicePixelRatio", {
-            configurable: true,
-            get: () => Math.min(window.__cmuRealDpr, DPR_CAP),
-          });
-          return origResize(el);
-        } finally {
-          Object.defineProperty(window, "devicePixelRatio", realDprDesc);
-        }
-      };
-      window.dispatchEvent(new Event("resize"));
-    }
-  } catch (e) {
-    console.warn("[MobileBridge] DPR cap failed", e);
-  }
-
-  // 2) Static cheap-render flags. The FE re-applies user settings AFTER
-  //    extension setup (observed for LinkRenderMode, MaximumFps and
-  //    MinFontSizeForLOD), so every value it can overwrite is pinned with an
-  //    instance-level accessor whose setter is a no-op; the real backing
-  //    fields are driven by us directly.
-  const setFps = (fps) => {
-    cmuFps = fps;
-    try {
-      canvas._maximumFrameGap = fps > 0 ? 1000 / fps : 0;
-    } catch {}
-  };
-  try {
-    canvas.render_shadows = false;
-    canvas.render_connection_arrows = false;
-    canvas.render_curved_connections = false;
-    canvas.set_canvas_dirty_on_mouse_event = false;
-    try {
-      Object.defineProperty(canvas, "maximumFps", {
-        configurable: true,
-        get: () => cmuFps,
-        set: () => {},
-      });
-    } catch {}
-    setFps(FPS_IDLE);
-    try {
-      Object.defineProperty(canvas, "links_render_mode", {
-        configurable: true,
-        get: () => cmuLinksMode,
-        set: () => {},
-      });
-    } catch {
-      canvas.links_render_mode = cmuLinksMode;
-    }
-    // Classic-canvas LOD: _min_font_size_for_lod is the SOURCE the zoom
-    // threshold is recomputed from — raising it makes low-quality (which
-    // skips text/shadows in this fork's canvas path) engage earlier.
-    // 14 => simplified below ~58% zoom on a DPR-3 phone (~71% on DPR-2).
-    try {
-      Object.defineProperty(canvas, "min_font_size_for_lod", {
-        configurable: true,
-        get: () => 14,
-        set: () => {},
-      });
-    } catch {}
-    canvas._min_font_size_for_lod = 14;
-    canvas.updateLowQualityThreshold?.();
-  } catch (e) {
-    console.warn("[MobileBridge] perf flags failed", e);
-  }
-
-  // (Interaction-time hiding of nodes/links was removed by request: content
-  //  vanishing mid-gesture read as a bug. Perf now relies on the DPR cap,
-  //  the 30fps pin, classic-canvas LOD and the DOM simplification CSS.)
-
-  // 4) Zoom-tier attribute for the CSS DOM-LOD (Vue nodes): below 50% zoom
-  //    widget internals stop painting entirely.
-  try {
-    let lastTier = "";
-    const updateZoomTier = () => {
-      const scale = canvas.ds?.scale ?? 1;
-      const tier = scale < 0.5 ? "far" : "near";
-      if (tier !== lastTier) {
-        lastTier = tier;
-        document.documentElement.dataset.cmuZoom = tier;
-      }
-    };
-    updateZoomTier();
-    setInterval(updateZoomTier, 300);
-  } catch (e) {
-    console.warn("[MobileBridge] zoom tier failed", e);
-  }
-
-  canvas.setDirty?.(true, true);
-  console.log("[MobileBridge] perf mode active (vueNodes:", vueMode, ")");
-}
 
 if (isEmbedded()) {
   app.registerExtension({
     name: "ComfyMobile.CanvasBridge",
     setup() {
       injectCss();
-      forceVueNodes();
-      applyPerformanceMode();
       setupNodeFocusMode();
       window.addEventListener("message", handleShellMessage);
 
