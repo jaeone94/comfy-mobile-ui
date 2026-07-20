@@ -237,7 +237,28 @@ function triggerWidget({ nodeId, widgetName } = {}) {
     return;
   }
   try {
-    widget.callback?.(widget.value, app.canvas, node, undefined, undefined);
+    if (typeof widget.callback === "function") {
+      widget.callback(widget.value, app.canvas, node, undefined, undefined);
+    } else if (typeof widget.mouse === "function") {
+      // Custom widgets (rgthree etc.) implement interaction via mouse
+      // handlers with node-space coordinates — simulate a click at the
+      // widget's center so their own hit-testing runs.
+      const x = (node.size?.[0] ?? 200) / 2;
+      const y = (widget.last_y ?? 0) + ((widget.computedHeight ?? 20) / 2);
+      const pos = [x, y];
+      const makeEvent = (type) => {
+        const event = new PointerEvent(type, { clientX: 0, clientY: 0, bubbles: false });
+        try {
+          event.canvasX = (node.pos?.[0] ?? 0) + x;
+          event.canvasY = (node.pos?.[1] ?? 0) + y;
+        } catch {}
+        return event;
+      };
+      widget.mouse(makeEvent("pointerdown"), pos, node);
+      widget.mouse(makeEvent("pointerup"), pos, node);
+    } else {
+      console.warn("[MobileBridge] trigger-widget: no callback/mouse", widgetName);
+    }
     node.setDirtyCanvas?.(true, true);
   } catch (e) {
     console.warn("[MobileBridge] trigger-widget failed", e);

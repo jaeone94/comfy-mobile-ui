@@ -514,8 +514,72 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     // ---- Compatibility mode: widgets from the LIVE official node ----
     // The official graph runs extension behaviors (button callbacks, dynamic
     // widget creation); we render whatever it currently reports.
+    // Decorative custom widgets (dividers, header rows): value is null, {},
+    // or a bare {type} marker — nothing to edit, hide them.
+    const isDecorativeCustomValue = (v: unknown): boolean => {
+        if (v == null) return true;
+        if (typeof v === 'object' && !Array.isArray(v)) {
+            const keys = Object.keys(v as object);
+            return keys.length === 0 || (keys.length === 1 && keys[0] === 'type');
+        }
+        return false;
+    };
+
     const renderCompatWidget = (w: NonNullable<BridgeNode['widgets']>[number]) => {
         const inputBase = 'w-full rounded-lg bg-slate-800 border border-slate-700 px-3 py-2.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500';
+        const miniInput = 'flex-1 min-w-0 rounded-md bg-slate-900 border border-slate-700 px-2 py-1.5 text-sm text-slate-100 focus:outline-none focus:border-sky-500';
+        if (w.type === 'custom') {
+            const v = w.value;
+            if (v !== null && typeof v === 'object' && !Array.isArray(v)) {
+                // Generic object editor: extension row widgets (e.g. rgthree
+                // lora rows) expose plain data — edit it field by field.
+                const obj = v as Record<string, any>;
+                return (
+                    <div className="space-y-2 rounded-lg border border-slate-700 bg-slate-800/50 p-3">
+                        {Object.entries(obj).map(([key, val]) => (
+                            <div key={key} className="flex items-center gap-2">
+                                <span className="w-24 shrink-0 truncate text-xs text-slate-400">{key}</span>
+                                {typeof val === 'boolean' ? (
+                                    <button
+                                        onClick={() => onCompatWidgetChange?.(w.name, { ...obj, [key]: !val })}
+                                        className={`h-6 w-10 rounded-full transition-colors ${val ? 'bg-sky-500' : 'bg-slate-600'}`}
+                                    >
+                                        <span className={`block h-4 w-4 rounded-full bg-white transition-transform ${val ? 'translate-x-5' : 'translate-x-1'}`} />
+                                    </button>
+                                ) : typeof val === 'number' ? (
+                                    <input
+                                        type="number"
+                                        className={miniInput}
+                                        value={val}
+                                        step={0.05}
+                                        onChange={(e) => onCompatWidgetChange?.(w.name, { ...obj, [key]: Number(e.target.value) })}
+                                    />
+                                ) : typeof val === 'string' ? (
+                                    <input
+                                        type="text"
+                                        className={miniInput}
+                                        value={val}
+                                        onChange={(e) => onCompatWidgetChange?.(w.name, { ...obj, [key]: e.target.value })}
+                                    />
+                                ) : (
+                                    <span className="text-xs text-slate-500 break-all">{JSON.stringify(val)}</span>
+                                )}
+                            </div>
+                        ))}
+                    </div>
+                );
+            }
+            // Primitive-valued custom widget: an action the extension handles
+            // (e.g. rgthree "Add Lora") — run it officially via the bridge.
+            return (
+                <button
+                    onClick={() => onCompatTriggerWidget?.(w.name)}
+                    className="w-full rounded-lg border border-sky-600/50 bg-sky-600/20 px-3 py-2.5 text-sm font-medium text-sky-300 hover:bg-sky-600/30 transition-all active:scale-[0.99]"
+                >
+                    {w.name}
+                </button>
+            );
+        }
         if (w.type === 'button') {
             return (
                 <button
@@ -597,11 +661,14 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                 </div>
             );
         }
+        const visibleWidgets = bridgeNode.widgets.filter(
+            (w) => !(w.type === 'custom' && isDecorativeCustomValue(w.value))
+        );
         return (
             <div className="space-y-4">
                 {renderSectionHeader(
                     t('node.parameters'),
-                    bridgeNode.widgets.length,
+                    visibleWidgets.length,
                     <Puzzle className="w-4 h-4 text-sky-400" />
                 )}
                 {bridgeNode.imgs.length > 0 && (
