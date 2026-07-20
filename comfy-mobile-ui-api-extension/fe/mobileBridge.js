@@ -362,78 +362,26 @@ const LIVE_NODE = ":is(.outline-node-component-outline)"; // FE selection marker
 // Colors arrive per node as inline --cmu-* vars (see syncLiteNodeStyles).
 // Error outline overlay, footers, progress bars and resize handles are all
 // hidden while simplified; the header (title strip) survives at LOD1 only.
-// IMPORTANT: hidden content uses visibility (not display) — link endpoints
-// are DOM-measured slot positions, so slots must keep their geometry or the
-// canvas stops drawing the wires. visibility skips painting all the same.
+// Simplified tiers keep every node in the DOM for hit-testing (taps select
+// via the node elements, which sit above the canvas) and for the
+// DOM-measured slot geometry that link rendering depends on — but they do
+// not paint. opacity:0 removes painting while keeping hit-testing; display
+// or visibility would break taps and link endpoints. The bridge draws all
+// node proxies straight onto the litegraph canvas instead (legacy-style
+// immediate mode), so zoom/pan re-rasters no DOM at any lite tier. The
+// selected node is exempt and stays a fully live, editable official node.
 const LITE_CSS = `
-html.cmu-lod1 .lg-node:not(${LIVE_NODE}) > *:not([data-testid="node-inner-wrapper"]),
-html.cmu-lod1 .lg-node:not(${LIVE_NODE})
-  [data-testid="node-inner-wrapper"]
-  > *:not(:has(.lg-node-header, [data-testid^="node-header"])):not(:is(.lg-node-header, [data-testid^="node-header"])),
-html.cmu-lod2 .lg-node:not(${LIVE_NODE}) > * {
-  visibility: hidden !important;
-}
-/* Legacy look: title strip slightly darker than the node-colored body */
-html.cmu-lod1 .lg-node:not(${LIVE_NODE}) .lg-node-header {
-  background: rgba(0, 0, 0, 0.25) !important;
-  box-shadow: none !important;
-}
-/* The inner wrapper stays visible (it hosts the header) but must not paint
-   its own surface over the node-colored root */
-html.cmu-lod1 .lg-node:not(${LIVE_NODE}) [data-testid="node-inner-wrapper"] {
-  background: transparent !important;
-  border: none !important;
-  box-shadow: none !important;
-  outline: none !important;
-}
-/* LOD1 keeps the slot dots on the card edges, like the legacy canvas —
-   in a uniform neutral color so error/state tints cannot bleed through */
-html.cmu-lod1 .lg-node:not(${LIVE_NODE}) [data-testid="slot-connection-dot"] {
-  visibility: visible !important;
-  background: #64748b !important;
-  border-color: rgba(255, 255, 255, 0.35) !important;
-}
-/* Collapsed nodes swap to --node-width-x/--node-height-x, so fall back to
-   the natural (header-sized) box and never degenerate below a visible bar */
 html.cmu-lod1 .lg-node:not(${LIVE_NODE}),
 html.cmu-lod2 .lg-node:not(${LIVE_NODE}) {
-  width: var(--node-width, auto) !important;
-  height: var(--node-height, auto) !important;
-  min-width: 60px !important;
-  min-height: 26px !important;
-  background: var(--cmu-node-color, #374151) !important;
-  border: 1px solid rgba(255, 255, 255, 0.2) !important;
-  border-radius: 4px !important;
-  outline: none !important;
-  box-shadow: none !important;
+  opacity: 0 !important;
   filter: none !important;
-  overflow: hidden !important;
-  opacity: var(--cmu-node-alpha, 1) !important;
 }
-html.cmu-lod1 .lg-node:not(${LIVE_NODE})::before,
-html.cmu-lod1 .lg-node:not(${LIVE_NODE})::after,
-html.cmu-lod2 .lg-node:not(${LIVE_NODE})::before,
-html.cmu-lod2 .lg-node:not(${LIVE_NODE})::after {
-  content: none !important;
-}
-/* Keep the node layer permanently promoted while simplified. The frontend
-   toggles will-change off 256ms after each gesture (useTransformSettling),
-   so repeated small pinches demote+re-promote the layer — every cycle
-   forces a full re-raster of the visible tiles. Pinning will-change lets
-   the compositor stretch the cached raster during the gesture instead. */
-html.cmu-lod1 [data-testid="transform-pane"] {
-  will-change: transform !important;
-}
-/* LOD2 goes full legacy-pipeline: the DOM pane is excluded from painting
-   entirely (geometry is preserved, so DOM-measured link endpoints keep
-   working) and the bridge draws node proxies straight onto the litegraph
-   canvas instead — zooming re-rasters nothing. The selected node is
-   re-shown and stays a fully editable official node. */
+/* Only the selected node paints inside the pane, so keep its layer
+   permanently promoted — avoids the frontend's 256ms promote/demote
+   re-raster thrash on repeated small pinches (useTransformSettling). */
+html.cmu-lod1 [data-testid="transform-pane"],
 html.cmu-lod2 [data-testid="transform-pane"] {
-  visibility: hidden !important;
-}
-html.cmu-lod2 .lg-node${LIVE_NODE} {
-  visibility: visible !important;
+  will-change: transform !important;
 }
 `;
 
@@ -451,15 +399,47 @@ function applyLod(tier) {
   console.log("[MobileBridge] lite nodes LOD ->", tier);
 }
 
-// LOD2 node proxies, drawn immediate-mode on the litegraph canvas (graph
-// space, over links) — the same bounded-bitmap pipeline the legacy mobile
-// canvas uses, so zooming costs a trivial redraw instead of a DOM re-raster.
-const LITE_TITLE_HEIGHT = 30;
-function drawLiteRects(ctx) {
-  if (liteLod !== 2) return;
+// Node proxies, drawn immediate-mode on the litegraph canvas (graph space,
+// over links) — the bounded-bitmap pipeline that makes the legacy mobile
+// canvas fast. LOD2 draws bare rectangles; LOD1 draws legacy-style cards
+// with a darkened title strip, the node title and neutral slot dots.
+const LITE_DEFAULT_COLOR = "#374151";
+
+function darkenColor(color, amount) {
+  try {
+    let h = String(color).replace("#", "");
+    if (h.length === 3) h = h.split("").map((c) => c + c).join("");
+    const v = parseInt(h.slice(0, 6), 16);
+    if (Number.isNaN(v)) return color;
+    const f = 1 - amount;
+    const r = Math.round(((v >> 16) & 255) * f);
+    const g = Math.round(((v >> 8) & 255) * f);
+    const b = Math.round((v & 255) * f);
+    return `rgb(${r}, ${g}, ${b})`;
+  } catch {
+    return color;
+  }
+}
+
+// Legacy title font curve: large when zoomed out, small when close
+function liteTitleFontSize(scale) {
+  const raw = scale >= 0.8 ? 10 : 50 - (scale / 0.8) * 40;
+  return Math.max(15, Math.min(60, raw));
+}
+
+function roundRectPath(ctx, x, y, w, h, r) {
+  if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, w, h, r);
+  else ctx.rect(x, y, w, h);
+}
+
+function drawLiteNodes(ctx) {
+  if (liteLod === 0) return;
   const nodes = app.graph?._nodes;
   if (!nodes) return;
   const selected = app.canvas?.selected_nodes ?? {};
+  const scale = app.canvas?.ds?.scale ?? 1;
+  const fontSize = liteTitleFontSize(scale);
+  const titleH = Math.max(30, fontSize + 16);
   ctx.save();
   for (const n of nodes) {
     if (selected[n.id]) continue; // rendered live by the DOM instead
@@ -470,14 +450,14 @@ function drawLiteRects(ctx) {
         x = b[0]; y = b[1]; w = b[2]; h = b[3];
       } else {
         x = n.pos[0];
-        y = n.pos[1] - LITE_TITLE_HEIGHT;
+        y = n.pos[1] - 30;
         w = n.size[0];
-        h = n.size[1] + LITE_TITLE_HEIGHT;
+        h = n.size[1] + 30;
       }
     } catch {
       continue;
     }
-    let color = n.bgcolor || n.color || "#374151";
+    let color = n.bgcolor || n.color || LITE_DEFAULT_COLOR;
     let alpha = 1;
     if (n.mode === 2) {
       color = "#3b82f6"; // muted — legacy blue
@@ -489,11 +469,70 @@ function drawLiteRects(ctx) {
     ctx.globalAlpha = alpha;
     ctx.fillStyle = color;
     ctx.beginPath();
-    if (typeof ctx.roundRect === "function") ctx.roundRect(x, y, w, h, 4);
-    else ctx.rect(x, y, w, h);
+    roundRectPath(ctx, x, y, w, h, 4);
     ctx.fill();
+
+    if (liteLod === 1) {
+      const stripH = Math.min(titleH, h);
+      ctx.fillStyle = darkenColor(color, 0.25);
+      ctx.beginPath();
+      ctx.moveTo(x + 4, y);
+      ctx.lineTo(x + w - 4, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + 4);
+      ctx.lineTo(x + w, y + stripH);
+      ctx.lineTo(x, y + stripH);
+      ctx.lineTo(x, y + 4);
+      ctx.quadraticCurveTo(x, y, x + 4, y);
+      ctx.closePath();
+      ctx.fill();
+      if (h > stripH) {
+        ctx.beginPath();
+        ctx.moveTo(x, y + stripH);
+        ctx.lineTo(x + w, y + stripH);
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.2)";
+        ctx.lineWidth = 1;
+        ctx.stroke();
+      }
+      let title = n.type;
+      try {
+        title = n.getTitle?.() ?? n.title ?? n.type;
+      } catch {}
+      if (title && w > 40) {
+        ctx.fillStyle = "rgba(255, 255, 255, 0.92)";
+        ctx.font = `500 ${fontSize}px -apple-system, "system-ui", sans-serif`;
+        ctx.textAlign = "left";
+        ctx.textBaseline = "middle";
+        ctx.fillText(String(title), x + 10, y + stripH / 2 + 1, Math.max(10, w - 20));
+      }
+      // Neutral slot dots on the card edges, like the legacy canvas
+      try {
+        const dot = (px, py) => {
+          ctx.beginPath();
+          ctx.arc(px, py, 4, 0, Math.PI * 2);
+          ctx.fillStyle = "#64748b";
+          ctx.fill();
+          ctx.strokeStyle = "rgba(255, 255, 255, 0.35)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
+        };
+        const inputs = n.inputs ?? [];
+        for (let i = 0; i < inputs.length; i++) {
+          const p = n.getConnectionPos?.(true, i);
+          if (p) dot(p[0], p[1]);
+        }
+        const outputs = n.outputs ?? [];
+        for (let i = 0; i < outputs.length; i++) {
+          const p = n.getConnectionPos?.(false, i);
+          if (p) dot(p[0], p[1]);
+        }
+      } catch {}
+    }
+
+    ctx.globalAlpha = alpha;
     ctx.strokeStyle = "rgba(255, 255, 255, 0.2)";
     ctx.lineWidth = 1;
+    ctx.beginPath();
+    roundRectPath(ctx, x, y, w, h, 4);
     ctx.stroke();
   }
   ctx.restore();
@@ -511,37 +550,6 @@ function lodForScale(scale, current) {
   return 1;
 }
 
-// Legacy-canvas node colors, delivered as inline CSS vars on each node root.
-// Vue owns class/style bindings it declares, but leaves foreign inline
-// custom properties alone; the poll re-applies them anyway if one is lost.
-function syncLiteNodeStyles() {
-  const nodes = app.graph?._nodes;
-  if (!nodes) return;
-  const els = new Map();
-  for (const el of document.querySelectorAll(".lg-node[data-node-id]")) {
-    els.set(String(el.dataset.nodeId), el);
-  }
-  for (const n of nodes) {
-    const el = els.get(String(n.id));
-    if (!el) continue;
-    let color = n.bgcolor || n.color || "#374151";
-    let alpha = "1";
-    if (n.mode === 2) {
-      color = "#3b82f6"; // muted — legacy blue
-      alpha = "0.35";
-    } else if (n.mode === 4) {
-      color = "#9333ea"; // bypassed — legacy purple
-      alpha = "0.35";
-    }
-    if (el.style.getPropertyValue("--cmu-node-color") !== color) {
-      el.style.setProperty("--cmu-node-color", color);
-    }
-    if (el.style.getPropertyValue("--cmu-node-alpha") !== alpha) {
-      el.style.setProperty("--cmu-node-alpha", alpha);
-    }
-  }
-}
-
 function updateLod() {
   if (!liteEnabled) {
     applyLod(0);
@@ -549,7 +557,6 @@ function updateLod() {
   }
   const scale = app.canvas?.ds?.scale ?? 1;
   applyLod(lodForScale(scale, liteLod));
-  if (liteLod > 0) syncLiteNodeStyles();
 }
 
 function setLiteMode({ enabled }) {
@@ -681,7 +688,46 @@ if (isEmbedded()) {
         console.warn("[MobileBridge] graph hooks failed", e);
       }
 
-      // LOD2 proxy renderer: chain the canvas foreground hook (a null-by-
+      // Simplified tiers are selection-only: node position moves belong to
+      // the legacy canvas. A capture-phase interceptor swallows pointer
+      // moves for drags that start on a proxied (non-selected) node, or on
+      // the selected node's header — taps still select, widget
+      // interactions inside the selected node's body keep working, and
+      // panning from empty canvas is untouched.
+      try {
+        let swallowMoves = false;
+        window.addEventListener(
+          "pointerdown",
+          (e) => {
+            swallowMoves = false;
+            if (!liteEnabled || liteLod === 0) return;
+            const t = e.target;
+            if (!(t instanceof Element)) return;
+            const nodeEl = t.closest(".lg-node");
+            if (!nodeEl) return;
+            const isLive = nodeEl.classList.contains("outline-node-component-outline");
+            const onHeader = !!t.closest('.lg-node-header, [data-testid^="node-header"]');
+            if (!isLive || onHeader) swallowMoves = true;
+          },
+          true
+        );
+        window.addEventListener(
+          "pointermove",
+          (e) => {
+            if (swallowMoves) e.stopImmediatePropagation();
+          },
+          true
+        );
+        const endSwallow = () => {
+          swallowMoves = false;
+        };
+        window.addEventListener("pointerup", endSwallow, true);
+        window.addEventListener("pointercancel", endSwallow, true);
+      } catch (e) {
+        console.warn("[MobileBridge] drag blocker failed", e);
+      }
+
+      // Lite proxy renderer: chain the canvas foreground hook (a null-by-
       // default user hook — unlike prototype methods, chaining it is the
       // supported extension pattern). Internal try keeps any drawing error
       // from ever aborting the frontend's draw loop.
@@ -692,7 +738,7 @@ if (isEmbedded()) {
           canvas.onDrawForeground = function (ctx, area) {
             originalDrawFg?.call(this, ctx, area);
             try {
-              drawLiteRects(ctx);
+              drawLiteNodes(ctx);
             } catch {}
           };
         }
