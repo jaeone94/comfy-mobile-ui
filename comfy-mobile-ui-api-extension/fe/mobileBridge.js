@@ -405,9 +405,20 @@ function applyPerformanceMode() {
     canvas.render_shadows = false;
     canvas.render_connection_arrows = false;
     canvas.render_curved_connections = false;
-    const LG = window.LiteGraph;
-    if (LG && typeof LG.STRAIGHT_LINK === "number") canvas.links_render_mode = LG.STRAIGHT_LINK;
-    // Draw simplified nodes below ~100% zoom (both property names, per fork)
+    // The FE re-applies the user's LinkRenderMode setting after setup and
+    // overwrites a plain assignment — pin the property so straight links win.
+    try {
+      Object.defineProperty(canvas, "links_render_mode", {
+        get: () => 0, // LiteGraph.STRAIGHT_LINK
+        set: () => {},
+        configurable: true,
+      });
+    } catch {
+      canvas.links_render_mode = 0;
+    }
+    // Simplified node rendering below ~100% zoom (real field is the
+    // underscored one in this fork; keep the public names as fallbacks)
+    canvas._lowQualityZoomThreshold = 1.0;
     canvas.low_quality_zoom_threshold = 1.0;
     canvas.low_quality_rendering_threshold = 1.0;
     canvas.setDirty?.(true, true);
