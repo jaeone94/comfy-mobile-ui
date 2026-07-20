@@ -103,6 +103,7 @@ export type ShellCommandMessage =
     }
   | { source: typeof SHELL_SOURCE; type: 'set-node-mode'; payload: { nodeId: number | string; mode: number } }
   | { source: typeof SHELL_SOURCE; type: 'queue-prompt' }
+  | { source: typeof SHELL_SOURCE; type: 'set-lite-mode'; payload: { enabled: boolean } }
   | { source: typeof SHELL_SOURCE; type: 'fit-view' }
   | { source: typeof SHELL_SOURCE; type: 'get-workflow'; requestId: string }
   | { source: typeof SHELL_SOURCE; type: 'get-prompt'; requestId: string };

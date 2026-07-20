@@ -644,6 +644,8 @@ const WorkflowEditor: React.FC = () => {
   // when switching canvas modes.
   const officialCanvasEnabled = useCanvasV2Store((s) => s.officialCanvasEnabled);
   const setOfficialCanvasEnabled = useCanvasV2Store((s) => s.setOfficialCanvasEnabled);
+  const liteNodesEnabled = useCanvasV2Store((s) => s.liteNodesEnabled);
+  const setLiteNodesEnabled = useCanvasV2Store((s) => s.setLiteNodesEnabled);
   const [canvasDirty, setCanvasDirty] = useState(false);
   const handleBridgeGraphMutated = useCallback(() => {
     setCanvasDirty(true);
@@ -651,6 +653,15 @@ const WorkflowEditor: React.FC = () => {
   useEffect(() => {
     setCanvasDirty(false);
   }, [id]);
+  // Bridge ready fires on every iframe (re)load — re-send the lite-mode state
+  const handleBridgeReady = useCallback(() => {
+    getActiveCanvasBridge()?.setLiteMode(useCanvasV2Store.getState().liteNodesEnabled);
+  }, []);
+  const handleToggleLiteNodes = useCallback(() => {
+    const next = !useCanvasV2Store.getState().liteNodesEnabled;
+    setLiteNodesEnabled(next);
+    getActiveCanvasBridge()?.setLiteMode(next);
+  }, [setLiteNodesEnabled]);
 
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
@@ -3507,6 +3518,7 @@ const WorkflowEditor: React.FC = () => {
         <CanvasHost
           workflowJson={workflow?.workflow_json ?? null}
           workflowKey={id ?? null}
+          onReady={handleBridgeReady}
           onGraphMutated={handleBridgeGraphMutated}
         />
       ) : (
@@ -3531,11 +3543,27 @@ const WorkflowEditor: React.FC = () => {
         <button
           onClick={handleSaveChanges}
           disabled={isSaving}
-          className="fixed right-3 top-28 z-30 flex items-center gap-1.5 rounded-full border border-emerald-500/60 bg-emerald-600/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-emerald-500 disabled:opacity-50"
+          className="fixed right-3 top-[140px] z-30 flex items-center gap-1.5 rounded-full border border-emerald-500/60 bg-emerald-600/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-emerald-500 disabled:opacity-50"
           title="Save canvas changes to the workflow"
         >
           <Save className="h-3.5 w-3.5" />
           Save
+        </button>
+      )}
+
+      {/* Canvas v2: lite-nodes (zoom-LOD performance) toggle */}
+      {officialCanvasEnabled && (
+        <button
+          onClick={handleToggleLiteNodes}
+          className={cn(
+            'fixed right-3 top-[102px] z-30 rounded-full border px-2.5 py-1.5 text-[11px] font-medium shadow-lg backdrop-blur transition-colors',
+            liteNodesEnabled
+              ? 'border-emerald-500/60 bg-emerald-600/80 text-white'
+              : 'border-slate-600/60 bg-slate-800/80 text-slate-300'
+          )}
+          title="Simplify nodes for mobile performance (zoom-based level of detail)"
+        >
+          {liteNodesEnabled ? 'Lite nodes' : 'Full nodes'}
         </button>
       )}
 

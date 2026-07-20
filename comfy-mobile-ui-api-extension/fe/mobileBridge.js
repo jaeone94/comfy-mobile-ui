@@ -338,9 +338,154 @@ const EMBED_CSS = `
 function injectCss() {
   const style = document.createElement("style");
   style.id = "comfy-mobile-bridge-style";
-  style.textContent = EMBED_CSS;
+  style.textContent = EMBED_CSS + LITE_CSS;
   document.head.appendChild(style);
   document.documentElement.classList.add("comfy-mobile-embed");
+}
+
+// ---------------------------------------------------------------------------
+// Lite nodes — zoom-driven LOD over the Vue node DOM (mobile performance).
+// The litegraph canvas sits ABOVE the node DOM and owns all pointer
+// interaction and link drawing, so hiding node DOM content cannot break
+// selecting/dragging/linking. The selected node stays fully rendered via the
+// frontend's own selection marker class — Vue keeps that class in sync
+// across re-renders, whereas classes we add ourselves get stripped.
+//   LOD0 (zoomed in):  stock rendering
+//   LOD1 (mid zoom):   header card — body hidden, legacy-canvas look
+//   LOD2 (zoomed out): solid rectangles, zero inner elements
+// ---------------------------------------------------------------------------
+
+const LIVE_NODE = ":is(.outline-node-component-outline)"; // FE selection marker
+
+// Lite cards mimic the legacy mobile canvas nodes: node-colored rounded rect
+// (r=4), subtle white outline, muted=blue / bypassed=purple at 35% alpha.
+// Colors arrive per node as inline --cmu-* vars (see syncLiteNodeStyles).
+// Error outline overlay, footers, progress bars and resize handles are all
+// hidden while simplified; the header (title strip) survives at LOD1 only.
+// IMPORTANT: hidden content uses visibility (not display) — link endpoints
+// are DOM-measured slot positions, so slots must keep their geometry or the
+// canvas stops drawing the wires. visibility skips painting all the same.
+const LITE_CSS = `
+html.cmu-lod1 .lg-node:not(${LIVE_NODE}) > *:not([data-testid="node-inner-wrapper"]),
+html.cmu-lod1 .lg-node:not(${LIVE_NODE})
+  [data-testid="node-inner-wrapper"]
+  > *:not(:has(.lg-node-header, [data-testid^="node-header"])):not(:is(.lg-node-header, [data-testid^="node-header"])),
+html.cmu-lod2 .lg-node:not(${LIVE_NODE}) > * {
+  visibility: hidden !important;
+}
+/* Legacy look: title strip slightly darker than the node-colored body */
+html.cmu-lod1 .lg-node:not(${LIVE_NODE}) .lg-node-header {
+  background: rgba(0, 0, 0, 0.25) !important;
+  box-shadow: none !important;
+}
+/* The inner wrapper stays visible (it hosts the header) but must not paint
+   its own surface over the node-colored root */
+html.cmu-lod1 .lg-node:not(${LIVE_NODE}) [data-testid="node-inner-wrapper"] {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+/* LOD1 keeps the slot dots on the card edges, like the legacy canvas —
+   in a uniform neutral color so error/state tints cannot bleed through */
+html.cmu-lod1 .lg-node:not(${LIVE_NODE}) [data-testid="slot-connection-dot"] {
+  visibility: visible !important;
+  background: #64748b !important;
+  border-color: rgba(255, 255, 255, 0.35) !important;
+}
+/* Collapsed nodes swap to --node-width-x/--node-height-x, so fall back to
+   the natural (header-sized) box and never degenerate below a visible bar */
+html.cmu-lod1 .lg-node:not(${LIVE_NODE}),
+html.cmu-lod2 .lg-node:not(${LIVE_NODE}) {
+  width: var(--node-width, auto) !important;
+  height: var(--node-height, auto) !important;
+  min-width: 60px !important;
+  min-height: 26px !important;
+  background: var(--cmu-node-color, #374151) !important;
+  border: 1px solid rgba(255, 255, 255, 0.2) !important;
+  border-radius: 4px !important;
+  outline: none !important;
+  box-shadow: none !important;
+  filter: none !important;
+  overflow: hidden !important;
+  opacity: var(--cmu-node-alpha, 1) !important;
+}
+html.cmu-lod1 .lg-node:not(${LIVE_NODE})::before,
+html.cmu-lod1 .lg-node:not(${LIVE_NODE})::after,
+html.cmu-lod2 .lg-node:not(${LIVE_NODE})::before,
+html.cmu-lod2 .lg-node:not(${LIVE_NODE})::after {
+  content: none !important;
+}
+`;
+
+let liteEnabled = false;
+let liteLod = 0;
+
+function applyLod(tier) {
+  if (tier === liteLod) return;
+  liteLod = tier;
+  const cls = document.documentElement.classList;
+  cls.toggle("cmu-lod1", tier === 1);
+  cls.toggle("cmu-lod2", tier === 2);
+  console.log("[MobileBridge] lite nodes LOD ->", tier);
+}
+
+// Hysteresis: enter thresholds are stricter than exit thresholds so pinching
+// around a boundary cannot flip tiers back and forth every poll.
+function lodForScale(scale, current) {
+  const ENTER_FULL = 1.2, EXIT_FULL = 1.05;
+  const ENTER_RECT = 0.45, EXIT_RECT = 0.55;
+  if (current === 0 && scale >= EXIT_FULL) return 0;
+  if (current === 2 && scale <= EXIT_RECT) return 2;
+  if (scale >= ENTER_FULL) return 0;
+  if (scale < ENTER_RECT) return 2;
+  return 1;
+}
+
+// Legacy-canvas node colors, delivered as inline CSS vars on each node root.
+// Vue owns class/style bindings it declares, but leaves foreign inline
+// custom properties alone; the poll re-applies them anyway if one is lost.
+function syncLiteNodeStyles() {
+  const nodes = app.graph?._nodes;
+  if (!nodes) return;
+  const els = new Map();
+  for (const el of document.querySelectorAll(".lg-node[data-node-id]")) {
+    els.set(String(el.dataset.nodeId), el);
+  }
+  for (const n of nodes) {
+    const el = els.get(String(n.id));
+    if (!el) continue;
+    let color = n.bgcolor || n.color || "#374151";
+    let alpha = "1";
+    if (n.mode === 2) {
+      color = "#3b82f6"; // muted — legacy blue
+      alpha = "0.35";
+    } else if (n.mode === 4) {
+      color = "#9333ea"; // bypassed — legacy purple
+      alpha = "0.35";
+    }
+    if (el.style.getPropertyValue("--cmu-node-color") !== color) {
+      el.style.setProperty("--cmu-node-color", color);
+    }
+    if (el.style.getPropertyValue("--cmu-node-alpha") !== alpha) {
+      el.style.setProperty("--cmu-node-alpha", alpha);
+    }
+  }
+}
+
+function updateLod() {
+  if (!liteEnabled) {
+    applyLod(0);
+    return;
+  }
+  const scale = app.canvas?.ds?.scale ?? 1;
+  applyLod(lodForScale(scale, liteLod));
+  if (liteLod > 0) syncLiteNodeStyles();
+}
+
+function setLiteMode({ enabled }) {
+  liteEnabled = !!enabled;
+  updateLod();
 }
 
 function handleShellMessage(event) {
@@ -376,6 +521,9 @@ function handleShellMessage(event) {
       break;
     case "fit-view":
       fitView();
+      break;
+    case "set-lite-mode":
+      setLiteMode(msg.payload ?? {});
       break;
     default:
       break;
@@ -421,6 +569,14 @@ if (isEmbedded()) {
           if (id !== lastSentSelectionId) reportSelection();
         } catch {}
       }, 600);
+
+      // Lite-nodes LOD: zoom changes have no litegraph hook — poll the scale.
+      // Tier flips are single class toggles on <html>, so idle polls are free.
+      setInterval(() => {
+        try {
+          updateLod();
+        } catch {}
+      }, 300);
 
 
       // Primary signal: litegraph selection callback (chain any existing one)
