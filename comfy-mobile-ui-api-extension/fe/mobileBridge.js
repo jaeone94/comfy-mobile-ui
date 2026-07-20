@@ -350,6 +350,31 @@ html[data-cmu-zoom="far"] .lg-node[data-node-id] {
 html[data-cmu-zoom="far"] .lg-node-header {
   font-size: 12px !important;
 }
+/* ---- Focused-node modal: the official node DOM itself, centered ---- */
+html.cmu-node-focus .lg-node[data-node-id]:not(.cmu-focused) {
+  opacity: 0.12 !important;
+  pointer-events: none !important;
+}
+.lg-node.cmu-focused {
+  transform: translate(var(--cmu-fx), var(--cmu-fy)) scale(var(--cmu-fz)) !important;
+  transform-origin: 0 0 !important;
+  z-index: 10000 !important;
+  box-shadow: 0 16px 56px rgba(0, 0, 0, 0.65) !important;
+  border-radius: 14px !important;
+  content-visibility: visible !important;
+}
+.lg-node.cmu-focused [data-testid^="node-body"] {
+  max-height: var(--cmu-max-h, 60vh);
+  overflow-y: auto !important;
+  overscroll-behavior: contain;
+}
+/* the modal must never be LOD-simplified */
+html[data-cmu-zoom="far"] .lg-node.cmu-focused {
+  font-size: 12px !important;
+}
+html[data-cmu-zoom="far"] .lg-node.cmu-focused [data-testid="node-widgets"] {
+  visibility: visible !important;
+}
 /* floating top-row cards added by other extensions (e.g. devtools) */
 .pointer-events-auto.h-12.shadow-interface {
   display: none !important;
@@ -439,6 +464,109 @@ async function forceVueNodes() {
   } catch (e) {
     console.warn("[MobileBridge] force vue nodes failed", e);
   }
+}
+
+// Focused-node modal: tapping a node re-styles the official Vue node DOM
+// itself into a centered, enlarged, scrollable card (all widgets stay the
+// real official widgets — nothing is re-implemented). The TransformPane is a
+// transformed ancestor, so position:fixed cannot escape it; instead we
+// compute the pane-local translate/scale that lands the node at the screen
+// position we want, and re-derive it every frame while focused so background
+// pan/zoom cannot drift the card.
+function setupNodeFocusMode() {
+  let focused = null;
+  let rafId = null;
+  let downX = 0;
+  let downY = 0;
+  let downTime = 0;
+  let downNode = null;
+
+  const paneTransform = () => {
+    const el = document.querySelector('[data-testid="transform-pane"]');
+    const t = el?.style?.transform ?? "";
+    const scale = /scale3d\(([\d.eE+-]+)/.exec(t);
+    const trans = /translate3d\((-?[\d.eE+-]+)px,\s*(-?[\d.eE+-]+)px/.exec(t);
+    return {
+      z: scale ? Number(scale[1]) : 1,
+      tx: trans ? Number(trans[1]) : 0,
+      ty: trans ? Number(trans[2]) : 0,
+    };
+  };
+
+  const updateFocusTransform = () => {
+    if (!focused) return;
+    const { z, tx, ty } = paneTransform();
+    const width =
+      parseFloat(getComputedStyle(focused).getPropertyValue("--node-width")) ||
+      focused.offsetWidth ||
+      300;
+    const fs = Math.min(1.25, (window.innerWidth * 0.92) / width);
+    const screenX = (window.innerWidth - width * fs) / 2;
+    const screenY = Math.max(16, window.innerHeight * 0.08);
+    // pane transform is scale(z) translate(tx,ty): screen = z * (p + t)
+    focused.style.setProperty("--cmu-fx", `${screenX / z - tx}px`);
+    focused.style.setProperty("--cmu-fy", `${screenY / z - ty}px`);
+    focused.style.setProperty("--cmu-fz", `${fs / z}`);
+    focused.style.setProperty("--cmu-max-h", `${(window.innerHeight * 0.72) / fs}px`);
+    rafId = requestAnimationFrame(updateFocusTransform);
+  };
+
+  const focusNode = (el) => {
+    focused = el;
+    el.classList.add("cmu-focused");
+    document.documentElement.classList.add("cmu-node-focus");
+    updateFocusTransform();
+  };
+
+  const unfocusNode = () => {
+    if (!focused) return;
+    if (rafId) cancelAnimationFrame(rafId);
+    rafId = null;
+    focused.classList.remove("cmu-focused");
+    for (const prop of ["--cmu-fx", "--cmu-fy", "--cmu-fz", "--cmu-max-h"]) {
+      focused.style.removeProperty(prop);
+    }
+    document.documentElement.classList.remove("cmu-node-focus");
+    focused = null;
+  };
+
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      downNode = event.target?.closest?.(".lg-node[data-node-id]") ?? null;
+      downX = event.clientX;
+      downY = event.clientY;
+      downTime = performance.now();
+    },
+    true
+  );
+
+  document.addEventListener(
+    "click",
+    (event) => {
+      if (focused) {
+        // clicks inside the focused card pass through to the real widgets
+        if (!focused.contains(event.target)) {
+          event.preventDefault();
+          event.stopPropagation();
+          unfocusNode();
+        }
+        return;
+      }
+      const node = event.target?.closest?.(".lg-node[data-node-id]");
+      if (!node || node !== downNode) return;
+      const moved = Math.hypot(event.clientX - downX, event.clientY - downY);
+      if (moved > 8 || performance.now() - downTime > 600) return; // drag, not tap
+      event.preventDefault();
+      event.stopPropagation();
+      focusNode(node);
+    },
+    true
+  );
+
+  window.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") unfocusNode();
+  });
 }
 
 function applyPerformanceMode() {
@@ -556,6 +684,7 @@ if (isEmbedded()) {
       injectCss();
       forceVueNodes();
       applyPerformanceMode();
+      setupNodeFocusMode();
       window.addEventListener("message", handleShellMessage);
 
       // Primary signal: litegraph selection callback (chain any existing one)
