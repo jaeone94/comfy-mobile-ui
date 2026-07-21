@@ -43,7 +43,6 @@ import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
 import CanvasHost from '@/components/canvas-v2/CanvasHost';
 import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
 import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
-import { Save } from 'lucide-react';
 import type { BridgeNode } from '@/shared/types/bridge';
 import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
@@ -656,6 +655,27 @@ const WorkflowEditor: React.FC = () => {
   useEffect(() => {
     setCanvasDirty(false);
   }, [id]);
+  // The canvas-mode toggle floats right below the header, whose height is
+  // dynamic (breadcrumbs, execution progress bar) — track the real header
+  // bottom instead of pinning a hardcoded offset over the progress bar.
+  const [canvasToggleTop, setCanvasToggleTop] = useState(76);
+  useEffect(() => {
+    // The header mounts only after the workflow finishes loading — re-run
+    // until it exists, then keep observing its size.
+    const header = document.querySelector('header.pwa-header');
+    if (!header) return;
+    const update = () => {
+      setCanvasToggleTop(Math.round(header.getBoundingClientRect().bottom) + 8);
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(header);
+    window.addEventListener('resize', update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', update);
+    };
+  }, [isLoading]);
 
   // Canvas interaction hook
   const canvasInteraction = useCanvasInteraction({
@@ -3496,7 +3516,7 @@ const WorkflowEditor: React.FC = () => {
       <WorkflowHeader
         workflow={workflow!}
         selectedNode={selectedNode}
-        hasUnsavedChanges={widgetEditor.hasModifications()}
+        hasUnsavedChanges={officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications()}
         isSaving={isSaving}
         saveSucceeded={saveSucceeded}
         sessionStack={sessionStack}
@@ -3554,32 +3574,44 @@ const WorkflowEditor: React.FC = () => {
         />
       )}
 
-      {/* Canvas v2: dirty-state save button (official mode only) */}
-      {officialCanvasEnabled && canvasDirty && (
-        <button
-          onClick={handleSaveChanges}
-          disabled={isSaving}
-          className="fixed right-3 top-28 z-30 flex items-center gap-1.5 rounded-full border border-emerald-500/60 bg-emerald-600/90 px-3 py-1.5 text-[11px] font-medium text-white shadow-lg backdrop-blur transition-colors hover:bg-emerald-500 disabled:opacity-50"
-          title="Save canvas changes to the workflow"
-        >
-          <Save className="h-3.5 w-3.5" />
-          Save
-        </button>
-      )}
-
-      {/* Canvas v2 beta toggle */}
-      <button
-        onClick={handleToggleCanvasMode}
-        className={cn(
-          'fixed right-3 top-16 z-30 rounded-full border px-2.5 py-1.5 text-[11px] font-medium shadow-lg backdrop-blur transition-colors',
-          officialCanvasEnabled
-            ? 'border-sky-500/60 bg-sky-600/80 text-white'
-            : 'border-slate-600/60 bg-slate-800/80 text-slate-300'
-        )}
-        title="Toggle official canvas (beta)"
+      {/* Canvas mode toggle: segmented control, floats just below the
+          header and follows its dynamic height (progress bar etc.) */}
+      <div
+        role="group"
+        aria-label="Canvas mode"
+        className="fixed right-3 z-30 flex items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur transition-[top] duration-200"
+        style={{ top: canvasToggleTop }}
       >
-        {officialCanvasEnabled ? 'Official canvas β' : 'Legacy canvas'}
-      </button>
+        <button
+          onClick={() => {
+            if (officialCanvasEnabled) handleToggleCanvasMode();
+          }}
+          className={cn(
+            'px-3 py-2 text-[11px] font-semibold transition-colors',
+            !officialCanvasEnabled
+              ? 'bg-slate-600 text-white'
+              : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+          )}
+          title="Switch to the legacy canvas"
+        >
+          Legacy
+        </button>
+        <div className="w-px self-stretch bg-slate-500/60" />
+        <button
+          onClick={() => {
+            if (!officialCanvasEnabled) handleToggleCanvasMode();
+          }}
+          className={cn(
+            'px-3 py-2 text-[11px] font-semibold transition-colors',
+            officialCanvasEnabled
+              ? 'bg-sky-600 text-white'
+              : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+          )}
+          title="Switch to the official canvas (beta)"
+        >
+          Official β
+        </button>
+      </div>
 
       {/* Floating Control Panel - Hidden during repositioning and connection mode */}
       {!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && (
@@ -3811,7 +3843,7 @@ const WorkflowEditor: React.FC = () => {
       {/* Workflow Save Button - Floating separately */}
       {!isLatentPreviewFullscreen && (
         <WorkflowSaveButton
-          hasUnsavedChanges={widgetEditor.hasModifications()}
+          hasUnsavedChanges={officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications()}
           isSaving={isSaving}
           saveSucceeded={saveSucceeded}
           onSaveChanges={handleSaveChanges}
