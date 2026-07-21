@@ -645,6 +645,11 @@ const WorkflowEditor: React.FC = () => {
   const officialCanvasEnabled = useCanvasV2Store((s) => s.officialCanvasEnabled);
   const setOfficialCanvasEnabled = useCanvasV2Store((s) => s.setOfficialCanvasEnabled);
   const [canvasDirty, setCanvasDirty] = useState(false);
+  // In-flight official-canvas save. Mode switching reloads from storage, so
+  // a toggle right after tapping Save must wait for this write to commit —
+  // otherwise it rebuilds the legacy graph from the PREVIOUS json and the
+  // node hints keep showing stale values until the next full reload.
+  const pendingCanvasSaveRef = useRef<Promise<void> | null>(null);
   const handleBridgeGraphMutated = useCallback(() => {
     setCanvasDirty(true);
   }, []);
@@ -1170,19 +1175,32 @@ const WorkflowEditor: React.FC = () => {
       // and widget/mode edits were already mirrored into it.
       const v2Bridge = getActiveCanvasBridge();
       if (officialCanvasEnabled && v2Bridge?.isReady) {
-        const officialJson = (await v2Bridge.getWorkflow()) as IComfyJson;
-        // Persist only — the legacy view rebuilds from storage on mode
-        // switch, so no graph reconstruction is needed here.
-        const latestWorkflow = useGlobalStore.getState().workflow || workflow;
-        const updatedWorkflow: IComfyWorkflow = {
-          ...latestWorkflow!,
-          workflow_json: officialJson,
-          graph: latestWorkflow?.graph,
-          modifiedAt: new Date()
-        };
-        await updateWorkflow(updatedWorkflow);
-        setWorkflow(updatedWorkflow);
-        syncWorkflow(updatedWorkflow);
+        const saveTask = (async () => {
+          const officialJson = (await v2Bridge.getWorkflow()) as IComfyJson;
+          // Persist only — the legacy view rebuilds from storage on mode
+          // switch, so no graph reconstruction is needed here.
+          const latestWorkflow = useGlobalStore.getState().workflow || workflow;
+          const updatedWorkflow: IComfyWorkflow = {
+            ...latestWorkflow!,
+            workflow_json: officialJson,
+            graph: latestWorkflow?.graph,
+            modifiedAt: new Date()
+          };
+          // Keep the runtime graph objects OUT of the DB write: they are
+          // rebuilt from workflow_json on load anyway, and structured-cloning
+          // them makes the write slow enough for a save→toggle race.
+          const { graph: _graph, parsedData: _parsedData, ...persistable } =
+            updatedWorkflow as IComfyWorkflow & { parsedData?: unknown };
+          await updateWorkflow(persistable as IComfyWorkflow);
+          setWorkflow(updatedWorkflow);
+          syncWorkflow(updatedWorkflow);
+        })();
+        pendingCanvasSaveRef.current = saveTask;
+        try {
+          await saveTask;
+        } finally {
+          if (pendingCanvasSaveRef.current === saveTask) pendingCanvasSaveRef.current = null;
+        }
         widgetEditor.clearModifications();
         setCanvasDirty(false);
         setIsSaving(false);
@@ -1341,6 +1359,16 @@ const WorkflowEditor: React.FC = () => {
     widgetEditor.clearModifications();
     setCanvasDirty(false);
     setOfficialCanvasEnabled(!officialCanvasEnabled);
+    // A save tapped right before the toggle may still be committing — the
+    // reload below reads storage, so wait for the write or it rebuilds the
+    // graph from the previous json (stale node hints until a full reload).
+    if (pendingCanvasSaveRef.current) {
+      try {
+        await pendingCanvasSaveRef.current;
+      } catch {
+        // Save failures surface through the save path's own error handling
+      }
+    }
     // Rebuild the editor model (graph, bounds, sessions) from storage — the
     // same path as the initial load, so the legacy canvas reflects whatever
     // was last saved (including official-canvas saves) without a refresh.
