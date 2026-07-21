@@ -457,6 +457,40 @@ if (isEmbedded()) {
         console.warn("[MobileBridge] selection hook failed", e);
       }
 
+      // Official canvas is widget-edit + submit only: releasing a dragged
+      // link on empty canvas must NOT open node-insertion UI. The frontend
+      // shows a search box / context menu there and, to await the user's
+      // choice, tells the link connector to KEEP the pending link (it
+      // preventDefaults the connector's own auto-disconnect). In the embed
+      // those dialogs are hidden, so the link is left frozen with no way to
+      // dismiss it. We re-run the connector's OWN public cleanup so the
+      // link drops cleanly instead — matching the frontend's "no action"
+      // link-release behavior without touching the user's saved settings.
+      try {
+        const lc = app.canvas?.linkConnector;
+        if (lc?.events?.addEventListener) {
+          lc.events.addEventListener("dropped-on-canvas", () => {
+            // Runs after the frontend's handler froze the link; sever it on
+            // the next tick using the connector's public disconnect/reset.
+            setTimeout(() => {
+              try {
+                const stillPending =
+                  lc.isConnecting || (lc.renderLinks?.length ?? 0) > 0;
+                if (!stillPending) return;
+                lc.disconnectLinks();
+                lc.reset(true); // consume the frontend's one-shot reset guard
+                lc.reset(true); // ...then actually clear connector state
+                app.canvas.setDirty(true, true);
+              } catch (err) {
+                console.warn("[MobileBridge] link-drop cleanup failed", err);
+              }
+            }, 0);
+          });
+        }
+      } catch (e) {
+        console.warn("[MobileBridge] link-drop guard failed", e);
+      }
+
       // Structural change signal for the shell's stale-state handling
       try {
         const graph = app.graph;
