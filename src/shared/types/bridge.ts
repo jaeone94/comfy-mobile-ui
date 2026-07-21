@@ -56,6 +56,8 @@ export interface BridgeGraphSummary {
   workflowName: string | null;
   frontendVersion: string | null;
   protocolVersion?: number;
+  /** Official node renderer (Nodes 2.0). null/absent = setting unknown on this frontend. */
+  vueNodesEnabled?: boolean | null;
 }
 
 export interface BridgeQueueResult {
@@ -103,6 +105,7 @@ export type ShellCommandMessage =
     }
   | { source: typeof SHELL_SOURCE; type: 'set-node-mode'; payload: { nodeId: number | string; mode: number } }
   | { source: typeof SHELL_SOURCE; type: 'queue-prompt' }
+  | { source: typeof SHELL_SOURCE; type: 'set-setting'; payload: { id: string; value: unknown } }
   | { source: typeof SHELL_SOURCE; type: 'fit-view' }
   | { source: typeof SHELL_SOURCE; type: 'get-workflow'; requestId: string }
   | { source: typeof SHELL_SOURCE; type: 'get-prompt'; requestId: string };

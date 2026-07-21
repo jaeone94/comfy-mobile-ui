@@ -170,6 +170,11 @@ export class CanvasBridgeClient {
     this.post({ type: 'fit-view' });
   }
 
+  /** Set an official frontend setting (persists per user, applies live). */
+  setSetting(id: string, value: unknown) {
+    this.post({ type: 'set-setting', payload: { id, value } });
+  }
+
   /** Serialize the official graph (workflow-format JSON). */
   getWorkflow(): Promise<IComfyJson> {
     return this.request<IComfyJson>('get-workflow');

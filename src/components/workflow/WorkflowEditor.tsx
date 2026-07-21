@@ -43,7 +43,7 @@ import { NodeDetailModal } from '@/components/canvas/NodeDetailModal';
 import CanvasHost from '@/components/canvas-v2/CanvasHost';
 import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
 import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
-import type { BridgeNode } from '@/shared/types/bridge';
+import type { BridgeGraphSummary, BridgeNode } from '@/shared/types/bridge';
 import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
@@ -655,6 +655,21 @@ const WorkflowEditor: React.FC = () => {
   useEffect(() => {
     setCanvasDirty(false);
   }, [id]);
+  // Official node renderer (Nodes 2.0 vs Classic). Reported by the bridge on
+  // every ready; null means the setting doesn't exist on this frontend
+  // version, which hides the renderer toggle entirely.
+  const [vueNodesEnabled, setVueNodesEnabled] = useState<boolean | null>(null);
+  const handleBridgeReady = useCallback((summary: BridgeGraphSummary) => {
+    setVueNodesEnabled(
+      typeof summary.vueNodesEnabled === 'boolean' ? summary.vueNodesEnabled : null
+    );
+  }, []);
+  const handleSetNodesRenderer = useCallback((enabled: boolean) => {
+    setVueNodesEnabled(enabled);
+    // Official settings API: persists per user and applies live (the
+    // frontend watches this flag and swaps renderers without a reload).
+    getActiveCanvasBridge()?.setSetting('Comfy.VueNodes.Enabled', enabled);
+  }, []);
   // The canvas-mode toggle floats right below the header, whose height is
   // dynamic (breadcrumbs, execution progress bar) — track the real header
   // bottom instead of pinning a hardcoded offset over the progress bar.
@@ -3555,6 +3570,7 @@ const WorkflowEditor: React.FC = () => {
         <CanvasHost
           workflowJson={workflow?.workflow_json ?? null}
           workflowKey={id ?? null}
+          onReady={handleBridgeReady}
           onGraphMutated={handleBridgeGraphMutated}
         />
       ) : (
@@ -3574,13 +3590,17 @@ const WorkflowEditor: React.FC = () => {
         />
       )}
 
-      {/* Canvas mode toggle: segmented control, floats just below the
-          header and follows its dynamic height (progress bar etc.) */}
+      {/* Canvas controls: float just below the header and follow its
+          dynamic height (progress bar etc.) */}
+      <div
+        className="fixed right-3 z-30 flex flex-col items-end gap-2 transition-[top] duration-200"
+        style={{ top: canvasToggleTop }}
+      >
+      {/* Canvas mode toggle */}
       <div
         role="group"
         aria-label="Canvas mode"
-        className="fixed right-3 z-30 flex items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur transition-[top] duration-200"
-        style={{ top: canvasToggleTop }}
+        className="flex items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
       >
         <button
           onClick={() => {
@@ -3611,6 +3631,47 @@ const WorkflowEditor: React.FC = () => {
         >
           Official β
         </button>
+      </div>
+
+      {/* Official node renderer toggle (Nodes 2.0 vs Classic) — an official
+          frontend setting; hidden when this frontend doesn't expose it */}
+      {officialCanvasEnabled && vueNodesEnabled !== null && (
+        <div
+          role="group"
+          aria-label="Official node renderer"
+          className="flex items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
+        >
+          <button
+            onClick={() => {
+              if (!vueNodesEnabled) handleSetNodesRenderer(true);
+            }}
+            className={cn(
+              'px-3 py-2 text-[11px] font-semibold transition-colors',
+              vueNodesEnabled
+                ? 'bg-sky-600 text-white'
+                : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+            )}
+            title="Modern DOM-based node rendering"
+          >
+            Nodes 2.0
+          </button>
+          <div className="w-px self-stretch bg-slate-500/60" />
+          <button
+            onClick={() => {
+              if (vueNodesEnabled) handleSetNodesRenderer(false);
+            }}
+            className={cn(
+              'px-3 py-2 text-[11px] font-semibold transition-colors',
+              !vueNodesEnabled
+                ? 'bg-slate-600 text-white'
+                : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+            )}
+            title="Traditional canvas node rendering"
+          >
+            Classic
+          </button>
+        </div>
+      )}
       </div>
 
       {/* Floating Control Panel - Hidden during repositioning and connection mode */}

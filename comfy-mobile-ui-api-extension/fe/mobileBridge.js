@@ -113,11 +113,19 @@ function graphSummary() {
       app.extensionManager?.workflow?.activeWorkflow?.path ??
       null;
   } catch {}
+  // Official node renderer (Nodes 2.0 vs classic). null when the setting
+  // does not exist on this frontend version — the shell hides its toggle.
+  let vueNodesEnabled = null;
+  try {
+    const v = app.extensionManager?.setting?.get?.("Comfy.VueNodes.Enabled");
+    if (typeof v === "boolean") vueNodesEnabled = v;
+  } catch {}
   return {
     nodeCount: app.graph?._nodes?.length ?? 0,
     workflowName,
     frontendVersion: window.__COMFYUI_FRONTEND_VERSION__ ?? null,
     protocolVersion: PROTOCOL_VERSION,
+    vueNodesEnabled,
   };
 }
 
@@ -284,6 +292,15 @@ async function queuePrompt() {
   }
 }
 
+async function applySetting({ id, value }) {
+  if (!id) return;
+  try {
+    await app.extensionManager?.setting?.set?.(id, value);
+  } catch (e) {
+    console.warn("[MobileBridge] set-setting failed", id, e);
+  }
+}
+
 function fitView() {
   try {
     app.extensionManager?.command?.execute?.("Canvas.FitView");
@@ -376,6 +393,9 @@ function handleShellMessage(event) {
       break;
     case "fit-view":
       fitView();
+      break;
+    case "set-setting":
+      applySetting(msg.payload ?? {});
       break;
     default:
       break;
