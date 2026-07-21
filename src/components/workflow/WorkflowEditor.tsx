@@ -3592,9 +3592,9 @@ const WorkflowEditor: React.FC = () => {
               ? 'bg-slate-600 text-white'
               : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
           )}
-          title="Switch to the legacy canvas"
+          title="Switch to the mobile canvas"
         >
-          Legacy
+          Mobile
         </button>
         <div className="w-px self-stretch bg-slate-500/60" />
         <button
