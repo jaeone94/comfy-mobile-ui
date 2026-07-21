@@ -170,11 +170,6 @@ export class CanvasBridgeClient {
     this.post({ type: 'fit-view' });
   }
 
-  /** Lite nodes: zoom-LOD DOM simplification for mobile performance. */
-  setLiteMode(enabled: boolean) {
-    this.post({ type: 'set-lite-mode', payload: { enabled } });
-  }
-
   /** Serialize the official graph (workflow-format JSON). */
   getWorkflow(): Promise<IComfyJson> {
     return this.request<IComfyJson>('get-workflow');
