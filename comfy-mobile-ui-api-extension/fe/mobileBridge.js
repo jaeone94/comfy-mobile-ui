@@ -375,6 +375,7 @@ html.cmu-lod1 .lg-node:not(${LIVE_NODE}),
 html.cmu-lod2 .lg-node:not(${LIVE_NODE}) {
   opacity: 0 !important;
   filter: none !important;
+  touch-action: none !important;
 }
 /* Only the selected node paints inside the pane, so keep its layer
    permanently promoted — avoids the frontend's 256ms promote/demote
@@ -688,43 +689,146 @@ if (isEmbedded()) {
         console.warn("[MobileBridge] graph hooks failed", e);
       }
 
-      // Simplified tiers are selection-only: node position moves belong to
-      // the legacy canvas. A capture-phase interceptor swallows pointer
-      // moves for drags that start on a proxied (non-selected) node, or on
-      // the selected node's header — taps still select, widget
-      // interactions inside the selected node's body keep working, and
-      // panning from empty canvas is untouched.
+      // Simplified-tier interaction policy: taps select; a single-finger
+      // drag that starts on a proxied node PANS the canvas — handed over as
+      // a synthetic middle-button drag, which litegraph turns into a pan
+      // regardless of what sits under the pointer (and _processNodeClick is
+      // a no-op in Vue mode anyway); two fingers become a pinch, synthesized
+      // as ctrl+wheel zoom at the midpoint. Node position moves stay
+      // impossible here — they belong to the legacy canvas. The selected
+      // node keeps official behavior except header drags (no moving).
       try {
-        let swallowMoves = false;
+        const taken = new Map(); // pointerId -> { x, y, nodeId, down }
+        let handover = null; // null | "pan" | "pinch"
+        let pinchDist = 0;
+        let liveHeaderBlock = false;
+        const canvasEl = () =>
+          app.canvas?.canvas ?? document.querySelector("canvas.lgraphcanvas");
+        const syntheticPointer = (type, e) =>
+          new PointerEvent(type, {
+            bubbles: true,
+            cancelable: true,
+            view: window,
+            clientX: e.clientX,
+            clientY: e.clientY,
+            screenX: e.screenX,
+            screenY: e.screenY,
+            pointerId: e.pointerId,
+            pointerType: "mouse",
+            isPrimary: true,
+            button: type === "pointermove" ? -1 : 1,
+            buttons: type === "pointerup" || type === "pointercancel" ? 0 : 4,
+          });
+        const endPan = (e, cancel) => {
+          canvasEl()?.dispatchEvent(
+            syntheticPointer(cancel ? "pointercancel" : "pointerup", e)
+          );
+          handover = null;
+        };
         window.addEventListener(
           "pointerdown",
           (e) => {
-            swallowMoves = false;
+            liveHeaderBlock = false;
             if (!liteEnabled || liteLod === 0) return;
             const t = e.target;
             if (!(t instanceof Element)) return;
             const nodeEl = t.closest(".lg-node");
             if (!nodeEl) return;
-            const isLive = nodeEl.classList.contains("outline-node-component-outline");
-            const onHeader = !!t.closest('.lg-node-header, [data-testid^="node-header"]');
-            if (!isLive || onHeader) swallowMoves = true;
+            if (nodeEl.classList.contains("outline-node-component-outline")) {
+              // Live node: block header drags (no node moves); widgets and
+              // slots keep full official behavior.
+              liveHeaderBlock = !!t.closest(
+                '.lg-node-header, [data-testid^="node-header"]'
+              );
+              return;
+            }
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            taken.set(e.pointerId, {
+              x: e.clientX,
+              y: e.clientY,
+              nodeId: nodeEl.dataset.nodeId,
+              down: e,
+            });
+            if (taken.size === 2) {
+              if (handover === "pan") endPan(e, true);
+              handover = "pinch";
+              const [p1, p2] = [...taken.values()];
+              pinchDist = Math.hypot(p1.x - p2.x, p1.y - p2.y) || 1;
+            }
           },
           true
         );
         window.addEventListener(
           "pointermove",
           (e) => {
-            if (swallowMoves) e.stopImmediatePropagation();
+            if (liveHeaderBlock) {
+              e.stopImmediatePropagation();
+              return;
+            }
+            const rec = taken.get(e.pointerId);
+            if (!rec) return;
+            if (e.target === canvasEl()) return; // pointer capture re-targeted it
+            e.stopImmediatePropagation();
+            e.preventDefault();
+            rec.x = e.clientX;
+            rec.y = e.clientY;
+            if (handover === "pinch") {
+              const pts = [...taken.values()];
+              if (pts.length === 2) {
+                const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) || 1;
+                const ratio = d / pinchDist;
+                if (Math.abs(ratio - 1) > 0.01) {
+                  pinchDist = d;
+                  canvasEl()?.dispatchEvent(
+                    new WheelEvent("wheel", {
+                      bubbles: true,
+                      cancelable: true,
+                      clientX: (pts[0].x + pts[1].x) / 2,
+                      clientY: (pts[0].y + pts[1].y) / 2,
+                      deltaY: ratio > 1 ? -60 : 60,
+                      ctrlKey: true,
+                    })
+                  );
+                }
+              }
+              return;
+            }
+            if (handover !== "pan") {
+              const dx = e.clientX - rec.down.clientX;
+              const dy = e.clientY - rec.down.clientY;
+              if (dx * dx + dy * dy < 64) return; // still a tap
+              handover = "pan";
+              canvasEl()?.dispatchEvent(syntheticPointer("pointerdown", rec.down));
+            }
+            canvasEl()?.dispatchEvent(syntheticPointer("pointermove", e));
           },
           true
         );
-        const endSwallow = () => {
-          swallowMoves = false;
+        const finish = (e, cancel) => {
+          liveHeaderBlock = false;
+          const rec = taken.get(e.pointerId);
+          if (!rec) return;
+          taken.delete(e.pointerId);
+          if (e.target === canvasEl()) {
+            // Pointer capture routed the real event to the canvas already
+            if (taken.size === 0) handover = null;
+            return;
+          }
+          e.stopImmediatePropagation();
+          if (handover === "pan") {
+            endPan(e, cancel);
+          } else if (handover === "pinch") {
+            if (taken.size === 0) handover = null;
+          } else if (!cancel) {
+            // Clean tap: select the node through the official path
+            selectNodeById({ nodeId: rec.nodeId });
+          }
         };
-        window.addEventListener("pointerup", endSwallow, true);
-        window.addEventListener("pointercancel", endSwallow, true);
+        window.addEventListener("pointerup", (e) => finish(e, false), true);
+        window.addEventListener("pointercancel", (e) => finish(e, true), true);
       } catch (e) {
-        console.warn("[MobileBridge] drag blocker failed", e);
+        console.warn("[MobileBridge] interaction policy failed", e);
       }
 
       // Lite proxy renderer: chain the canvas foreground hook (a null-by-
