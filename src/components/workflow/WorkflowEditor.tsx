@@ -1383,6 +1383,12 @@ const WorkflowEditor: React.FC = () => {
     } catch (error) {
       console.error('Failed to save workflow:', error);
       setIsSaving(false);
+      setCanvasDirty(true); // keep the save button so the user can retry
+      // Surface the failure — a silent catch made timed-out saves (large
+      // base64 workflows) look like nothing happened, so edits seemed lost.
+      toast.error(t('workflow.saveFailed', 'Failed to save workflow'), {
+        description: error instanceof Error ? error.message : String(error),
+      });
     }
   }, [workflow, widgetEditor, objectInfo, syncWorkflow, officialCanvasEnabled]);
 

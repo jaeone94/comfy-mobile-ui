@@ -19,6 +19,10 @@ interface BridgeEventHandlers {
 type EventName = keyof BridgeEventHandlers;
 
 const REQUEST_TIMEOUT_MS = 10000;
+// Serializing/deserializing a large workflow (e.g. embedded base64 images can
+// run to tens of MB) plus the postMessage round-trip can far exceed the
+// default; a too-short timeout aborts the request and the save silently fails.
+const HEAVY_REQUEST_TIMEOUT_MS = 120000;
 
 /**
  * Shell-side client for the canvas bridge. Owns the postMessage channel to
@@ -128,17 +132,21 @@ export class CanvasBridgeClient {
     target.postMessage({ source: SHELL_SOURCE, ...message }, this.serverOrigin);
   }
 
-  private request<T>(type: string): Promise<T> {
-    return this.requestWithPayload<T>(type, undefined);
+  private request<T>(type: string, timeoutMs: number = REQUEST_TIMEOUT_MS): Promise<T> {
+    return this.requestWithPayload<T>(type, undefined, timeoutMs);
   }
 
-  private requestWithPayload<T>(type: string, payload: unknown): Promise<T> {
+  private requestWithPayload<T>(
+    type: string,
+    payload: unknown,
+    timeoutMs: number = REQUEST_TIMEOUT_MS
+  ): Promise<T> {
     const requestId = `req-${++this.requestSeq}-${Date.now()}`;
     return new Promise<T>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(requestId);
         reject(new Error(`Bridge request timed out: ${type}`));
-      }, REQUEST_TIMEOUT_MS);
+      }, timeoutMs);
       this.pending.set(requestId, { resolve: resolve as (data: unknown) => void, reject, timer });
       this.post(payload === undefined ? { type, requestId } : { type, requestId, payload });
     });
@@ -177,12 +185,12 @@ export class CanvasBridgeClient {
 
   /** Serialize the official graph (workflow-format JSON). */
   getWorkflow(): Promise<IComfyJson> {
-    return this.request<IComfyJson>('get-workflow');
+    return this.request<IComfyJson>('get-workflow', HEAVY_REQUEST_TIMEOUT_MS);
   }
 
   /** Run the official graphToPrompt(): API-format prompt + workflow JSON. */
   getPrompt(): Promise<BridgePromptData> {
-    return this.request<BridgePromptData>('get-prompt');
+    return this.request<BridgePromptData>('get-prompt', HEAVY_REQUEST_TIMEOUT_MS);
   }
 }
 
