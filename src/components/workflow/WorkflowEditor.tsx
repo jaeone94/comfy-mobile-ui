@@ -665,7 +665,7 @@ const WorkflowEditor: React.FC = () => {
     const header = document.querySelector('header.pwa-header');
     if (!header) return;
     const update = () => {
-      setCanvasToggleTop(Math.round(header.getBoundingClientRect().bottom) + 8);
+      setCanvasToggleTop(Math.round(header.getBoundingClientRect().bottom) + 16);
     };
     update();
     const ro = new ResizeObserver(update);
