@@ -3600,14 +3600,14 @@ const WorkflowEditor: React.FC = () => {
       <div
         role="group"
         aria-label="Canvas mode"
-        className="flex items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
+        className="flex w-48 items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
       >
         <button
           onClick={() => {
             if (officialCanvasEnabled) handleToggleCanvasMode();
           }}
           className={cn(
-            'px-3 py-2 text-[11px] font-semibold transition-colors',
+            'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
             !officialCanvasEnabled
               ? 'bg-slate-600 text-white'
               : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
@@ -3622,7 +3622,7 @@ const WorkflowEditor: React.FC = () => {
             if (!officialCanvasEnabled) handleToggleCanvasMode();
           }}
           className={cn(
-            'px-3 py-2 text-[11px] font-semibold transition-colors',
+            'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
             officialCanvasEnabled
               ? 'bg-sky-600 text-white'
               : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
@@ -3639,14 +3639,14 @@ const WorkflowEditor: React.FC = () => {
         <div
           role="group"
           aria-label="Official node renderer"
-          className="flex items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
+          className="flex w-48 items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
         >
           <button
             onClick={() => {
               if (!vueNodesEnabled) handleSetNodesRenderer(true);
             }}
             className={cn(
-              'px-3 py-2 text-[11px] font-semibold transition-colors',
+              'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
               vueNodesEnabled
                 ? 'bg-sky-600 text-white'
                 : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
@@ -3661,7 +3661,7 @@ const WorkflowEditor: React.FC = () => {
               if (vueNodesEnabled) handleSetNodesRenderer(false);
             }}
             className={cn(
-              'px-3 py-2 text-[11px] font-semibold transition-colors',
+              'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
               !vueNodesEnabled
                 ? 'bg-slate-600 text-white'
                 : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
