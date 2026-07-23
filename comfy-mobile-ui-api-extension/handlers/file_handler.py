@@ -8,9 +8,10 @@ from aiohttp import web
 from PIL import Image
 import folder_paths
 from ..utils.file_utils import (
-    scan_directory_recursive, categorize_files, validate_filename, 
+    scan_directory_recursive, categorize_files, validate_filename,
     build_file_path, is_video_file, find_matching_thumbnail
 )
+from ..utils.chain_storage import get_mobile_data_path
 
 def get_folder_path(folder_type: str) -> str:
     """Get the absolute path for a folder type"""
@@ -537,9 +538,11 @@ async def view_thumbnail(request):
         mtime = stat.st_mtime
         size = stat.st_size
         
-        # Create cache directory in temp folder
-        temp_dir = folder_paths.get_temp_directory()
-        cache_dir = os.path.join(temp_dir, ".mobile_thumbnails")
+        # Persistent cache under mobile_data — ComfyUI wipes the temp
+        # directory on every startup (main.py cleanup_temp), which used to
+        # destroy the whole thumbnail cache and force a full regeneration
+        # after each server restart.
+        cache_dir = os.path.join(get_mobile_data_path(), "thumbnails_cache")
         if not os.path.exists(cache_dir):
             os.makedirs(cache_dir, exist_ok=True)
             
