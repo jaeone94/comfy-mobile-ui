@@ -76,44 +76,14 @@ const LazyImage: React.FC<LazyImageProps> = ({
   imageLookupMap
 }) => {
   const { t } = useTranslation();
-  const [isLoaded, setIsLoaded] = useState(false);
-  // Load first 12 items immediately (2 rows on most screens)
-  const [isInView, setIsInView] = useState(index < 12);
+  // Videos never gate the loading overlay (poster/placeholder shows instantly)
+  const [isLoaded, setIsLoaded] = useState(() => isVideoFile(file.filename));
   const [hasError, setHasError] = useState(false);
-  const [matchingImageThumbnail, setMatchingImageThumbnail] = useState<string | null>(null);
-  const imgRef = useRef<HTMLDivElement>(null);
   const { url: serverUrl } = useConnectionStore();
-  // Service is now passed via props
-
-  // Intersection Observer for lazy loading (skip for first 12 items)
-  useEffect(() => {
-    // Skip lazy loading for first 12 items
-    if (index < 12) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsInView(true);
-          observer.disconnect();
-        }
-      },
-      { threshold: 0.1, rootMargin: '100px' }
-    );
-
-    if (imgRef.current) {
-      observer.observe(imgRef.current);
-
-      // Check if element is already in view on mount
-      const rect = imgRef.current.getBoundingClientRect();
-      const isInitiallyVisible = rect.top >= 0 && rect.top <= window.innerHeight;
-      if (isInitiallyVisible) {
-        setIsInView(true);
-        observer.disconnect();
-      }
-    }
-
-    return () => observer.disconnect();
-  }, [index]);
+  // Lazy loading is delegated to the browser (loading="lazy" on the <img>)
+  // and offscreen render cost to CSS content-visibility on the tile — no
+  // per-item IntersectionObserver: at thousands of items, one observer per
+  // tile plus a framer-motion instance per tile dominated mount time.
 
 
   // Find matching image thumbnail for video files using the optimized map
@@ -139,7 +109,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
   }, [videoLookupMap]);
 
   // Get thumbnail URL - only for images
-  const thumbnailUrl = isInView && !isVideoFile(file.filename) ? fileService.createDownloadUrl({
+  const thumbnailUrl = !isVideoFile(file.filename) ? fileService.createDownloadUrl({
     filename: file.filename,
     subfolder: file.subfolder,
     type: file.type,
@@ -147,24 +117,22 @@ const LazyImage: React.FC<LazyImageProps> = ({
     modified: file.modified
   }) : undefined;
 
-  // Try to load matching image thumbnail for videos
-  useEffect(() => {
-    if (isInView && isVideoFile(file.filename) && !matchingImageThumbnail) {
-      const matchingImage = findMatchingImageForVideo(file.filename);
-      if (matchingImage) {
-        const imageUrl = fileService.createDownloadUrl({
-          filename: matchingImage.filename,
-          subfolder: matchingImage.subfolder,
-          type: matchingImage.type,
-          preview: true,
-          modified: matchingImage.modified
-        });
-        setMatchingImageThumbnail(imageUrl);
-      } else {
-      }
-      setIsLoaded(true);
-    }
-  }, [isInView, file.filename, matchingImageThumbnail, imageLookupMap]);
+  // Matching image poster for videos: an O(1) map lookup, so compute it
+  // directly; the poster <img> below is browser-lazy like everything else.
+  const [posterFailed, setPosterFailed] = useState(false);
+  const matchingImageThumbnail = useMemo(() => {
+    if (!isVideoFile(file.filename) || posterFailed) return null;
+    const matchingImage = findMatchingImageForVideo(file.filename);
+    if (!matchingImage) return null;
+    return fileService.createDownloadUrl({
+      filename: matchingImage.filename,
+      subfolder: matchingImage.subfolder,
+      type: matchingImage.type,
+      preview: true,
+      modified: matchingImage.modified
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [file, imageLookupMap, posterFailed]);
 
   const handleClick = () => {
     if (isSelectionMode && onSelectionChange) {
@@ -175,23 +143,15 @@ const LazyImage: React.FC<LazyImageProps> = ({
   };
 
   return (
-    <motion.div
-      ref={imgRef}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      whileHover={{ scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
-      className={`relative aspect-square bg-slate-900 overflow-hidden cursor-pointer group ${isSelected ? 'z-10' : ''}`}
+    <div
+      className={`relative aspect-square bg-slate-900 overflow-hidden cursor-pointer group transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] ${isSelected ? 'z-10' : ''}`}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 256px' }}
       onClick={handleClick}
     >
       {/* Loading Placeholder */}
       {!isLoaded && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center">
-          {isInView ? (
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-          ) : (
-            <div className="h-8 w-8 bg-slate-300 dark:bg-slate-700 rounded animate-pulse" />
-          )}
+          <div className="h-8 w-8 bg-slate-300 dark:bg-slate-700 rounded animate-pulse" />
         </div>
       )}
 
@@ -221,7 +181,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
               decoding="async"
               className="w-full h-full object-cover"
               onError={() => {
-                setMatchingImageThumbnail(null);
+                setPosterFailed(true);
                 setHasError(true);
               }}
             />
@@ -288,7 +248,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
           {file.filename}
         </p>
       </div>
-    </motion.div>
+    </div>
   );
 };
 
