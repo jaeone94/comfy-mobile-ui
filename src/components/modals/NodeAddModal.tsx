@@ -195,7 +195,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
     return (
       <div className={`mb-3 last:mb-0`}>
         <div
-          className="group relative rounded-3xl bg-black/10 border border-white/5 hover:bg-black/20 hover:border-white/10 transition-all overflow-hidden"
+          className="group relative rounded-xl bg-black/10 border border-white/5 hover:bg-black/20 hover:border-white/10 transition-all overflow-hidden"
           style={{ marginLeft: level > 0 ? `${level * 12}px` : '0' }}
         >
           {/* Header */}
@@ -204,8 +204,8 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
             className="w-full px-5 py-3 flex items-center justify-between text-left transition-all"
           >
             <div className="flex items-center space-x-3 min-w-0">
-              <div className={`p-1.5 rounded-xl bg-black/20 border border-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180 bg-blue-500/10 border-blue-500/20' : ''}`}>
-                <ChevronDown className={`w-3 h-3 ${isExpanded ? 'text-blue-400' : 'text-white/40'}`} />
+              <div className={`p-1.5 rounded-xl bg-black/20 border border-white/5 transition-transform duration-300 ${isExpanded ? 'rotate-180 bg-[#3069f0]/10 border-[#3069f0]/20' : ''}`}>
+                <ChevronDown className={`w-3 h-3 ${isExpanded ? 'text-[#5b8af5]' : 'text-white/40'}`} />
               </div>
               <div className="flex flex-col min-w-0">
                 <span className="font-bold text-white/90 text-[11px] tracking-tight uppercase line-clamp-1 leading-snug">
@@ -241,13 +241,13 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                         <button
                           key={node.name}
                           onClick={() => handleNodeSelect(node)}
-                          className="w-full p-3 rounded-2xl bg-black/20 border border-white/5 hover:border-blue-500/30 hover:bg-blue-500/5 text-white/60 hover:text-white/90 transition-all duration-200 flex flex-col items-start text-left group/node"
+                          className="w-full p-3 rounded-xl bg-black/20 border border-white/5 hover:border-[#3069f0]/30 hover:bg-[#3f78f5]/5 text-white/60 hover:text-white/90 transition-all duration-200 flex flex-col items-start text-left group/node"
                         >
                           <div className="flex items-center justify-between w-full mb-1">
                             <span className="text-[11px] font-bold text-white/80 group-hover/node:text-white transition-colors line-clamp-2 leading-snug">
                               {node.display_name}
                             </span>
-                            <Plus className="w-3 h-3 opacity-0 group-hover/node:opacity-100 transition-opacity text-blue-400 flex-shrink-0 ml-2" />
+                            <Plus className="w-3 h-3 opacity-0 group-hover/node:opacity-100 transition-opacity text-[#5b8af5] flex-shrink-0 ml-2" />
                           </div>
                           {node.description && node.description !== 'No description available' && (
                             <p className="text-[9px] text-white/30 line-clamp-2 leading-relaxed mb-1.5">
@@ -295,13 +295,13 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
+          className="relative w-[92vw] max-w-md h-[72vh] pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Main Card */}
           <div
-            style={{ backgroundColor: '#374151' }}
-            className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
+            style={{ backgroundColor: '#101217' }}
+            className="relative w-full h-full rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col text-white"
           >
             {/* Always Compact Sticky Header */}
             <div
@@ -345,7 +345,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
 
             {/* Persistent Search Bar (Simplified) */}
             <div className="absolute left-0 w-full z-20 px-4 sm:px-8 top-[68px]">
-              <div className="flex flex-col gap-3 bg-[#374151]/80 backdrop-blur-md p-3 rounded-2xl border border-white/5 shadow-lg">
+              <div className="flex flex-col gap-3 bg-[#101217]/80 backdrop-blur-md p-3 rounded-xl border border-white/5 shadow-lg">
                 <form onSubmit={handleSearch} className="relative w-full flex items-center gap-2">
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
@@ -373,7 +373,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                   <Button
                     type="submit"
                     size="sm"
-                    className="h-9 px-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white shadow-lg active:scale-95 transition-all flex-shrink-0"
+                    className="h-9 px-3 rounded-xl bg-[#3069f0] hover:bg-[#3f78f5] text-white shadow-lg active:scale-95 transition-all flex-shrink-0"
                   >
                     <Search className="w-4 h-4" />
                   </Button>
@@ -388,10 +388,10 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
               <div className="px-5 pb-6 sm:px-6">
                 {/* Recent Copies Section */}
                 {recentNodes.length > 0 && !searchTerm && (
-                  <div className="mb-8 p-4 rounded-3xl bg-blue-500/5 border border-blue-500/10">
+                  <div className="mb-8 p-4 rounded-xl bg-[#3069f0]/5 border border-[#3069f0]/10">
                     <div className="flex items-center gap-2 mb-3 px-1">
-                      <Clock className="w-3.5 h-3.5 text-blue-400/60" />
-                      <span className="text-[10px] font-bold uppercase tracking-widest text-blue-400/60">
+                      <Clock className="w-3.5 h-3.5 text-[#5b8af5]/60" />
+                      <span className="text-[10px] font-bold uppercase tracking-widest text-[#5b8af5]/60">
                         {t('nodeAdd.recentCopies')}
                       </span>
                     </div>
@@ -400,9 +400,9 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                         <button
                           key={node.id}
                           onClick={() => handlePasteNode(node)}
-                          className="flex flex-col items-start p-2.5 rounded-xl bg-black/20 border border-white/5 hover:border-blue-400/30 hover:bg-blue-400/5 transition-all group/recent"
+                          className="flex flex-col items-start p-2.5 rounded-xl bg-black/20 border border-white/5 hover:border-[#3069f0]/30 hover:bg-blue-400/5 transition-all group/recent"
                         >
-                          <span className="text-[10px] font-bold text-white/70 group-hover/recent:text-blue-400 line-clamp-1 mb-1">
+                          <span className="text-[10px] font-bold text-white/70 group-hover/recent:text-[#5b8af5] line-clamp-1 mb-1">
                             {node.title}
                           </span>
                           <span className="text-[8px] font-mono text-white/30 uppercase">
@@ -415,7 +415,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
                 )}
 
                 {nodeTree.length === 0 ? (
-                  <div className="text-center py-12 rounded-3xl bg-black/20 border border-dashed border-white/10">
+                  <div className="text-center py-12 rounded-xl bg-black/20 border border-dashed border-white/10">
                     <Hash className="h-10 w-10 text-white/10 mx-auto mb-3" />
                     <p className="text-white/40 text-[11px] font-medium">
                       {searchTerm ? t('nodeAdd.noMatchingNodes', { query: searchTerm }) : t('nodeAdd.noNodeTypes')}
@@ -449,7 +449,7 @@ export const NodeAddModal: React.FC<NodeAddModalProps> = ({
             {/* Footer Status */}
             <div className="px-8 py-4 bg-black/30 border-t border-white/5 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#34c77b] animate-pulse" />
                 <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
                   {nodeTypes.length} Available Nodes
                 </span>

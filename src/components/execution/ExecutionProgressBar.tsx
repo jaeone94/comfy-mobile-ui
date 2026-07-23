@@ -286,54 +286,32 @@ export const WorkflowHeaderProgressBar: React.FC = () => {
   }
 
   return (
-    <div className="bg-emerald-500/10 dark:bg-emerald-500/10 backdrop-blur-xl rounded-xl p-3 shadow-2xl border border-emerald-500/30 dark:border-emerald-500/20 relative overflow-hidden">
-      {/* Subtle Green Glow Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 via-transparent to-black/20 pointer-events-none" />
-      <div className="flex items-center justify-between mb-2 relative z-10">
-        <div className="flex items-center space-x-2">
-          <div className="w-2 h-2 bg-emerald-400 rounded-full animate-pulse shadow-[0_0_8px_rgba(52,211,153,0.8)]" />
-          <span className="text-sm font-bold text-white dark:text-emerald-50 tracking-tight">
-            {t('execution.title')}
+    <div className="relative">
+      {/* Compact mono status line */}
+      <div className="flex items-center justify-between gap-2 px-3 pb-[5px] font-mono text-[9px] font-medium tracking-[0.12em] uppercase">
+        <span className="flex items-center gap-1.5 min-w-0">
+          <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80] animate-pulse shrink-0" />
+          <span className="text-[#7ba3f5] truncate">
+            {executingNode?.type || t('execution.starting')}
           </span>
-        </div>
-        <div className="flex items-center space-x-2 text-[10px] font-medium text-white/70 dark:text-emerald-50/70">
-          {state.currentPromptId && (
-            <span>{t('execution.id', { id: state.currentPromptId.substring(0, 8) })}</span>
-          )}
           {state.executingNodeId && (
-            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 border border-emerald-500/30 text-white dark:text-emerald-50">{t('execution.node', { nodeId: state.executingNodeId })}</span>
+            <span className="text-[#565d6b] shrink-0">#{state.executingNodeId}</span>
           )}
-        </div>
+        </span>
+        <span className="text-[#8a919e] shrink-0">
+          {state.nodeExecutionProgress ? `${Math.round(state.nodeExecutionProgress.progress)}%` : '0%'}
+        </span>
       </div>
 
-      {/* Overall Progress */}
-      <div className="space-y-1.5 relative z-10">
-        <div className="relative h-2 w-full overflow-hidden rounded-full bg-black/40 border border-emerald-500/20">
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${state.nodeExecutionProgress?.progress || 0}%` }}
-            transition={{ duration: 0.5, ease: "easeOut" }}
-            className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 shadow-[0_0_12px_rgba(16,185,129,0.4)]"
-          />
-        </div>
-        <div className="flex justify-between text-[10px] font-bold uppercase tracking-wider text-white">
-          <span className="flex items-center gap-1">
-            <span className="text-white">
-              {state.nodeExecutionProgress ? `${Math.round(state.nodeExecutionProgress.progress)}%` : '0%'}
-            </span>
-            <span className="text-white/80">
-              {state.nodeExecutionProgress ? t('execution.node', { nodeId: '' }).trim() : t('execution.starting')}
-              {executingNode?.type && (
-                <span className="ml-1 text-emerald-300 font-extrabold">
-                  {executingNode.type}
-                </span>
-              )}
-            </span>
-          </span>
-          <span className="animate-pulse text-white">
-            {t('execution.running')}
-          </span>
-        </div>
+      {/* 3px progress bar attached to the header bottom */}
+      <div className="h-[3px] w-full bg-white/[0.05] relative overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${state.nodeExecutionProgress?.progress || 0}%` }}
+          transition={{ duration: 0.5, ease: "easeOut" }}
+          className="h-full"
+          style={{ background: 'linear-gradient(90deg, #3069f0, #5b8af5)', boxShadow: '0 0 8px rgba(48,105,240,0.6)' }}
+        />
       </div>
     </div>
   );

@@ -114,7 +114,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between">
-        <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        <label className="text-[12px] font-medium text-[#c8ccd4]">
           {param.label || param.name}
         </label>
         <div className="flex space-x-2">
@@ -123,7 +123,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
             variant="outline"
             size="sm"
             onClick={handleCopy}
-            className="h-8 px-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-950/50"
+ className="h-8 px-2 text-xs hover:bg-blue-50 dark:hover:bg-blue-950/50"
             title={t('node.copyToClipboard')}
           >
             <Copy className="h-3 w-3 mr-1" />
@@ -135,7 +135,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
               variant="outline"
               size="sm"
               onClick={handlePaste}
-              className="h-8 px-2 text-xs hover:bg-green-50 dark:hover:bg-green-950/50"
+ className="h-8 px-2 text-xs hover:bg-green-50 dark:hover:bg-green-950/50"
               title={t('node.pasteFromClipboard')}
             >
               <ClipboardPaste className="h-3 w-3 mr-1" />
@@ -147,7 +147,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
       <Textarea
         value={String(editingValue)}
         onChange={(e) => handleValueChange(e.target.value)}
-        className="text-lg resize-y"
+ className="text-[14px] resize-y"
         rows={6}
         placeholder={t('node.enterText')}
       />

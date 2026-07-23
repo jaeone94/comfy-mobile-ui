@@ -47,28 +47,29 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeOut" }}
-          className="fixed bottom-6 left-4 right-4 z-50"
+          className="fixed bottom-6 left-4 right-4 z-50 flex justify-center"
         >
           {/* Frosted Clear Ice ConnectionBar */}
-          <div className="bg-slate-600/40 backdrop-blur-3xl rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-4 relative overflow-hidden">
+          <div className="rounded-[14px] border border-white/[0.09] p-2 relative overflow-hidden w-full max-w-[340px]"
+            style={{ background: 'rgba(15,17,22,0.9)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}>
             <div className="relative z-10">
               {/* Header */}
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="text-base font-black text-white/90 tracking-tight">
-                  {t('node.createConnection')}
+              <div className="flex items-center justify-between mb-1.5 pl-0.5">
+                <h3 className="font-mono text-[9px] font-semibold text-[#7ba3f5]/80 tracking-[0.12em] uppercase truncate">
+                  {getStatusMessage()}
                 </h3>
                 <Button
                   onClick={onCancel}
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 bg-white/10 hover:bg-white/20 text-white/70 hover:text-white rounded-full transition-all"
+                  className="h-6 w-6 p-0 bg-white/[0.05] hover:bg-white/[0.09] text-[#9aa3b2] hover:text-white rounded-md border border-white/[0.07] transition-all shrink-0 ml-2"
                 >
-                  <X className="h-4 w-4" />
+                  <X className="h-3 w-3" />
                 </Button>
               </div>
 
               {/* Node Selection Area - Compacted */}
-              <div className="flex items-center space-x-2 mb-4">
+              <div className="flex items-center space-x-1.5 mb-1.5">
                 {/* Source Node Slot */}
                 <div className="flex-1">
                   <button
@@ -79,25 +80,25 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                     }}
                     disabled={!sourceNode}
                     className={`
-                      w-full relative rounded-[18px] border-2 border-dashed min-h-[52px] flex items-center justify-center transition-all duration-200 py-1.5
+                      w-full relative rounded-lg border border-dashed min-h-[36px] flex items-center justify-center transition-all duration-200 py-1
                       ${sourceNode
-                        ? 'border-blue-500/40 bg-blue-500/20 hover:bg-blue-500/30'
+                        ? 'border-[#3069f0]/40 bg-[#3069f0]/[0.12]'
                         : 'border-white/10 bg-white/5 cursor-default'
                       }
                     `}
                   >
                     {sourceNode ? (
                       <div className="text-center px-2 w-full">
-                        <div className="text-[11px] font-bold text-blue-300 break-all leading-tight">
+                        <div className="text-[10.5px] font-semibold text-[#7ba3f5] break-all leading-tight line-clamp-1 px-1">
                           {sourceNode.type}
                         </div>
-                        <div className="text-[9px] text-blue-400 mt-0.5 font-medium">
+                        <div className="font-mono text-[8.5px] text-[#5b8af5] mt-0.5">
                           ID: {sourceNode.id}
                         </div>
                       </div>
                     ) : (
                       <div className="text-center">
-                        <div className="text-[11px] text-white/40 font-bold">
+                        <div className="text-[10.5px] text-[#71798a] font-medium">
                           {t('node.sourceNode')}
                         </div>
                       </div>
@@ -110,7 +111,7 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                   <ArrowRight className={`
                     h-4 w-4 transition-colors duration-200
                     ${canProceed
-                      ? 'text-blue-400'
+                      ? 'text-[#5b8af5]'
                       : 'text-white/20'
                     }
                   `} />
@@ -126,25 +127,25 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                     }}
                     disabled={!targetNode}
                     className={`
-                      w-full relative rounded-[18px] border-2 border-dashed min-h-[52px] flex items-center justify-center transition-all duration-200 py-1.5
+                      w-full relative rounded-lg border border-dashed min-h-[36px] flex items-center justify-center transition-all duration-200 py-1
                       ${targetNode
-                        ? 'border-red-500/40 bg-red-500/20 hover:bg-red-500/30'
+                        ? 'border-[#f25555]/40 bg-[#f25555]/[0.12]'
                         : 'border-white/10 bg-white/5 cursor-default'
                       }
                     `}
                   >
                     {targetNode ? (
                       <div className="text-center px-2 w-full">
-                        <div className="text-[11px] font-bold text-red-300 break-all leading-tight">
+                        <div className="text-[10.5px] font-semibold text-[#f8b3b3] break-all leading-tight line-clamp-1 px-1">
                           {targetNode.type}
                         </div>
-                        <div className="text-[9px] text-red-400 mt-0.5 font-medium">
+                        <div className="font-mono text-[8.5px] text-[#f87c7c] mt-0.5">
                           ID: {targetNode.id}
                         </div>
                       </div>
                     ) : (
                       <div className="text-center">
-                        <div className="text-[11px] text-white/40 font-bold">
+                        <div className="text-[10.5px] text-[#71798a] font-medium">
                           {t('node.targetNode')}
                         </div>
                       </div>
@@ -158,7 +159,7 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                 <Button
                   onClick={onCancel}
                   variant="outline"
-                  className="h-12 flex-1 rounded-[22px] bg-white/10 border-white/10 hover:bg-white/20 text-white font-bold transition-all active:scale-95"
+                  className="h-8 flex-1 rounded-lg bg-white/[0.05] border-white/[0.08] hover:bg-white/[0.08] text-[#c8ccd4] text-[11.5px] font-semibold transition-all active:scale-95"
                 >
                   {t('common.cancel')}
                 </Button>
@@ -166,33 +167,18 @@ export const ConnectionBar: React.FC<ConnectionBarProps> = ({
                   onClick={onProceed}
                   disabled={!canProceed}
                   className={`
-                    h-12 flex-1 rounded-[22px] shadow-lg transition-all duration-200 flex items-center justify-center space-x-2 font-black active:scale-95
+                    h-8 flex-1 rounded-lg shadow-lg transition-all duration-200 flex items-center justify-center gap-1.5 text-[11.5px] font-semibold active:scale-95
                     ${canProceed
-                      ? 'bg-blue-500/80 hover:bg-blue-600 text-white'
+                      ? 'bg-[#3069f0] hover:bg-[#3f78f5] text-white'
                       : 'bg-white/5 text-white/20 border-white/5'
                     }
                   `}
                 >
-                  <CheckCircle className="h-5 w-5" />
+                  <CheckCircle className="h-3 w-3" />
                   <span>{t('node.connectNodes')}</span>
                 </Button>
               </div>
 
-              {/* Status Indicator - Slim */}
-              <div className="mt-3 h-6 flex items-center justify-center">
-                <motion.div
-                  key={getStatusMessage()}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.95 }}
-                  transition={{ duration: 0.2 }}
-                  className="px-3 py-0.5 bg-blue-500/10 rounded-full border border-blue-500/20"
-                >
-                  <div className="text-[10px] font-bold text-blue-300/80 tracking-wide uppercase">
-                    {getStatusMessage()}
-                  </div>
-                </motion.div>
-              </div>
             </div>
           </div>
         </motion.div>

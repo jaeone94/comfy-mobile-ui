@@ -291,46 +291,36 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 15 }}
             transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-            className={`relative pwa-modal ${isCompact ? 'w-[95vw] max-w-[384px] h-[85vh] max-h-[480px]' : 'w-[90vw] h-[85vh]'} pointer-events-auto flex flex-col`}
+            className={`relative pwa-modal ${isCompact ? 'w-[92vw] max-w-[360px] h-[78vh] max-h-[440px]' : 'w-[92vw] max-w-2xl h-[78vh]'} pointer-events-auto flex flex-col`}
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
           >
             <div
-              style={{ backgroundColor: '#374151' }}
-              className={`relative w-full h-full ${isCompact ? 'rounded-2xl' : 'rounded-[40px]'} shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white`}
+              style={{ backgroundColor: '#101217' }}
+              className={`relative w-full h-full ${isCompact ? 'rounded-xl' : 'rounded-xl'} shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col text-white`}
             >
-              <div className="absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] pt-2 pb-[13px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10">
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 flex-shrink-0 scale-75">
-                  <button onClick={onClose} className="p-2 rounded-full bg-black/20 text-white hover:bg-black/40 transition-all pointer-events-auto">
-                    <X className="w-5 h-5" />
+              <div className="absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b h-11 pl-4 pr-[40px] bg-[#0f1116]/90 backdrop-blur-xl border-white/[0.08]">
+                <div className="absolute right-3 top-1/2 -translate-y-1/2 flex-shrink-0">
+                  <button onClick={onClose} className="p-1.5 rounded-lg bg-white/[0.06] text-[#9aa3b2] hover:text-white hover:bg-white/[0.1] transition-all pointer-events-auto">
+                    <X className="w-4 h-4" />
                   </button>
                 </div>
 
-                <div className="flex flex-col justify-center flex-1 min-w-0 pointer-events-none">
-                  <div className="flex items-center space-x-2 mb-1 scale-90 origin-left">
-                    <Badge variant="secondary" className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/20 text-white/80 border-transparent">
-                      VIEWER
-                    </Badge>
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-                      {isProcessing ? t('jsonViewer.processingJson') :
-                        `${isTooLarge ? 'MASSIVE' : jsonString.split('\n').length} LINES • ${(fileSize / 1024).toFixed(1)} KB`
-                      }
-                    </span>
-                  </div>
-                  <div className="flex items-center min-w-0 h-[13px]">
-                    <h2
-                      style={{ fontSize: baseTitleSize, lineHeight: '1', transform: `scale(${0.8125 / 1.875})`, transformOrigin: 'left center' }}
-                      className="font-extrabold tracking-tight leading-tight text-white/95 truncate pr-4"
-                    >
-                      {title}
-                    </h2>
-                  </div>
+                <div className="flex items-center gap-2 flex-1 min-w-0 pointer-events-none">
+                  <h2 className="text-[14px] font-bold text-[#e9ebef] truncate">
+                    {title}
+                  </h2>
+                  <span className="font-mono text-[9px] font-semibold text-[#565d6b] tracking-[0.1em] px-1.5 py-0.5 rounded-md bg-black/20 shrink-0 whitespace-nowrap">
+                    {isProcessing ? t('jsonViewer.processingJson') :
+                      `${isTooLarge ? 'MASSIVE' : jsonString.split('\n').length}L · ${(fileSize / 1024).toFixed(1)}KB`
+                    }
+                  </span>
                 </div>
               </div>
 
-              <div className="absolute left-0 w-full z-20 px-4 top-[68px]">
-                <div className="flex bg-[#374151]/90 backdrop-blur-xl p-2 rounded-2xl border border-white/10 shadow-2xl items-center gap-2">
+              <div className="absolute left-0 w-full z-20 px-3 top-[52px]">
+                <div className="flex bg-[#101217]/90 backdrop-blur-xl p-1.5 rounded-[10px] border border-white/[0.08] shadow-xl items-center gap-1.5">
                   <div className="relative flex-[2] min-w-0">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
                     <input
@@ -340,10 +330,10 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                       onChange={(e) => { if (!e.target.value) { setActiveSearchQuery(''); setCurrentMatchIndex(0); } }}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleSearch(); }}
                       placeholder={isTooLarge ? t('jsonViewer.searchDisabled') : t('jsonViewer.searchPlaceholder')}
-                      className={`w-full bg-black/40 border-white/10 text-xs text-white/90 placeholder:text-white/20 h-10 pl-9 pr-8 rounded-xl focus:outline-none transition-all duration-300 border shadow-inner ${isTooLarge ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      className={`w-full bg-white/[0.045] border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] h-8 pl-8 pr-8 rounded-lg text-[12px] focus:outline-none focus:border-[#3069f0]/50 transition-all duration-300 border ${isTooLarge ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
                     {searchMatches.length > 0 && !isTooLarge && (
-                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-black/40 rounded-lg px-2 py-1 border border-white/5">
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-0.5 bg-black/40 rounded-md px-1.5 py-0.5 border border-white/[0.06]">
                         <span className="text-[10px] font-mono text-white/60">
                           {currentMatchIndex + 1}/{searchMatches.length}
                         </span>
@@ -356,43 +346,43 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                       disabled={isCopying || isProcessing || isTooLarge}
                       variant="ghost"
                       size="sm"
-                      className="flex-1 h-10 min-w-[40px] px-2 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-xl transition-all flex items-center justify-center"
+                      className="flex-1 h-7 min-w-[32px] px-2 bg-white/[0.04] text-[#8a919e] hover:bg-white/[0.07] hover:text-[#c8ccd4] border border-white/[0.07] rounded-lg transition-all flex items-center justify-center"
                       title={t('jsonViewer.copy')}
                     >
-                      {isCopying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-4 h-4" />}
-                      <span className="hidden sm:inline-block ml-1.5 text-[10px] font-bold uppercase tracking-wider">{t('jsonViewer.copy')}</span>
+                      {isCopying ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Copy className="w-3.5 h-3.5" />}
+                      <span className="hidden sm:inline-block ml-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em]">{t('jsonViewer.copy')}</span>
                     </Button>
                     <Button
                       onClick={handleDownload}
                       disabled={isProcessing}
                       variant="ghost"
                       size="sm"
-                      className="flex-1 h-10 min-w-[40px] px-2 bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-xl transition-all flex items-center justify-center"
+                      className="flex-1 h-7 min-w-[32px] px-2 bg-white/[0.04] text-[#8a919e] hover:bg-white/[0.07] hover:text-[#c8ccd4] border border-white/[0.07] rounded-lg transition-all flex items-center justify-center"
                       title={t('jsonViewer.download')}
                     >
-                      <Download className="w-4 h-4" />
-                      <span className="hidden sm:inline-block ml-1.5 text-[10px] font-bold uppercase tracking-wider">{t('jsonViewer.download')}</span>
+                      <Download className="w-3.5 h-3.5" />
+                      <span className="hidden sm:inline-block ml-1.5 font-mono text-[9px] font-semibold uppercase tracking-[0.1em]">{t('jsonViewer.download')}</span>
                     </Button>
                   </div>
                 </div>
               </div>
 
               <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
-                <div className="h-[185px] relative pointer-events-none" />
+                <div className="h-[104px] relative pointer-events-none" />
                 <div className="px-5 pb-6 sm:px-6">
                   {isProcessing ? (
                     <div className="flex flex-col items-center justify-center py-20 space-y-4">
                       <div className="relative">
                         <Loader2 className="h-10 w-10 animate-spin text-white/20" />
-                        <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-violet-400/50 animate-pulse" />
+                        <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-[#5b8af5]/50 animate-pulse" />
                       </div>
                       <p className="text-xs font-medium tracking-wide text-white/40 uppercase">{t('jsonViewer.processingJson')}</p>
                     </div>
                   ) : (
                     <div className="relative group">
-                      <div className="absolute -inset-4 bg-gradient-to-br from-violet-500/5 to-transparent rounded-[32px] opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                      <div className="absolute -inset-4 bg-gradient-to-br from-[#3069f0]/5 to-transparent rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                       {isTooLarge ? (
-                        <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-black/40 backdrop-blur-md rounded-[32px] border border-white/10 shadow-2xl space-y-6">
+                        <div className="flex flex-col items-center justify-center py-20 px-6 text-center bg-black/40 backdrop-blur-md rounded-xl border border-white/10 shadow-2xl space-y-6">
                           <div className="relative">
                             <div className="absolute -inset-4 bg-amber-500/20 blur-2xl rounded-full" />
                             <AlertTriangle className="h-16 w-16 text-amber-400 relative" />
@@ -404,7 +394,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                             </p>
                           </div>
                           <div className="flex flex-col w-full gap-3 pt-4">
-                            <Button onClick={handleDownload} className="h-12 bg-violet-600 hover:bg-violet-500 text-white font-bold rounded-2xl shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
+                            <Button onClick={handleDownload} className="h-12 bg-[#3069f0] hover:bg-[#3f78f5] text-white font-bold rounded-[10px] shadow-lg transition-all active:scale-95 flex items-center justify-center gap-2">
                               <Download className="w-5 h-5" />
                               {t('jsonViewer.downloadToView')}
                             </Button>
@@ -412,7 +402,7 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
                           </div>
                         </div>
                       ) : (
-                        <pre ref={preRef} className="relative text-xs font-mono bg-black/20 backdrop-blur-sm rounded-3xl p-6 overflow-auto text-white/80 leading-relaxed border border-white/5 shadow-inner" dangerouslySetInnerHTML={{ __html: activeSearchQuery ? highlightedJsonString : jsonString }} />
+                        <pre ref={preRef} className="relative text-[10.5px] font-mono bg-[#08090c] rounded-[10px] p-3 overflow-auto text-[#9aa3b2] leading-relaxed border border-white/[0.06]" dangerouslySetInnerHTML={{ __html: activeSearchQuery ? highlightedJsonString : jsonString }} />
                       )}
                     </div>
                   )}
@@ -422,16 +412,16 @@ export const JsonViewerModal: React.FC<JsonViewerModalProps> = ({
               <AnimatePresence>
                 {searchMatches.length > 0 && activeSearchQuery && !isTooLarge && (
                   <motion.div initial={{ opacity: 0, scale: 0.8, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.8, y: 20 }} className="absolute bottom-8 right-8 z-50 flex flex-col gap-3">
-                    <div className="flex flex-col gap-2 p-2 bg-black/40 backdrop-blur-xl rounded-2xl border border-white/10 shadow-2xl">
-                      <Button onClick={handlePreviousMatch} variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/5 text-white/80 hover:bg-white/10 hover:text-white border border-white/5 flex items-center justify-center p-0 transition-all active:scale-90">
+                    <div className="flex flex-col gap-1.5 p-1.5 bg-[#0f1116]/90 backdrop-blur-xl rounded-[10px] border border-white/10 shadow-xl">
+                      <Button onClick={handlePreviousMatch} variant="ghost" size="sm" className="w-10 h-10 rounded-lg bg-white/[0.05] text-[#c8ccd4] hover:bg-white/[0.09] hover:text-white border border-white/[0.07] flex items-center justify-center p-0 transition-all active:scale-90">
                         <ChevronUp className="w-6 h-6" />
                       </Button>
                       <div className="h-px bg-white/5 mx-2" />
-                      <Button onClick={handleNextMatch} variant="ghost" size="sm" className="w-12 h-12 rounded-xl bg-white/5 text-white/80 hover:bg-white/10 hover:text-white border border-white/5 flex items-center justify-center p-0 transition-all active:scale-90">
+                      <Button onClick={handleNextMatch} variant="ghost" size="sm" className="w-10 h-10 rounded-lg bg-white/[0.05] text-[#c8ccd4] hover:bg-white/[0.09] hover:text-white border border-white/[0.07] flex items-center justify-center p-0 transition-all active:scale-90">
                         <ChevronDown className="w-6 h-6" />
                       </Button>
                     </div>
-                    <motion.div layout className="bg-violet-600 text-white text-[10px] font-bold px-3 py-1.5 rounded-full shadow-lg border border-violet-400/30 flex items-center justify-center min-w-[50px] self-center">
+                    <motion.div layout className="bg-[#3069f0] text-white font-mono text-[10px] font-bold px-2.5 py-1 rounded-md shadow-lg flex items-center justify-center min-w-[50px] self-center">
                       {currentMatchIndex + 1} / {searchMatches.length}
                     </motion.div>
                   </motion.div>

@@ -567,9 +567,12 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
         transform: 'translateY(-50%)'
       }}
     >
-      <div className="bg-slate-600/40 backdrop-blur-3xl rounded-2xl shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-1 relative overflow-hidden">
+      <div
+        className="rounded-[10px] border border-white/[0.09] p-1 relative overflow-hidden"
+        style={{ background: 'rgba(15,17,22,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}
+      >
         {/* Workflow Controls Container */}
-        <div className="flex flex-col items-center space-y-1 relative z-10">
+        <div className="flex flex-col items-center gap-[2px] relative z-10">
 
           {/* Search Node Button */}
           <div className="relative" ref={searchRef}>
@@ -577,7 +580,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleSearchToggle}
               variant="ghost"
               size="sm"
-              className={`h-8 w-8 p-0 rounded-lg hover:bg-white/20 transition-all ${isSearchOpen ? 'bg-white/20 text-white' : 'text-slate-100 hover:text-white'
+              className={`h-[30px] w-[30px] p-0 rounded-[7px] transition-all ${isSearchOpen ? 'bg-[#3069f0]/[0.18] text-[#7ba3f5]' : 'text-[#9aa3b2] hover:text-[#c8ccd4] hover:bg-white/[0.06]'
                 }`}
               title={t('workflow.searchNode')}
             >
@@ -587,7 +590,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="h-px w-6 bg-white/10 mx-1" />
+          <div className="h-px w-4 bg-white/[0.07]" />
 
           {/* Refresh Workflow Button */}
           {onRefreshWorkflow && (
@@ -595,7 +598,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={onRefreshWorkflow}
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
+              className="h-[30px] w-[30px] p-0 rounded-[7px] text-[#9aa3b2] hover:text-[#c8ccd4] hover:bg-white/[0.06] transition-all"
               title={t('workflow.refreshSlots')}
             >
               <RefreshCw className="h-4 w-4" />
@@ -603,7 +606,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           )}
 
           {/* Divider */}
-          <div className="h-px w-6 bg-white/10 mx-1" />
+          <div className="h-px w-4 bg-white/[0.07]" />
 
           {/* Fit to Screen Button */}
           {onZoomFit && (
@@ -612,7 +615,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                 onClick={onZoomFit}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
+                className="h-[30px] w-[30px] p-0 rounded-[7px] text-[#9aa3b2] hover:text-[#c8ccd4] hover:bg-white/[0.06] transition-all"
                 title={t('workflow.fitToScreen')}
               >
                 <Maximize2 className="h-4 w-4" />
@@ -621,7 +624,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           )}
 
           {/* Divider */}
-          <div className="h-px w-6 bg-white/10 mx-1" />
+          <div className="h-px w-4 bg-white/[0.07]" />
 
           {/* Queue Button */}
           <div className="relative" ref={historyRef}>
@@ -629,19 +632,19 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleShowPromptHistory}
               variant="ghost"
               size="sm"
-              className={`h-8 w-8 p-0 transition-all rounded-lg ${isHistoryOpen ? 'bg-white/20 text-white' : 'text-slate-100 hover:text-white hover:bg-white/20'
+              className={`h-[34px] w-[34px] p-0 transition-all rounded-lg ${isHistoryOpen ? 'bg-[#3069f0]/[0.18] text-[#7ba3f5]' : 'text-[#9aa3b2] hover:text-[#c8ccd4] hover:bg-white/[0.06]'
                 }`}
               title={t('workflow.queue')}
             >
               <Clock className="h-4 w-4" />
             </Button>
             {hasUnseenCompletion && !isHistoryOpen && (
-              <span className="pointer-events-none absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_0_0_1.5px_rgba(15,23,42,0.8)] animate-pulse" />
+              <span className="pointer-events-none absolute top-[3px] right-[3px] h-[7px] w-[7px] rounded-full bg-[#f25555] shadow-[0_0_0_2px_#0f1116] animate-pulse" />
             )}
           </div>
 
           {/* Divider */}
-          <div className="h-px w-6 bg-white/10 mx-1" />
+          <div className="h-px w-4 bg-white/[0.07]" />
 
           {/* Console Button */}
           <div className="relative" ref={consoleRef}>
@@ -649,7 +652,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleConsoleToggle}
               variant="ghost"
               size="sm"
-              className={`h-8 w-8 p-0 transition-all rounded-lg ${isConsoleOpen ? 'bg-white/20 text-white' : 'text-slate-100 hover:text-white hover:bg-white/20'
+              className={`h-[34px] w-[34px] p-0 transition-all rounded-lg ${isConsoleOpen ? 'bg-[#3069f0]/[0.18] text-[#7ba3f5]' : 'text-[#9aa3b2] hover:text-[#c8ccd4] hover:bg-white/[0.06]'
                 }`}
               title={t('workflow.console')}
             >
@@ -658,7 +661,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="h-px w-6 bg-white/10 mx-1" />
+          <div className="h-px w-4 bg-white/[0.07]" />
 
           {/* Stack View Button */}
           <div className="relative">
@@ -666,7 +669,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               onClick={handleStackViewClick}
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 transition-all rounded-lg text-slate-100 hover:text-white hover:bg-white/20"
+              className="h-[30px] w-[30px] p-0 rounded-[7px] text-[#9aa3b2] hover:text-[#c8ccd4] hover:bg-white/[0.06] transition-all"
               title={t('menu.stackView')}
             >
               <Layers className="h-4 w-4" />
@@ -674,7 +677,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
           </div>
 
           {/* Divider */}
-          <div className="h-px w-6 bg-white/10 mx-1" />
+          <div className="h-px w-4 bg-white/[0.07]" />
 
           {/* Settings Button with Dropdown */}
           <div className="relative" ref={settingsRef}>
@@ -688,7 +691,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               }}
               variant="ghost"
               size="sm"
-              className="relative h-8 w-8 p-0 text-slate-100 hover:text-white hover:bg-white/20 rounded-lg transition-all"
+              className="relative h-[30px] w-[30px] p-0 rounded-[7px] text-[#9aa3b2] hover:text-[#c8ccd4] hover:bg-white/[0.06] transition-all"
               title={t('common.settings')}
             >
               <Settings
@@ -697,9 +700,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               />
               {/* Priority: Red for missing nodes, Yellow for missing models only */}
               {missingNodesCount > 0 ? (
-                <span className="pointer-events-none absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_0_0_1.5px_rgba(15,23,42,0.8)] animate-pulse" />
+                <span className="pointer-events-none absolute top-[3px] right-[3px] h-[7px] w-[7px] rounded-full bg-[#f25555] shadow-[0_0_0_2px_#0f1116] animate-pulse" />
               ) : missingModels.length > 0 ? (
-                <span className="pointer-events-none absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-yellow-500 shadow-[0_0_0_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_0_0_1.5px_rgba(15,23,42,0.8)] animate-pulse" />
+                <span className="pointer-events-none absolute top-[3px] right-[3px] h-[7px] w-[7px] rounded-full bg-[#ffa348] shadow-[0_0_0_2px_#0f1116] animate-pulse" />
               ) : null}
             </Button>
           </div>
@@ -716,11 +719,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
             animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.settings }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-full top-0 mr-3 w-64 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden z-50"
+            className="absolute right-full top-0 mr-2.5 w-56 max-w-[calc(100vw-90px)] rounded-[10px] border border-white/10 overflow-hidden z-50"
+            style={{ background: 'rgba(15,17,22,0.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 20px 48px rgba(0,0,0,0.55)' }}
           >
-            {/* Subtle Inner Glow */}
-            <div className="absolute inset-0 bg-white/5 pointer-events-none" />
-
             <div className="relative z-10 max-h-[80vh] overflow-y-auto custom-scrollbar">
               <SettingsDropdownContent
                 isClearingVRAM={isClearingVRAM}
@@ -757,9 +758,10 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
             animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.search }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-full top-0 mr-3 w-80 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden"
+            className="absolute right-full top-0 mr-2.5 w-72 max-w-[calc(100vw-90px)] rounded-[10px] border border-white/10 p-3 z-50 overflow-hidden"
             data-search-panel
             style={{
+              background: 'rgba(15,17,22,0.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 20px 48px rgba(0,0,0,0.55)',
               touchAction: 'pan-y pinch-zoom',
               overscrollBehaviorY: 'contain'
             } as React.CSSProperties}
@@ -773,9 +775,6 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               e.stopPropagation();
             }}
           >
-            {/* Subtle Inner Glow */}
-            <div className="absolute inset-0 bg-white/5 pointer-events-none rounded-xl" />
-
             <div className="relative z-10">
               {/* Search Input */}
               <form onSubmit={handleSearchSubmit} className="mb-3">
@@ -786,14 +785,15 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                   onChange={(e) => setSearchValue(e.target.value)}
                   onKeyDown={handleSearchKeyDown}
                   placeholder={t('workflow.searchNodesPlaceholder')}
-                  className="w-full px-3 py-2 text-sm bg-white/90 dark:bg-slate-800/90 border border-slate-200/60 dark:border-slate-600/60 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 text-slate-700 dark:text-slate-300 placeholder-slate-400 dark:placeholder-slate-500"
+                  className="w-full h-8 px-2.5 text-[12px] rounded-lg border border-white/[0.08] focus:outline-none focus:border-[#3069f0]/50 text-[#e9ebef] placeholder-[#71798a] transition-colors"
+                  style={{ background: 'rgba(255,255,255,0.045)' }}
                 />
               </form>
 
               {/* Search Results */}
               {searchValue.trim() && searchResults.length > 0 && (
                 <div className="space-y-1">
-                  <div className="text-xs text-slate-500 dark:text-slate-400 mb-2 px-1">
+                  <div className="font-mono text-[10px] text-[#565d6b] tracking-[0.1em] uppercase mb-2 px-1">
                     {searchResults.length === 1
                       ? t('workflow.resultFound')
                       : t('workflow.resultsFound', { count: searchResults.length })}
@@ -818,21 +818,21 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                       <button
                         key={node.id}
                         onClick={() => handleResultSelect(node)}
-                        className={`w-full text-left p-2 rounded-md transition-colors ${index === selectedResultIndex
-                          ? 'bg-blue-100 dark:bg-blue-900/30 border border-blue-300 dark:border-blue-700'
-                          : 'hover:bg-white/40 dark:hover:bg-slate-700/50 bg-white/20 dark:bg-slate-800/20'
+                        className={`w-full text-left px-2.5 py-2 rounded-lg border transition-colors ${index === selectedResultIndex
+                          ? 'bg-[#3069f0]/[0.15] border-[#3069f0]/40'
+                          : 'bg-white/[0.03] border-transparent hover:bg-white/[0.06]'
                           }`}
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex-1 min-w-0">
-                            <div className="font-medium text-slate-900 dark:text-slate-100 truncate">
+                            <div className="text-[12.5px] font-semibold text-[#e9ebef] truncate">
                               {node.title || node.type}
                             </div>
-                            <div className="text-sm text-slate-600 dark:text-slate-400 truncate">
-                              ID: {node.id} • Type: {node.type}
+                            <div className="font-mono text-[10px] text-[#565d6b] truncate mt-0.5">
+                              {node.type}
                             </div>
                           </div>
-                          <div className="text-xs text-slate-400 dark:text-slate-500 ml-2">
+                          <div className="font-mono text-[10px] text-[#5b8af5] ml-2">
                             #{node.id}
                           </div>
                         </div>
@@ -844,7 +844,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
 
               {/* No Results Message */}
               {searchValue.trim() && searchResults.length === 0 && (
-                <div className="text-sm text-slate-500 dark:text-slate-400 text-center py-3">
+                <div className="text-[12px] text-[#66758a] text-center py-3">
                   {t('workflow.noNodesFound', { query: searchValue })}
                 </div>
               )}
@@ -869,9 +869,10 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
             animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.console }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-full top-0 mr-3 w-96 max-w-[calc(100vw-100px)] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden"
+            className="absolute right-full top-0 mr-2.5 w-80 max-w-[calc(100vw-90px)] rounded-[10px] border border-white/10 p-3 z-50 overflow-hidden"
             data-console-panel
             style={{
+              background: 'rgba(15,17,22,0.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 20px 48px rgba(0,0,0,0.55)',
               touchAction: 'pan-y pinch-zoom',
               overscrollBehaviorY: 'contain'
             } as React.CSSProperties}
@@ -885,20 +886,17 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               e.stopPropagation();
             }}
           >
-            {/* Subtle Inner Glow */}
-            <div className="absolute inset-0 bg-white/5 pointer-events-none rounded-xl" />
-
             <div className="relative z-10">
               {/* Console Header */}
               <div className="flex items-center justify-between mb-3">
-                <div className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                <div className="font-mono text-[10px] font-semibold text-[#565d6b] tracking-[0.14em] uppercase">
                   {t('workflow.serverConsole')}
                 </div>
                 <Button
                   onClick={() => setConsoleLogs([])}
                   variant="ghost"
                   size="sm"
-                  className="h-6 px-2 text-xs hover:bg-white/60 dark:hover:bg-slate-700/60"
+                  className="h-6 px-2 text-[11px] text-[#8a919e] hover:text-[#c8ccd4] hover:bg-white/[0.06]"
                 >
                   {t('common.clear')}
                 </Button>
@@ -907,8 +905,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               {/* Console Logs */}
               <div
                 ref={consoleContainerRef}
-                className="h-96 overflow-y-auto space-y-1 px-3 py-2 bg-slate-900/90 dark:bg-slate-950/90 rounded-lg font-mono text-xs"
+                className="h-72 overflow-y-auto space-y-1 px-2.5 py-2 rounded-lg border border-white/[0.06] font-mono text-[10.5px]"
                 style={{
+                  background: '#08090c',
                   touchAction: 'pan-y pinch-zoom',
                   overscrollBehaviorY: 'contain'
                 } as React.CSSProperties}
@@ -923,14 +922,14 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
                 }}
               >
                 {consoleLogs.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-slate-500 dark:text-slate-400">
+                  <div className="flex items-center justify-center h-full text-[#565d6b]">
                     {t('workflow.noLogs')}
                   </div>
                 ) : (
                   consoleLogs.map((log, index) => (
                     <div
                       key={index}
-                      className="py-0.5 text-slate-100 dark:text-slate-200 leading-relaxed break-all whitespace-pre-wrap"
+                      className="py-0.5 text-[#9aa3b2] leading-relaxed break-all whitespace-pre-wrap"
                     >
                       {log.m}
                     </div>
@@ -951,16 +950,14 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
             animate={{ opacity: 1, x: 0, scale: 1, y: panelYOffsets.history }}
             exit={{ opacity: 0, x: 20, scale: 0.95 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="absolute right-full top-0 mr-3 w-96 max-w-[calc(100vw-100px)] h-[480px] bg-slate-800/60 backdrop-blur-3xl rounded-2xl shadow-2xl border border-white/20 p-4 z-50 overflow-hidden flex flex-col"
+            className="absolute right-full top-0 mr-2.5 w-72 max-w-[calc(100vw-90px)] h-[400px] rounded-[10px] border border-white/10 p-3 z-50 overflow-hidden flex flex-col"
             data-history-panel
             style={{
+              background: 'rgba(15,17,22,0.94)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 20px 48px rgba(0,0,0,0.55)',
               touchAction: 'pan-y pinch-zoom',
               overscrollBehaviorY: 'contain'
             } as React.CSSProperties}
           >
-            {/* Subtle Inner Glow */}
-            <div className="absolute inset-0 bg-white/5 pointer-events-none rounded-2xl" />
-
             <div className="relative z-10 flex flex-col h-full">
               <PromptHistoryContent
                 isEmbedded={true}

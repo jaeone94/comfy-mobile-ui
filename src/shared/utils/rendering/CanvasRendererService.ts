@@ -1836,15 +1836,15 @@ export function drawGridPattern(
   canvasHeight: number,
   viewport: ViewportTransform
 ): void {
-  const gridSize = 20; // Base grid size in pixels
-  const dotSize = 1.5; // Size of grid dots
+  const gridSize = 22; // Base grid size in pixels (design-spec dot grid)
+  const dotSize = 1; // Size of grid dots
 
   // Calculate grid offset based on viewport position
   const offsetX = viewport.x % (gridSize * viewport.scale);
   const offsetY = viewport.y % (gridSize * viewport.scale);
 
   // Grid color (subtle dots)
-  ctx.fillStyle = 'rgba(100, 116, 139, 0.3)'; // Slightly visible dots
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.06)'; // Hairline white dots
 
   // Draw grid dots
   const scaledGridSize = gridSize * viewport.scale;

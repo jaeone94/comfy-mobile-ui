@@ -175,7 +175,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   if (isEditing) {
     return (
-      <div className={`p-4 rounded-lg border transition-all duration-200 ${themeOverride?.container || 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800'}`}>
+      <div className={`p-2.5 rounded-lg border transition-all duration-200 ${themeOverride?.container || 'bg-[#3069f0]/[0.06] border-[#3069f0]/25'}`}>
         {/* Value Input Area */}
         <div className="space-y-4">
           {/* Widget Control Components */}
@@ -266,7 +266,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                         }}
                         // Prevent actual selection since we're using the modal
                         onChange={() => { }}
-                        className="w-full p-3 bg-white dark:bg-slate-800 border border-slate-300 dark:border-slate-600 rounded-lg text-lg cursor-pointer"
+ className="w-full p-2 bg-[#14171e] border border-white/[0.1] rounded-lg text-[13px] cursor-pointer"
                       >
                         <option value="">
                           {currentValue && currentValue !== '' ? currentValue : t('node.selectFileTyped', { type: (param.type === 'IMAGE' || isImageParam) ? t('node.image') : t('node.video') })}
@@ -283,9 +283,9 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                       {/* Visual indicator for IMAGE/VIDEO type */}
                       <div className="absolute right-3 top-1/2 transform -translate-y-1/2 pointer-events-none flex items-center space-x-1">
                         {(param.type === 'IMAGE' || isImageParam) ? (
-                          <ImageIcon className="h-4 w-4 text-slate-400" />
+                          <ImageIcon className="h-4 w-4 text-[#565d6b]" />
                         ) : (
-                          <Video className="h-4 w-4 text-slate-400" />
+                          <Video className="h-4 w-4 text-[#565d6b]" />
                         )}
                       </div>
                     </div>
@@ -338,7 +338,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               e.preventDefault();
               onCancelEditing();
             }}
-            className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/20"
+ className="text-red-600 border-red-200 hover:bg-red-50 dark:text-red-400 dark:border-red-800 dark:hover:bg-red-950/20"
           >
             <X className="w-4 h-4 mr-1" />
             {t('common.cancel')}
@@ -350,7 +350,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               e.preventDefault();
               onSaveEditing();
             }}
-            className="bg-green-600 hover:bg-green-700 text-white"
+ className="bg-green-600 hover:bg-green-700 text-white"
           >
             <Check className="w-4 h-4 mr-1" />
             {t('common.save')}
@@ -362,31 +362,31 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
 
   // Normal display mode
   return (
-    <div className={`px-2.5 py-3 rounded-lg ${themeOverride?.container || 'bg-slate-50 dark:bg-slate-800/50'}`}>
-      <div className="flex items-start justify-between mb-2 gap-2">
+    <div className={`px-2.5 py-2 rounded-lg border ${themeOverride?.container || 'bg-white/[0.03] border-white/[0.07]'}`}>
+      <div className="flex items-start justify-between mb-1.5 gap-2">
         <div className="flex flex-wrap items-center gap-2 min-w-0">
-          <span className={`font-medium break-words leading-tight ${themeOverride?.label || 'text-slate-900 dark:text-slate-100'}`}>
+          <span className={`text-[12px] font-semibold break-words leading-tight ${themeOverride?.label || 'text-[#e9ebef]'}`}>
             {param.label || param.name}
           </span>
           {param.required && (
-            <Badge variant="destructive" className="text-[10px] px-1.5 py-0.5 flex-shrink-0">
+            <Badge variant="destructive" className="text-[9px] px-1 py-0 h-[16px] rounded flex-shrink-0">
               {t('node.required')}
             </Badge>
           )}
         </div>
         <Badge
           variant={hasCustomWidgetDefinition ? "secondary" : "outline"}
-          className={`text-[10px] flex-shrink-0 ${hasCustomWidgetDefinition ? 'bg-purple-100 text-purple-700 border-purple-300 dark:bg-purple-900/30 dark:text-purple-300 dark:border-purple-700' : ''}`}
+ className={`font-mono text-[9px] h-[16px] px-1 rounded flex-shrink-0 ${hasCustomWidgetDefinition ? 'bg-[#3069f0]/[0.12] text-[#7ba3f5] border-[#3069f0]/30' : ''}`}
         >
           {param.type}
           {hasCustomWidgetDefinition && (
-            <span className="ml-1 text-purple-600 dark:text-purple-400">●</span>
+            <span className="ml-1 text-[#7ba3f5]">●</span>
           )}
         </Badge>
       </div>
 
-      <div className="mb-2">
-        <span className={`text-sm ${themeOverride?.secondaryText || 'text-slate-600 dark:text-slate-400'}`}>{t('node.value')}: </span>
+      <div className="mb-1.5">
+        <span className={`text-[10.5px] ${themeOverride?.secondaryText || 'text-[#71798a]'}`}>{t('node.value')}: </span>
         <div className="inline-flex items-center space-x-2">
           {isEditable ? (
             <button
@@ -395,16 +395,16 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 e.preventDefault();
                 onStartEditing(nodeId, param.name, currentValue);
               }}
-              className={`text-sm px-2 py-1 rounded inline-flex items-center max-w-[250px] md:max-w-[350px] align-bottom transition-all duration-200 hover:shadow-sm active:scale-95 cursor-pointer border ${isModified
+ className={`text-[11.5px] font-mono px-1.5 py-0.5 rounded inline-flex items-center max-w-[250px] md:max-w-[350px] align-bottom transition-all duration-200 hover:shadow-sm active:scale-95 cursor-pointer border ${isModified
                 ? 'bg-[#10b981] dark:bg-[#10b981] text-white dark:text-white border-[#10b981] dark:border-[#10b981] hover:bg-[#059669] dark:hover:bg-[#059669]'
                 : (themeOverride
                   ? 'bg-transparent border-white/20 text-white/90 hover:bg-white/10'
-                  : 'bg-slate-200 dark:bg-slate-700 border-slate-300 dark:border-slate-600 hover:bg-slate-300 dark:hover:bg-slate-600')
+                  : 'bg-white/[0.06] border-white/[0.1] hover:bg-white/[0.1]')
                 } ${modifiedHighlightClasses}`}
             >
               {param.type === 'BOOLEAN' ? (
                 <div className="flex items-center mr-2">
-                  <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
+                  <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-[#565d6b]'
                     }`} />
                   <span className="font-mono">{Boolean(currentValue) ? t('node.true') : t('node.false')}</span>
                 </div>
@@ -428,10 +428,10 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               <Edit className="w-3 h-3 opacity-60 flex-shrink-0" />
             </button>
           ) : (
-            <div className={`text-sm px-2 py-1 rounded inline-block max-w-[250px] md:max-w-[350px] truncate align-bottom border ${themeOverride ? 'bg-transparent border-white/20 text-white/80' : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400'}`}>
+            <div className={`text-[11.5px] font-mono px-1.5 py-0.5 rounded inline-block max-w-[250px] md:max-w-[350px] truncate align-bottom border ${themeOverride ? 'bg-transparent border-white/20 text-white/80' : 'bg-white/[0.05] border-white/[0.08] text-[#9aa3b2]'}`}>
               {param.type === 'BOOLEAN' ? (
                 <div className="flex items-center">
-                  <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-slate-400'
+                  <div className={`w-3 h-3 rounded-full mr-2 ${Boolean(currentValue) ? 'bg-green-500' : 'bg-[#565d6b]'
                     }`} />
                   <span className="font-mono">{Boolean(currentValue) ? t('node.true') : t('node.false')}</span>
                 </div>
@@ -467,7 +467,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
                 onFileUpload(nodeId, param.name);
               }}
               disabled={uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name}
-              className={`w-full flex items-center justify-center space-x-2 py-2.5 px-4 rounded-lg font-bold transition-all duration-200 active:scale-[0.98] border shadow-sm ${uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name
+ className={`w-full flex items-center justify-center space-x-2 py-2 px-3 rounded-lg text-[11.5px] font-semibold transition-all duration-200 active:scale-[0.98] border shadow-sm ${uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name
                 ? 'bg-zinc-100 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-600 border-zinc-200 dark:border-zinc-700 cursor-not-allowed'
                 : 'bg-emerald-50 hover:bg-emerald-100 dark:bg-emerald-900/20 dark:hover:bg-emerald-900/40 text-emerald-600 dark:text-emerald-400 border-emerald-200/50 dark:border-emerald-800/50'
                 }`}
@@ -475,12 +475,12 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
               {uploadState.isUploading && uploadState.nodeId === nodeId && uploadState.paramName === param.name ? (
                 <>
                   <div className="w-4 h-4 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-                  <span className="text-sm">{t('gallery.uploading')}</span>
+                  <span className="text-[11.5px]">{t('gallery.uploading')}</span>
                 </>
               ) : (
                 <>
                   <Upload className="w-4 h-4" />
-                  <span className="text-sm">
+                  <span className="text-[11.5px]">
                     {t('node.uploadNewFile', { type: isImageFile(currentValue) ? t('node.image') : t('node.video') })}
                   </span>
                 </>
@@ -535,7 +535,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       {/* Parameter Description */}
       {
         param.description && (
-          <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+          <p className="text-[10.5px] text-[#66758a] mb-1.5 leading-snug">
             {param.description}
           </p>
         )
@@ -544,7 +544,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       {/* Possible Values for COMBO type */}
       {
         param.possibleValues && param.possibleValues.length > 0 && (
-          <div className="text-xs text-slate-500 dark:text-slate-400">
+          <div className="text-[10.5px] text-[#66758a]">
             <span className="font-medium">{t('node.options')}: </span>
             <span>
               {(() => {
@@ -576,7 +576,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       {/* Validation Info for INT/FLOAT types */}
       {
         param.validation && (
-          <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+          <div className="font-mono text-[10px] text-[#565d6b] mt-1">
             {param.validation.min !== undefined && (
               <span>{t('node.min')}: {param.validation.min} </span>
             )}
@@ -594,7 +594,7 @@ export const WidgetValueEditor: React.FC<WidgetValueEditorProps> = ({
       {
         showAlbumModal && createPortal(
           <div
-            className="fixed inset-0 z-[9999] bg-white dark:bg-slate-900 overflow-auto overscroll-contain"
+ className="fixed inset-0 z-[9999] bg-white overflow-auto overscroll-contain"
             style={{
               position: 'fixed',
               top: 0,

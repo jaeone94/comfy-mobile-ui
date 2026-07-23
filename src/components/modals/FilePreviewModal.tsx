@@ -244,13 +244,13 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className={`${isCompact ? 'absolute h-full' : 'fixed h-[100dvh]'} top-0 left-0 right-0 bottom-0 z-[99999] bg-white dark:bg-slate-900 flex flex-col ${isCompact ? 'px-0 pt-0 pb-0' : ''} overflow-hidden`}
+ className={`${isCompact ? 'absolute h-full' : 'fixed h-[100dvh]'} top-0 left-0 right-0 bottom-0 z-[99999] bg-[#101217] flex flex-col ${isCompact ? 'px-0 pt-0 pb-0' : ''} overflow-hidden`}
         >
           {/* Header (Always Visible unless Compact) */}
           {!isCompact && (
-            <div className="flex items-center justify-between gap-3 flex-shrink-0 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl p-4 md:px-8 md:py-5 border-b border-slate-200 dark:border-slate-800 z-[100003] shadow-sm">
+            <div className="flex items-center justify-between gap-3 flex-shrink-0 bg-white/80 dark:bg-[#0b0c0f]/80 backdrop-blur-xl p-4 md:px-8 md:py-5 border-b border-white/[0.08] z-[100003] shadow-sm">
               <div className="flex items-center space-x-3 md:space-x-4 min-w-0 flex-1">
-                <div className={`p-2.5 rounded-2xl flex-shrink-0 shadow-sm ${isImage ? 'bg-blue-500/15 text-blue-500' : 'bg-purple-500/15 text-purple-500'}`}>
+                <div className={`p-2.5 rounded-xl flex-shrink-0 shadow-sm ${isImage ? 'bg-[#3069f0]/15 text-[#5b8af5]' : 'bg-[#9a8af0]/15 text-purple-500'}`}>
                   {isImage ? (
                     <Image className="w-5 h-5 md:w-6 md:h-6" />
                   ) : (
@@ -258,20 +258,20 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <h3 className="text-sm md:text-lg font-bold text-slate-800 dark:text-slate-100 truncate tracking-tight" title={filename}>
+                  <h3 className="text-[12px] md:text-[14px] font-bold text-[#e9ebef] truncate tracking-tight" title={filename}>
                     {filename}
                   </h3>
                   <div className="flex items-center flex-wrap gap-1.5 mt-1">
-                    <Badge variant="secondary" className="text-[10px] md:text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-none px-2">
+                    <Badge variant="secondary" className="text-[10px] md:text-xs font-medium bg-white/[0.06] text-[#8a919e] border-none px-2">
                       {getFileExtension(filename)}
                     </Badge>
                     {fileSize && (
-                      <Badge variant="secondary" className="text-[10px] md:text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-none px-2">
+                      <Badge variant="secondary" className="text-[10px] md:text-xs font-medium bg-white/[0.06] text-[#8a919e] border-none px-2">
                         {formatFileSize(fileSize)}
                       </Badge>
                     )}
                     {dimensions && (
-                      <Badge variant="secondary" className="text-[10px] md:text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-none px-2">
+                      <Badge variant="secondary" className="text-[10px] md:text-xs font-medium bg-white/[0.06] text-[#8a919e] border-none px-2">
                         {dimensions.width}×{dimensions.height}
                       </Badge>
                     )}
@@ -287,7 +287,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       onClick={() => setShowInfo(!showInfo)}
                       variant="ghost"
                       size="sm"
-                      className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+ className="h-10 w-10 p-0 rounded-xl hover:bg-white/[0.06] dark:hover:bg-[#14171e] text-[#71798a]"
                       title={t('media.showFileInfo')}
                     >
                       <Info className="w-5 h-5" />
@@ -297,7 +297,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       onClick={handleOpenInNewTab}
                       variant="ghost"
                       size="sm"
-                      className="h-10 w-10 p-0 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400"
+ className="h-10 w-10 p-0 rounded-xl hover:bg-white/[0.06] dark:hover:bg-[#14171e] text-[#71798a]"
                       title={t('media.openInNewTab')}
                     >
                       <ExternalLink className="w-5 h-5" />
@@ -308,7 +308,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       disabled={isDownloading}
                       variant="ghost"
                       size="sm"
-                      className="h-10 px-3 md:px-4 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 font-semibold"
+ className="h-10 px-3 md:px-4 rounded-xl hover:bg-white/[0.06] dark:hover:bg-[#14171e] text-[#71798a] font-semibold"
                       title={t('media.downloadFile')}
                     >
                       <Download className="w-5 h-5 md:mr-2" />
@@ -321,7 +321,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   onClick={onClose}
                   variant="ghost"
                   size="sm"
-                  className="h-10 w-10 md:w-auto md:px-4 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 font-bold"
+ className="h-10 w-10 md:w-auto md:px-4 rounded-xl bg-white/[0.06] text-[#8a919e] dark:text-[#c8ccd4] hover:bg-white/[0.08] font-bold"
                   title={t('common.close')}
                 >
                   <X className="w-5 h-5 md:mr-1.5" />
@@ -338,7 +338,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 onClick={onClose}
                 variant="ghost"
                 size="sm"
-                className="h-10 w-10 p-0 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/20 text-white shadow-lg transition-all active:scale-90"
+ className="h-10 w-10 p-0 rounded-full bg-black/20 hover:bg-black/40 backdrop-blur-md border border-white/20 text-white shadow-lg transition-all active:scale-90"
                 title={t('common.close')}
               >
                 <X className="w-5 h-5" />
@@ -353,36 +353,36 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                 initial={{ height: 0, opacity: 0 }}
                 animate={{ height: 'auto', opacity: 1 }}
                 exit={{ height: 0, opacity: 0 }}
-                className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/50 backdrop-blur-sm"
+ className="border-b border-white/[0.08] bg-white/[0.04]/50 dark:bg-[#14171e]/50 backdrop-blur-sm"
               >
                 <div className="p-4 md:px-8 space-y-3">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-xs md:text-sm">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs md:text-[12px]">
                     <div>
-                      <span className="text-slate-500 dark:text-slate-500 uppercase font-black tracking-tighter">{t('media.type')}</span>
-                      <div className="text-slate-700 dark:text-slate-200 font-bold mt-0.5">{fileType || getFileExtension(filename)}</div>
+                      <span className="text-[#71798a] dark:text-[#71798a] uppercase font-black tracking-tighter">{t('media.type')}</span>
+                      <div className="text-[#c8ccd4] dark:text-[#d5d9e0] font-bold mt-0.5">{fileType || getFileExtension(filename)}</div>
                     </div>
                     {fileSize && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-500 uppercase font-black tracking-tighter">{t('media.size')}</span>
-                        <div className="text-slate-700 dark:text-slate-200 font-bold mt-0.5">{formatFileSize(fileSize)}</div>
+                        <span className="text-[#71798a] dark:text-[#71798a] uppercase font-black tracking-tighter">{t('media.size')}</span>
+                        <div className="text-[#c8ccd4] dark:text-[#d5d9e0] font-bold mt-0.5">{formatFileSize(fileSize)}</div>
                       </div>
                     )}
                     {dimensions && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-500 uppercase font-black tracking-tighter">{t('media.dimensions')}</span>
-                        <div className="text-slate-700 dark:text-slate-200 font-bold mt-0.5">{dimensions.width} × {dimensions.height}</div>
+                        <span className="text-[#71798a] dark:text-[#71798a] uppercase font-black tracking-tighter">{t('media.dimensions')}</span>
+                        <div className="text-[#c8ccd4] dark:text-[#d5d9e0] font-bold mt-0.5">{dimensions.width} × {dimensions.height}</div>
                       </div>
                     )}
                     {duration && (
                       <div>
-                        <span className="text-slate-500 dark:text-slate-500 uppercase font-black tracking-tighter">{t('media.duration')}</span>
-                        <div className="text-slate-700 dark:text-slate-200 font-bold mt-0.5">{formatDuration(duration)}</div>
+                        <span className="text-[#71798a] dark:text-[#71798a] uppercase font-black tracking-tighter">{t('media.duration')}</span>
+                        <div className="text-[#c8ccd4] dark:text-[#d5d9e0] font-bold mt-0.5">{formatDuration(duration)}</div>
                       </div>
                     )}
                   </div>
                   <div>
-                    <span className="text-slate-500 dark:text-slate-500 uppercase font-black tracking-tighter">{t('media.filename')}</span>
-                    <div className="text-slate-700 dark:text-slate-200 font-mono text-xs break-all mt-0.5 opacity-80">{filename}</div>
+                    <span className="text-[#71798a] dark:text-[#71798a] uppercase font-black tracking-tighter">{t('media.filename')}</span>
+                    <div className="text-[#c8ccd4] dark:text-[#d5d9e0] font-mono text-xs break-all mt-0.5 opacity-80">{filename}</div>
                   </div>
                 </div>
               </motion.div>
@@ -390,30 +390,30 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           </AnimatePresence>
 
           {/* Content Area - No Padding for Full Experience */}
-          <div className="flex-1 relative overflow-hidden flex flex-col min-h-0 bg-slate-50 dark:bg-slate-950/20">
+          <div className="flex-1 relative overflow-hidden flex flex-col min-h-0 bg-black/20">
             {/* Loading Overlay */}
             {loading && (
-              <div className="absolute inset-0 z-[100004] flex items-center justify-center bg-white/40 dark:bg-slate-900/40 backdrop-blur-[2px]">
+              <div className="absolute inset-0 z-[100004] flex items-center justify-center bg-white/40 dark:bg-[#0b0c0f]/40 backdrop-blur-[2px]">
                 <div className="text-center">
-                  <div className="w-12 h-12 border-3 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                  <p className="text-slate-600 dark:text-slate-300 text-sm font-bold tracking-tight">{t('media.loadingPreview')}</p>
+                  <div className="w-12 h-10 border-3 border-[#3069f0] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                  <p className="text-[#8a919e] dark:text-[#c8ccd4] text-[12px] font-bold tracking-tight">{t('media.loadingPreview')}</p>
                 </div>
               </div>
             )}
 
             {/* Error State */}
             {error && (
-              <div className="flex items-center justify-center flex-1 z-[100005] bg-white dark:bg-slate-900">
-                <div className="text-center p-6">
-                  <div className="w-20 h-20 bg-red-500/15 rounded-3xl flex items-center justify-center mx-auto mb-6">
-                    <X className="w-10 h-10 text-red-500" />
+              <div className="flex items-center justify-center flex-1 z-[100005] bg-[#101217]">
+                <div className="text-center p-4">
+                  <div className="w-20 h-20 bg-[#f25555]/15 rounded-xl flex items-center justify-center mx-auto mb-6">
+                    <X className="w-10 h-10 text-[#f25555]" />
                   </div>
-                  <p className="text-red-500 font-bold text-xl mb-2">{t('media.previewFailed')}</p>
-                  <p className="text-slate-500 dark:text-slate-400 mb-8 max-w-md mx-auto">{error}</p>
+                  <p className="text-[#f25555] font-bold text-[15px] mb-2">{t('media.previewFailed')}</p>
+                  <p className="text-[#71798a] mb-8 max-w-md mx-auto">{error}</p>
                   <Button
                     onClick={() => onRetry(filename)}
                     variant="outline"
-                    className="bg-slate-100 dark:bg-slate-800 border-none text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-700 px-8 py-6 rounded-2xl font-bold"
+ className="bg-white/[0.06] border-none text-[#c8ccd4] dark:text-[#d5d9e0] hover:bg-white/[0.08] px-8 py-6 rounded-xl font-bold"
                   >
                     {t('common.retry')}
                   </Button>
@@ -439,7 +439,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                         <img
                           src={url}
                           alt={filename}
-                          className="max-w-full max-h-full object-contain"
+ className="max-w-full max-h-full object-contain"
                           onError={handleImageError}
                         />
                       </TransformComponent>
@@ -449,7 +449,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       src={`${url}#t=0.001`}
                       controls
                       preload="auto"
-                      className="max-w-full max-h-full object-contain"
+ className="max-w-full max-h-full object-contain"
                       onError={handleVideoError}
                       {...(isCompact ? { playsInline: true, "webkit-playsinline": "true" } : {})}
                     >
@@ -468,10 +468,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                         handlePrevious();
                       }}
                       disabled={currentIndex <= 0}
-                      className={`absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-[100006] w-14 h-14 md:w-20 md:h-20 flex items-center justify-center rounded-3xl bg-black/10 hover:bg-black/20 text-white backdrop-blur-xl border border-white/10 transition-all active:scale-90 shadow-2xl group disabled:opacity-0 disabled:pointer-events-none`}
+ className={`absolute left-4 md:left-8 top-1/2 -translate-y-1/2 z-[100006] w-14 h-10 md:w-20 md:h-20 flex items-center justify-center rounded-xl bg-black/10 hover:bg-black/20 text-white backdrop-blur-xl border border-white/10 transition-all active:scale-90 shadow-2xl group disabled:opacity-0 disabled:pointer-events-none`}
                       title={t('common.previous')}
                     >
-                      <ChevronLeft className="w-8 h-8 md:w-12 md:h-12 group-active:-translate-x-1 transition-transform" />
+                      <ChevronLeft className="w-8 h-8 md:w-12 md:h-10 group-active:-translate-x-1 transition-transform" />
                     </button>
 
                     {/* Next Button */}
@@ -481,10 +481,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                         handleNext();
                       }}
                       disabled={currentIndex >= files.length - 1}
-                      className={`absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-[100006] w-14 h-14 md:w-20 md:h-20 flex items-center justify-center rounded-3xl bg-black/10 hover:bg-black/20 text-white backdrop-blur-xl border border-white/10 transition-all active:scale-90 shadow-2xl group disabled:opacity-0 disabled:pointer-events-none`}
+ className={`absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-[100006] w-14 h-10 md:w-20 md:h-20 flex items-center justify-center rounded-xl bg-black/10 hover:bg-black/20 text-white backdrop-blur-xl border border-white/10 transition-all active:scale-90 shadow-2xl group disabled:opacity-0 disabled:pointer-events-none`}
                       title={t('common.next')}
                     >
-                      <ChevronRight className="w-8 h-8 md:w-12 md:h-12 group-active:translate-x-1 transition-transform" />
+                      <ChevronRight className="w-8 h-8 md:w-12 md:h-10 group-active:translate-x-1 transition-transform" />
                     </button>
                   </>
                 )}

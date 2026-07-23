@@ -89,10 +89,10 @@ export const CircularMenu = forwardRef<CircularMenuRef, CircularMenuProps>((prop
     }));
 
     // Constants for Arc Layout
-    const RADIUS = 120; // Distance from center to icon center
-    const INNER_RADIUS = 40; // Center deadzone
-    const BUTTON_SIZE = 56;
-    const POINTER_SIZE = 20;
+    const RADIUS = 90; // Distance from center to icon center
+    const INNER_RADIUS = 30; // Center deadzone
+    const BUTTON_SIZE = 42;
+    const POINTER_SIZE = 15;
 
     // Arc Configuration (Top-heavy Fan)
     // 0 degrees is UP (12 o'clock)
@@ -179,7 +179,7 @@ export const CircularMenu = forwardRef<CircularMenuRef, CircularMenuProps>((prop
                     >
                         {/* Center Indicator / Node ID Debug */}
                         <div
-                            className="absolute flex items-center justify-center bg-slate-900/90 text-white rounded-full border border-slate-700 backdrop-blur-md shadow-xl select-none"
+                            className="absolute flex items-center justify-center bg-[#0b0c0f]/90 text-white rounded-full border border-white/[0.08] backdrop-blur-md shadow-xl select-none"
                             style={{
                                 width: INNER_RADIUS * 1.5,
                                 height: INNER_RADIUS * 1.5,
@@ -275,10 +275,10 @@ export const CircularMenu = forwardRef<CircularMenuRef, CircularMenuProps>((prop
                       w-full h-full flex items-center justify-center shadow-lg border-2
                       transition-all duration-200
                       ${isActive
-                                                ? 'bg-white border-blue-500 text-blue-600'
+                                                ? 'bg-white border-[#3069f0] text-blue-600'
                                                 : option.isSelected
-                                                    ? 'bg-slate-800 border-white text-white ring-2 ring-white ring-offset-2 ring-offset-slate-900/50 shadow-2xl scale-110' // Distinct selection style
-                                                    : 'bg-slate-900/95 border-slate-700 text-slate-300'
+                                                    ? 'bg-[#14171e] border-white text-white ring-2 ring-white ring-offset-2 ring-offset-black/50 shadow-2xl scale-110' // Distinct selection style
+                                                    : 'bg-[#0b0c0f]/95 border-white/[0.08] text-[#c8ccd4]'
                                             }
                     `}
                                         style={{
@@ -305,7 +305,7 @@ export const CircularMenu = forwardRef<CircularMenuRef, CircularMenuProps>((prop
                                                     }}
                                                 />
                                             ) : (
-                                                <option.icon size={26} strokeWidth={isActive ? 2.5 : 2} />
+                                                <option.icon size={19} strokeWidth={isActive ? 2.4 : 2} />
                                             )}
                                         </div>
                                     </div>

@@ -68,7 +68,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
   const [isConsoleOpen, setIsConsoleOpen] = useState(false);
   const logContainerRef = useRef<HTMLDivElement>(null);
 
-  const baseTitleSize = '1.5rem';
+  const baseTitleSize = '1.125rem';
 
   const installablePackages = useMemo(
     () => packages.filter((pkg) => pkg.isInstallable),
@@ -392,11 +392,11 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex-1 min-w-0 space-y-3">
             <div className="flex flex-wrap items-center gap-2.5">
-              <div className="p-2.5 rounded-xl bg-black/20 border border-white/5 text-white/40 group-hover:text-violet-400 transition-colors">
+              <div className="p-2.5 rounded-xl bg-black/20 border border-white/5 text-white/40 group-hover:text-[#5b8af5] transition-colors">
                 <Box className="h-4 w-4" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-bold text-white/95 break-all leading-tight mb-0.5">
+                <h3 className="text-[12px] font-bold text-white/95 break-all leading-tight mb-0.5">
                   {pkg.packName ?? pkg.packId}
                 </h3>
                 <div className="flex flex-wrap items-center gap-1.5">
@@ -404,7 +404,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                     {getStatusLabel()}
                   </Badge>
                   {pkg.isUpdateAvailable && (
-                    <Badge variant="destructive" className="bg-red-500/10 text-red-400 border-red-500/20 text-[8px] font-bold tracking-widest uppercase px-1 py-0 h-4">
+                    <Badge variant="destructive" className="bg-[#f25555]/10 text-[#f87c7c] border-[#f25555]/20 text-[8px] font-bold tracking-widest uppercase px-1 py-0 h-4">
                       {t('missingNodes.updateAvailable')}
                     </Badge>
                   )}
@@ -474,7 +474,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                 <SelectTrigger className="h-10 rounded-xl border-white/10 bg-black/30 text-white/80 text-xs">
                   <SelectValue placeholder={t('missingNodes.selectVersion')} />
                 </SelectTrigger>
-                <SelectContent className="z-[130] bg-slate-900 border-white/10 text-white">
+                <SelectContent className="z-[130] bg-[#0b0c0f] border-white/10 text-white">
                   {pkg.availableVersions.map((version) => (
                     <SelectItem key={version} value={version}>{version}</SelectItem>
                   ))}
@@ -484,7 +484,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
             <Button
               variant="outline"
               className={`h-10 rounded-xl border transition-all active:scale-95 text-xs ${state.isInstalling
-                ? 'bg-violet-500/10 border-violet-500/30 text-violet-400'
+                ? 'bg-[#3069f0]/10 border-[#3069f0]/30 text-[#5b8af5]'
                 : 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white'}`}
               disabled={!pkg.isInstallable || state.isInstalling}
               onClick={() => handleInstallPackage(pkg)}
@@ -523,20 +523,20 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
+          className="relative w-[92vw] max-w-lg h-[76vh] pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Main Card */}
           <div
-            style={{ backgroundColor: '#374151' }}
-            className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
+            style={{ backgroundColor: '#101217' }}
+            className="relative w-full h-full rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col text-white"
           >
             {/* Dynamic Sticky Header */}
             <div
               className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] transition-all duration-300 ease-in-out
                 ${isHeaderCompact
-                  ? 'pt-2 pb-[13px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10'
-                  : 'pt-6 pb-6 pl-6 pr-16 border-transparent bg-black/20 backdrop-blur-0'
+                  ? 'pt-1.5 pb-[11px] pl-4 pr-[40px] bg-[#0f1116]/90 backdrop-blur-xl border-white/[0.08]'
+                  : 'pt-4 pb-3.5 pl-4 pr-12 border-transparent bg-black/20 backdrop-blur-0'
                 }`}
             >
               {/* Floating Close Button */}
@@ -545,23 +545,23 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
               >
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-full bg-black/20 text-white hover:bg-black/40 transition-all pointer-events-auto"
+                  className="p-1.5 rounded-lg bg-white/[0.06] text-[#9aa3b2] hover:text-white hover:bg-white/[0.1] transition-all pointer-events-auto"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
               <div className="flex flex-col justify-center flex-1 min-w-0 pointer-events-none">
-                <div className={`flex items-center space-x-2 transition-all duration-300 origin-left ${isHeaderCompact ? 'mb-1 scale-90' : 'mb-3 scale-100'}`}>
-                  <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-black/20 text-white/80 border-transparent">
+                <div className={`flex items-center space-x-2 transition-all duration-300 origin-left ${isHeaderCompact ? 'mb-0.5 scale-90' : 'mb-2 scale-100'}`}>
+                  <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-black/20 text-white/80 border-transparent">
                     INSTALLER
                   </Badge>
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/60">
+                  <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60">
                     {t('missingNodes.title')}
                   </span>
                 </div>
 
-                <div className="flex items-center min-w-0 transition-all duration-300" style={{ height: isHeaderCompact ? '11px' : '1.75rem' }}>
+                <div className="flex items-center min-w-0 transition-all duration-300" style={{ height: isHeaderCompact ? '12px' : '1.125rem' }}>
                   <h2
                     style={{
                       fontSize: baseTitleSize,
@@ -580,15 +580,15 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
             {/* Content Area */}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
               {/* Static Top Bumper */}
-              <div className="h-[120px] relative pointer-events-none">
+              <div className="h-[96px] relative pointer-events-none">
                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
               </div>
 
               <div className="px-5 pb-6 sm:px-6 space-y-5">
                 {isLoading && (
-                  <div className="flex flex-col items-center justify-center py-16 rounded-[32px] bg-black/10 border border-white/5">
+                  <div className="flex flex-col items-center justify-center py-16 rounded-xl bg-black/10 border border-white/5">
                     <div className="relative">
-                      <Loader2 className="h-10 w-10 text-violet-400 animate-spin" />
+                      <Loader2 className="h-10 w-10 text-[#5b8af5] animate-spin" />
                       <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-violet-300/50 animate-pulse" />
                     </div>
                     <p className="mt-5 text-[10px] font-bold text-white/40 uppercase tracking-widest">{t('missingNodes.loading')}</p>
@@ -596,18 +596,18 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                 )}
 
                 {!isLoading && error && (
-                  <div className="p-4 rounded-[20px] bg-red-500/10 border border-red-500/20 flex gap-3 items-start">
-                    <div className="p-1.5 rounded-lg bg-red-500/20">
-                      <AlertCircle className="h-4 w-4 text-red-400" />
+                  <div className="p-4 rounded-[20px] bg-[#f25555]/10 border border-[#f25555]/20 flex gap-3 items-start">
+                    <div className="p-1.5 rounded-lg bg-[#f25555]/20">
+                      <AlertCircle className="h-4 w-4 text-[#f87c7c]" />
                     </div>
                     <p className="text-xs font-medium text-red-200 mt-0.5">{error}</p>
                   </div>
                 )}
 
                 {!isLoading && !error && packages.length === 0 && (
-                  <div className="text-center py-16 rounded-[32px] bg-black/10 border border-dashed border-white/10">
-                    <Box className="h-12 w-12 text-white/10 mx-auto mb-4" />
-                    <p className="text-base font-medium text-white/60">{t('missingNodes.allAvailable')}</p>
+                  <div className="text-center py-16 rounded-xl bg-black/10 border border-dashed border-white/10">
+                    <Box className="h-10 w-12 text-white/10 mx-auto mb-4" />
+                    <p className="text-[13px] font-medium text-white/60">{t('missingNodes.allAvailable')}</p>
                   </div>
                 )}
 
@@ -628,7 +628,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                     >
                       <div className="px-4 py-2 bg-white/5 border-b border-white/5 flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                          <div className="w-2 h-2 rounded-full bg-[#34c77b] animate-pulse" />
                           <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">Installation Console</span>
                         </div>
                         <button
@@ -647,7 +647,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                         ) : (
                           logMessages.map((log, i) => (
                             <div key={i} className="text-white/60 mb-1 break-all">
-                              <span className="text-violet-400/50 mr-2">[{new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
+                              <span className="text-[#5b8af5]/50 mr-2">[{new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' })}]</span>
                               {log.m}
                             </div>
                           ))
@@ -660,21 +660,21 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
             </div>
 
             {/* Sticky Footer Actions */}
-            <div className="px-6 py-4 border-t border-white/10 bg-black/30 backdrop-blur-xl flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="px-3 py-2 border-t border-white/10 bg-black/30 backdrop-blur-xl flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="text-[9px] font-bold uppercase tracking-widest text-white/40">
                 {queueStatus ? (
                   queueStatus.status === 'in_progress' ? (
                     <span className="flex items-center gap-2.5">
-                      <Loader2 className="h-3 w-3 animate-spin text-violet-400" />
+                      <Loader2 className="h-3 w-3 animate-spin text-[#5b8af5]" />
                       {t('missingNodes.installing')}
                       {typeof queueStatus.doneCount === 'number' && (
-                        <span className="text-violet-400">
+                        <span className="text-[#5b8af5]">
                           {queueStatus.doneCount}/{queueStatus.totalCount}
                         </span>
                       )}
                     </span>
                   ) : (
-                    <span className="text-emerald-400 flex items-center gap-1.5">
+                    <span className="text-[#4ade80] flex items-center gap-1.5">
                       <Sparkles className="h-3.5 w-3.5" /> {t('missingNodes.queueCompleted')}
                     </span>
                   )
@@ -695,7 +695,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-10 px-5 rounded-xl border-emerald-500/30 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20 active:scale-95 transition-all text-xs"
+                  className="h-10 px-5 rounded-xl border-emerald-500/30 bg-[#34c77b]/10 text-emerald-300 hover:bg-[#34c77b]/20 active:scale-95 transition-all text-xs"
                   onClick={handleInstallAll}
                   disabled={
                     installablePackages.length === 0 ||
@@ -707,7 +707,7 @@ export const MissingNodeInstallerModal: React.FC<MissingNodeInstallerModalProps>
                 {showRebootPrompt && (
                   <Button
                     variant="outline"
-                    className="h-10 px-5 rounded-xl border-violet-500/30 bg-violet-500/10 text-violet-300 hover:bg-violet-500/20 active:scale-95 transition-all text-xs"
+                    className="h-10 px-5 rounded-xl border-[#3069f0]/30 bg-[#3069f0]/10 text-violet-300 hover:bg-[#3f78f5]/20 active:scale-95 transition-all text-xs"
                     onClick={handleRebootServer}
                   >
                     <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> {t('missingNodes.goToReboot')}

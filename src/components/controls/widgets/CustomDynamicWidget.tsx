@@ -45,13 +45,13 @@ const BooleanFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldCo
   const { t } = useTranslation();
   return (
     <div className="flex items-center justify-between">
-      <label className="text-sm text-slate-600 dark:text-slate-400">
+      <label className="text-[12px] text-[#8a919e]">
         {fieldConfig.label || fieldName}
       </label>
       <Switch
         checked={Boolean(value)}
         onCheckedChange={onChange}
-        className="data-[state=checked]:bg-green-600"
+ className="data-[state=checked]:bg-[#34c77b]"
       />
     </div>
   );
@@ -68,10 +68,10 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm text-slate-600 dark:text-slate-400">
+        <label className="text-[12px] text-[#8a919e]">
           {fieldConfig.label || fieldName}
         </label>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
+        <span className="text-xs text-[#71798a]">
           {currentValue}
         </span>
       </div>
@@ -80,7 +80,7 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
         <>
           {/* Slider mode - when min/max are defined */}
           <div
-            className="px-2"
+ className="px-2"
             style={{
               touchAction: 'pan-x pinch-zoom',
               WebkitTouchCallout: 'none',
@@ -97,7 +97,7 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
               min={min}
               max={max}
               step={step}
-              className="w-full"
+ className="w-full"
               data-slider="true"
               onTouchStart={(e) => {
                 e.stopPropagation();
@@ -116,7 +116,7 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
             min={min}
             max={max}
             step={step}
-            className="text-center text-lg font-medium"
+ className="text-center text-[14px] font-medium"
           />
         </>
       ) : (
@@ -127,10 +127,10 @@ const IntFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfig
             value={String(currentValue)}
             onChange={(e) => onChange(parseInt(e.target.value) || 0)}
             step={step}
-            className="text-center text-lg font-medium"
+ className="text-center text-[14px] font-medium"
             placeholder={t('node.enterIntegerValue')}
           />
-          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+          <p className="text-xs text-amber-600 dark:text-[#ffa348] bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
             {t('node.defineMinMaxForSlider')}
           </p>
         </>
@@ -150,10 +150,10 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between">
-        <label className="text-sm text-slate-600 dark:text-slate-400">
+        <label className="text-[12px] text-[#8a919e]">
           {fieldConfig.label || fieldName}
         </label>
-        <span className="text-xs text-slate-500 dark:text-slate-400">
+        <span className="text-xs text-[#71798a]">
           {currentValue.toFixed(2)}
         </span>
       </div>
@@ -162,7 +162,7 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
         <>
           {/* Slider mode - when min/max are defined */}
           <div
-            className="px-2"
+ className="px-2"
             style={{
               touchAction: 'pan-x pinch-zoom',
               WebkitTouchCallout: 'none',
@@ -179,7 +179,7 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
               min={min}
               max={max}
               step={step}
-              className="w-full"
+ className="w-full"
               data-slider="true"
               onTouchStart={(e) => {
                 e.stopPropagation();
@@ -198,7 +198,7 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
             min={min}
             max={max}
             step={step}
-            className="text-center text-lg font-medium"
+ className="text-center text-[14px] font-medium"
           />
         </>
       ) : (
@@ -209,10 +209,10 @@ const FloatFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConf
             value={String(currentValue)}
             onChange={(e) => onChange(parseFloat(e.target.value) || 0)}
             step={step}
-            className="text-center text-lg font-medium"
+ className="text-center text-[14px] font-medium"
             placeholder={t('node.enterFloatValue')}
           />
-          <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
+          <p className="text-xs text-amber-600 dark:text-[#ffa348] bg-amber-50 dark:bg-amber-900/20 px-2 py-1 rounded">
             {t('node.defineMinMaxForSlider')}
           </p>
         </>
@@ -431,7 +431,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
       parts.push(
         <mark
           key={index}
-          className="bg-yellow-200 dark:bg-yellow-600/30 text-slate-900 dark:text-slate-100 font-semibold rounded px-0.5"
+ className="bg-yellow-200 dark:bg-yellow-600/30 text-[#e9ebef] font-semibold rounded px-0.5"
         >
           {text.slice(match.start, match.end)}
         </mark>
@@ -460,7 +460,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
 
   return (
     <div className="space-y-2">
-      <label className="text-sm text-slate-600 dark:text-slate-400">
+      <label className="text-[12px] text-[#8a919e]">
         {fieldConfig.label || fieldName}
       </label>
       <div className="relative" ref={dropdownRef}>
@@ -470,7 +470,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
             value={value || ''}
             readOnly
             placeholder={isLoading ? t('node.loadingLoras') : t('node.clickToSelectLora')}
-            className="text-sm pr-16 cursor-pointer"
+ className="text-[12px] pr-16 cursor-pointer"
             disabled={isLoading}
             onClick={() => setIsDropdownOpen(true)}
           />
@@ -479,7 +479,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
+ className="h-6 w-6 p-0 hover:bg-white/[0.08]"
                 onClick={clearLoraSelection}
                 title={t('node.clearSelection')}
               >
@@ -489,7 +489,7 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
             <Button
               variant="ghost"
               size="sm"
-              className="h-6 w-6 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
+ className="h-6 w-6 p-0 hover:bg-white/[0.08]"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               disabled={isLoading}
               title={t('node.browseLoras')}
@@ -501,17 +501,17 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
 
         {/* Dropdown */}
         {isDropdownOpen && (
-          <div className="absolute z-50 w-full mt-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-60 overflow-hidden">
+          <div className="absolute z-50 w-full mt-1 bg-[#14171e] border border-white/[0.08] rounded-md shadow-lg max-h-60 overflow-hidden">
             {/* Search input */}
-            <div className="p-2 border-b border-slate-200 dark:border-slate-700">
+            <div className="p-2 border-b border-white/[0.08]">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-[#565d6b]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('node.searchLorasPlaceholder')}
-                  className="w-full pl-7 pr-2 py-1 text-xs bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 placeholder-slate-400"
+ className="w-full pl-7 pr-2 py-1 text-xs bg-transparent border-none outline-none text-[#c8ccd4] placeholder-[#565d6b]"
                 />
               </div>
             </div>
@@ -523,23 +523,23 @@ const LoraFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldConfi
                   <button
                     key={lora.path}
                     onClick={() => handleLoraSelection(lora.name)}
-                    className="w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 border-none outline-none text-sm"
+ className="w-full px-3 py-2 text-left hover:bg-white/[0.06] border-none outline-none text-[12px]"
                   >
-                    <div className="font-medium text-slate-700 dark:text-slate-300 truncate">
+                    <div className="font-medium text-[#c8ccd4] truncate">
                       {highlightLoraMatches(lora.name, searchQuery)}
                     </div>
                     {lora.subfolder && (
-                      <div className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                      <div className="text-xs text-[#71798a] truncate">
                         {lora.subfolder}
                       </div>
                     )}
-                    <div className="text-xs text-slate-400 dark:text-slate-500">
+                    <div className="text-xs text-[#565d6b]">
                       {lora.size_mb.toFixed(1)} MB
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+                <div className="px-3 py-2 text-[12px] text-[#71798a]">
                   {searchQuery ? t('node.noLorasMatch', { query: searchQuery }) : t('node.noLorasFound')}
                 </div>
               )}
@@ -555,7 +555,7 @@ const StringFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldCon
   const { t } = useTranslation();
   return (
     <div className="space-y-2">
-      <label className="text-sm text-slate-600 dark:text-slate-400">
+      <label className="text-[12px] text-[#8a919e]">
         {fieldConfig.label || fieldName}
       </label>
       <Input
@@ -563,7 +563,7 @@ const StringFieldRenderer: React.FC<FieldRendererProps> = ({ fieldName, fieldCon
         value={value || ''}
         onChange={(e) => onChange(e.target.value)}
         placeholder={fieldConfig.placeholder || t('node.enterValueFor', { name: fieldName })}
-        className="text-sm"
+ className="text-[12px]"
       />
     </div>
   );
@@ -652,9 +652,9 @@ export const CustomDynamicWidget: React.FC<CustomDynamicWidgetProps> = ({
   };
 
   return (
-    <div className="space-y-4 p-4 border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800/50">
+    <div className="space-y-4 p-4 border border-white/[0.08] rounded-lg bg-white/[0.04]">
       <div className="flex items-center justify-between">
-        <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300">
+        <h4 className="text-[12px] font-medium text-[#c8ccd4]">
           {param.name}
         </h4>
         <Badge variant="outline" className="text-xs">
@@ -676,7 +676,7 @@ export const CustomDynamicWidget: React.FC<CustomDynamicWidgetProps> = ({
               onChange={(value) => updateField(fieldName, value)}
             />
             {fieldConfig.description && (
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+              <p className="text-xs text-[#71798a] mt-1">
                 {fieldConfig.description}
               </p>
             )}

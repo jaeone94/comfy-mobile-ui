@@ -31,7 +31,7 @@ export const SeedWithControlWidget: React.FC<SeedWithControlWidgetProps> = ({
       {/* Seed value input */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
-          <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+          <label className="text-[12px] font-medium text-[#c8ccd4]">
             {t('node.seedValue')}
           </label>
           <Badge variant="outline" className="text-xs">
@@ -52,7 +52,7 @@ export const SeedWithControlWidget: React.FC<SeedWithControlWidgetProps> = ({
       {controlWidget && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <label className="text-sm font-medium text-slate-700 dark:text-slate-300">
+            <label className="text-[12px] font-medium text-[#c8ccd4]">
               {t('node.controlAfterGenerate')}
             </label>
             <Badge variant="outline" className="text-xs">
@@ -83,7 +83,7 @@ export const SeedWithControlWidget: React.FC<SeedWithControlWidgetProps> = ({
               }
 
             }}
-            className="w-full p-3 border border-slate-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+ className="w-full p-3 border border-white/[0.1] rounded-lg bg-[#14171e] text-[#e9ebef] focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
             <option value="fixed">{t('node.seedModes.fixed')}</option>
             <option value="increment">{t('node.seedModes.increment')}</option>

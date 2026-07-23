@@ -35,8 +35,8 @@ export const DEFAULT_CANVAS_CONFIG: CanvasConfig = {
   // Layout (increased padding)
   padding: 20,
   
-  // Colors - Dark mode only
-  backgroundColor: '#0f172a',
+  // Colors - Dark mode only (design-system page background)
+  backgroundColor: '#0b0c0f',
   defaultNodeColor: '#374151', // Dark gray for nodes without specific colors
   linkColor: '#64748b',
   textColor: '#f1f5f9',

@@ -1,6 +1,5 @@
 import React from 'react';
-import { useTranslation } from 'react-i18next';
-import { Folder, ChevronRight, Check } from 'lucide-react';
+import { Folder, Check } from 'lucide-react';
 import { FolderItem } from '@/types/folder';
 import { useLongPress } from '@/hooks/useLongPress';
 
@@ -21,61 +20,33 @@ const FolderGridItem: React.FC<FolderGridItemProps> = ({
   selectionMode = false,
   workflowCount = 0,
 }) => {
-  const { t } = useTranslation();
   const longPressProps = useLongPress(onLongPress, onClick, { threshold: 500 });
 
   return (
     <div
-      className={`relative group overflow-hidden rounded-xl transition-all duration-300 cursor-pointer border h-[72px] ${isSelected
-        ? 'bg-blue-500/20 border-blue-500/50 shadow-[0_0_20px_rgba(59,130,246,0.3)]'
-        : 'bg-white/5 hover:bg-white/10 border-white/10 hover:border-white/20'
+      className={`h-10 flex items-center gap-[9px] px-3 rounded-[9px] border cursor-pointer transition-colors min-w-[150px] ${isSelected
+        ? 'border-[#3069f0]/60'
+        : 'border-white/[0.08] hover:border-white/[0.16]'
         }`}
+      style={{ background: isSelected ? 'rgba(48,105,240,0.1)' : 'rgba(255,255,255,0.035)' }}
       {...longPressProps}
     >
-      {/* Glass Effect Background */}
-      <div className="absolute inset-0 backdrop-blur-md" />
-
-      {/* Content Container */}
-      <div className="relative z-10 p-3 h-full flex items-center justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0 flex-1">
-          {/* Icon Container */}
-          <div
-            className={`flex-shrink-0 w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${isSelected
-              ? 'bg-blue-500/20 text-blue-400'
-              : 'bg-amber-500/10 text-amber-500 group-hover:bg-amber-500/20 group-hover:text-amber-400'
-              }`}
-          >
-            <Folder className="w-5 h-5 fill-current opacity-80" />
-          </div>
-
-          {/* Text Info */}
-          <div className="flex flex-col min-w-0 flex-1 justify-center">
-            <h3 className="text-sm font-semibold text-slate-200 truncate group-hover:text-white transition-colors w-full">
-              {folder.name}
-            </h3>
-            <span className="text-xs text-slate-500 group-hover:text-slate-400 transition-colors truncate">
-              {workflowCount} {workflowCount === 1 ? t('common.item') : t('common.items')}
-            </span>
-          </div>
-        </div>
-
-        {/* Selection checkbox / Arrow Icon */}
-        {selectionMode ? (
-          <div
-            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected
-              ? 'bg-blue-500 border-blue-500 text-white'
-              : 'bg-transparent border-slate-500 text-transparent'
-              }`}
-          >
-            <Check className="w-3.5 h-3.5" />
-          </div>
-        ) : (
-          <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" />
-        )}
-      </div>
-
-      {/* Hover Gradient Overlay */}
-      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent -translate-x-full group-hover:translate-x-full transition-transform duration-1000 pointer-events-none" />
+      <Folder className="w-[15px] h-[15px] shrink-0 text-[#5b8af5]" strokeWidth={1.8} />
+      <span className="flex-1 min-w-0 truncate text-[12.5px] font-medium text-[#e9ebef]">
+        {folder.name}
+      </span>
+      {selectionMode ? (
+        <span
+          className={`w-[18px] h-[18px] shrink-0 rounded flex items-center justify-center border transition-colors ${isSelected
+            ? 'bg-[#3069f0] border-[#3069f0] text-white'
+            : 'border-white/40 text-transparent'
+            }`}
+        >
+          <Check className="w-3 h-3" strokeWidth={2.5} />
+        </span>
+      ) : (
+        <span className="shrink-0 font-mono text-[10px] text-[#565d6b]">{workflowCount}</span>
+      )}
     </div>
   );
 };

@@ -15,16 +15,17 @@ import {
   X,
   ArrowRightLeft,
   FolderInput,
-  FolderPlus,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  CornerLeftUp,
+  Check
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
+import { useConnectionStore } from '@/ui/store/connectionStore';
 import WorkflowGridItem from './WorkflowGridItem';
 import FolderGridItem from './FolderGridItem';
-import ParentFolderGridItem from './ParentFolderGridItem';
 import FolderDetailModal from './FolderDetailModal';
 import WorkflowDetailModal from './WorkflowDetailModal';
 import WorkflowEditModal from './WorkflowEditModal';
@@ -421,251 +422,245 @@ const WorkflowList: React.FC = () => {
     navigate(path);
   };
 
+  const serverUrl = useConnectionStore((s) => s.url);
+  const serverHost = useMemo(
+    () => (serverUrl || '').replace(/^https?:\/\//, '').replace(/\/+$/, ''),
+    [serverUrl]
+  );
+
   return (
-    <div className="h-full flex flex-col bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 font-sans selection:bg-blue-100 dark:selection:bg-blue-900/30 overflow-hidden">
-      {/* Fixed Header */}
-      <header className="flex-none z-40 bg-white/80 dark:bg-slate-950/80 backdrop-blur-xl border-b border-slate-200/60 dark:border-slate-800/60 shadow-sm transition-all duration-300">
-        <div className="max-w-[1600px] mx-auto px-4 h-16 flex items-center justify-between gap-2">
-          {/* Left: Menu & Breadcrumbs */}
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="shrink-0 h-10 w-10 rounded-xl"
-              onClick={() => setIsSideMenuOpen(true)}
-            >
-              <Menu className="w-6 h-6" />
-            </Button>
+    <div className="h-full flex flex-col text-[#e9ebef] overflow-hidden" style={{ background: '#0b0c0f' }}>
+      {/* Header (52px, tool aesthetic) */}
+      <header className="flex-none z-40 border-b border-white/[0.08]" style={{ background: '#0b0c0f' }}>
+        <div className="max-w-[1600px] mx-auto h-[52px] px-4 flex items-center gap-2.5">
+          <button
+            onClick={() => setIsSideMenuOpen(true)}
+            className="shrink-0 -ml-1 p-1.5 text-[#c8ccd4] hover:text-white transition-colors"
+            aria-label={t('common.menu', 'Menu')}
+          >
+            <Menu className="w-5 h-5" strokeWidth={1.7} />
+          </button>
 
-            {/* App Icon 흰색 처리 */}
-            <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-500/20 shrink-0 relative overflow-hidden group">
-              <div className="absolute inset-0 bg-gradient-to-br from-blue-500 to-blue-700" />
-              <img
-                src="/icons/icon-monochrome.svg"
-                alt="ComfyUI"
-                className="w-5 h-5 object-contain relative z-10 drop-shadow-md transform transition-transform group-hover:scale-110"
-                style={{ filter: 'brightness(0) invert(1)' }}
-              />
-            </div>
-
-            {/* Breadcrumbs - Scrollable on mobile */}
-            <nav className="flex items-center gap-1 overflow-x-auto scrollbar-hide text-sm font-medium whitespace-nowrap mask-linear-fade">
-              {breadcrumbs.map((item, index) => (
-                <React.Fragment key={item.id || 'root'}>
-                  {index > 0 && <ChevronRight className="w-4 h-4 text-slate-400 shrink-0" />}
-                  <button
-                    onClick={() => setCurrentFolderId(item.id)}
-                    className={`hover:text-blue-600 dark:hover:text-blue-400 transition-colors ${index === breadcrumbs.length - 1
-                      ? 'text-slate-900 dark:text-slate-100 font-semibold'
-                      : 'text-slate-500 dark:text-slate-500'
-                      }`}
-                  >
-                    {item.name}
-                  </button>
-                </React.Fragment>
-              ))}
-            </nav>
+          {/* App icon tile */}
+          <div className="w-[26px] h-[26px] shrink-0 rounded-[7px] bg-[#3069f0] flex items-center justify-center">
+            <img
+              src="/icons/icon-monochrome.svg"
+              alt="ComfyUI"
+              className="w-4 h-4"
+              style={{ filter: 'brightness(0) invert(1)' }}
+            />
           </div>
 
-          {/* Right: Actions */}
-          <div className="flex items-center gap-1 shrink-0">
-            {/* Gallery Button */}
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900"
-              onClick={() => {
-                sessionStorage.setItem('app-navigation', 'true');
-                navigate('/outputs');
-              }}
-              title={t('common.gallery')}
-            >
-              <Image className="w-5 h-5 text-slate-600 dark:text-slate-400" />
-            </Button>
-          </div>
+          {/* Breadcrumbs */}
+          <nav className="flex items-center gap-1 min-w-0 overflow-x-auto scrollbar-hide whitespace-nowrap text-[13.5px] font-semibold">
+            {breadcrumbs.map((item, index) => (
+              <React.Fragment key={item.id || 'root'}>
+                {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-[#4a5261] shrink-0" strokeWidth={2} />}
+                <button
+                  onClick={() => setCurrentFolderId(item.id)}
+                  className={`transition-colors ${index === breadcrumbs.length - 1
+                    ? 'text-[#e9ebef]'
+                    : 'text-[#71798a] hover:text-[#c8ccd4]'
+                    }`}
+                >
+                  {item.name}
+                </button>
+              </React.Fragment>
+            ))}
+          </nav>
+
+          {/* Server chip */}
+          {serverHost && (
+            <span className="shrink-0 font-mono text-[11px] text-[#565d6b] px-1.5 py-[3px] border border-white/10 rounded-[5px] max-w-[164px] truncate">
+              {serverHost}
+            </span>
+          )}
+
+          <div className="flex-1" />
+
+          {/* Gallery */}
+          <button
+            onClick={() => {
+              sessionStorage.setItem('app-navigation', 'true');
+              navigate('/outputs');
+            }}
+            className="shrink-0 p-1.5 text-[#8a919e] hover:text-[#c8ccd4] transition-colors"
+            aria-label={t('common.gallery')}
+          >
+            <Image className="w-[18px] h-[18px]" strokeWidth={1.7} />
+          </button>
         </div>
       </header>
 
-      {/* Sub Header (Search) */}
-      <div className="flex-none bg-white dark:bg-slate-950 border-b border-slate-200/60 dark:border-slate-800/60 z-30">
-        <div className="max-w-[1600px] mx-auto px-4 py-2">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('workflow.searchPlaceholder')}
-              className="w-full pl-10 h-10 bg-slate-100/50 dark:bg-slate-900/50 border-transparent focus:bg-white dark:focus:bg-slate-950 focus:border-blue-500/50 transition-all duration-200 rounded-xl text-sm"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-              >
-                <X className="w-4 h-4" />
+      {/* Search + New workflow */}
+      <div className="flex-none z-30 border-b border-white/[0.08] px-4 py-2.5 flex gap-2">
+        <div
+          className="flex-1 min-w-0 relative flex items-center h-9 pl-3 pr-2 rounded-[9px] border border-white/[0.08] focus-within:border-[#3069f0]/50 transition-colors"
+          style={{ background: 'rgba(255,255,255,0.045)' }}
+        >
+          <Search className="w-3.5 h-3.5 text-[#71798a] shrink-0" strokeWidth={1.8} />
+          <Input
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder={t('workflow.searchPlaceholder')}
+            className="flex-1 h-9 min-w-0 border-none bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 px-2 text-[12.5px] text-[#e9ebef] placeholder:text-[#71798a]"
+          />
+          {searchQuery ? (
+            <button onClick={() => setSearchQuery('')} className="shrink-0 text-[#565d6b] hover:text-[#9aa3b2]">
+              <X className="w-3.5 h-3.5" />
+            </button>
+          ) : (
+            <span className="shrink-0 font-mono text-[10px] text-[#565d6b] border border-white/10 rounded-[4px] px-1.5 py-0.5">
+              {workflows.length}
+            </span>
+          )}
+        </div>
+        <button
+          onClick={() => setIsUploadModalOpen(true)}
+          className="shrink-0 h-9 px-3.5 flex items-center gap-1.5 rounded-[9px] bg-[#3069f0] hover:bg-[#3f78f5] text-white text-[12.5px] font-semibold transition-colors"
+        >
+          <Plus className="w-[13px] h-[13px]" strokeWidth={2.4} />
+          {t('workflow.uploadButton')}
+        </button>
+      </div>
+
+      {/* Folders */}
+      <div className="flex-none z-30 px-4 pt-3 pb-2">
+        <div className="flex items-center gap-2 mb-2.5">
+          <span className="font-mono text-[10px] font-semibold text-[#565d6b] tracking-[0.14em] shrink-0 uppercase">{t('folder.title')}</span>
+          <div className="flex-1 h-px bg-white/[0.06]" />
+        </div>
+
+        <div className="flex gap-[7px] overflow-x-auto scrollbar-hide">
+          {/* Parent */}
+          {currentFolderId && !selectionMode && (
+            <button
+              onClick={() => setCurrentFolderId(folderStructure.folders[currentFolderId]?.parentId ?? null)}
+              className="h-10 shrink-0 flex items-center gap-[9px] px-3 rounded-[9px] border border-white/[0.08] hover:border-white/[0.16] transition-colors"
+              style={{ background: 'rgba(255,255,255,0.035)' }}
+            >
+              <CornerLeftUp className="w-[15px] h-[15px] text-[#71798a]" strokeWidth={1.8} />
+              <span className="text-[12.5px] font-medium text-[#9aa3b2] whitespace-nowrap">{t('folder.backToParent')}</span>
+            </button>
+          )}
+
+          {/* Inline create */}
+          {isCreatingFolder && (
+            <div
+              className="h-10 shrink-0 flex items-center gap-2 px-3 rounded-[9px] border border-[#3069f0]/60"
+              style={{ background: 'rgba(48,105,240,0.08)' }}
+            >
+              <FolderIcon className="w-[15px] h-[15px] text-[#5b8af5] shrink-0" strokeWidth={1.8} />
+              <Input
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+                onBlur={() => {
+                  if (!newFolderName.trim()) {
+                    setIsCreatingFolder(false);
+                    setNewFolderName('');
+                  }
+                }}
+                placeholder={t('folder.namePlaceholder')}
+                className="h-8 w-28 min-w-0 border-none bg-transparent dark:bg-transparent shadow-none focus-visible:ring-0 px-0 text-[12.5px] text-[#e9ebef]"
+                autoFocus
+              />
+              <button onClick={handleCreateFolder} className="shrink-0 text-[#5b8af5]">
+                <Check className="w-4 h-4" strokeWidth={2.2} />
               </button>
-            )}
-          </div>
+            </div>
+          )}
+
+          {/* Folder tiles */}
+          {filteredContents.folders.map((folder) => (
+            <div key={folder.id} className="shrink-0">
+              <FolderGridItem
+                folder={folder}
+                onClick={() => handleFolderClick(folder.id)}
+                onLongPress={() => {
+                  setDetailFolder(folder);
+                  setIsFolderDetailModalOpen(true);
+                }}
+                workflowCount={folder.workflows.length + folder.children.length}
+                isSelected={selectedIds.has(folder.id)}
+                selectionMode={selectionMode}
+              />
+            </div>
+          ))}
+
+          {/* Add folder (dashed) */}
+          {!isCreatingFolder && !selectionMode && (
+            <button
+              onClick={() => setIsCreatingFolder(true)}
+              className="h-10 w-10 shrink-0 flex items-center justify-center rounded-[9px] border border-dashed border-white/[0.13] hover:border-white/25 text-[#565d6b] hover:text-[#9aa3b2] transition-colors"
+              aria-label={t('folder.newFolder')}
+            >
+              <Plus className="w-[14px] h-[14px]" strokeWidth={1.8} />
+            </button>
+          )}
+
+          {/* Empty */}
+          {filteredContents.folders.length === 0 && !isCreatingFolder && !currentFolderId && (
+            <span className="self-center font-mono text-[10px] text-[#4a5261] px-1 whitespace-nowrap">EMPTY</span>
+          )}
         </div>
       </div>
 
-      {/* Action Toolbar (create / select / sort) */}
-      <div className="flex-none bg-white dark:bg-slate-950 border-b border-slate-200/60 dark:border-slate-800/60 z-30">
-        <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center flex-wrap gap-2">
-          {/* New Workflow */}
-          <Button
-            onClick={() => setIsUploadModalOpen(true)}
-            className="h-9 gap-2 rounded-xl text-sm bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            {t('workflow.uploadButton')}
-          </Button>
-          {/* New Folder */}
-          <Button
-            onClick={() => setIsCreatingFolder(true)}
-            variant="outline"
-            className="h-9 gap-2 rounded-xl text-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
-          >
-            <FolderPlus className="w-4 h-4" />
-            {t('folder.newFolder')}
-          </Button>
-          {/* Select / multi-select mode */}
-          <Button
+      {/* Workflows label (fixed header) */}
+      <div className="flex-none z-30 px-4 pt-1.5 pb-2.5">
+        <div className="max-w-[1600px] mx-auto flex items-center gap-2.5">
+          <span className="font-mono text-[10px] font-semibold text-[#565d6b] tracking-[0.14em] shrink-0 whitespace-nowrap">
+            {t('workflow.listTitle').toUpperCase()} · {filteredContents.workflows.length}
+          </span>
+          <div className="flex-1 h-px bg-white/[0.06]" />
+          {/* Select */}
+          <button
             onClick={() => (selectionMode ? exitSelection() : enterSelection())}
-            variant="outline"
-            className={`h-9 gap-2 rounded-xl text-sm ${selectionMode
-              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-transparent'
-              : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900'
+            className={`shrink-0 flex items-center gap-1 text-[11px] font-medium transition-colors ${selectionMode ? 'text-[#5b8af5]' : 'text-[#8a919e] hover:text-[#c8ccd4]'
               }`}
           >
-            {selectionMode ? <X className="w-4 h-4" /> : <ArrowRightLeft className="w-4 h-4" />}
+            {selectionMode ? <X className="w-3 h-3" strokeWidth={2.2} /> : <ArrowRightLeft className="w-3 h-3" strokeWidth={2} />}
             {selectionMode ? t('workflow.cancelSelection') : t('workflow.selectItems')}
-          </Button>
-
-          {/* Sort (pinned right on wider screens) */}
-          <Button
-            variant="ghost"
+          </button>
+          {/* Sort */}
+          <button
             onClick={() => {
               const nextSort: SortOrder = selectedSortOrder === 'date-desc' ? 'name-asc' : 'date-desc';
               setSortOrder(nextSort);
             }}
-            className="h-9 px-3 gap-2 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 shrink-0 sm:ml-auto"
-            title={t('workflow.sorting.title', 'Sort')}
+            className="shrink-0 flex items-center gap-1 text-[11px] font-medium text-[#8a919e] hover:text-[#c8ccd4] transition-colors"
           >
-            <ArrowUpDown className="w-4 h-4" />
+            <ArrowUpDown className="w-3 h-3" strokeWidth={2} />
             {selectedSortOrder.includes('date') ? t('workflow.sorting.newest') : t('workflow.sorting.name')}
-          </Button>
+          </button>
         </div>
       </div>
 
-      {/* Fixed Folder Section */}
-      <div className="flex-none bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200/60 dark:border-slate-800/60 z-30">
-        <div className="max-w-[1600px] mx-auto px-4 py-3">
-          {/* Folder Section Header */}
-          <div className="flex items-center mb-4">
-            <h2 className="text-lg font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <FolderIcon className="w-6 h-6" />
-              {t('folder.title')}
-            </h2>
-          </div>
-
-          {/* Folders List */}
-          <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-            {/* Parent Folder */}
-            {currentFolderId && !selectionMode && (
-              <div className="min-w-[160px] shrink-0">
-                <ParentFolderGridItem
-                  onClick={() => {
-                    const parentId = folderStructure.folders[currentFolderId]?.parentId ?? null;
-                    setCurrentFolderId(parentId);
-                  }}
-                  isTarget={false}
-                  isMoveMode={false}
-                />
-              </div>
-            )}
-
-            {/* New Folder Input */}
-            {isCreatingFolder && (
-              <div className="min-w-[160px] h-[72px] flex items-center gap-2 bg-white dark:bg-slate-900 rounded-xl border border-blue-500 shadow-lg px-3">
-                <Input
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
-                  onBlur={() => {
-                    if (!newFolderName.trim()) {
-                      setIsCreatingFolder(false);
-                      setNewFolderName('');
-                    }
-                  }}
-                  placeholder={t('folder.namePlaceholder')}
-                  className="h-10 text-base border-none shadow-none focus-visible:ring-0 px-0 min-w-0"
-                  autoFocus
-                />
-                <Button size="icon" variant="ghost" className="h-8 w-8 shrink-0" onClick={handleCreateFolder}>
-                  <Plus className="w-5 h-5 text-blue-500" />
-                </Button>
-              </div>
-            )}
-
-            {/* Folder Items */}
-            {filteredContents.folders.length === 0 && !isCreatingFolder && !currentFolderId && (
-              <div className="text-sm text-slate-400 italic py-3 px-2">{t('folder.noFolders')}</div>
-            )}
-
-            {filteredContents.folders.map((folder) => (
-              <div key={folder.id} className="min-w-[160px]">
-                <FolderGridItem
-                  folder={folder}
-                  onClick={() => handleFolderClick(folder.id)}
-                  onLongPress={() => {
-                    setDetailFolder(folder);
-                    setIsFolderDetailModalOpen(true);
-                  }}
-                  workflowCount={folder.workflows.length + folder.children.length}
-                  isSelected={selectedIds.has(folder.id)}
-                  selectionMode={selectionMode}
-                />
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Main Content - Scrollable Workflow List */}
-      <main className="flex-1 overflow-y-auto w-full bg-slate-50 dark:bg-slate-950">
-        <div className="max-w-[1600px] mx-auto px-4 py-6 space-y-6">
+      {/* Main scroll (workflow grid only) */}
+      <main className="flex-1 overflow-y-auto w-full" style={{ background: '#0b0c0f' }}>
+        <div className="max-w-[1600px] mx-auto px-4">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl p-4 text-red-600 dark:text-red-400 text-sm">
+            <div className="mb-3 rounded-[10px] border border-[#f25555]/30 bg-[#f25555]/10 px-3 py-2.5 text-[#f87c7c] text-[12px]">
               {error}
             </div>
           )}
 
-          {/* Workflows Header */}
-          <div className="flex items-center">
-            <h2 className="text-lg font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
-              <FileText className="w-6 h-6" />
-              {t('workflow.listTitle')} ({filteredContents.workflows.length})
-            </h2>
-          </div>
-
-          {/* Workflow Grid */}
+          {/* Workflow grid */}
           {filteredContents.workflows.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-20 text-center">
-              <div className="w-16 h-16 bg-slate-100 dark:bg-slate-900 rounded-full flex items-center justify-center mb-4">
-                <FileText className="w-8 h-8 text-slate-400" />
-              </div>
-              <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100">{t('workflow.noWorkflows')}</h3>
-              <p className="text-slate-500 dark:text-slate-400 mt-1 max-w-sm">
-                {t('workflow.noWorkflowsSub')}
-              </p>
-              <Button onClick={() => setIsUploadModalOpen(true)} variant="outline" className="mt-6">
+            <div className="flex flex-col items-center justify-center py-24 text-center">
+              <FileText className="w-9 h-9 text-white/[0.12] mb-3" strokeWidth={1.4} />
+              <h3 className="text-[14px] font-semibold text-[#c8ccd4]">{t('workflow.noWorkflows')}</h3>
+              <p className="text-[12px] text-[#66758a] mt-1 max-w-xs">{t('workflow.noWorkflowsSub')}</p>
+              <button
+                onClick={() => setIsUploadModalOpen(true)}
+                className="mt-5 h-9 px-4 flex items-center gap-1.5 rounded-[9px] bg-[#3069f0] hover:bg-[#3f78f5] text-white text-[12.5px] font-semibold transition-colors"
+              >
+                <Plus className="w-[13px] h-[13px]" strokeWidth={2.4} />
                 {t('workflow.uploadButton')}
-              </Button>
+              </button>
             </div>
           ) : (
-            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 ${selectionMode ? 'pb-32' : 'pb-20'}`}>
+            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 ${selectionMode ? 'pb-32' : 'pb-20'}`}>
               {filteredContents.workflows.map((workflow) => (
                 <WorkflowGridItem
                   key={workflow.id}
@@ -684,41 +679,41 @@ const WorkflowList: React.FC = () => {
         </div>
       </main>
 
-      {/* Selection action bar */}
+      {/* Selection action bar (floating) */}
       <AnimatePresence>
         {selectionMode && (
           <motion.div
-            initial={{ y: 90, opacity: 0 }}
+            initial={{ y: 80, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            exit={{ y: 90, opacity: 0 }}
+            exit={{ y: 80, opacity: 0 }}
             transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl"
+            className="fixed inset-x-0 z-40 flex justify-center px-4"
+            style={{ bottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
           >
             <div
-              className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-2"
-              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+              className="flex items-center gap-2 p-1.5 rounded-[14px] border border-white/[0.09]"
+              style={{ background: 'rgba(15,17,22,0.9)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}
             >
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">
+              <span className="pl-2 pr-1 font-mono text-[11px] text-[#8a919e] whitespace-nowrap">
                 {t('workflow.selectedCount', { count: selectedIds.size })}
               </span>
-              <div className="flex-1" />
-              <Button
+              <span className="w-px h-5 bg-white/[0.08]" />
+              <button
                 onClick={openMoveForSelection}
                 disabled={selectedIds.size === 0}
-                className="h-10 gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white border-none disabled:opacity-40"
+                className="h-9 px-3.5 flex items-center gap-1.5 rounded-[10px] bg-[#3069f0] hover:bg-[#3f78f5] text-white text-[12px] font-semibold disabled:opacity-40 transition-colors"
               >
-                <FolderInput className="w-4 h-4" />
+                <FolderInput className="w-3.5 h-3.5" strokeWidth={1.9} />
                 {t('workflow.move')}
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => setShowBulkDeleteConfirm(true)}
                 disabled={selectedIds.size === 0}
-                variant="outline"
-                className="h-10 gap-2 rounded-xl border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-40"
+                className="h-9 px-3.5 flex items-center gap-1.5 rounded-[10px] border border-[#f25555]/30 bg-[#f25555]/[0.12] text-[#f87c7c] text-[12px] font-semibold disabled:opacity-40 transition-colors"
               >
-                <Trash2 className="w-4 h-4" />
+                <Trash2 className="w-3.5 h-3.5" strokeWidth={1.9} />
                 {t('common.delete')}
-              </Button>
+              </button>
             </div>
           </motion.div>
         )}

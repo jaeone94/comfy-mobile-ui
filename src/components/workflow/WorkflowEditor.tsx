@@ -3590,32 +3590,32 @@ const WorkflowEditor: React.FC = () => {
       <div
         role="group"
         aria-label="Canvas mode"
-        className="flex w-48 items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
+        className="flex w-48 items-stretch gap-[3px] rounded-[10px] border border-white/10 p-1"
+        style={{ background: 'rgba(15,17,22,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}
       >
         <button
           onClick={() => {
             if (officialCanvasEnabled) handleToggleCanvasMode();
           }}
           className={cn(
-            'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
+            'flex-1 basis-0 py-1.5 text-center font-mono text-[10px] tracking-[0.12em] uppercase rounded-[7px] transition-colors',
             !officialCanvasEnabled
-              ? 'bg-slate-600 text-white'
-              : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+              ? 'bg-[#e9ebef] text-[#0b0c0f] font-bold'
+              : 'text-[#71798a] font-semibold hover:text-[#9aa3b2]'
           )}
           title="Switch to the mobile canvas"
         >
           Mobile
         </button>
-        <div className="w-px self-stretch bg-slate-500/60" />
         <button
           onClick={() => {
             if (!officialCanvasEnabled) handleToggleCanvasMode();
           }}
           className={cn(
-            'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
+            'flex-1 basis-0 py-1.5 text-center font-mono text-[10px] tracking-[0.12em] uppercase rounded-[7px] transition-colors',
             officialCanvasEnabled
-              ? 'bg-sky-600 text-white'
-              : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+              ? 'bg-[#3069f0] text-white font-bold'
+              : 'text-[#71798a] font-semibold hover:text-[#9aa3b2]'
           )}
           title="Switch to the official canvas (beta)"
         >
@@ -3629,32 +3629,32 @@ const WorkflowEditor: React.FC = () => {
         <div
           role="group"
           aria-label="Official node renderer"
-          className="flex w-48 items-stretch overflow-hidden rounded-xl border border-slate-500/70 bg-slate-900/85 shadow-xl backdrop-blur"
+          className="flex w-48 items-stretch gap-[3px] rounded-[10px] border border-white/10 p-1"
+          style={{ background: 'rgba(15,17,22,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}
         >
           <button
             onClick={() => {
               if (!vueNodesEnabled) handleSetNodesRenderer(true);
             }}
             className={cn(
-              'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
+              'flex-1 basis-0 py-1.5 text-center font-mono text-[10px] tracking-[0.12em] uppercase rounded-[7px] transition-colors',
               vueNodesEnabled
-                ? 'bg-sky-600 text-white'
-                : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+                ? 'bg-[#e9ebef] text-[#0b0c0f] font-bold'
+                : 'text-[#71798a] font-semibold hover:text-[#9aa3b2]'
             )}
             title="Modern DOM-based node rendering"
           >
             Nodes 2.0
           </button>
-          <div className="w-px self-stretch bg-slate-500/60" />
           <button
             onClick={() => {
               if (vueNodesEnabled) handleSetNodesRenderer(false);
             }}
             className={cn(
-              'flex-1 basis-0 px-2 py-2 text-center text-[11px] font-semibold transition-colors',
+              'flex-1 basis-0 py-1.5 text-center font-mono text-[10px] tracking-[0.12em] uppercase rounded-[7px] transition-colors',
               !vueNodesEnabled
-                ? 'bg-slate-600 text-white'
-                : 'text-slate-400 hover:bg-slate-700/60 hover:text-slate-200 active:bg-slate-700'
+                ? 'bg-[#e9ebef] text-[#0b0c0f] font-bold'
+                : 'text-[#71798a] font-semibold hover:text-[#9aa3b2]'
             )}
             title="Traditional canvas node rendering"
           >

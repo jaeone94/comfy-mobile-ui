@@ -138,7 +138,7 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
   if (loading) {
     return (
       <div
-        className="w-full h-32 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-purple-300 dark:border-purple-700"
+ className="w-full h-32 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-purple-300 dark:border-purple-700"
         onClick={onClick}
       >
         <div className="text-center">
@@ -152,7 +152,7 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
   if (error || !videoUrl) {
     return (
       <div
-        className="w-full h-32 bg-gradient-to-r from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-red-300 dark:border-red-700"
+ className="w-full h-32 bg-gradient-to-r from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-red-300 dark:border-red-700"
         onClick={onClick}
       >
         <div className="text-center">
@@ -166,13 +166,13 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
 
   return (
     <div
-      className={`w-full rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] group ${themeOverride?.container || 'bg-slate-50 dark:bg-slate-800/50'}`}
+ className={`w-full rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] group ${themeOverride?.container || 'bg-white/[0.04]'}`}
       onClick={onClick}
     >
       <div className="relative">
         <video
           src={videoUrl}
-          className="w-full max-h-48 object-contain"
+ className="w-full max-h-48 object-contain"
           preload="metadata"
           muted
           playsInline
@@ -199,8 +199,8 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
           }}
         />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <div className="bg-white/90 dark:bg-slate-900/90 rounded-full p-3">
-            <Play className="w-6 h-6 text-slate-700 dark:text-slate-300" fill="currentColor" />
+          <div className="bg-white/90 rounded-full p-3">
+            <Play className="w-6 h-6 text-[#c8ccd4]" fill="currentColor" />
           </div>
         </div>
         {/* Video duration overlay */}
@@ -210,7 +210,7 @@ export const InlineVideoPreview: React.FC<InlineVideoPreviewProps> = ({
         </div>
       </div>
       <div className="p-3">
-        <p className={`text-xs truncate ${themeOverride?.text || 'text-slate-600 dark:text-slate-400'}`}>
+        <p className={`text-xs truncate ${themeOverride?.text || 'text-[#8a919e]'}`}>
           {typeof videoPreview === 'string' ? videoPreview : (videoPreview.filename || t('media.videoPreview'))}
         </p>
         <p className={`text-xs mt-1 ${themeOverride?.secondaryText || 'text-purple-600 dark:text-purple-400'}`}>

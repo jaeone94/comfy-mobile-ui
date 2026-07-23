@@ -2,7 +2,6 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { AlertCircle } from 'lucide-react';
-import { Button } from '@/components/ui/button';
 
 interface SimpleConfirmDialogProps {
     isOpen: boolean;
@@ -40,53 +39,51 @@ export const SimpleConfirmDialog: React.FC<SimpleConfirmDialogProps> = ({
                     onClick={onClose}
                 >
                     <motion.div
-                        initial={{ scale: 0.9, opacity: 0 }}
+                        initial={{ scale: 0.95, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        exit={{ scale: 0.9, opacity: 0 }}
-                        className="relative w-full max-w-sm bg-[#374151] rounded-3xl shadow-2xl overflow-hidden p-8 space-y-6 text-white"
+                        exit={{ scale: 0.95, opacity: 0 }}
+                        className="relative w-full max-w-[300px] bg-[#101217] border border-white/10 rounded-xl shadow-2xl overflow-hidden p-4 text-[#e9ebef]"
                         onClick={(e) => e.stopPropagation()}
                     >
-                        <div className="relative z-10 flex flex-col items-center text-center space-y-5">
-                            <div className={`w-16 h-16 rounded-full flex items-center justify-center ${isDestructive ? 'bg-black/20' : 'bg-white/20'
-                                } shadow-sm`}>
-                                <AlertCircle className="w-8 h-8 text-white" />
+                        <div className="flex flex-col items-center text-center gap-2.5">
+                            <div
+                                className="w-9 h-9 rounded-[10px] flex items-center justify-center border"
+                                style={isDestructive
+                                    ? { background: 'rgba(242,85,85,0.1)', borderColor: 'rgba(242,85,85,0.3)' }
+                                    : { background: 'rgba(48,105,240,0.1)', borderColor: 'rgba(48,105,240,0.3)' }}
+                            >
+                                <AlertCircle className={`w-4 h-4 ${isDestructive ? 'text-[#f25555]' : 'text-[#5b8af5]'}`} strokeWidth={1.8} />
                             </div>
-                            <div className="space-y-3">
-                                <h3 className="text-2xl font-black tracking-tight text-white">
-                                    {title}
-                                </h3>
 
-                                {nodeInfo && (
-                                    <div className="inline-block px-3 py-1 rounded-full text-xs font-bold border bg-black/20 text-white/90 border-white/20 mb-1">
-                                        {nodeInfo}
-                                    </div>
-                                )}
+                            <h3 className="text-[14px] font-bold leading-tight">{title}</h3>
 
-                                <p className="leading-relaxed font-bold px-2 text-white/80">
-                                    {message}
-                                </p>
-                            </div>
+                            {nodeInfo && (
+                                <div className="inline-block px-2 py-0.5 rounded-md font-mono text-[10px] border bg-white/[0.05] text-[#c8ccd4] border-white/[0.08]">
+                                    {nodeInfo}
+                                </div>
+                            )}
+
+                            <p className="text-[11.5px] leading-relaxed text-[#8a919e]">{message}</p>
                         </div>
 
-                        <div className="relative z-10 flex gap-3 pt-4">
-                            <Button
+                        <div className="flex gap-2 pt-3.5">
+                            <button
                                 onClick={onClose}
-                                variant="outline"
-                                className="flex-1 h-14 rounded-2xl font-bold transition-all bg-black/20 border-white/10 text-white hover:bg-black/40"
+                                className="flex-1 h-9 rounded-[10px] text-[12px] font-semibold border border-white/[0.08] text-[#c8ccd4] transition-colors hover:bg-white/[0.07]"
+                                style={{ background: 'rgba(255,255,255,0.05)' }}
                             >
                                 {cancelText || t('common.cancel')}
-                            </Button>
-                            <Button
+                            </button>
+                            <button
                                 onClick={() => {
                                     onConfirm();
                                     onClose();
                                 }}
-                                variant={isDestructive ? 'destructive' : 'default'}
-                                className={`flex-1 h-14 rounded-2xl font-bold shadow-lg transition-transform active:scale-95 ${isDestructive ? 'bg-red-500 hover:bg-red-600 shadow-black/20' : ''
+                                className={`flex-1 h-9 rounded-[10px] text-[12px] font-semibold text-white transition-all active:scale-95 ${isDestructive ? 'bg-[#f25555] hover:bg-[#f36d6d]' : 'bg-[#3069f0] hover:bg-[#3f78f5]'
                                     }`}
                             >
                                 {confirmText || (isDestructive ? t('common.delete') : t('common.confirm'))}
-                            </Button>
+                            </button>
                         </div>
                     </motion.div>
                 </motion.div>
