@@ -169,12 +169,8 @@ async function loadWorkflow({ workflow }) {
 
 async function handleGetWorkflow(requestId) {
   try {
-    // serialize() already returns plain JSON; postMessage structured-clones
-    // it on the way out. Passing it straight through skips a redundant
-    // JSON.parse(JSON.stringify(...)) round-trip that, for workflows with
-    // embedded base64 images (tens of MB), is slow enough to blow the
-    // shell-side request timeout and silently fail the save.
-    respond(requestId, true, app.graph.serialize());
+    const data = app.graph.serialize();
+    respond(requestId, true, safeClone(data));
   } catch (e) {
     respond(requestId, false, undefined, String(e?.message ?? e));
   }
@@ -216,10 +212,7 @@ async function handleGetPrompt(requestId) {
   try {
     applyControlAfterGenerate();
     const p = await app.graphToPrompt();
-    // graphToPrompt() output is already plain JSON — hand it straight to
-    // postMessage (structured clone) rather than re-serializing via safeClone,
-    // which doubles the cost on large base64-image workflows.
-    respond(requestId, true, { workflow: p.workflow, output: p.output });
+    respond(requestId, true, { workflow: safeClone(p.workflow), output: safeClone(p.output) });
   } catch (e) {
     respond(requestId, false, undefined, String(e?.message ?? e));
   }
