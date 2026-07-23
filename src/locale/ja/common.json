@@ -295,7 +295,11 @@
             "formatsTitle": "対応フォーマット",
             "formatsDesc": "標準のComfyUIワークフローJSONファイル、またはワークフローメタデータが埋め込まれたPNG画像をアップロードできます。",
             "createNew": "新しい空のワークフローを作成"
-        }
+        },
+        "move": "移動",
+        "deleteSelectedConfirm": "選択した項目を削除しますか？",
+        "deleteSelectedMessage": "選択したワークフローは完全に削除されます。フォルダは削除され、中身は親フォルダへ移動します。元に戻せません。",
+        "selectedCount": "{{count}}件選択"
     },
     "folder": {
         "title": "フォルダ",
@@ -318,7 +322,14 @@
         "moveToParent": "親フォルダへ移動",
         "backToParent": "親フォルダへ戻る",
         "moveHere": "選択した項目をここに移動",
-        "goUp": "1つ上の階層へ"
+        "goUp": "1つ上の階層へ",
+        "moveTitle": "フォルダへ移動",
+        "chooseDestination": "移動先を選択",
+        "moveIntoNamed": "「{{name}}」へ移動",
+        "moveIntoHome": "ホームへ移動",
+        "currentLocation": "現在の場所",
+        "noSubfolders": "サブフォルダはありません",
+        "movingItems": "{{count}}件を移動"
     },
     "menu": {
         "appTitle": "ComfyUIモバイル",

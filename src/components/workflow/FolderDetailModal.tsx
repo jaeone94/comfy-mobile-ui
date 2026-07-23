@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Folder, FileText, Trash2, AlertTriangle } from 'lucide-react';
+import { X, Folder, FileText, Trash2, AlertTriangle, FolderInput } from 'lucide-react';
 import { FolderItem, FolderStructure } from '@/types/folder';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -14,6 +14,7 @@ interface FolderDetailModalProps {
     allWorkflows: Workflow[];
     onClose: () => void;
     onDelete: (folderId: string) => void;
+    onMove?: (folder: FolderItem) => void;
 }
 
 const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
@@ -23,6 +24,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
     allWorkflows,
     onClose,
     onDelete,
+    onMove,
 }) => {
     const { t } = useTranslation();
     const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -202,11 +204,21 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                 </div>
 
                                 {/* Footer */}
-                                <div className="relative z-10 px-6 py-4 border-t border-white/10 dark:border-slate-600/10 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl">
+                                <div className="relative z-10 px-6 py-4 border-t border-white/10 dark:border-slate-600/10 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl flex gap-3">
+                                    {onMove && (
+                                        <Button
+                                            onClick={() => onMove(folder)}
+                                            variant="ghost"
+                                            className="flex-1 py-3 rounded-2xl bg-blue-500/10 border border-blue-400/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 flex items-center justify-center gap-2"
+                                        >
+                                            <FolderInput className="w-5 h-5" />
+                                            {t('folder.moveTitle')}
+                                        </Button>
+                                    )}
                                     <Button
                                         onClick={handleDeleteClick}
                                         variant="ghost"
-                                        className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 flex items-center justify-center gap-2"
+                                        className="flex-1 py-3 rounded-2xl bg-red-500/10 border border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 flex items-center justify-center gap-2"
                                     >
                                         <Trash2 className="w-5 h-5" />
                                         {t('folder.deleteFolder')}

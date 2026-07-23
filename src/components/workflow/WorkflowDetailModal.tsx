@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { X, Calendar, User, Tag, FileText, AlertCircle, Server, Play, Copy, Trash2, Plus, Check } from 'lucide-react';
+import { X, Calendar, User, Tag, FileText, AlertCircle, Server, Play, Copy, Trash2, Plus, Check, FolderInput } from 'lucide-react';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ interface WorkflowDetailModalProps {
   onWorkflowUpdated?: (updatedWorkflow: Workflow) => void;
   onWorkflowDeleted?: (workflowId: string) => void;
   onWorkflowCopied?: (newWorkflow: Workflow) => void;
+  onMove?: (workflow: Workflow) => void;
 }
 
 const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
@@ -30,6 +31,7 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
   onWorkflowUpdated,
   onWorkflowDeleted,
   onWorkflowCopied,
+  onMove,
 }) => {
   const { t } = useTranslation();
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(workflow?.thumbnail);
@@ -447,6 +449,17 @@ const WorkflowDetailModal: React.FC<WorkflowDetailModalProps> = ({
                 >
                   <Copy className="w-5 h-5" />
                 </Button>
+                {onMove && workflow && (
+                  <Button
+                    onClick={() => onMove(workflow)}
+                    variant="outline"
+                    className="flex-1 py-6 rounded-2xl bg-white/50 dark:bg-slate-700/50 backdrop-blur-md border border-slate-200/50 dark:border-slate-600/50 hover:bg-white/70 dark:hover:bg-slate-700/70 transition-all duration-200 flex items-center justify-center gap-2"
+                    title={t('workflow.move')}
+                    disabled={isLoading}
+                  >
+                    <FolderInput className="w-5 h-5" />
+                  </Button>
+                )}
                 <Button
                   onClick={() => setShowDeleteConfirm(true)}
                   variant="outline"

@@ -13,7 +13,11 @@ import {
   Image,
   Link as LinkIcon,
   X,
-  ArrowRightLeft
+  ArrowRightLeft,
+  FolderInput,
+  FolderPlus,
+  Trash2,
+  AlertTriangle
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -25,10 +29,12 @@ import FolderDetailModal from './FolderDetailModal';
 import WorkflowDetailModal from './WorkflowDetailModal';
 import WorkflowEditModal from './WorkflowEditModal';
 import WorkflowUploadModal from './WorkflowUploadModal';
+import MoveToFolderSheet, { MoveItem } from './MoveToFolderSheet';
 import SideMenu from '@/components/controls/SideMenu';
 import {
   loadAllWorkflows,
   addWorkflow,
+  removeWorkflow,
 } from '@/infrastructure/storage/IndexedDBWorkflowService';
 import { WorkflowFileService } from '@/core/services/WorkflowFileService';
 import { toast } from 'sonner';
@@ -71,25 +77,28 @@ const WorkflowList: React.FC = () => {
   const [isCreatingFolder, setIsCreatingFolder] = useState(false);
   const [selectedSortOrder, setSelectedSortOrder] = useState<SortOrder>('date-desc');
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
-  const [selectedItemForMove, setSelectedItemForMove] = useState<{
-    id: string;
-    type: 'workflow' | 'folder';
-    sourceFolderId: string | null;
-  } | null>(null);
+
+  // Multi-select: pick any workflows/folders, then move or delete them in bulk.
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showBulkDeleteConfirm, setShowBulkDeleteConfirm] = useState(false);
+
+  // "Move to folder" destination sheet (drives both single-item moves from the
+  // detail modals and bulk moves from the selection bar).
+  const [moveSheetItems, setMoveSheetItems] = useState<MoveItem[] | null>(null);
+  const [moveSheetLabel, setMoveSheetLabel] = useState<string | undefined>(undefined);
+
   const { t } = useTranslation();
 
   const navigate = useNavigate();
 
   const {
     folderStructure,
-    isEditMode,
     createFolder,
     deleteFolder,
     moveItem,
     setSortOrder,
     initializeRootWorkflows,
-    enterEditMode,
-    cancelEditMode,
     removeWorkflow: removeWorkflowFromStructure,
   } = useFolderManagement();
 
@@ -304,24 +313,100 @@ const WorkflowList: React.FC = () => {
     return [{ id: null, name: t('folder.home') }, ...path];
   }, [currentFolderId, folderStructure, t]);
 
+  // --- Selection & move helpers ---
+  const getItemType = (id: string): 'workflow' | 'folder' =>
+    folderStructure.folders[id] ? 'folder' : 'workflow';
+
+  // Resolve an item's real parent folder from the structure (not the current
+  // view), so moves stay correct even from search results or another branch.
+  const findSourceFolderId = (id: string, type: 'workflow' | 'folder'): string | null => {
+    if (type === 'folder') return folderStructure.folders[id]?.parentId ?? null;
+    const parent = Object.entries(folderStructure.folders).find(([, f]) =>
+      f.workflows.includes(id)
+    );
+    return parent ? parent[0] : null;
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const enterSelection = () => {
+    setSelectionMode(true);
+    setSelectedIds(new Set());
+  };
+  const exitSelection = () => {
+    setSelectionMode(false);
+    setSelectedIds(new Set());
+  };
+
+  const openMoveSheet = (items: MoveItem[], label?: string) => {
+    if (!items.length) return;
+    setMoveSheetItems(items);
+    setMoveSheetLabel(label);
+  };
+
+  const openMoveForSelection = () => {
+    const items: MoveItem[] = Array.from(selectedIds).map((id) => {
+      const type = getItemType(id);
+      return { id, type, sourceFolderId: findSourceFolderId(id, type) };
+    });
+    openMoveSheet(items);
+  };
+
+  const handleConfirmMove = (targetFolderId: string | null) => {
+    const items = moveSheetItems || [];
+    items.forEach((it) =>
+      moveItem({
+        itemId: it.id,
+        itemType: it.type,
+        targetFolderId,
+        sourceFolderId: it.sourceFolderId,
+      })
+    );
+    setMoveSheetItems(null);
+    setMoveSheetLabel(undefined);
+    exitSelection();
+    toast.success(t('folder.moveSuccess'));
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    const deletedWorkflowIds: string[] = [];
+    for (const id of ids) {
+      if (getItemType(id) === 'folder') {
+        deleteFolder(id);
+      } else {
+        try {
+          await removeWorkflow(id);
+        } catch (e) {
+          console.error('Failed to delete workflow:', e);
+        }
+        removeWorkflowFromStructure(id);
+        deletedWorkflowIds.push(id);
+      }
+    }
+    if (deletedWorkflowIds.length) {
+      setWorkflows((prev) => prev.filter((w) => !deletedWorkflowIds.includes(w.id)));
+    }
+    setShowBulkDeleteConfirm(false);
+    exitSelection();
+    toast.success(t('folder.deleteSuccess'));
+  };
+
   // Handlers for Items
   const handleWorkflowClick = (workflow: Workflow) => {
-    if (isEditMode) {
-      if (!selectedItemForMove) setSelectedItemForMove({ id: workflow.id, type: 'workflow', sourceFolderId: currentFolderId });
-      else if (selectedItemForMove.id === workflow.id) setSelectedItemForMove(null);
-      else setSelectedItemForMove({ id: workflow.id, type: 'workflow', sourceFolderId: currentFolderId });
-    } else {
-      handleWorkflowSelect(workflow);
-    }
+    if (selectionMode) toggleSelect(workflow.id);
+    else handleWorkflowSelect(workflow);
   };
 
   const handleFolderClick = (folderId: string) => {
-    if (isEditMode) {
-      if (selectedItemForMove) {
-        moveItem({ itemId: selectedItemForMove.id, itemType: selectedItemForMove.type, targetFolderId: folderId, sourceFolderId: selectedItemForMove.sourceFolderId });
-        setSelectedItemForMove(null);
-        toast.success(t('folder.moveSuccess'));
-      }
+    if (selectionMode) {
+      toggleSelect(folderId);
     } else {
       setCurrentFolderId(folderId);
       setSearchQuery('');
@@ -401,11 +486,11 @@ const WorkflowList: React.FC = () => {
         </div>
       </header>
 
-      {/* Sub Header (Search & Sort) */}
+      {/* Sub Header (Search) */}
       <div className="flex-none bg-white dark:bg-slate-950 border-b border-slate-200/60 dark:border-slate-800/60 z-30">
-        <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center justify-between gap-3">
+        <div className="max-w-[1600px] mx-auto px-4 py-2">
           {/* Search */}
-          <div className="relative flex-1">
+          <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <Input
               value={searchQuery}
@@ -422,21 +507,54 @@ const WorkflowList: React.FC = () => {
               </button>
             )}
           </div>
+        </div>
+      </div>
 
-          {/* Sort Button */}
+      {/* Action Toolbar (create / select / sort) */}
+      <div className="flex-none bg-white dark:bg-slate-950 border-b border-slate-200/60 dark:border-slate-800/60 z-30">
+        <div className="max-w-[1600px] mx-auto px-4 py-2 flex items-center flex-wrap gap-2">
+          {/* New Workflow */}
+          <Button
+            onClick={() => setIsUploadModalOpen(true)}
+            className="h-9 gap-2 rounded-xl text-sm bg-blue-600 hover:bg-blue-700 text-white border-none shadow-sm"
+          >
+            <Plus className="w-4 h-4" />
+            {t('workflow.uploadButton')}
+          </Button>
+          {/* New Folder */}
+          <Button
+            onClick={() => setIsCreatingFolder(true)}
+            variant="outline"
+            className="h-9 gap-2 rounded-xl text-sm border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900"
+          >
+            <FolderPlus className="w-4 h-4" />
+            {t('folder.newFolder')}
+          </Button>
+          {/* Select / multi-select mode */}
+          <Button
+            onClick={() => (selectionMode ? exitSelection() : enterSelection())}
+            variant="outline"
+            className={`h-9 gap-2 rounded-xl text-sm ${selectionMode
+              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 border-transparent'
+              : 'border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-900'
+              }`}
+          >
+            {selectionMode ? <X className="w-4 h-4" /> : <ArrowRightLeft className="w-4 h-4" />}
+            {selectionMode ? t('workflow.cancelSelection') : t('workflow.selectItems')}
+          </Button>
+
+          {/* Sort (pinned right on wider screens) */}
           <Button
             variant="ghost"
             onClick={() => {
               const nextSort: SortOrder = selectedSortOrder === 'date-desc' ? 'name-asc' : 'date-desc';
               setSortOrder(nextSort);
             }}
-            className="h-10 px-3 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-900 font-medium text-slate-600 dark:text-slate-400 gap-2 shrink-0 text-xs sm:text-sm"
+            className="h-9 px-3 gap-2 rounded-xl text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-900 shrink-0 sm:ml-auto"
             title={t('workflow.sorting.title', 'Sort')}
           >
             <ArrowUpDown className="w-4 h-4" />
-            <span className="hidden sm:inline">
-              {selectedSortOrder.includes('date') ? t('workflow.sorting.newest') : t('workflow.sorting.name')}
-            </span>
+            {selectedSortOrder.includes('date') ? t('workflow.sorting.newest') : t('workflow.sorting.name')}
           </Button>
         </div>
       </div>
@@ -445,46 +563,25 @@ const WorkflowList: React.FC = () => {
       <div className="flex-none bg-slate-50/50 dark:bg-slate-950/50 border-b border-slate-200/60 dark:border-slate-800/60 z-30">
         <div className="max-w-[1600px] mx-auto px-4 py-3">
           {/* Folder Section Header */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center mb-4">
             <h2 className="text-lg font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <FolderIcon className="w-6 h-6" />
               {t('folder.title')}
             </h2>
-            {/* New Folder Button */}
-            <Button
-              onClick={() => setIsCreatingFolder(true)}
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800"
-              title={t('folder.newFolder')}
-            >
-              <Plus className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-            </Button>
           </div>
 
           {/* Folders List */}
           <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
             {/* Parent Folder */}
-            {currentFolderId && (
+            {currentFolderId && !selectionMode && (
               <div className="min-w-[160px] shrink-0">
                 <ParentFolderGridItem
                   onClick={() => {
-                    if (isEditMode && selectedItemForMove) {
-                      moveItem({
-                        itemId: selectedItemForMove.id,
-                        itemType: selectedItemForMove.type,
-                        targetFolderId: folderStructure.folders[currentFolderId]?.parentId || null,
-                        sourceFolderId: currentFolderId
-                      });
-                      setSelectedItemForMove(null);
-                      toast.success(t('folder.moveToParentSuccess'));
-                    } else {
-                      const parentId = folderStructure.folders[currentFolderId]?.parentId;
-                      setCurrentFolderId(parentId);
-                    }
+                    const parentId = folderStructure.folders[currentFolderId]?.parentId ?? null;
+                    setCurrentFolderId(parentId);
                   }}
                   isTarget={false}
-                  isMoveMode={isEditMode}
+                  isMoveMode={false}
                 />
               </div>
             )}
@@ -527,7 +624,8 @@ const WorkflowList: React.FC = () => {
                     setIsFolderDetailModalOpen(true);
                   }}
                   workflowCount={folder.workflows.length + folder.children.length}
-                  isSelected={selectedItemForMove?.id === folder.id}
+                  isSelected={selectedIds.has(folder.id)}
+                  selectionMode={selectionMode}
                 />
               </div>
             ))}
@@ -545,43 +643,11 @@ const WorkflowList: React.FC = () => {
           )}
 
           {/* Workflows Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center">
             <h2 className="text-lg font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider flex items-center gap-2">
               <FileText className="w-6 h-6" />
               {t('workflow.listTitle')} ({filteredContents.workflows.length})
             </h2>
-
-            {/* Workflow Actions - Moved here */}
-            <div className="flex items-center gap-1">
-              {/* New/Upload Workflow (Consolidated) */}
-              <Button
-                onClick={() => setIsUploadModalOpen(true)}
-                variant="ghost"
-                size="icon"
-                className="h-10 w-10 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-800"
-                title={t('workflow.uploadButton')}
-              >
-                <Plus className="w-6 h-6 text-slate-600 dark:text-slate-400" />
-              </Button>
-
-              {/* Select/Move */}
-              <Button
-                variant={isEditMode ? "secondary" : "ghost"}
-                size="icon"
-                className={`h-10 w-10 rounded-xl ${isEditMode ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/30 dark:text-blue-400' : 'hover:bg-slate-200 dark:hover:bg-slate-800'}`}
-                onClick={() => {
-                  if (isEditMode) {
-                    cancelEditMode();
-                    setSelectedItemForMove(null);
-                  } else {
-                    enterEditMode();
-                  }
-                }}
-                title={isEditMode ? t('workflow.cancelSelection') : t('workflow.selectItems')}
-              >
-                {isEditMode ? <X className="w-6 h-6" /> : <ArrowRightLeft className="w-6 h-6 text-slate-600 dark:text-slate-400" />}
-              </Button>
-            </div>
           </div>
 
           {/* Workflow Grid */}
@@ -599,7 +665,7 @@ const WorkflowList: React.FC = () => {
               </Button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 pb-20">
+            <div className={`grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-6 ${selectionMode ? 'pb-32' : 'pb-20'}`}>
               {filteredContents.workflows.map((workflow) => (
                 <WorkflowGridItem
                   key={workflow.id}
@@ -609,13 +675,54 @@ const WorkflowList: React.FC = () => {
                     setDetailWorkflow(workflow);
                     setIsDetailModalOpen(true);
                   }}
-                  isSelected={selectedItemForMove?.id === workflow.id}
+                  isSelected={selectedIds.has(workflow.id)}
+                  selectionMode={selectionMode}
                 />
               ))}
             </div>
           )}
         </div>
       </main>
+
+      {/* Selection action bar */}
+      <AnimatePresence>
+        {selectionMode && (
+          <motion.div
+            initial={{ y: 90, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            exit={{ y: 90, opacity: 0 }}
+            transition={{ duration: 0.2, ease: 'easeOut' }}
+            className="fixed bottom-0 inset-x-0 z-40 border-t border-slate-200 dark:border-slate-800 bg-white/90 dark:bg-slate-900/90 backdrop-blur-xl"
+          >
+            <div
+              className="max-w-[1600px] mx-auto px-4 py-3 flex items-center gap-2"
+              style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
+            >
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-300 shrink-0">
+                {t('workflow.selectedCount', { count: selectedIds.size })}
+              </span>
+              <div className="flex-1" />
+              <Button
+                onClick={openMoveForSelection}
+                disabled={selectedIds.size === 0}
+                className="h-10 gap-2 rounded-xl bg-blue-600 hover:bg-blue-700 text-white border-none disabled:opacity-40"
+              >
+                <FolderInput className="w-4 h-4" />
+                {t('workflow.move')}
+              </Button>
+              <Button
+                onClick={() => setShowBulkDeleteConfirm(true)}
+                disabled={selectedIds.size === 0}
+                variant="outline"
+                className="h-10 gap-2 rounded-xl border-red-300 dark:border-red-800 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30 disabled:opacity-40"
+              >
+                <Trash2 className="w-4 h-4" />
+                {t('common.delete')}
+              </Button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Modals */}
       <SideMenu
@@ -670,6 +777,14 @@ const WorkflowList: React.FC = () => {
           initializeRootWorkflows([newWorkflow.id, ...workflows.map((w) => w.id)]);
           toast.success(t('workflow.copySuccess', { name: newWorkflow.name }));
         }}
+        onMove={(wf) => {
+          setIsDetailModalOpen(false);
+          setDetailWorkflow(null);
+          openMoveSheet(
+            [{ id: wf.id, type: 'workflow', sourceFolderId: findSourceFolderId(wf.id, 'workflow') }],
+            wf.name
+          );
+        }}
       />
 
       <WorkflowEditModal
@@ -710,8 +825,82 @@ const WorkflowList: React.FC = () => {
               toast.error(t('folder.deleteError'));
             }
           }}
+          onMove={(folder) => {
+            setIsFolderDetailModalOpen(false);
+            setDetailFolder(null);
+            openMoveSheet(
+              [{ id: folder.id, type: 'folder', sourceFolderId: findSourceFolderId(folder.id, 'folder') }],
+              folder.name
+            );
+          }}
         />
       )}
+
+      {/* Move to folder sheet */}
+      <MoveToFolderSheet
+        isOpen={moveSheetItems !== null}
+        items={moveSheetItems || []}
+        itemLabel={moveSheetLabel}
+        folderStructure={folderStructure}
+        onClose={() => {
+          setMoveSheetItems(null);
+          setMoveSheetLabel(undefined);
+        }}
+        onConfirm={handleConfirmMove}
+        onCreateFolder={createFolder}
+      />
+
+      {/* Bulk delete confirmation */}
+      <AnimatePresence>
+        {showBulkDeleteConfirm && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-[10001] flex items-center justify-center bg-black/60 backdrop-blur-sm px-4"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setShowBulkDeleteConfirm(false);
+            }}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex flex-col items-center text-center space-y-3">
+                <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
+                  <AlertTriangle className="w-7 h-7 text-red-600 dark:text-red-400" />
+                </div>
+                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                  {t('workflow.deleteSelectedConfirm')}
+                </h3>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                  {t('workflow.deleteSelectedMessage')}
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowBulkDeleteConfirm(false)}
+                  variant="outline"
+                  className="flex-1 h-12 rounded-xl border-slate-200 dark:border-slate-700"
+                >
+                  {t('common.cancel')}
+                </Button>
+                <Button
+                  onClick={handleBulkDelete}
+                  className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white border-none"
+                >
+                  {t('common.delete')}
+                </Button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

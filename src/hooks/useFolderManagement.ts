@@ -100,10 +100,13 @@ export const useFolderManagement = () => {
     });
   }, []);
 
-  // Create a new folder
-  const createFolder = useCallback((name: string, parentId: string | null = null) => {
+  // Create a new folder. Returns the new folder's id so callers can act on it
+  // immediately (e.g. the "move to folder" sheet creates a folder and drills
+  // into it).
+  const createFolder = useCallback((name: string, parentId: string | null = null): string => {
+    const newFolderId = `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
     const updateStructure = (prev: FolderStructure): FolderStructure => {
-      const newFolderId = `folder_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       const newFolder: FolderItem = {
         id: newFolderId,
         name,
@@ -147,6 +150,8 @@ export const useFolderManagement = () => {
         return updated;
       });
     }
+
+    return newFolderId;
   }, [isEditMode, pendingStructure]);
 
   // Rename a folder
