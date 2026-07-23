@@ -230,7 +230,8 @@
             "existsTitle": "Workflow Already Exists",
             "existsDesc": "A workflow named {{name}} already exists in your local collection.",
             "existsPrompt": "Do you want to import anyway and create a renamed copy?",
-            "importAnyway": "Import Anyway"
+            "importAnyway": "Import Anyway",
+            "importButton": "Import"
         },
         "snapshot": {
             "title": "Workflow Snapshots",

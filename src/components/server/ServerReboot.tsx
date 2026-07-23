@@ -495,21 +495,21 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
 
   const getStatusColor = (phase: string) => {
     switch (phase) {
-      case 'success': return 'text-green-600 dark:text-green-400';
-      case 'failed': return 'text-red-600 dark:text-red-400';
+      case 'success': return 'text-green-600 dark:text-[#4ade80]';
+      case 'failed': return 'text-red-600 dark:text-[#f87c7c]';
       case 'rebooting':
-      case 'waiting': return 'text-blue-600 dark:text-blue-400';
-      default: return 'text-slate-600 dark:text-slate-400';
+      case 'waiting': return 'text-blue-600 dark:text-[#5b8af5]';
+      default: return 'text-[#8a919e]';
     }
   };
 
   const getStatusIcon = (phase: string) => {
     switch (phase) {
-      case 'success': return <CheckCircle className="h-5 w-5 text-green-500" />;
-      case 'failed': return <XCircle className="h-5 w-5 text-red-500" />;
+      case 'success': return <CheckCircle className="h-4 w-4 text-[#4ade80]" />;
+      case 'failed': return <XCircle className="h-5 w-5 text-[#f25555]" />;
       case 'rebooting':
-      case 'waiting': return <Loader2 className="h-5 w-5 text-blue-500 animate-spin" />;
-      default: return <Server className="h-5 w-5 text-slate-500" />;
+      case 'waiting': return <Loader2 className="h-5 w-5 text-[#5b8af5] animate-spin" />;
+      default: return <Server className="h-5 w-5 text-[#71798a]" />;
     }
   };
 
@@ -545,10 +545,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
       }}
     >
       {/* Main Background with Dark Theme */}
-      <div className="absolute inset-0 bg-[#374151]" />
-
-      {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[#0b0c0f]" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -560,22 +557,22 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
         }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
+        <header className="sticky top-0 z-50 pwa-header bg-[#0b0c0f]/95 backdrop-blur-xl border-b border-white/[0.08] relative overflow-hidden">
           <div className="relative z-10 flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <Button
                 onClick={handleBackNavigation}
                 variant="ghost"
                 size="sm"
-                className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
+                className="bg-white/[0.045] border border-white/[0.08] hover:bg-white/[0.08] transition-all h-9 w-9 p-0 flex-shrink-0 rounded-[10px] text-[#c8ccd4]"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-lg font-bold text-white/95 leading-none">
+                <h1 className="text-[15px] font-bold text-[#e9ebef] leading-none">
                   {t('serverReboot.title')}
                 </h1>
-                <p className="text-[11px] text-white/40 mt-1">
+                <p className="font-mono text-[9px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-1">
                   {t('serverReboot.subtitle')}
                 </p>
               </div>
@@ -584,23 +581,23 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
         </header>
 
         {/* Content Area */}
-        <div className="container mx-auto px-6 py-8 max-w-4xl space-y-6">
+        <div className="container mx-auto px-4 py-5 max-w-4xl space-y-2">
           {/* Server Requirements Check */}
           <Card className={`border backdrop-blur-sm shadow-xl ${isConnected && hasExtension
-            ? 'border-green-500/20 bg-green-500/5'
-            : 'border-amber-500/20 bg-amber-500/5'
+            ? 'border-[#34c77b]/20 bg-[#34c77b]/5'
+            : 'border-amber-500/20 bg-[#ffa348]/5'
             }`}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center space-x-2 text-white/90">
-                <Server className="h-5 w-5 text-blue-400" />
+                <Server className="h-4 w-4 text-[#5b8af5]" />
                 <span>{t('serverReboot.cardTitle')}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-2.5">
               {isCheckingExtension ? (
                 <div className="flex items-center space-x-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-sm text-white/70">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#5b8af5]" />
+                  <span className="text-[12px] text-white/70">
                     {t('serverReboot.checking')}
                   </span>
                 </div>
@@ -610,12 +607,12 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-white/70">{t('serverReboot.serverStatus')}</span>
                     {isConnected ? (
-                      <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                      <Badge className="bg-[#34c77b]/[0.12] text-[#4ade80] border-[#34c77b]/[0.28]">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         {t('common.connected')}
                       </Badge>
                     ) : (
-                      <Badge variant="destructive" className="bg-red-500/20 text-red-300 border-red-500/30">
+                      <Badge variant="destructive" className="bg-[#f25555]/[0.12] text-[#f87c7c] border-[#f25555]/30">
                         <AlertCircle className="h-3 w-3 mr-1" />
                         {t('common.disconnected')}
                       </Badge>
@@ -627,12 +624,12 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-white/70">{t('serverReboot.extensionStatus')}</span>
                       {hasExtension ? (
-                        <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                        <Badge className="bg-[#34c77b]/[0.12] text-[#4ade80] border-[#34c77b]/[0.28]">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           {t('common.available')}
                         </Badge>
                       ) : (
-                        <Badge variant="destructive" className="bg-red-500/20 text-red-300 border-red-500/30">
+                        <Badge variant="destructive" className="bg-[#f25555]/[0.12] text-[#f87c7c] border-[#f25555]/30">
                           <AlertCircle className="h-3 w-3 mr-1" />
                           {t('common.notFound')}
                         </Badge>
@@ -647,10 +644,10 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
 
                   {/* Status Summary */}
                   {isConnected && hasExtension && !error && !isRebooting && (
-                    <div className="p-3 bg-green-500/10 border border-green-500/20 rounded-lg">
+                    <div className="p-3 bg-[#34c77b]/10 border border-[#34c77b]/20 rounded-lg">
                       <div className="flex items-center space-x-2">
-                        <CheckCircle className="h-4 w-4 text-green-400" />
-                        <span className="text-sm font-medium text-green-300">
+                        <CheckCircle className="h-4 w-4 text-[#4ade80]" />
+                        <span className="text-[12px] font-medium text-[#4ade80]">
                           {t('serverReboot.ready')}
                         </span>
                       </div>
@@ -659,20 +656,20 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
 
                   {/* Error Messages */}
                   {(!isConnected || !hasExtension || error) && (
-                    <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg space-y-2">
-                      <h4 className="text-sm font-medium text-red-300">{t('serverReboot.issues')}</h4>
-                      <ul className="text-sm text-red-300/80 space-y-1 list-disc list-inside">
+                    <div className="p-3 bg-[#f25555]/10 border border-[#f25555]/20 rounded-lg space-y-2">
+                      <h4 className="text-[12px] font-medium text-[#f87c7c]">{t('serverReboot.issues')}</h4>
+                      <ul className="text-[11.5px] text-[#f87c7c]/80 space-y-1 list-disc list-inside">
                         {!isConnected && <li>{t('serverReboot.issueConnection')}</li>}
                         {isConnected && !hasExtension && <li>{t('serverReboot.issueExtension')}</li>}
                         {error && !isRebooting && <li>{error}</li>}
                       </ul>
 
                       {!hasExtension && isConnected && (
-                        <div className="mt-2 p-2 bg-blue-500/10 border border-blue-500/20 rounded">
-                          <p className="text-xs text-blue-300">
+                        <div className="mt-2 p-2 bg-[#3069f0]/10 border border-[#3069f0]/20 rounded">
+                          <p className="text-xs text-[#7ba3f5]">
                             <strong>To fix:</strong> {t('serverReboot.fixInstall')}
                           </p>
-                          <p className="text-xs text-blue-300/80 mt-1 font-mono bg-black/20 p-1 rounded">
+                          <p className="text-xs text-[#7ba3f5]/80 mt-1 font-mono bg-black/20 p-1 rounded">
                             {t('serverReboot.path')} ComfyUI/custom_nodes/comfyui-mobile-ui-api-extension/
                           </p>
                         </div>
@@ -707,13 +704,13 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
 
           {/* Watchdog Service - Independent Card */}
           <Card className={`border backdrop-blur-sm shadow-xl ${watchdogStatus.available && watchdogStatus.running
-            ? 'border-blue-500/20 bg-blue-500/5'
+            ? 'border-[#3069f0]/20 bg-[#3069f0]/5'
             : 'border-white/10 bg-black/20'
             }`}>
             <CardHeader className="pb-3">
               <CardTitle className="flex items-center justify-between text-white/90">
                 <div className="flex items-center space-x-2">
-                  <AlertCircle className="h-5 w-5 text-yellow-400" />
+                  <AlertCircle className="h-4 w-4 text-[#ffa348]" />
                   <span>Watchdog Service</span>
                 </div>
                 {watchdogStatus.lastChecked && (
@@ -723,11 +720,11 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                 )}
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-2.5">
               {isCheckingWatchdog ? (
                 <div className="flex items-center space-x-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
-                  <span className="text-sm text-white/70">
+                  <Loader2 className="h-4 w-4 animate-spin text-[#5b8af5]" />
+                  <span className="text-[12px] text-white/70">
                     {t('serverReboot.checkingWatchdog')}
                   </span>
                 </div>
@@ -737,12 +734,12 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                   <div className="flex items-center justify-between">
                     <span className="font-medium text-white/70">Watchdog Service</span>
                     {watchdogStatus.available && watchdogStatus.running ? (
-                      <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30">
+                      <Badge className="bg-[#3069f0]/[0.12] text-[#7ba3f5] border-[#3069f0]/30">
                         <CheckCircle className="h-3 w-3 mr-1" />
                         Active & Running
                       </Badge>
                     ) : watchdogStatus.available ? (
-                      <Badge className="bg-yellow-500/20 text-yellow-300 border-yellow-500/30">
+                      <Badge className="bg-[#ffa348]/[0.12] text-[#ffa348] border-[#ffa348]/30">
                         <AlertCircle className="h-3 w-3 mr-1" />
                         Available (Stopped)
                       </Badge>
@@ -759,12 +756,12 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                     <div className="flex items-center justify-between">
                       <span className="font-medium text-white/70">{t('serverReboot.monitorStatus')}</span>
                       {watchdogStatus.comfyuiResponsive ? (
-                        <Badge className="bg-green-500/20 text-green-300 border-green-500/30">
+                        <Badge className="bg-[#34c77b]/[0.12] text-[#4ade80] border-[#34c77b]/[0.28]">
                           <CheckCircle className="h-3 w-3 mr-1" />
                           {t('serverReboot.responsive')}
                         </Badge>
                       ) : (
-                        <Badge variant="destructive" className="bg-red-500/20 text-red-300 border-red-500/30">
+                        <Badge variant="destructive" className="bg-[#f25555]/[0.12] text-[#f87c7c] border-[#f25555]/30">
                           <XCircle className="h-3 w-3 mr-1" />
                           {t('serverReboot.notResponding')}
                         </Badge>
@@ -774,18 +771,18 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
 
                   {/* Restart Capability Info */}
                   <div className={`p-3 border rounded-lg ${watchdogStatus.available
-                    ? 'bg-blue-500/10 border-blue-500/20'
+                    ? 'bg-[#3069f0]/10 border-[#3069f0]/20'
                     : 'bg-white/5 border-white/10'
                     }`}>
                     <div className="flex items-start space-x-3">
                       {watchdogStatus.available ? (
-                        <CheckCircle className="h-4 w-4 text-blue-400 mt-0.5" />
+                        <CheckCircle className="h-4 w-4 text-[#5b8af5] mt-0.5" />
                       ) : (
                         <AlertCircle className="h-4 w-4 text-white/40 mt-0.5" />
                       )}
                       <div>
-                        <p className={`text-sm font-medium ${watchdogStatus.available && watchdogStatus.running
-                          ? 'text-blue-300'
+                        <p className={`text-[12px] font-medium ${watchdogStatus.available && watchdogStatus.running
+                          ? 'text-[#7ba3f5]'
                           : 'text-white/60'
                           }`}>
                           {
@@ -806,7 +803,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                           }
                         </p>
                         {watchdogStatus.available && !watchdogStatus.comfyuiResponsive && (
-                          <p className="text-xs mt-1 text-orange-400">
+                          <p className="text-xs mt-1 text-[#ffa348]">
                             {t('serverReboot.downWarning')}
                           </p>
                         )}
@@ -856,7 +853,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
           </Card>
 
           {/* Reboot Control */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
+          <Card className="border border-white/[0.08] bg-white/[0.025] shadow-none">
             <CardHeader>
               <CardTitle className="text-white/90">
                 {t('serverReboot.controlTitle')}
@@ -865,7 +862,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
             <CardContent>
               {/* Reboot Status */}
               {rebootStatus.phase !== 'idle' && (
-                <div className="mb-6 p-4 bg-white/5 rounded-lg border border-white/10">
+                <div className="mb-3 p-4 bg-white/5 rounded-lg border border-white/10">
                   <div className="flex items-center space-x-3 mb-2">
                     {getStatusIcon(rebootStatus.phase)}
                     <span className={`font-medium ${getStatusColor(rebootStatus.phase)}`}>
@@ -873,7 +870,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                     </span>
                   </div>
                   {rebootStatus.details && (
-                    <p className="text-sm text-white/60 ml-8">
+                    <p className="text-[12px] text-white/60 ml-8">
                       {rebootStatus.details}
                     </p>
                   )}
@@ -882,18 +879,18 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                   {rebootStatus.logs && rebootStatus.logs.length > 0 && (
                     <div className="mt-4 ml-8">
                       <details className="group">
-                        <summary className="cursor-pointer text-sm font-medium text-white/70 hover:text-white transition-colors">
+                        <summary className="cursor-pointer text-[12px] font-medium text-white/70 hover:text-white transition-colors">
                           {t('serverReboot.recentLogs', { count: rebootStatus.logs.length })}
                         </summary>
-                        <div className="mt-2 p-3 bg-black/50 text-green-400 text-xs font-mono rounded border border-white/10 max-h-64 overflow-y-auto custom-scrollbar">
+                        <div className="mt-2 p-3 rounded-lg border border-white/[0.08] font-mono text-[10px] leading-[1.5] max-h-64 overflow-y-auto custom-scrollbar" style={{ background: '#08090c' }}>
                           {rebootStatus.logs.map((log: any, idx: number) => (
                             <div key={idx} className="mb-1 break-all">
-                              <span className="text-white/40">[{log.timestamp}]</span>{' '}
-                              <span className={`font-bold ${log.level === 'error' ? 'text-red-400' :
-                                log.level === 'warning' ? 'text-yellow-400' :
-                                  log.level === 'success' ? 'text-green-400' :
-                                    log.level === 'restart' ? 'text-blue-400' :
-                                      log.level === 'api' ? 'text-purple-400' :
+                              <span className="text-[#3d4450]">[{log.timestamp}]</span>{' '}
+                              <span className={`font-bold ${log.level === 'error' ? 'text-[#f87c7c]' :
+                                log.level === 'warning' ? 'text-[#ffa348]' :
+                                  log.level === 'success' ? 'text-[#4ade80]' :
+                                    log.level === 'restart' ? 'text-[#5b8af5]' :
+                                      log.level === 'api' ? 'text-[#9a8af0]' :
                                         'text-white/40'
                                 }`}>
                                 [{log.level?.toUpperCase() || 'INFO'}]
@@ -908,34 +905,35 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
                 </div>
               )}
 
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <p className="text-sm font-medium text-white/80">
-                    {t('serverReboot.confirmMessage')}
-                  </p>
-                  <ul className="text-sm text-white/60 space-y-1 ml-4 list-disc list-outside">
-                    <li>{t('serverReboot.confirmList.interrupt')}</li>
-                    <li>{t('serverReboot.confirmList.reload')}</li>
-                    <li>{t('serverReboot.confirmList.clear')}</li>
-                    <li>{t('serverReboot.confirmList.time')}</li>
-                  </ul>
+              <div className="space-y-3">
+                <div className="rounded-xl p-3 border" style={{ background: 'rgba(240,171,82,0.05)', borderColor: 'rgba(240,171,82,0.22)' }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertCircle className="h-3.5 w-3.5 text-[#e0a860]" strokeWidth={1.8} />
+                    <span className="text-[12.5px] font-semibold text-[#e8c496]">{t('serverReboot.confirmMessage')}</span>
+                  </div>
+                  <div className="flex flex-col gap-1.5 text-[11.5px] leading-[1.5] text-[#a89478]">
+                    <div>· {t('serverReboot.confirmList.interrupt')}</div>
+                    <div>· {t('serverReboot.confirmList.reload')}</div>
+                    <div>· {t('serverReboot.confirmList.clear')}</div>
+                    <div>· {t('serverReboot.confirmList.time')}</div>
+                  </div>
                 </div>
 
                 <Button
                   onClick={handleReboot}
                   disabled={!canReboot}
-                  className="w-full h-12 bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-700 hover:to-orange-700 text-white shadow-lg shadow-red-900/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full h-[46px] rounded-[10px] border text-[13.5px] font-semibold bg-[#f25555]/[0.12] border-[#f25555]/[0.32] text-[#f87c7c] hover:bg-[#f25555]/[0.2] shadow-none disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isRebooting ? (
                     <>
-                      <Loader2 className="h-5 w-5 mr-2 animate-spin" />
+                      <Loader2 className="h-[15px] w-[15px] mr-2 animate-spin" />
                       {rebootStatus.phase === 'rebooting' ? 'Rebooting...' :
                         rebootStatus.phase === 'waiting' ? t('serverReboot.waiting') :
                           t('serverReboot.processing')}
                     </>
                   ) : (
                     <>
-                      <RotateCcw className="h-5 w-5 mr-2" />
+                      <RotateCcw className="h-[15px] w-[15px] mr-2" strokeWidth={1.8} />
                       {t('serverReboot.button')}
                     </>
                   )}
@@ -943,8 +941,8 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
 
                 {!canReboot && !isRebooting && (
                   <div className="p-3 bg-white/5 border border-white/10 rounded-lg">
-                    <p className="text-sm font-medium text-white/70 mb-2">{t('serverReboot.unavailableReasons.title')}</p>
-                    <div className="text-sm text-white/50 space-y-1 ml-2">
+                    <p className="text-[12px] font-medium text-white/70 mb-2">{t('serverReboot.unavailableReasons.title')}</p>
+                    <div className="text-[12px] text-white/50 space-y-1 ml-2">
                       {!(isConnected && hasExtension) &&
                         !(watchdogStatus.available && watchdogStatus.running) && (
                           <p>• {t('serverReboot.unavailableReasons.noService')}</p>
@@ -964,23 +962,19 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
           </Card>
 
           {/* Help Information */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-white/90">
-                <Info className="h-5 w-5 text-cyan-400" />
-                <span>{t('serverReboot.helpTitle')}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm text-white/60">
-                <p>• {t('serverReboot.helpList.1')}</p>
-                <p>• {t('serverReboot.helpList.2')}</p>
-                <p>• {t('serverReboot.helpList.3')}</p>
-                <p>• {t('serverReboot.helpList.4')}</p>
-                <p>• {t('serverReboot.helpList.5')}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="border border-white/[0.08] rounded-xl p-3.5" style={{ background: 'rgba(255,255,255,0.025)' }}>
+            <div className="flex items-center gap-2 mb-2.5">
+              <Info className="h-3.5 w-3.5 text-[#5b8af5]" strokeWidth={1.8} />
+              <span className="text-[13px] font-semibold text-[#e9ebef]">{t('serverReboot.helpTitle')}</span>
+            </div>
+            <div className="flex flex-col gap-[7px] text-[11.5px] leading-[1.55] text-[#8a919e]">
+              <div>· {t('serverReboot.helpList.1')}</div>
+              <div>· {t('serverReboot.helpList.2')}</div>
+              <div>· {t('serverReboot.helpList.3')}</div>
+              <div>· {t('serverReboot.helpList.4')}</div>
+              <div>· {t('serverReboot.helpList.5')}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

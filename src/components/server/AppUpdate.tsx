@@ -147,11 +147,11 @@ export const AppUpdate: React.FC = () => {
     if (!isConnected) {
         return (
             <div className="bg-black transition-colors duration-300 pwa-container h-[100dvh] flex items-center justify-center p-4">
-                <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" />
-                <div className="relative z-10 p-8 max-w-md w-full bg-white/40 dark:bg-slate-800/20 backdrop-blur-xl rounded-2xl border border-white/20 dark:border-slate-700/30 text-center shadow-xl">
-                    <Server className="w-12 h-12 mx-auto text-slate-400 mb-4" />
-                    <h2 className="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">ComfyUI Disconnected</h2>
-                    <p className="text-slate-600 dark:text-slate-400 mb-6 text-sm">Please connect to a ComfyUI server first to manage updates.</p>
+                <div className="absolute inset-0 bg-[#0b0c0f]" />
+                <div className="relative z-10 p-4 max-w-md w-full bg-[#101217] rounded-xl border border-white/10 text-center shadow-xl">
+                    <Server className="w-12 h-10 mx-auto text-[#565d6b] mb-4" />
+                    <h2 className="text-[15px] font-bold text-[#e9ebef] mb-2">ComfyUI Disconnected</h2>
+                    <p className="text-[#8a919e] mb-3 text-[12px]">Please connect to a ComfyUI server first to manage updates.</p>
                     <Button onClick={() => navigate(-1)} variant="outline" className="w-full">{t('common.back')}</Button>
                 </div>
             </div>
@@ -165,49 +165,49 @@ export const AppUpdate: React.FC = () => {
             className="bg-black transition-colors duration-300 pwa-container h-[100dvh] fixed inset-0 overflow-hidden"
             style={{ touchAction: 'none' }}
         >
-            <div className="absolute inset-0 bg-gradient-to-br from-slate-50 via-purple-50/20 to-blue-50/20 dark:from-slate-950 dark:via-purple-950/10 dark:to-slate-950" />
+            <div className="absolute inset-0 bg-[#0b0c0f]" />
 
             <div className="absolute inset-0 overflow-y-auto overflow-x-hidden safe-area-inset" style={{ touchAction: 'pan-y' }}>
-                <header className="sticky top-0 z-50 bg-white/40 dark:bg-slate-900/40 backdrop-blur-xl border-b border-white/20 dark:border-slate-800/50 p-4">
+                <header className="sticky top-0 z-50 bg-[#0b0c0f]/95 backdrop-blur-xl border-b border-white/[0.08] p-4">
                     <div className="max-w-2xl mx-auto flex items-center space-x-4">
-                        <Button onClick={() => navigate(-1)} variant="outline" size="icon" className="h-10 w-10 bg-white/20 dark:bg-slate-800/30">
+                        <Button onClick={() => navigate(-1)} variant="outline" size="icon" className="h-9 w-9 bg-white/[0.045] border border-white/[0.08] hover:bg-white/[0.08] rounded-[10px] text-[#c8ccd4]">
                             <ArrowLeft className="h-4 w-4" />
                         </Button>
                         <div>
-                            <h1 className="text-xl font-bold text-slate-900 dark:text-slate-100">{t('appUpdate.title')}</h1>
-                            <p className="text-xs text-slate-500 dark:text-slate-400">{t('appUpdate.subtitle')}</p>
+                            <h1 className="text-[15px] font-bold text-[#e9ebef]">{t('appUpdate.title')}</h1>
+                            <p className="text-xs text-[#71798a]">{t('appUpdate.subtitle')}</p>
                         </div>
                     </div>
                 </header>
 
-                <main className="container mx-auto px-4 py-8 max-w-2xl relative">
-                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
+                <main className="container mx-auto px-4 py-5 max-w-2xl relative">
+                    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-2">
 
-                        <div className="bg-white/50 dark:bg-slate-800/40 backdrop-blur-md border border-slate-200 dark:border-slate-700/50 rounded-3xl p-6 shadow-xl overflow-hidden relative">
+                        <div className="border border-white/[0.08] rounded-xl bg-white/[0.025] p-4 shadow-xl overflow-hidden relative">
                             {/* Version Info Section */}
                             <div className="flex flex-col items-center mb-10 mt-4">
                                 <div className="flex items-center space-x-6">
                                     <div className="text-center group">
-                                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-2">{t('appUpdate.current')}</p>
+                                        <p className="text-[10px] text-[#565d6b] uppercase font-bold tracking-widest mb-2">{t('appUpdate.current')}</p>
                                         <div className="relative">
-                                            <div className="absolute -inset-1 bg-blue-500/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
-                                            <Badge variant="outline" className="relative text-xl px-4 py-2 font-mono bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 shadow-sm">
+                                            <div className="absolute -inset-1 bg-[#3069f0]/20 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity" />
+                                            <Badge variant="outline" className="relative text-[15px] px-4 py-2 font-mono bg-[#101217] border-white/[0.08] shadow-sm">
                                                 {remoteVersion || 'dev'}
                                             </Badge>
                                         </div>
                                     </div>
 
                                     <div className="flex flex-col items-center py-4">
-                                        <div className="w-8 h-[2px] bg-gradient-to-r from-blue-400 to-purple-400 rounded-full opacity-30" />
+                                        <div className="w-8 h-[2px] bg-[#3069f0] rounded-full opacity-30" />
                                     </div>
 
                                     <div className="text-center group">
-                                        <p className="text-[10px] text-slate-400 uppercase font-bold tracking-widest mb-2">{t('appUpdate.latest')}</p>
+                                        <p className="text-[10px] text-[#565d6b] uppercase font-bold tracking-widest mb-2">{t('appUpdate.latest')}</p>
                                         <div className="relative">
-                                            <div className={`absolute -inset-1 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity ${updateInfo?.has_update ? 'bg-purple-500/20' : 'bg-green-500/20'}`} />
-                                            <Badge className={`relative text-xl px-4 py-2 font-mono text-white shadow-lg ${loading ? 'bg-slate-300 dark:bg-slate-700' :
-                                                updateInfo?.has_update ? 'bg-purple-600' :
-                                                    updateInfo ? 'bg-green-600' : 'bg-slate-300 dark:bg-slate-700'
+                                            <div className={`absolute -inset-1 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity ${updateInfo?.has_update ? 'bg-[#3069f0]/20' : 'bg-[#34c77b]/20'}`} />
+                                            <Badge className={`relative text-[15px] px-4 py-2 font-mono text-white shadow-lg ${loading ? 'bg-slate-300 dark:bg-slate-700' :
+                                                updateInfo?.has_update ? 'bg-[#3069f0]' :
+                                                    updateInfo ? 'bg-[#34c77b]' : 'bg-slate-300 dark:bg-slate-700'
                                                 }`}>
                                                 {loading ? '...' : updateInfo?.latest_version || '?'}
                                             </Badge>
@@ -217,75 +217,75 @@ export const AppUpdate: React.FC = () => {
                             </div>
 
                             {/* Status and Action Area */}
-                            <div className="space-y-6">
+                            <div className="space-y-2">
                                 <AnimatePresence mode="wait">
                                     {loading ? (
                                         <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center py-10">
                                             <div className="relative">
-                                                <div className="w-12 h-12 rounded-full border-4 border-purple-500/10 border-t-purple-500 animate-spin" />
+                                                <div className="w-10 h-10 rounded-full border-2 border-white/[0.08] border-t-[#3069f0] animate-spin" />
                                                 <div className="absolute inset-0 flex items-center justify-center">
-                                                    <div className="w-6 h-6 rounded-full border-2 border-blue-500/20 border-b-blue-500 animate-spin-reverse" />
+                                                    <div className="w-6 h-6 rounded-full border-2 border-[#3069f0]/20 border-b-[#5b8af5] animate-spin-reverse" />
                                                 </div>
                                             </div>
-                                            <p className="mt-4 text-sm font-medium text-slate-500 dark:text-slate-400 animate-pulse">{t('appUpdate.checking')}</p>
+                                            <p className="mt-4 text-[12px] font-medium text-[#71798a] animate-pulse">{t('appUpdate.checking')}</p>
                                         </motion.div>
                                     ) : error ? (
-                                        <motion.div key="error" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-5 bg-red-50/50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 rounded-2xl">
+                                        <motion.div key="error" initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="p-5 bg-red-50/50 dark:bg-red-950/20 border border-red-200/50 dark:border-red-900/30 rounded-xl">
                                             <div className="flex items-start space-x-3">
-                                                <AlertCircle className="w-5 h-5 text-red-500 mt-0.5" />
+                                                <AlertCircle className="w-5 h-5 text-[#f25555] mt-0.5" />
                                                 <div className="flex-1">
-                                                    <p className="text-sm font-bold text-red-900 dark:text-red-400">{t('appUpdate.checkFailed')}</p>
+                                                    <p className="text-[12px] font-bold text-red-900 dark:text-[#f87c7c]">{t('appUpdate.checkFailed')}</p>
                                                     <p className="text-xs text-red-700 dark:text-red-300/70 mt-1 leading-relaxed">{error}</p>
                                                 </div>
                                             </div>
-                                            <Button onClick={checkUpdate} variant="outline" size="sm" className="mt-4 w-full h-10 rounded-xl bg-white dark:bg-slate-900 border-red-200 dark:border-red-900 hover:bg-red-50">
+                                            <Button onClick={checkUpdate} variant="outline" size="sm" className="mt-4 w-full h-10 rounded-xl bg-[#f25555]/[0.1] border-[#f25555]/30 text-[#f87c7c] hover:bg-[#f25555]/[0.18]">
                                                 {t('appUpdate.tryAgain')}
                                             </Button>
                                         </motion.div>
                                     ) : updateInfo ? (
-                                        <motion.div key="info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6">
+                                        <motion.div key="info" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-2">
                                             {updateInfo.has_update ? (
-                                                <div className="space-y-4">
+                                                <div className="space-y-2.5">
                                                     <div className="flex items-center justify-between">
-                                                        <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">{t('appUpdate.releaseNotes')}</h3>
-                                                        <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300 px-2 py-0 text-[10px]">{t('appUpdate.newVersion')}</Badge>
+                                                        <h3 className="text-[12px] font-bold text-[#e9ebef]">{t('appUpdate.releaseNotes')}</h3>
+                                                        <Badge variant="secondary" className="bg-[#3069f0]/[0.12] text-[#7ba3f5] border border-[#3069f0]/30 px-2 py-0 font-mono text-[9px]">{t('appUpdate.newVersion')}</Badge>
                                                     </div>
-                                                    <div className="bg-slate-100/50 dark:bg-black/30 p-4 rounded-2xl max-h-60 overflow-y-auto text-sm text-slate-600 dark:text-slate-400 leading-relaxed scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
+                                                    <div className="bg-slate-100/50 dark:bg-black/30 p-4 rounded-xl max-h-60 overflow-y-auto text-[12px] text-[#8a919e] leading-relaxed scrollbar-thin scrollbar-thumb-slate-300 dark:scrollbar-thumb-slate-700">
                                                         {updateInfo.release_notes || t('appUpdate.noNotes')}
                                                     </div>
                                                 </div>
                                             ) : (
-                                                <div className="py-10 flex flex-col items-center bg-green-50/30 dark:bg-green-950/10 rounded-2xl border border-green-100 dark:border-green-900/20">
-                                                    <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mb-4">
-                                                        <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+                                                <div className="py-10 flex flex-col items-center bg-green-50/30 dark:bg-green-950/10 rounded-xl border border-green-100 dark:border-green-900/20">
+                                                    <div className="w-10 h-10 rounded-full bg-[#34c77b]/[0.12] border border-[#34c77b]/30 flex items-center justify-center mb-4">
+                                                        <CheckCircle className="w-8 h-8 text-green-600 dark:text-[#4ade80]" />
                                                     </div>
-                                                    <h3 className="text-lg font-bold text-green-800 dark:text-green-400">{t('appUpdate.upToDate')}</h3>
-                                                    <p className="text-sm text-green-600 dark:text-green-500/70">{t('appUpdate.upToDateDesc')}</p>
+                                                    <h3 className="text-[14px] font-bold text-green-800 dark:text-[#4ade80]">{t('appUpdate.upToDate')}</h3>
+                                                    <p className="text-[12px] text-green-600 dark:text-[#4ade80]/70">{t('appUpdate.upToDateDesc')}</p>
                                                 </div>
                                             )}
 
                                             {/* Progress / Actions */}
                                             {(downloading || updateComplete) && (
-                                                <div className="space-y-3 p-4 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                                <div className="space-y-2 p-4 bg-[#101217] rounded-xl border border-white/[0.08]">
                                                     <div className="flex justify-between items-center text-[10px] font-bold uppercase tracking-wider">
-                                                        <span className="text-purple-600 dark:text-purple-400">{downloadStatus}</span>
-                                                        <span className="text-slate-400">{progress.toFixed(0)}%</span>
+                                                        <span className="text-[#9a8af0]">{downloadStatus}</span>
+                                                        <span className="text-[#565d6b]">{progress.toFixed(0)}%</span>
                                                     </div>
-                                                    <Progress value={progress} className="h-2 bg-slate-100 dark:bg-slate-800" />
+                                                    <Progress value={progress} className="h-1 bg-white/[0.06]" />
                                                 </div>
                                             )}
 
                                             <div className="pt-2">
                                                 {updateComplete ? (
-                                                    <Button onClick={handleRestart} className="w-full h-14 rounded-2xl bg-green-600 hover:bg-green-700 text-white shadow-lg shadow-green-500/20 font-bold transition-transform active:scale-95">
+                                                    <Button onClick={handleRestart} className="w-full h-10 rounded-xl bg-[#34c77b] hover:bg-[#3fd08a] text-white font-semibold transition-transform active:scale-95">
                                                         <RotateCcw className="w-5 h-5 mr-3" /> {t('appUpdate.finishRestart')}
                                                     </Button>
                                                 ) : updateInfo.has_update ? (
-                                                    <div className="space-y-4">
+                                                    <div className="space-y-2.5">
                                                         <Button
                                                             onClick={startUpdate}
                                                             disabled={downloading || isDev}
-                                                            className="w-full h-14 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-500/20 font-bold transition-transform active:scale-95 disabled:opacity-50"
+                                                            className="w-full h-10 rounded-xl bg-[#3069f0] hover:bg-[#3f78f5] text-white font-semibold shadow-[0_2px_12px_rgba(48,105,240,0.3)] transition-transform active:scale-95 disabled:opacity-50"
                                                         >
                                                             {downloading ? (
                                                                 <div className="flex items-center">
@@ -297,13 +297,13 @@ export const AppUpdate: React.FC = () => {
                                                             )}
                                                         </Button>
                                                         {isDev && (
-                                                            <p className="text-center text-xs text-slate-500 dark:text-slate-400 bg-slate-100 dark:bg-slate-900/50 p-2 rounded-lg border border-dashed border-slate-300 dark:border-slate-700">
+                                                            <p className="text-center text-xs text-[#71798a] bg-slate-100 dark:bg-[#101217]/50 p-2 rounded-lg border border-dashed border-slate-300 dark:border-white/[0.08]">
                                                                 {t('appUpdate.devVersionNotice')}
                                                             </p>
                                                         )}
                                                     </div>
                                                 ) : (
-                                                    <Button onClick={checkUpdate} variant="outline" className="w-full h-12 rounded-2xl border-slate-200 dark:border-slate-800 text-slate-500">
+                                                    <Button onClick={checkUpdate} variant="outline" className="w-full h-10 rounded-xl border-white/[0.08] text-[#71798a]">
                                                         {t('appUpdate.recheck')}
                                                     </Button>
                                                 )}
@@ -315,16 +315,16 @@ export const AppUpdate: React.FC = () => {
                         </div>
 
                         {/* Additional Links Card */}
-                        <div className="bg-slate-100/50 dark:bg-slate-900/40 rounded-3xl p-6 border border-slate-200 dark:border-slate-800 flex items-center justify-between">
-                            <div className="flex items-center space-x-3 text-slate-600 dark:text-slate-400">
+                        <div className="bg-slate-100/50 dark:bg-[#101217]/40 rounded-xl p-4 border border-white/[0.08] flex items-center justify-between">
+                            <div className="flex items-center space-x-3 text-[#8a919e]">
                                 <ExternalLink className="w-5 h-5" />
-                                <span className="text-sm font-medium">GitHub Repository</span>
+                                <span className="text-[12px] font-medium">GitHub Repository</span>
                             </div>
                             <Button
                                 variant="ghost"
                                 size="sm"
                                 onClick={() => window.open('https://github.com/jaeone94/comfy-mobile-ui', '_blank')}
-                                className="text-blue-500 hover:text-blue-600"
+                                className="text-[#5b8af5] hover:text-blue-600"
                             >
                                 {t('common.open')}
                             </Button>

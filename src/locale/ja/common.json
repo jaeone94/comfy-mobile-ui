@@ -228,7 +228,8 @@
             "existsTitle": "ワークフローは既に存在します",
             "existsDesc": "{{name}} という名前のワークフローは既にローカルコレクションに存在します。",
             "existsPrompt": "名前を変更して複製を作成し、インポートしますか？",
-            "importAnyway": "とにかくインポート"
+            "importAnyway": "とにかくインポート",
+            "importButton": "インポート"
         },
         "snapshot": {
             "title": "ワークフロースナップショット",

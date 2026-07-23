@@ -863,31 +863,31 @@ const WorkflowList: React.FC = () => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl border border-slate-200 dark:border-slate-700 p-6 space-y-6"
+              className="w-full max-w-[300px] bg-[#101217] rounded-xl shadow-2xl border border-white/10 p-4 space-y-4"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex flex-col items-center text-center space-y-3">
-                <div className="w-14 h-14 rounded-full bg-red-500/10 flex items-center justify-center">
-                  <AlertTriangle className="w-7 h-7 text-red-600 dark:text-red-400" />
+              <div className="flex flex-col items-center text-center gap-2.5">
+                <div className="w-9 h-9 rounded-[10px] border flex items-center justify-center" style={{ background: 'rgba(242,85,85,0.1)', borderColor: 'rgba(242,85,85,0.3)' }}>
+                  <AlertTriangle className="w-4 h-4 text-[#f25555]" strokeWidth={1.8} />
                 </div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+                <h3 className="text-[14px] font-bold text-[#e9ebef] leading-tight">
                   {t('workflow.deleteSelectedConfirm')}
                 </h3>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
+                <p className="text-[11.5px] text-[#8a919e] leading-relaxed">
                   {t('workflow.deleteSelectedMessage')}
                 </p>
               </div>
-              <div className="flex gap-3">
+              <div className="flex gap-2">
                 <Button
                   onClick={() => setShowBulkDeleteConfirm(false)}
                   variant="outline"
-                  className="flex-1 h-12 rounded-xl border-slate-200 dark:border-slate-700"
+                  className="flex-1 h-9 rounded-[10px] text-[12px] bg-white/[0.05] border-white/[0.08] text-[#c8ccd4] hover:bg-white/[0.07]"
                 >
                   {t('common.cancel')}
                 </Button>
                 <Button
                   onClick={handleBulkDelete}
-                  className="flex-1 h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white border-none"
+                  className="flex-1 h-9 rounded-[10px] text-[12px] font-semibold bg-[#f25555] hover:bg-[#f36d6d] text-white border-none"
                 >
                   {t('common.delete')}
                 </Button>

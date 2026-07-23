@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactDOM from 'react-dom';
-import { X, Settings, Server, Download, Upload, RotateCcw, Package, Trash2, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image, ChevronRight, Check } from 'lucide-react';
+import { X, Settings, Server, Download, Upload, RotateCcw, Package, Trash2, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image, ChevronRight, ChevronDown, Check } from 'lucide-react';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { CacheService, CacheClearResult, BrowserCapabilities } from '@/services/cacheService';
 import { useNavigate } from 'react-router-dom';
@@ -37,6 +37,7 @@ const TINT = {
   sync: { bg: 'rgba(79,184,186,.12)', fg: '#56bfc1' },
   models: { bg: 'rgba(240,171,82,.1)', fg: '#e0a860' },
   tools: { bg: 'rgba(122,167,232,.09)', fg: '#8fa8d8' },
+  old: { bg: 'rgba(255,255,255,.05)', fg: '#8a919e' },
 } as const;
 
 const SectionLabel: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -106,6 +107,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
   const [isClearing, setIsClearing] = useState<boolean>(false);
   const [clearResult, setClearResult] = useState<CacheClearResult | null>(null);
   const [, setBrowserCapabilities] = useState<BrowserCapabilities | null>(null);
+  const [isOldOpen, setIsOldOpen] = useState(true);
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { previewMethod, setPreviewMethod } = useLatentPreviewStore();
@@ -234,13 +236,6 @@ const SideMenu: React.FC<SideMenuProps> = ({
               <SectionLabel>{t('menu.navigation')}</SectionLabel>
               <GroupCard>
                 <MenuRow
-                  icon={<LinkIcon className="w-4 h-4" strokeWidth={1.8} />}
-                  tint={TINT.nav}
-                  label={t('menu.chains')}
-                  sub={t('menu.chainsSub')}
-                  onClick={onChainsClick}
-                />
-                <MenuRow
                   icon={<Image className="w-4 h-4" strokeWidth={1.8} />}
                   tint={TINT.nav}
                   label={t('menu.gallery')}
@@ -354,13 +349,6 @@ const SideMenu: React.FC<SideMenuProps> = ({
                   onClick={onVideoDownloadClick}
                 />
                 <MenuRow
-                  icon={<Layers className="w-4 h-4" strokeWidth={1.8} />}
-                  tint={TINT.tools}
-                  label={t('menu.nodePatches')}
-                  sub={t('menu.nodePatchesSub')}
-                  onClick={onWidgetTypeSettingsClick}
-                />
-                <MenuRow
                   icon={<Database className="w-4 h-4" strokeWidth={1.8} />}
                   tint={TINT.tools}
                   label={t('menu.backup')}
@@ -369,6 +357,40 @@ const SideMenu: React.FC<SideMenuProps> = ({
                   divider={false}
                 />
               </GroupCard>
+            </div>
+
+            {/* OLD (legacy features, collapsed by default) */}
+            <div>
+              <button
+                onClick={() => setIsOldOpen((v) => !v)}
+                className="w-full flex items-center gap-2 mb-[9px]"
+              >
+                <span className="font-mono text-[10px] font-semibold text-[#565d6b] tracking-[0.14em] uppercase">OLD</span>
+                <span className="flex-1 h-px bg-white/[0.06]" />
+                <ChevronDown
+                  className={`w-3.5 h-3.5 text-[#565d6b] transition-transform duration-200 ${isOldOpen ? 'rotate-180' : ''}`}
+                  strokeWidth={2}
+                />
+              </button>
+              {isOldOpen && (
+                <GroupCard>
+                  <MenuRow
+                    icon={<LinkIcon className="w-4 h-4" strokeWidth={1.8} />}
+                    tint={TINT.old}
+                    label={t('menu.chains')}
+                    sub={t('menu.chainsSub')}
+                    onClick={onChainsClick}
+                  />
+                  <MenuRow
+                    icon={<Layers className="w-4 h-4" strokeWidth={1.8} />}
+                    tint={TINT.old}
+                    label={t('menu.nodePatches')}
+                    sub={t('menu.nodePatchesSub')}
+                    onClick={onWidgetTypeSettingsClick}
+                    divider={false}
+                  />
+                </GroupCard>
+              )}
             </div>
 
             {/* LANGUAGE */}

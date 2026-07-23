@@ -656,18 +656,18 @@ function drawVirtualNodeBracket(
 
   // Set stroke style based on state
   if (isError) {
-    ctx.strokeStyle = '#ef4444';
+    ctx.strokeStyle = '#f25555';
     ctx.lineWidth = 4;
   } else if (isExecuting) {
-    ctx.strokeStyle = '#10b981';
+    ctx.strokeStyle = '#34c77b';
     ctx.lineWidth = 4;
     // Add glow for executing state
-    ctx.shadowColor = '#10b981';
+    ctx.shadowColor = '#34c77b';
     ctx.shadowBlur = 10;
   } else if (isSelected) {
-    ctx.strokeStyle = '#3b82f6';
+    ctx.strokeStyle = '#5b8af5';
     ctx.lineWidth = 4;
-    ctx.shadowColor = '#3b82f6';
+    ctx.shadowColor = '#5b8af5';
     ctx.shadowBlur = 8;
   } else {
     ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
@@ -946,34 +946,34 @@ export function renderNodes(
 
     // Inactive nodes get special colors
     if (isMuted) {
-      backgroundColor = '#3b82f6'; // Blue color for muted nodes
+      backgroundColor = '#3069f0'; // Blue color for muted nodes
     } else if (isBypassed) {
-      backgroundColor = '#9333ea'; // Purple color for bypassed nodes
+      backgroundColor = '#8b7ae8'; // Violet for bypassed nodes
     } else if (isExecuting) {
       // Executing nodes get green background color
-      backgroundColor = '#10b981'; // Green background for executing nodes
+      backgroundColor = '#34c77b'; // Green background for executing nodes
     } else {
       if (node.bgcolor) {
         backgroundColor = node.bgcolor;
       } else {
-        backgroundColor = '#374151';
+        backgroundColor = '#1c212c';
       }
 
       // Simple state modifications without complex color enhancement
       if (isSelected) {
         backgroundColor = config.selectedNodeColor;
       } else if (isConnectionSourceSelected) {
-        backgroundColor = '#1e40af'; // Blue background for selected source node
+        backgroundColor = '#2a56c2'; // Blue background for selected source node
       } else if (isConnectionTargetSelected) {
-        backgroundColor = '#dc2626'; // Red background for selected target node
+        backgroundColor = '#c74848'; // Red background for selected target node
       } else if (isConnectionCompatible) {
-        backgroundColor = '#22c55e'; // Light green for compatible target nodes
+        backgroundColor = '#2ea56a'; // Light green for compatible target nodes
       } else if (isCollapsed) {
         backgroundColor = darkenColor(backgroundColor, 0.15); // Simple darkening for collapsed
       }
     }
 
-    const cornerRadius = 4;
+    const cornerRadius = 8;
     const isVirtualNode = node.type === 'GraphInput' || node.type === 'GraphOutput';
 
     // Calculate scaling and font sizes early for all nodes
@@ -1028,7 +1028,7 @@ export function renderNodes(
 
         // Create horizontal gradient for progress
         const gradient = ctx.createLinearGradient(bounds.x, bounds.y, bounds.x + bounds.width, bounds.y);
-        const baseGreen = '#10b981';    // Base green for executing nodes
+        const baseGreen = '#34c77b';    // Base green for executing nodes
         const lighterGreen = darkenColor(baseGreen, -0.3); // Lighter version of same color (negative = brighter)
 
         // Add gradient stops based on progress
@@ -1078,7 +1078,7 @@ export function renderNodes(
         ctx.beginPath();
         ctx.moveTo(bounds.x, bounds.y + titleHeight);
         ctx.lineTo(bounds.x + bounds.width, bounds.y + titleHeight);
-        ctx.strokeStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
         ctx.lineWidth = 1;
         ctx.stroke();
       }
@@ -1086,7 +1086,7 @@ export function renderNodes(
 
     // Always draw subtle white outline for all nodes (Skip for virtual nodes as they have their own bracket line)
     if (!isVirtualNode) {
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)'; // 20% opacity white
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.09)'; // hairline outline
       ctx.lineWidth = 1;
       ctx.beginPath();
       ctx.roundRect(bounds.x, bounds.y, bounds.width, bounds.height, cornerRadius);
@@ -1099,25 +1099,25 @@ export function renderNodes(
         let lineWidth = 2;
 
         if (isMissingNodeType) {
-          strokeColor = '#dc2626'; // Red border for missing node types
+          strokeColor = '#f25555'; // Red border for missing node types
           lineWidth = 3;
         } else if (isError) {
-          strokeColor = '#ef4444'; // Simple red for errors
+          strokeColor = '#f25555'; // Simple red for errors
           lineWidth = 2;
         } else if (hasModifications) {
-          strokeColor = '#10b981'; // Simple green for nodes with temporary changes
+          strokeColor = '#34c77b'; // Simple green for nodes with temporary changes
           lineWidth = 6;
         } else if (isRepositionSelected) {
-          strokeColor = '#3b82f6'; // Blue for repositioning selection
+          strokeColor = '#5b8af5'; // Blue for repositioning selection
           lineWidth = 3;
         } else if (isConnectionSourceSelected) {
-          strokeColor = '#3b82f6'; // Bright blue border for source node
+          strokeColor = '#5b8af5'; // Bright blue border for source node
           lineWidth = 4;
         } else if (isConnectionTargetSelected) {
-          strokeColor = '#ef4444'; // Bright red border for target node
+          strokeColor = '#f25555'; // Bright red border for target node
           lineWidth = 4;
         } else if (isConnectionCompatible) {
-          strokeColor = '#16a34a'; // Green border for compatible nodes
+          strokeColor = '#34c77b'; // Green border for compatible nodes
           lineWidth = 3;
         }
 

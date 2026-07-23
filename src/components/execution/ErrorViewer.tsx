@@ -339,7 +339,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
   
   return (
     <div 
-      className="fixed inset-0 flex items-center justify-center z-[9999] p-4 bg-black/30 backdrop-blur-sm pwa-modal"
+      className="fixed inset-0 flex items-center justify-center z-[9999] p-4 bg-black/60 backdrop-blur-sm pwa-modal"
       onClick={handleBackdropClick}
       style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0 }}
     >
@@ -353,7 +353,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
           exit={{ x: 300, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl max-h-[90vh] overflow-y-auto"
+          className="w-full max-w-lg max-h-[82vh] overflow-y-auto"
           style={{
             touchAction: 'pan-y pinch-zoom',
             overscrollBehaviorX: 'none'
@@ -366,7 +366,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
           }}
         >
           <div className={cn(
-            'bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl overflow-hidden',
+            'bg-[#101217] border border-white/10 rounded-xl shadow-2xl overflow-hidden',
             className
           )}
           style={{
@@ -380,7 +380,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
             e.stopPropagation();
           }}>
             {/* Technical Details Header */}
-            <div className="p-6 pb-3">
+            <div className="p-4 pb-2.5">
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
                   <Button 
@@ -392,8 +392,8 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
                     <ArrowLeft className="h-4 w-4" />
                   </Button>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Raw Details</h2>
-                    <p className="mt-1 text-sm text-white/70">
+                    <h2 className="text-[14px] font-bold text-[#e9ebef]">Raw Details</h2>
+                    <p className="mt-0.5 text-[11.5px] leading-relaxed text-[#8a919e]">
                       Node: {technicalDetailsError.nodeTitle || technicalDetailsError.nodeId}
                       {technicalDetailsError.nodeType && (
                         <span className="ml-2 text-xs">({technicalDetailsError.nodeType})</span>
@@ -442,7 +442,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
                   </Button>
                 </div>
                 <div 
-                  className="p-3 bg-black/20 backdrop-blur-sm rounded-md max-h-96 overflow-auto"
+                  className="p-2.5 bg-[#08090c] border border-white/[0.06] rounded-lg max-h-80 overflow-auto"
                   style={{
                     touchAction: 'pan-y pinch-zoom',
                     overscrollBehaviorX: 'none'
@@ -483,7 +483,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
           exit={{ x: -300, opacity: 0 }}
           transition={{ duration: 0.3, ease: "easeInOut" }}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl max-h-[90vh]"
+          className="w-full max-w-lg max-h-[82vh]"
           style={{
             touchAction: 'pan-y pinch-zoom',
             overscrollBehaviorX: 'none'
@@ -504,14 +504,14 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
           }}
         >
           <div className={cn(
-            'bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-2xl',
+            'bg-[#101217] border border-white/10 rounded-xl shadow-2xl',
             processedErrors.length === 1 ? 'overflow-y-auto' : 'overflow-hidden',
             className
           )}
           style={{
             touchAction: 'pan-y pinch-zoom',
             overscrollBehaviorX: 'none',
-            maxHeight: '90vh'
+            maxHeight: '82vh'
           } as React.CSSProperties}
           onTouchStart={(e) => {
             e.stopPropagation();
@@ -529,7 +529,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
           }}>
             {/* Modal Header */}
             <div 
-              className="p-6 pb-3"
+              className="p-4 pb-2.5"
               style={{
                 touchAction: 'pan-y pinch-zoom',
                 overscrollBehaviorX: 'none'
@@ -543,11 +543,11 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
             >
               <div className="flex items-start justify-between">
                 <div className="flex items-start gap-3">
-                  <AlertCircle className={cn('h-5 w-5 mt-0.5', criticalErrors.length > 0 ? 'text-red-400' : 'text-yellow-400')} />
+                  <AlertCircle className={cn('h-5 w-5 mt-0.5', criticalErrors.length > 0 ? 'text-[#f87c7c]' : 'text-[#ffa348]')} />
                   <div>
-                    <h2 className="text-lg font-semibold text-white">Workflow Execution Failed</h2>
-                    <p className="mt-1 text-sm text-white/70">
-                      {workflowName && <span className="font-medium text-white/80">{workflowName}: </span>}
+                    <h2 className="text-[14px] font-bold text-[#e9ebef]">Workflow Execution Failed</h2>
+                    <p className="mt-0.5 text-[11.5px] leading-relaxed text-[#8a919e]">
+                      {workflowName && <span className="font-medium text-[#c8ccd4]">{workflowName}: </span>}
                       {processedErrors.length} {processedErrors.length === 1 ? 'error' : 'errors'} occurred during execution
                       {promptId && (
                         <span className="text-xs text-white/50 ml-2">
@@ -636,7 +636,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
                       <Button
                         size="sm"
                         onClick={() => handleFixNode(nodeError.nodeId)}
-                        className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-red-400/50 text-red-400 hover:text-red-300 hover:border-red-300/60 shadow-lg hover:shadow-xl transition-all duration-200"
+                        className="bg-[#f25555]/[0.1] hover:bg-[#f25555]/[0.18] border border-[#f25555]/30 text-[#f87c7c] transition-all duration-200"
                       >
                         <Wrench className="h-3 w-3 mr-1" />
                         Fix Node
@@ -645,14 +645,14 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
                   </div>
 
                   {/* Error Message */}
-                  <div className="p-2 bg-black/20 backdrop-blur-sm rounded relative overflow-hidden">
+                  <div className="p-2 bg-[#08090c] border border-white/[0.06] rounded-lg relative overflow-hidden">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-red-400 mb-1">
+                        <p className="text-[11.5px] font-semibold text-[#f87c7c] mb-1">
                           {nodeError.error?.type || 'Error'}
                         </p>
                         <div 
-                          className="text-xs text-white/70 max-h-10 overflow-y-auto pr-8" 
+                          className="font-mono text-[10.5px] text-[#9aa3b2] max-h-10 overflow-y-auto pr-8" 
                           style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}
                         >
                           {formatErrorMessage(nodeError)}
@@ -687,11 +687,11 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
                   {/* Suggestions */}
                   {suggestions.length > 0 && (
                     <div className="space-y-1 mt-3">
-                      <p className="text-xs font-medium flex items-center gap-1 text-white">
-                        <Info className="h-3 w-3 text-blue-400" />
+                      <p className="text-[10.5px] font-medium flex items-center gap-1 text-[#c8ccd4]">
+                        <Info className="h-3 w-3 text-[#5b8af5]" />
                         Suggested Solutions:
                       </p>
-                      <ul className="text-xs text-white/70 space-y-0.5 ml-4">
+                      <ul className="text-[10.5px] text-[#8a919e] space-y-0.5 ml-4">
                         {suggestions.map((suggestion, i) => (
                           <li key={i} className="list-disc list-outside">
                             {suggestion}
@@ -769,7 +769,7 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
                         <Button
                           size="sm"
                           onClick={() => handleFixNode(nodeError.nodeId)}
-                          className="bg-white/10 hover:bg-white/20 backdrop-blur-sm border border-red-400/50 text-red-400 hover:text-red-300 hover:border-red-300/60 shadow-lg hover:shadow-xl transition-all duration-200"
+                          className="bg-[#f25555]/[0.1] hover:bg-[#f25555]/[0.18] border border-[#f25555]/30 text-[#f87c7c] transition-all duration-200"
                         >
                           <Wrench className="h-3 w-3 mr-1" />
                           Fix Node
@@ -778,14 +778,14 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
                     </div>
 
                     {/* Error Message */}
-                    <div className="p-2 bg-black/20 backdrop-blur-sm rounded relative overflow-hidden">
+                    <div className="p-2 bg-[#08090c] border border-white/[0.06] rounded-lg relative overflow-hidden">
                       <div className="flex items-start justify-between">
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-red-400 mb-1">
+                          <p className="text-[11.5px] font-semibold text-[#f87c7c] mb-1">
                             {nodeError.error?.type || 'Error'}
                           </p>
                           <div 
-                            className="text-xs text-white/70 max-h-10 overflow-y-auto pr-8" 
+                            className="font-mono text-[10.5px] text-[#9aa3b2] max-h-10 overflow-y-auto pr-8" 
                             style={{ wordBreak: 'break-all', overflowWrap: 'anywhere' }}
                           >
                             {formatErrorMessage(nodeError)}
@@ -831,11 +831,11 @@ export const ExecutionErrorDisplay: React.FC<ExecutionErrorDisplayProps> = ({
               
               return suggestions.length > 0 && (
                 <div className="space-y-1 mt-3">
-                  <p className="text-xs font-medium flex items-center gap-1 text-white">
-                    <Info className="h-3 w-3 text-blue-400" />
+                  <p className="text-[10.5px] font-medium flex items-center gap-1 text-[#c8ccd4]">
+                    <Info className="h-3 w-3 text-[#5b8af5]" />
                     Suggested Solutions:
                   </p>
-                  <ul className="text-xs text-white/70 space-y-0.5 ml-4">
+                  <ul className="text-[10.5px] text-[#8a919e] space-y-0.5 ml-4">
                     {suggestions.map((suggestion, i) => (
                       <li key={i} className="list-disc list-outside">
                         {suggestion}

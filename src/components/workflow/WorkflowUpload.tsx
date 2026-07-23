@@ -225,10 +225,7 @@ const WorkflowUpload: React.FC = () => {
       }}
     >
       {/* Main Background with Dark Theme */}
-      <div className="absolute inset-0 bg-[#374151]" />
-
-      {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[#0b0c0f]" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -242,7 +239,7 @@ const WorkflowUpload: React.FC = () => {
         }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
+        <header className="sticky top-0 z-50 pwa-header bg-[#0b0c0f]/95 backdrop-blur-xl border-b border-white/[0.08] relative overflow-hidden">
           <div className="relative z-10 p-4">
             <div className="flex items-center space-x-3">
               <Button
@@ -252,16 +249,16 @@ const WorkflowUpload: React.FC = () => {
                 }}
                 variant="ghost"
                 size="sm"
-                className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
+                className="bg-white/[0.045] border border-white/[0.08] hover:bg-white/[0.08] transition-all h-9 w-9 p-0 flex-shrink-0 rounded-[10px] text-[#c8ccd4]"
                 style={{ touchAction: 'manipulation' }}
               >
                 <ArrowLeft className="w-4 h-4" />
               </Button>
               <div>
-                <h1 className="text-lg font-bold text-white/95 leading-none">
+                <h1 className="text-[15px] font-bold text-[#e9ebef] leading-none">
                   {t('workflow.upload.title')}
                 </h1>
-                <p className="text-[11px] text-white/40 mt-1">
+                <p className="font-mono text-[9px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-1">
                   {t('workflow.upload.subtitle')}
                 </p>
               </div>
@@ -270,21 +267,21 @@ const WorkflowUpload: React.FC = () => {
         </header>
 
         {/* Content */}
-        <div className="container mx-auto px-6 py-8 max-w-4xl">
+        <div className="container mx-auto px-4 py-5 max-w-4xl">
 
           {/* Server Requirements Check */}
           {(isCheckingExtension || !isConnected || !hasExtension) && (
-            <Card className="mb-6 border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
+            <Card className="mb-3 border border-white/[0.08] bg-white/[0.025] shadow-none">
               <CardHeader>
                 <CardTitle className="text-white/90 flex items-center gap-2">
-                  <Server className="h-5 w-5 text-blue-400" />
+                  <Server className="h-4 w-4 text-[#5b8af5]" />
                   {t('common.serverRequirements')}
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-2.5">
                 {isCheckingExtension ? (
                   <div className="flex items-center space-x-3">
-                    <Loader2 className="h-4 w-4 animate-spin text-blue-400" />
+                    <Loader2 className="h-4 w-4 animate-spin text-[#5b8af5]" />
                     <span className="text-white/70">
                       {t('common.checkingServer')}
                     </span>
@@ -296,12 +293,12 @@ const WorkflowUpload: React.FC = () => {
                       <span className="text-white/70 font-medium">{t('common.serverConnection')}</span>
                       <div className="flex items-center gap-2">
                         {isConnected ? (
-                          <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                          <Badge className="bg-[#34c77b]/10 text-[#4ade80] border-[#34c77b]/20">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             {t('common.connected')}
                           </Badge>
                         ) : (
-                          <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                          <Badge variant="destructive" className="bg-[#f25555]/20 text-[#f87c7c] border-[#f25555]/30">
                             <AlertCircle className="h-3 w-3 mr-1" />
                             {t('common.notConnected')}
                           </Badge>
@@ -314,12 +311,12 @@ const WorkflowUpload: React.FC = () => {
                       <span className="text-white/70 font-medium">{t('common.extension')}</span>
                       <div className="flex items-center gap-2">
                         {hasExtension ? (
-                          <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                          <Badge className="bg-[#34c77b]/10 text-[#4ade80] border-[#34c77b]/20">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             {t('common.available')}
                           </Badge>
                         ) : (
-                          <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                          <Badge variant="destructive" className="bg-[#f25555]/20 text-[#f87c7c] border-[#f25555]/30">
                             <AlertCircle className="h-3 w-3 mr-1" />
                             {t('common.notFound')}
                           </Badge>
@@ -331,25 +328,25 @@ const WorkflowUpload: React.FC = () => {
                     {(!isConnected || !hasExtension) && (
                       <div className="space-y-2">
                         {!serverUrl && (
-                          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-red-400 text-sm">
+                          <div className="p-3 bg-[#f25555]/10 border border-[#f25555]/20 rounded-lg flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-[#f87c7c] flex-shrink-0 mt-0.5" />
+                            <span className="text-[#f87c7c] text-[12px]">
                               {t('workflow.import.noServerUrl')}
                             </span>
                           </div>
                         )}
                         {!isConnected && serverUrl && (
-                          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-red-400 text-sm">
+                          <div className="p-3 bg-[#f25555]/10 border border-[#f25555]/20 rounded-lg flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-[#f87c7c] flex-shrink-0 mt-0.5" />
+                            <span className="text-[#f87c7c] text-[12px]">
                               {t('workflow.import.notConnected')}
                             </span>
                           </div>
                         )}
                         {isConnected && !hasExtension && (
-                          <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
-                            <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-                            <span className="text-red-400 text-sm">
+                          <div className="p-3 bg-[#f25555]/10 border border-[#f25555]/20 rounded-lg flex items-start gap-2">
+                            <AlertCircle className="h-4 w-4 text-[#f87c7c] flex-shrink-0 mt-0.5" />
+                            <span className="text-[#f87c7c] text-[12px]">
                               {t('workflow.import.extensionNotFound')}
                             </span>
                           </div>
@@ -397,9 +394,9 @@ const WorkflowUpload: React.FC = () => {
 
           {/* Error Display */}
           {error && (
-            <div className="mb-6 p-3 bg-red-500/10 border border-red-500/20 rounded-lg flex items-start gap-2">
-              <AlertCircle className="h-4 w-4 text-red-400 flex-shrink-0 mt-0.5" />
-              <span className="text-red-400 text-sm">
+            <div className="mb-3 p-3 bg-[#f25555]/10 border border-[#f25555]/20 rounded-lg flex items-start gap-2">
+              <AlertCircle className="h-4 w-4 text-[#f87c7c] flex-shrink-0 mt-0.5" />
+              <span className="text-[#f87c7c] text-[12px]">
                 {error}
               </span>
             </div>
@@ -409,7 +406,7 @@ const WorkflowUpload: React.FC = () => {
           {isLoading && (
             <div className="flex items-center justify-center min-h-[200px]">
               <div className="text-center">
-                <Loader2 className="h-12 w-12 animate-spin mx-auto mb-4 text-indigo-400" />
+                <Loader2 className="h-10 w-12 animate-spin mx-auto mb-4 text-[#5b8af5]" />
                 <p className="text-white/70">{t('workflow.upload.loadingLocal')}</p>
               </div>
             </div>
@@ -417,9 +414,9 @@ const WorkflowUpload: React.FC = () => {
 
           {/* Local Workflows List */}
           {!isLoading && (
-            <div className="space-y-4">
+            <div className="space-y-2.5">
               {/* Search Bar and Count */}
-              <div className="space-y-3">
+              <div className="space-y-2">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-white/40" />
                   <input
@@ -427,7 +424,7 @@ const WorkflowUpload: React.FC = () => {
                     placeholder={t('common.searchWorkflows')}
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-9 py-2 bg-black/20 border border-white/10 rounded-xl text-white/90 placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all text-sm h-10"
+                    className="w-full pl-9 pr-9 bg-white/[0.045] border border-white/[0.08] rounded-[10px] text-[#e9ebef] placeholder:text-[#71798a] focus:outline-none focus:border-[#3069f0]/50 transition-all text-[12.5px] h-[42px]"
                   />
                   {searchQuery && (
                     <button
@@ -438,10 +435,11 @@ const WorkflowUpload: React.FC = () => {
                     </button>
                   )}
                 </div>
-                <div className="flex items-center justify-between px-1">
-                  <h2 className="text-sm font-medium text-white/70">
+                <div className="flex items-center gap-2 px-0.5">
+                  <h2 className="font-mono text-[10px] font-semibold text-[#565d6b] tracking-[0.14em] uppercase whitespace-nowrap">
                     {searchQuery ? t('workflow.upload.foundCount', { count: filteredWorkflows.length }) : t('workflow.upload.localWorkflows', { count: localWorkflows.length })}
                   </h2>
+                  <div className="flex-1 h-px bg-white/[0.06]" />
                   <Button
                     variant="ghost"
                     size="sm"
@@ -459,60 +457,52 @@ const WorkflowUpload: React.FC = () => {
               {filteredWorkflows.length === 0 ? (
                 <Card className="bg-black/20 border-white/5">
                   <CardContent className="py-12 text-center">
-                    <Upload className="h-12 w-12 mx-auto mb-4 text-white/20" />
+                    <Upload className="h-10 w-12 mx-auto mb-4 text-white/20" />
                     <p className="text-white/60">
                       {searchQuery ? t('workflow.upload.noResultsQuery') : t('workflow.upload.noWorkflowsAvailable')}
                     </p>
-                    <p className="text-white/30 text-sm mt-2">
+                    <p className="text-white/30 text-[12px] mt-2">
                       {searchQuery ? t('workflow.upload.tryDifferent') : t('workflow.upload.createFirst')}
                     </p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="grid gap-2">
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-2">
                   {filteredWorkflows.map((workflow, index) => (
                     <div
                       key={workflow.id}
-                      className="transition-all duration-300 ease-in-out"
+                      className="min-w-0 transition-all duration-300 ease-in-out"
                     >
-                      <Card className={`border border-white/5 bg-black/20 backdrop-blur-sm hover:bg-white/5 transition-all group ${isUploading === workflow.id ? 'opacity-70 pointer-events-none' : ''
+                      <Card className={`border border-white/5 bg-white/[0.025] hover:bg-white/5 transition-all group ${isUploading === workflow.id ? 'opacity-70 pointer-events-none' : ''
                         }`}>
-                        <CardContent className="p-3">
+                        <CardContent className="px-3 py-3">
                           <div className="flex gap-3 items-center w-full">
                             <div className="flex-1 min-w-0">
-                              <h3 className="font-medium text-white/95 mb-1 break-all text-sm leading-tight">
+                              <h3 className="text-[13px] font-semibold text-[#e9ebef] leading-[1.35] line-clamp-1 break-all">
                                 {workflow.name || t('workflow.newWorkflowName')}
                               </h3>
-                              <div className="flex flex-wrap items-center gap-1.5 text-xs text-white/40 font-mono">
-                                <Badge variant="outline" className="bg-white/5 border-white/5 text-white/40 text-[10px] h-4 px-1.5 min-h-[16px] flex items-center">
-                                  {formatFileSize(workflow.workflow_json)}
-                                </Badge>
-                                <span className="truncate text-[10px]">
-                                  {formatDate(workflow.modifiedAt || new Date())}
-                                </span>
-                                <span className="text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded ml-1 text-[10px] h-4 flex items-center">
-                                  {(workflow.workflow_json && typeof workflow.workflow_json === 'object' && 'nodes' in workflow.workflow_json && Array.isArray(workflow.workflow_json.nodes) ? workflow.workflow_json.nodes.length : 0)} NODES
-                                </span>
+                              <div className="flex items-center gap-1.5 mt-1 font-mono text-[10px] text-[#565d6b] whitespace-nowrap">
+                                <span>{formatDate(workflow.modifiedAt || new Date())}</span>
+                                <span className="text-[#31363f]">·</span>
+                                <span>{formatFileSize(workflow.workflow_json)}</span>
+                                <span className="text-[#31363f]">·</span>
+                                <span className="text-[#5b8af5]">{(workflow.workflow_json && typeof workflow.workflow_json === 'object' && 'nodes' in workflow.workflow_json && Array.isArray(workflow.workflow_json.nodes) ? workflow.workflow_json.nodes.length : 0)}N</span>
                               </div>
                             </div>
 
-                            <Button
+                            <button
                               onClick={() => uploadWorkflow(workflow)}
                               disabled={isUploading === workflow.id || !isConnected || !hasExtension}
-                              size="sm"
-                              className="bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white disabled:opacity-70 whitespace-nowrap flex-shrink-0 touch-manipulation min-h-[32px] h-8 px-3 rounded-lg shadow-lg hover:shadow-indigo-500/20 transition-all"
-                              style={{ touchAction: 'manipulation' }}
+                              className="h-8 px-[13px] flex items-center gap-1.5 rounded-lg border text-[11.5px] font-semibold whitespace-nowrap flex-shrink-0 transition-colors disabled:opacity-60"
+                              style={{ background: 'rgba(61,123,253,0.12)', borderColor: 'rgba(61,123,253,0.3)', color: '#7ba3f5', touchAction: 'manipulation' }}
                             >
                               {isUploading === workflow.id ? (
-                                <>
-                                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                </>
+                                <Loader2 className="h-3 w-3 animate-spin" />
                               ) : (
-                                <>
-                                  <Upload className="h-4 w-4" />
-                                </>
+                                <Upload className="h-3 w-3" strokeWidth={1.9} />
                               )}
-                            </Button>
+                              {t('menu.upload')}
+                            </button>
                           </div>
                         </CardContent>
                       </Card>
@@ -528,17 +518,17 @@ const WorkflowUpload: React.FC = () => {
       {/* Override Confirmation Dialog */}
       {overrideDialog.isOpen && (
         <div className="fixed inset-0 pwa-modal z-[65] flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
-          <div className="relative max-w-md w-full bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 flex flex-col overflow-hidden">
+          <div className="relative max-w-[320px] w-full bg-[#101217] rounded-xl shadow-2xl border border-white/10 flex flex-col overflow-hidden">
             {/* Gradient Overlay for Enhanced Glass Effect */}
-            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-slate-900/10 pointer-events-none" />
+            <div className="absolute inset-0 bg-transparent pointer-events-none" />
 
             {/* Dialog Header */}
-            <div className="relative flex items-center justify-between p-4 border-b border-white/10 dark:border-slate-600/10 flex-shrink-0">
+            <div className="relative flex items-center justify-between p-4 border-b border-white/10 dark:border-white/[0.1]/10 flex-shrink-0">
               <div className="flex items-center space-x-2">
                 <div className="w-6 h-6 bg-yellow-500/20 backdrop-blur-sm rounded-full flex items-center justify-center border border-yellow-400/30">
                   <AlertCircle className="w-4 h-4 text-yellow-300" />
                 </div>
-                <h3 className="text-lg font-semibold text-white">
+                <h3 className="text-[14px] font-semibold text-white">
                   {t('workflow.upload.existsTitle')}
                 </h3>
               </div>
@@ -549,13 +539,13 @@ const WorkflowUpload: React.FC = () => {
               <p className="text-white/90 mb-4">
                 {t('workflow.upload.existsDesc', { name: overrideDialog.filename })}
               </p>
-              <p className="text-white/70 text-sm mb-4">
+              <p className="text-white/70 text-[12px] mb-4">
                 {t('workflow.upload.existsPrompt')}
               </p>
             </div>
 
             {/* Dialog Footer */}
-            <div className="relative flex justify-end gap-2 p-4 border-t border-white/10 dark:border-slate-600/10 flex-shrink-0">
+            <div className="relative flex justify-end gap-2 p-4 border-t border-white/10 dark:border-white/[0.1]/10 flex-shrink-0">
               <Button
                 onClick={handleOverrideCancel}
                 variant="outline"
@@ -565,7 +555,7 @@ const WorkflowUpload: React.FC = () => {
               </Button>
               <Button
                 onClick={handleOverrideConfirm}
-                className="bg-red-600 hover:bg-red-700 text-white shadow-sm hover:shadow-md transition-all duration-300"
+                className="bg-[#f25555] hover:bg-[#f36d6d] text-white shadow-sm hover:shadow-md transition-all duration-300"
               >
                 {t('workflow.upload.overwrite')}
               </Button>

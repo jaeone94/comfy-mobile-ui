@@ -3482,10 +3482,18 @@ const WorkflowEditor: React.FC = () => {
   // Render loading state
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" style={{ height: '100dvh' }}>
+      <div
+        className="flex items-center justify-center"
+        style={{
+          height: '100dvh',
+          background: '#0b0c0f',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+        }}
+      >
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
-          <p className="text-muted-foreground">{t('workflow.loading')}</p>
+          <div className="mx-auto mb-4 h-8 w-8 animate-spin rounded-full border-2 border-white/[0.08] border-t-[#3069f0]" />
+          <p className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#565d6b]">{t('workflow.loading')}</p>
         </div>
       </div>
     );
@@ -3494,18 +3502,29 @@ const WorkflowEditor: React.FC = () => {
   // Render error state
   if (error && !workflow) {
     return (
-      <div className="flex items-center justify-center bg-gradient-to-br from-slate-50 via-blue-50/30 to-cyan-50/30 dark:from-slate-950 dark:via-slate-900 dark:to-slate-900" style={{ height: '100dvh' }}>
-        <div className="text-center max-w-md">
-          <div className="text-red-500 mb-4">
-            <svg className="w-16 h-16 mx-auto" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      <div
+        className="flex items-center justify-center px-6"
+        style={{
+          height: '100dvh',
+          background: '#0b0c0f',
+          backgroundImage: 'radial-gradient(rgba(255,255,255,.05) 1px, transparent 1px)',
+          backgroundSize: '22px 22px',
+        }}
+      >
+        <div className="text-center max-w-xs">
+          <div
+            className="mx-auto mb-4 flex h-10 w-10 items-center justify-center rounded-[10px] border"
+            style={{ background: 'rgba(242,85,85,0.1)', borderColor: 'rgba(242,85,85,0.3)' }}
+          >
+            <svg className="h-[18px] w-[18px] text-[#f25555]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
             </svg>
           </div>
-          <h2 className="text-xl font-semibold mb-2">{t('workflow.loadFailed')}</h2>
-          <p className="text-muted-foreground mb-4">{error}</p>
+          <h2 className="mb-1.5 text-[14px] font-bold text-[#e9ebef]">{t('workflow.loadFailed')}</h2>
+          <p className="mb-4 text-[11.5px] leading-relaxed text-[#8a919e]">{error}</p>
           <button
             onClick={() => navigate('/')}
-            className="px-4 py-2 bg-primary text-white rounded hover:bg-primary/90"
+            className="h-9 rounded-[10px] bg-[#3069f0] px-4 text-[12px] font-semibold text-white transition-colors hover:bg-[#3f78f5]"
           >
             {t('workflow.backToList')}
           </button>
@@ -3516,7 +3535,7 @@ const WorkflowEditor: React.FC = () => {
 
   // Main render
   return (
-    <div className="pwa-container relative w-full via-blue-50/30 to-cyan-50/30">
+    <div className="pwa-container relative w-full">
       {/* Header */}
       <WorkflowHeader
         workflow={workflow!}
