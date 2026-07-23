@@ -128,6 +128,22 @@ async def list_files_by_type(request):
 
 
 
+def purge_thumbnail_cache(file_path: str):
+    """Best-effort removal of cached thumbnails for a source file.
+    Privacy: when a user explicitly deletes an image, its low-res copy
+    should not linger in the (restart-volatile) cache either."""
+    try:
+        cache_dir = os.path.join(folder_paths.get_temp_directory(), ".mobile_thumbnails")
+        if not os.path.isdir(cache_dir):
+            return
+        for width in (128, 256, 384, 512):
+            key = hashlib.md5(f"{file_path}_{width}".encode()).hexdigest()
+            cached = os.path.join(cache_dir, f"{key}.jpg")
+            if os.path.exists(cached):
+                os.remove(cached)
+    except Exception:
+        pass
+
 async def delete_files(request):
     """Delete one or multiple files"""
     try:
@@ -189,8 +205,9 @@ async def delete_files(request):
                     })
                     continue
                 
-                # Delete file
+                # Delete file (and any cached thumbnails of it)
                 os.remove(file_path)
+                purge_thumbnail_cache(file_path)
                 deleted_count += 1
                 
                 results.append({
