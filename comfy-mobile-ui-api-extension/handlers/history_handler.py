@@ -39,3 +39,32 @@ async def get_history_list(request):
         return web.json_response(history)
     except Exception as e:
         return web.json_response({"error": str(e)}, status=500)
+
+
+def _strip_queue_item(item):
+    """A queue item is [number, prompt_id, prompt_graph, extra_data,
+    outputs_to_execute]. The mobile UI only reads the prompt_id (index 1) and
+    the item count; the prompt graph + extra_data (which carries the full
+    editor workflow for editor-queued prompts) are pure payload. Keep just
+    [number, prompt_id]."""
+    try:
+        return [item[0], item[1]]
+    except Exception:
+        return item
+
+
+async def get_queue_list(request):
+    """Lightweight queue snapshot: running/pending prompt ids only, no prompt
+    graph or workflow. Same shape as native /queue so the client parses it
+    unchanged."""
+    try:
+        import server
+
+        prompt_queue = server.PromptServer.instance.prompt_queue
+        running, queued = prompt_queue.get_current_queue_volatile()
+        return web.json_response({
+            "queue_running": [_strip_queue_item(x) for x in running],
+            "queue_pending": [_strip_queue_item(x) for x in queued],
+        })
+    except Exception as e:
+        return web.json_response({"error": str(e)}, status=500)
