@@ -17,7 +17,7 @@ import { WorkflowGraphService, serializeGraph, loadWorkflowToGraph, addNodeToWor
 import { SubgraphExtractService } from '@/core/services/SubgraphExtractService';
 import { ConnectionService } from '@/services/ConnectionService';
 import { detectMissingWorkflowNodes, MissingWorkflowNode, resolveMissingNodePackages } from '@/services/MissingNodesService';
-import { detectMissingModels, formatMissingModelsMessage, getUniqueMissingModels } from '@/services/MissingModelsService';
+import { detectMissingModels } from '@/services/MissingModelsService';
 import { ComfyGraph } from '@/core/domain/ComfyGraph';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 
@@ -944,14 +944,8 @@ const WorkflowEditor: React.FC = () => {
       setMissingModels(detectedMissingModels);
 
       if (detectedMissingModels.length > 0) {
-        const uniqueMissingModels = getUniqueMissingModels(detectedMissingModels);
-        const formattedMessage = formatMissingModelsMessage(detectedMissingModels);
-
-        toast.error(`Missing models detected`, {
-          description: `${t('workflow.missingModelsDesc')}\n${formattedMessage}`,
-          duration: 10000,
-        });
-
+        // No toast — the action bar indicator (red dot) already signals this,
+        // and the detector modal is one tap away from there.
         console.warn('Missing models detected:', detectedMissingModels);
       } else {
         setIsMissingModelModalOpen(false);
@@ -965,11 +959,8 @@ const WorkflowEditor: React.FC = () => {
       setMissingNodeIds(missingNodeIdsSet);
 
       if (detectedMissingNodes.length > 0) {
-        const nodeTypeList = Array.from(new Set(detectedMissingNodes.map((node) => node.type))).join(', ');
-        toast.error(`Missing node types detected`, {
-          description: `${t('workflow.missingNodesDesc', { nodeTypeList })}`,
-          duration: 8000,
-        });
+        // No toast — surfaced via the action bar indicator and installer modal.
+        console.warn('Missing node types detected:', detectedMissingNodes.map((node) => node.type));
       } else {
         setIsMissingNodeModalOpen(false);
       }
