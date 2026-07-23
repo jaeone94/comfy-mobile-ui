@@ -297,7 +297,11 @@
             "formatsTitle": "지원되는 형식",
             "formatsDesc": "표준 ComfyUI 워크플로우 JSON 파일 또는 워크플로우 메타데이터가 포함된 PNG 이미지를 업로드할 수 있습니다.",
             "createNew": "새 빈 워크플로우 생성"
-        }
+        },
+        "move": "이동",
+        "deleteSelectedConfirm": "선택한 항목을 삭제할까요?",
+        "deleteSelectedMessage": "선택한 워크플로우는 영구 삭제됩니다. 폴더는 삭제되지만 내용은 상위 폴더로 이동합니다. 되돌릴 수 없습니다.",
+        "selectedCount": "{{count}}개 선택"
     },
     "folder": {
         "title": "폴더",
@@ -320,7 +324,14 @@
         "moveToParent": "상위로 이동",
         "backToParent": "상위로 돌아가기",
         "moveHere": "선택한 항목을 여기로 이동",
-        "goUp": "한 단계 위로"
+        "goUp": "한 단계 위로",
+        "moveTitle": "폴더로 이동",
+        "chooseDestination": "이동할 위치를 선택하세요",
+        "moveIntoNamed": "‘{{name}}’(으)로 이동",
+        "moveIntoHome": "홈으로 이동",
+        "currentLocation": "현재 위치",
+        "noSubfolders": "하위 폴더 없음",
+        "movingItems": "{{count}}개 이동 중"
     },
     "menu": {
         "appTitle": "ComfyUI 모바일",

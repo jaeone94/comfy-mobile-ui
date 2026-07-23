@@ -297,7 +297,11 @@
             "formatsTitle": "Supported Formats",
             "formatsDesc": "You can upload standard ComfyUI workflow JSON files or PNG images that contain embedded workflow metadata.",
             "createNew": "Create New Empty Workflow"
-        }
+        },
+        "move": "Move",
+        "deleteSelectedConfirm": "Delete selected items?",
+        "deleteSelectedMessage": "Selected workflows are permanently deleted. Folders are removed, but their contents move up to the parent. This can't be undone.",
+        "selectedCount": "{{count}} selected"
     },
     "folder": {
         "title": "Folders",
@@ -320,7 +324,14 @@
         "moveToParent": "Move to Parent",
         "backToParent": "Back to Parent",
         "moveHere": "Move selected items here",
-        "goUp": "Go up one level"
+        "goUp": "Go up one level",
+        "moveTitle": "Move to folder",
+        "chooseDestination": "Choose a destination",
+        "moveIntoNamed": "Move to ‘{{name}}’",
+        "moveIntoHome": "Move to Home",
+        "currentLocation": "Current location",
+        "noSubfolders": "No subfolders here",
+        "movingItems": "Moving {{count}}"
     },
     "menu": {
         "appTitle": "ComfyUI Mobile",

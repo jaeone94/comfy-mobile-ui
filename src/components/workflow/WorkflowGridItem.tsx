@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, AlertCircle, Clock, MoreVertical } from 'lucide-react';
+import { FileText, AlertCircle, Clock, Check } from 'lucide-react';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import { generateWorkflowThumbnail } from '@/shared/utils/rendering/CanvasRendererService';
 import { useLongPress } from '@/hooks/useLongPress';
@@ -10,6 +10,7 @@ interface WorkflowGridItemProps {
   onClick: () => void;
   onLongPress: () => void;
   isSelected?: boolean;
+  selectionMode?: boolean;
 }
 
 const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
@@ -17,6 +18,7 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
   onClick,
   onLongPress,
   isSelected = false,
+  selectionMode = false,
 }) => {
   const { t } = useTranslation();
   const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(workflow.thumbnail);
@@ -84,6 +86,18 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
         {/* Selected Overlay */}
         {isSelected && (
           <div className="absolute inset-0 bg-blue-500/20 backdrop-blur-[1px]" />
+        )}
+
+        {/* Selection checkbox */}
+        {selectionMode && (
+          <div
+            className={`absolute top-2 left-2 z-20 w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected
+              ? 'bg-blue-500 border-blue-500 text-white'
+              : 'bg-black/40 border-white/70 text-transparent'
+              }`}
+          >
+            <Check className="w-3.5 h-3.5" />
+          </div>
         )}
       </div>
 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Folder, ChevronRight } from 'lucide-react';
+import { Folder, ChevronRight, Check } from 'lucide-react';
 import { FolderItem } from '@/types/folder';
 import { useLongPress } from '@/hooks/useLongPress';
 
@@ -9,6 +9,7 @@ interface FolderGridItemProps {
   onClick: () => void;
   onLongPress: () => void;
   isSelected?: boolean;
+  selectionMode?: boolean;
   workflowCount?: number;
 }
 
@@ -17,6 +18,7 @@ const FolderGridItem: React.FC<FolderGridItemProps> = ({
   onClick,
   onLongPress,
   isSelected = false,
+  selectionMode = false,
   workflowCount = 0,
 }) => {
   const { t } = useTranslation();
@@ -57,8 +59,19 @@ const FolderGridItem: React.FC<FolderGridItemProps> = ({
           </div>
         </div>
 
-        {/* Arrow Icon */}
-        <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" />
+        {/* Selection checkbox / Arrow Icon */}
+        {selectionMode ? (
+          <div
+            className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center border-2 transition-colors ${isSelected
+              ? 'bg-blue-500 border-blue-500 text-white'
+              : 'bg-transparent border-slate-500 text-transparent'
+              }`}
+          >
+            <Check className="w-3.5 h-3.5" />
+          </div>
+        ) : (
+          <ChevronRight className="w-4 h-4 text-slate-600 group-hover:text-slate-400 transition-colors flex-shrink-0" />
+        )}
       </div>
 
       {/* Hover Gradient Overlay */}

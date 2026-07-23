@@ -296,7 +296,11 @@
             "formatsTitle": "支持的格式",
             "formatsDesc": "您可以上传标准的 ComfyUI 工作流 JSON 文件或包含嵌入式工作流元数据的 PNG 图像。",
             "createNew": "创建新的空工作流"
-        }
+        },
+        "move": "移动",
+        "deleteSelectedConfirm": "删除所选项目？",
+        "deleteSelectedMessage": "所选工作流将被永久删除。文件夹会被删除，但其内容将移至上级文件夹。此操作无法撤销。",
+        "selectedCount": "已选 {{count}} 项"
     },
     "folder": {
         "title": "文件夹",
@@ -319,7 +323,14 @@
         "moveToParent": "移动到父级",
         "backToParent": "返回父级",
         "moveHere": "将所选项目移动到此处",
-        "goUp": "向上一级"
+        "goUp": "向上一级",
+        "moveTitle": "移动到文件夹",
+        "chooseDestination": "选择目标位置",
+        "moveIntoNamed": "移动到‘{{name}}’",
+        "moveIntoHome": "移动到主页",
+        "currentLocation": "当前位置",
+        "noSubfolders": "没有子文件夹",
+        "movingItems": "移动 {{count}} 项"
     },
     "menu": {
         "appTitle": "ComfyUI 移动版",
