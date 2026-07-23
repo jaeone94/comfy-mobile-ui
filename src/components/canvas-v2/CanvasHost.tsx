@@ -78,6 +78,11 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
     if (loadedKeyRef.current === workflowKey) return;
     loadedKeyRef.current = workflowKey;
     clientRef.current?.loadWorkflow(workflowJson);
+    // The bridge already fits after loadGraphData, but the iframe canvas may
+    // not have its final dimensions yet on first show. Re-fit once the layout
+    // has settled so the workflow always lands centered.
+    const fitTimer = setTimeout(() => clientRef.current?.fitView(), 350);
+    return () => clearTimeout(fitTimer);
   }, [isReady, workflowJson, workflowKey]);
 
   return (
