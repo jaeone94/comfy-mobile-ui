@@ -151,7 +151,41 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   }, [isSettingsOpen, isSearchOpen, isConsoleOpen, isHistoryOpen, windowHeight]);
   const navigate = useNavigate();
   const { openPromptHistory } = usePromptHistoryStore();
+  const hasUnseenCompletion = usePromptHistoryStore((s) => s.hasUnseenCompletion);
+  const setPanelOpen = usePromptHistoryStore((s) => s.setPanelOpen);
+  const markWatched = usePromptHistoryStore((s) => s.markWatched);
+  const handleCompletion = usePromptHistoryStore((s) => s.handleCompletion);
   const { id } = useParams<{ id: string }>();
+
+  // Action-bar clock indicator: show a dot only for a run that finished while
+  // the history panel was CLOSED and the user hasn't looked since.
+  // - The panel's open state lives in the store so the (mount-once) completion
+  //   handler reads it live: a run that finishes while the panel is open never
+  //   raises the dot, and opening the panel clears it.
+  // - While the panel is open we record the executing prompt id as "watched",
+  //   so if that run's completion event lands just after the panel closes it is
+  //   still treated as seen. This is the exact case the user hit: watch a run
+  //   finish with the panel open, close it, and the trailing event must not
+  //   light the dot.
+  useEffect(() => {
+    setPanelOpen(isHistoryOpen);
+    return () => setPanelOpen(false);
+  }, [isHistoryOpen, setPanelOpen]);
+  const isHistoryOpenRef = useRef(isHistoryOpen);
+  isHistoryOpenRef.current = isHistoryOpen;
+  useEffect(() => {
+    const onFinished = (event: any) => handleCompletion(event?.data?.prompt_id ?? null);
+    const onWatch = (event: any) => {
+      if (isHistoryOpenRef.current) markWatched(event?.data?.prompt_id ?? null);
+    };
+    const subs = [
+      ['execution_success', globalWebSocketService.on('execution_success', onFinished)],
+      ['execution_error', globalWebSocketService.on('execution_error', onFinished)],
+      ['execution_start', globalWebSocketService.on('execution_start', onWatch)],
+      ['executing', globalWebSocketService.on('executing', onWatch)],
+    ];
+    return () => subs.forEach(([evt, id]) => globalWebSocketService.offById(evt, id));
+  }, [handleCompletion, markWatched]);
   const { url: serverUrl } = useConnectionStore();
   const { t } = useTranslation();
 
@@ -601,6 +635,9 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
             >
               <Clock className="h-4 w-4" />
             </Button>
+            {hasUnseenCompletion && !isHistoryOpen && (
+              <span className="pointer-events-none absolute top-1 right-1 h-2.5 w-2.5 rounded-full bg-red-500 shadow-[0_0_0_1.5px_rgba(255,255,255,0.9)] dark:shadow-[0_0_0_1.5px_rgba(15,23,42,0.8)] animate-pulse" />
+            )}
           </div>
 
           {/* Divider */}

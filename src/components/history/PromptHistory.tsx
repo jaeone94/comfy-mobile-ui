@@ -4,6 +4,7 @@ import { Badge } from '@/components/ui/badge';
 import { X, Clock, CheckCircle, XCircle, AlertTriangle, Loader2, RefreshCw, Eye, Image as ImageIcon, Video, FileText, Layers, ChevronDown } from 'lucide-react';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { usePromptHistoryStore } from '@/ui/store/promptHistoryStore';
+import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import { FilePreviewModal } from '@/components/modals/FilePreviewModal';
 import { JsonViewerModal } from '@/components/modals/JsonViewerModal';
 import { useConnectionStore } from '@/ui/store/connectionStore';
@@ -285,6 +286,35 @@ export const PromptHistoryContent: React.FC<{
       loadOutputHistory();
     }
   }, [activeTab]);
+
+  // Live updates: while the panel is open, refresh when the server reports a
+  // finished run or a queue change, so a completed prompt moves from queue to
+  // history (and new pending items appear) without a manual refresh tap.
+  // Refs keep the WS subscription stable while always calling the latest
+  // fetchers for the active tab.
+  const activeTabRef = useRef(activeTab);
+  activeTabRef.current = activeTab;
+  const refetchRef = useRef<() => void>(() => {});
+  refetchRef.current = () => {
+    if (activeTabRef.current === 'queues') {
+      fetchHistory();
+    } else {
+      loadOutputHistory();
+    }
+  };
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const schedule = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => refetchRef.current(), 500);
+    };
+    const events = ['execution_success', 'execution_error', 'status'];
+    const ids = events.map((evt) => [evt, globalWebSocketService.on(evt, schedule)] as const);
+    return () => {
+      if (timer) clearTimeout(timer);
+      ids.forEach(([evt, id]) => globalWebSocketService.offById(evt, id));
+    };
+  }, []);
 
   const fetchHistory = async () => {
     setIsLoading(true);
