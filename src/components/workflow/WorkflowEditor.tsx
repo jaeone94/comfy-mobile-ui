@@ -1393,10 +1393,9 @@ const WorkflowEditor: React.FC = () => {
   const handleToggleCanvasMode = useCallback(async () => {
     widgetEditor.clearModifications();
     setCanvasDirty(false);
-    setOfficialCanvasEnabled(!officialCanvasEnabled);
-    // A save tapped right before the toggle may still be committing — the
-    // reload below reads storage, so wait for the write or it rebuilds the
-    // graph from the previous json (stale node hints until a full reload).
+    // A save tapped right before the toggle may still be committing — wait
+    // for the write BEFORE flipping: the flip remounts the editor and the
+    // fresh mount reads storage.
     if (pendingCanvasSaveRef.current) {
       try {
         await pendingCanvasSaveRef.current;
@@ -1404,15 +1403,15 @@ const WorkflowEditor: React.FC = () => {
         // Save failures surface through the save path's own error handling
       }
     }
-    // Rebuild the editor model (graph, bounds, sessions) from storage — the
-    // same path as the initial load, so the legacy canvas reflects whatever
-    // was last saved (including official-canvas saves) without a refresh.
-    await loadWorkflow(true);
-    // The legacy renderer caches node card imagery per node id; stale entries
-    // survive the reload and keep drawing old widget previews until cleared.
+    // Stale node-card bitmaps live in a module-level cache keyed by node id
+    // and survive remounts — drop them so the fresh graph redraws clean.
     clearNodeImageCache();
-    canvasRef.current?.dispatchEvent(new Event('imageLoaded'));
-  }, [officialCanvasEnabled, widgetEditor, setOfficialCanvasEnabled]); // eslint-disable-line react-hooks/exhaustive-deps
+    // Flip LAST. The route keys WorkflowEditor by canvas mode, so this
+    // remounts the whole editor: the exact same cold entry path as first
+    // navigation (workflow_json -> graph -> bounds, loading spinner and
+    // all). No partial-reload state can survive the transition.
+    setOfficialCanvasEnabled(!officialCanvasEnabled);
+  }, [officialCanvasEnabled, widgetEditor, setOfficialCanvasEnabled]);
   // #endregion workflow storage actions
 
   // #region prompt actions

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useParams } from 'react-router-dom';
+import { useCanvasV2Store } from '@/ui/store/canvasV2Store';
 import { toast } from 'sonner';
 import WorkflowList from '@/components/workflow/WorkflowList';
 import WorkflowEditor from '@/components/workflow/WorkflowEditor';
@@ -27,6 +28,21 @@ import { PromptHistory } from '@/components/history/PromptHistory';
 import { WorkflowStackPage } from '@/components/workflow/WorkflowStackPage';
 import { AppUpdate } from '@/components/server/AppUpdate';
 import CanvasLabPage from '@/components/canvas/CanvasLabPage';
+
+// Canvas-mode gate: switching Mobile <-> Official remounts the whole editor.
+// Mode switching is data-driven — storage is the only boundary — so entering
+// a mode must run the exact same cold path as first navigation (workflow_json
+// -> graph -> bounds, loading spinner included). Surgical partial reloads
+// kept leaving stale pieces behind (e.g. links drawn from the previous graph).
+const WorkflowEditorRoute: React.FC = () => {
+  const { id } = useParams();
+  const officialCanvasEnabled = useCanvasV2Store((s) => s.officialCanvasEnabled);
+  return (
+    <WorkflowEditor
+      key={`${id ?? ''}:${officialCanvasEnabled ? 'official' : 'mobile'}`}
+    />
+  );
+};
 
 const AppRouter: React.FC = () => {
   const tryAutoConnect = useConnectionStore((state) => state.tryAutoConnect);
@@ -195,7 +211,7 @@ const AppRouter: React.FC = () => {
     <>
       <Routes>
         <Route path="/" element={<WorkflowList />} />
-        <Route path="/workflow/:id" element={<WorkflowEditor />} />
+        <Route path="/workflow/:id" element={<WorkflowEditorRoute />} />
         <Route path="/workflow-stack/:id" element={<WorkflowStackPage />} />
         <Route path="/chains" element={<WorkflowChainList />} />
         <Route path="/chains/create" element={<WorkflowChainEditor />} />
