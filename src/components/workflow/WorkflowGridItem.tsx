@@ -59,8 +59,8 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
         ? 'border-[#3069f0]/70 ring-1 ring-[#3069f0]/40'
         : 'border-white/[0.07] hover:border-white/[0.14]'
         }`}
-      style={{ background: '#101217' }}
       {...longPressProps}
+      style={{ ...longPressProps.style, background: '#101217' }}
     >
       {/* Thumbnail */}
       <div className="relative aspect-[16/10] border-b border-white/[0.06]" style={{ background: '#0c0e12' }}>

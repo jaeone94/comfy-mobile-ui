@@ -28,8 +28,8 @@ const FolderGridItem: React.FC<FolderGridItemProps> = ({
         ? 'border-[#3069f0]/60'
         : 'border-white/[0.08] hover:border-white/[0.16]'
         }`}
-      style={{ background: isSelected ? 'rgba(48,105,240,0.1)' : 'rgba(255,255,255,0.035)' }}
       {...longPressProps}
+      style={{ ...longPressProps.style, background: isSelected ? 'rgba(48,105,240,0.1)' : 'rgba(255,255,255,0.035)' }}
     >
       <Folder className="w-[15px] h-[15px] shrink-0 text-[#5b8af5]" strokeWidth={1.8} />
       <span className="flex-1 min-w-0 truncate text-[12.5px] font-medium text-[#e9ebef]">
