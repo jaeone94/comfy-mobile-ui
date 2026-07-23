@@ -260,10 +260,10 @@ const VideoDownloader: React.FC = () => {
       }}
     >
       {/* Main Background with Dark Theme */}
-      <div className="absolute inset-0 bg-[#374151]" />
+      <div className="absolute inset-0 bg-[#0b0c0f]" />
 
       {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      <div className="hidden" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -275,22 +275,22 @@ const VideoDownloader: React.FC = () => {
         }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
+        <header className="sticky top-0 z-50 pwa-header bg-[#0b0c0f]/95 backdrop-blur-xl border-b border-white/[0.08] relative overflow-hidden">
           <div className="relative z-10 flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <Button
                 onClick={handleBack}
                 variant="ghost"
                 size="sm"
-                className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
+                className="bg-white/[0.045] border border-white/[0.08] hover:bg-white/[0.08] transition-all h-9 w-9 p-0 flex-shrink-0 rounded-[10px] text-[#c8ccd4]"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-lg font-bold text-white/95 leading-none">
+                <h1 className="text-[15px] font-bold text-[#e9ebef] leading-none">
                   {t('videoDownloader.title')}
                 </h1>
-                <p className="text-[11px] text-white/40 mt-1">
+                <p className="font-mono text-[9px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-1">
                   {t('videoDownloader.subtitle')}
                 </p>
               </div>
@@ -307,25 +307,25 @@ const VideoDownloader: React.FC = () => {
           </div>
         </header>
 
-        <div className="container mx-auto px-6 py-8 max-w-4xl space-y-6">
+        <div className="container mx-auto px-4 py-5 max-w-4xl space-y-2">
           {/* Server Requirements Card */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
+          <Card className="border border-white/[0.08] bg-white/[0.025] shadow-none">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2 text-white/90">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
+                <AlertTriangle className="h-4 w-4 text-[#ffa348]" />
                 <span>{t('videoDownloader.requirements')}</span>
               </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-2.5">
               <div className="flex items-center justify-between">
-                <span className="font-medium text-white/70">{t('videoDownloader.serverConnection')}</span>
+                <span className="text-[12.5px] text-[#9aa3b2]">{t('videoDownloader.serverConnection')}</span>
                 {isConnected ? (
-                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                  <Badge className="bg-[#34c77b]/10 text-[#4ade80] border-[#34c77b]/20">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     {t('common.connected')}
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                  <Badge variant="destructive" className="bg-[#f25555]/20 text-[#f87c7c] border-[#f25555]/30">
                     <X className="w-3 h-3 mr-1" />
                     {t('common.disconnected')}
                   </Badge>
@@ -333,19 +333,19 @@ const VideoDownloader: React.FC = () => {
               </div>
 
               <div className="flex items-center justify-between">
-                <span className="font-medium text-white/70">{t('videoDownloader.mobileExtension')}</span>
+                <span className="text-[12.5px] text-[#9aa3b2]">{t('videoDownloader.mobileExtension')}</span>
                 {isCheckingExtension ? (
                   <Badge variant="outline" className="animate-pulse border-white/10 text-white/40">
                     <Loader2 className="w-3 h-3 mr-1 animate-spin" />
                     {t('gallery.server.checking')}
                   </Badge>
                 ) : hasExtension ? (
-                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                  <Badge className="bg-[#34c77b]/10 text-[#4ade80] border-[#34c77b]/20">
                     <CheckCircle className="w-3 h-3 mr-1" />
                     {t('gallery.server.available')}
                   </Badge>
                 ) : (
-                  <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                  <Badge variant="destructive" className="bg-[#f25555]/20 text-[#f87c7c] border-[#f25555]/30">
                     <X className="w-3 h-3 mr-1" />
                     {t('gallery.server.notFound')}
                   </Badge>
@@ -355,14 +355,14 @@ const VideoDownloader: React.FC = () => {
               {downloadStatus && (
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className="font-medium text-white/70">{t('videoDownloader.ytDlp')}</span>
+                    <span className="text-[12.5px] text-[#9aa3b2]">{t('videoDownloader.ytDlp')}</span>
                     {downloadStatus.yt_dlp_available && (
                       <Button
                         onClick={handleUpgradeYtDlp}
                         disabled={isUpgrading}
                         variant="ghost"
                         size="sm"
-                        className="h-6 px-2 text-xs text-blue-400 hover:text-blue-300 hover:bg-blue-500/10"
+                        className="h-6 px-2 text-xs text-[#5b8af5] hover:text-[#7ba3f5] hover:bg-[#3069f0]/10"
                         title={t('videoDownloader.upgradeYtDlp')}
                       >
                         {isUpgrading ? (
@@ -374,12 +374,12 @@ const VideoDownloader: React.FC = () => {
                     )}
                   </div>
                   {downloadStatus.yt_dlp_available ? (
-                    <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
+                    <Badge className="bg-[#34c77b]/10 text-[#4ade80] border-[#34c77b]/20">
                       <CheckCircle className="w-3 h-3 mr-1" />
                       v{downloadStatus.yt_dlp_version}
                     </Badge>
                   ) : (
-                    <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
+                    <Badge variant="destructive" className="bg-[#f25555]/20 text-[#f87c7c] border-[#f25555]/30">
                       <X className="w-3 h-3 mr-1" />
                       {t('common.notConfigured')}
                     </Badge>
@@ -388,8 +388,8 @@ const VideoDownloader: React.FC = () => {
               )}
 
               {!hasServerRequirements && (
-                <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                  <p className="text-sm text-amber-400">
+                <div className="p-4 bg-[#ffa348]/10 border border-amber-500/20 rounded-lg">
+                  <p className="text-[12px] text-[#ffa348]">
                     {t('videoDownloader.toast.providedUrl')}
                   </p>
                 </div>
@@ -397,10 +397,10 @@ const VideoDownloader: React.FC = () => {
 
               {hasServerRequirements && downloadStatus && !downloadStatus.yt_dlp_available && (
                 <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
-                  <p className="text-sm text-red-700 dark:text-red-300 font-medium mb-2">
+                  <p className="text-[12px] text-red-700 dark:text-red-300 font-medium mb-2">
                     {t('videoDownloader.ytDlpMissing')}
                   </p>
-                  <p className="text-sm text-red-600 dark:text-red-400">
+                  <p className="text-[12px] text-red-600 dark:text-[#f87c7c]">
                     <code className="bg-red-100 dark:bg-red-900/30 px-1 rounded">pip install yt-dlp</code>
                   </p>
                 </div>
@@ -411,15 +411,15 @@ const VideoDownloader: React.FC = () => {
           {hasServerRequirements && downloadStatus?.yt_dlp_available && (
             <>
               {/* Supported Sites Card */}
-              <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
+              <Card className="border border-white/[0.08] bg-white/[0.025] shadow-none">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 text-white/90">
-                    <Globe className="h-5 w-5 text-purple-400" />
+                    <Globe className="h-5 w-5 text-[#9a8af0]" />
                     <span>{t('videoDownloader.supportedSites')}</span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-white/40 mb-3">
+                  <p className="text-[12px] text-white/40 mb-3">
                     {t('videoDownloader.supportedSitesDesc')}
                   </p>
                   {getSupportedSitesDisplay(downloadStatus.supported_sites)}
@@ -427,23 +427,23 @@ const VideoDownloader: React.FC = () => {
               </Card>
 
               {/* Download Form */}
-              <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
+              <Card className="border border-white/[0.08] bg-white/[0.025] shadow-none">
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2 text-white/90">
-                    <Download className="h-5 w-5 text-blue-400" />
+                    <Download className="h-4 w-4 text-[#5b8af5]" />
                     <span>{t('videoDownloader.downloadVideo')}</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-2.5">
                   <div className="space-y-2">
-                    <Label htmlFor="video-url" className="text-white/70">{t('videoDownloader.videoUrl')}</Label>
+                    <Label htmlFor="video-url" className="font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase">{t('videoDownloader.videoUrl')}</Label>
                     <Input
                       id="video-url"
                       type="url"
                       placeholder={t('videoDownloader.videoUrlPlaceholder')}
                       value={videoUrl}
                       onChange={(e) => setVideoUrl(e.target.value)}
-                      className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
+                      className="h-[42px] px-3 font-mono text-[11.5px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#3069f0]/50"
                     />
                     <p className="text-xs text-white/40">
                       {t('videoDownloader.videoUrlDesc')}
@@ -451,13 +451,13 @@ const VideoDownloader: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="custom-filename" className="text-white/70">{t('videoDownloader.filename')}</Label>
+                    <Label htmlFor="custom-filename" className="font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase">{t('videoDownloader.filename')}</Label>
                     <Input
                       id="custom-filename"
                       placeholder={t('videoDownloader.filenamePlaceholder')}
                       value={customFilename}
                       onChange={(e) => setCustomFilename(e.target.value)}
-                      className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
+                      className="h-[42px] px-3 font-mono text-[11.5px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#3069f0]/50"
                     />
                     <p className="text-xs text-white/40">
                       {t('videoDownloader.filenameDesc')}
@@ -465,28 +465,28 @@ const VideoDownloader: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="subfolder" className="text-white/70">{t('videoDownloader.subfolder')}</Label>
+                    <Label htmlFor="subfolder" className="font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase">{t('videoDownloader.subfolder')}</Label>
                     <Input
                       id="subfolder"
                       placeholder={t('videoDownloader.subfolderPlaceholder')}
                       value={subfolder}
                       onChange={(e) => setSubfolder(e.target.value)}
-                      className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
+                      className="h-[42px] px-3 font-mono text-[11.5px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#3069f0]/50"
                     />
                     <p className="text-xs text-white/40">
                       {t('videoDownloader.subfolderDesc')}
                     </p>
                   </div>
 
-                  <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <div className="p-3 bg-[#3069f0]/10 border border-[#3069f0]/20 rounded-lg">
                     <div className="flex items-center space-x-2 mb-2">
-                      <Video className="h-4 w-4 text-blue-400" />
-                      <span className="text-sm font-medium text-blue-300">
+                      <Video className="h-4 w-4 text-[#5b8af5]" />
+                      <span className="text-[12px] font-medium text-[#7ba3f5]">
                         {t('videoDownloader.downloadInfo')}
                       </span>
                     </div>
-                    <ul className="text-xs text-blue-300/70 space-y-1">
-                      <li>• {t('videoDownloader.infoSave')} <code className="bg-blue-500/20 px-1 rounded text-blue-300">{downloadStatus.input_directory}</code></li>
+                    <ul className="text-xs text-[#7ba3f5]/70 space-y-1">
+                      <li>• {t('videoDownloader.infoSave')} <code className="bg-[#3069f0]/20 px-1 rounded text-[#7ba3f5]">{downloadStatus.input_directory}</code></li>
                       <li>• {t('videoDownloader.infoFormat')}</li>
                       <li>• {t('videoDownloader.infoQuality')}</li>
                       <li>• {t('videoDownloader.infoPlayback')}</li>
@@ -496,7 +496,7 @@ const VideoDownloader: React.FC = () => {
                   <Button
                     onClick={handleStartDownload}
                     disabled={!videoUrl.trim() || isDownloading}
-                    className="w-full bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 active:scale-98 transition-transform duration-75"
+                    className="w-full h-11 rounded-[10px] bg-[#3069f0] hover:bg-[#3f78f5] text-white text-[13px] font-semibold shadow-[0_2px_12px_rgba(48,105,240,0.3)] active:scale-98 transition-transform duration-75 disabled:opacity-50"
                   >
                     {isDownloading ? (
                       <>
@@ -513,20 +513,20 @@ const VideoDownloader: React.FC = () => {
 
                   {/* Log Display - Only shown when download is active or has logs */}
                   {(isDownloadActive || logMessages.length > 0) && (
-                    <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl mt-4">
+                    <Card className="border border-white/[0.08] bg-white/[0.025] shadow-none mt-4">
                       <CardHeader>
-                        <CardTitle className="flex items-center space-x-2 text-sm text-white/90">
-                          <Video className="h-4 w-4 text-blue-400" />
+                        <CardTitle className="flex items-center space-x-2 text-[12px] text-white/90">
+                          <Video className="h-4 w-4 text-[#5b8af5]" />
                           <span>{t('videoDownloader.downloadProgress')}</span>
                           {isDownloading && (
-                            <Loader2 className="w-4 h-4 animate-spin text-blue-400 ml-auto" />
+                            <Loader2 className="w-4 h-4 animate-spin text-[#5b8af5] ml-auto" />
                           )}
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div
                           ref={logContainerRef}
-                          className="max-h-64 overflow-y-auto bg-black/40 rounded-xl p-3 custom-scrollbar"
+                          className="max-h-64 overflow-y-auto rounded-lg border border-white/[0.08] p-3 custom-scrollbar" style={{ background: '#08090c' }}
                         >
                           {logMessages.length === 0 ? (
                             <div className="text-xs text-white/20 font-mono">

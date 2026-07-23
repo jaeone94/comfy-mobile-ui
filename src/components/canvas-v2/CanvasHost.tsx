@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Loader2 } from 'lucide-react';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import {
   CanvasBridgeClient,
@@ -87,14 +86,17 @@ export const CanvasHost: React.FC<CanvasHostProps> = ({
         ref={iframeRef}
         src={`${serverUrl}/`}
         title="ComfyUI official canvas"
-        className="absolute inset-0 h-full w-full border-0 bg-slate-950"
+        className="absolute inset-0 h-full w-full border-0 bg-[#0b0c0f]"
         allow="clipboard-read; clipboard-write"
       />
       {!isReady && (
-        <div className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3 bg-slate-950/80">
-          <Loader2 className="h-6 w-6 animate-spin text-sky-400" />
-          <div className="text-sm text-slate-300">Loading official canvas…</div>
-          <div className="text-[11px] text-slate-500">{serverUrl}</div>
+        <div
+          className="pointer-events-none absolute inset-0 z-10 flex flex-col items-center justify-center gap-3"
+          style={{ background: 'rgba(11,12,15,0.85)' }}
+        >
+          <div className="h-8 w-8 animate-spin rounded-full border-2 border-white/[0.08] border-t-[#3069f0]" />
+          <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-[#565d6b]">Loading official canvas</div>
+          <div className="font-mono text-[10px] text-[#565d6b] px-1.5 py-0.5 rounded-[5px] border border-white/10">{serverUrl}</div>
         </div>
       )}
     </div>

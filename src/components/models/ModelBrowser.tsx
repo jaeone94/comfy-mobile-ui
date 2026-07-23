@@ -476,15 +476,15 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
       case '.ckpt':
       case '.pt':
       case '.pth':
-        return <Layers className="h-4 w-4 text-blue-500 flex-shrink-0" />;
+        return <Layers className="h-4 w-4 text-[#5b8af5] flex-shrink-0" />;
       case '.bin':
         return <FileArchive className="h-4 w-4 text-orange-500 flex-shrink-0" />;
       case '.onnx':
-        return <FileCode className="h-4 w-4 text-green-500 flex-shrink-0" />;
+        return <FileCode className="h-4 w-4 text-[#4ade80] flex-shrink-0" />;
       case '.trt':
-        return <FileImage className="h-4 w-4 text-purple-500 flex-shrink-0" />;
+        return <FileImage className="h-4 w-4 text-[#9a8af0] flex-shrink-0" />;
       default:
-        return <File className="h-4 w-4 text-slate-500 flex-shrink-0" />;
+        return <File className="h-4 w-4 text-[#71798a] flex-shrink-0" />;
     }
   };
 
@@ -504,10 +504,10 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
       }}
     >
       {/* Main Background with Dark Theme */}
-      <div className="absolute inset-0 bg-[#374151]" />
+      <div className="absolute inset-0 bg-[#0b0c0f]" />
 
       {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      <div className="hidden" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -521,8 +521,8 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
         }}
       >
         {/* Header */}
-        <div className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
-          <div className="relative z-10 p-4 space-y-3">
+        <div className="sticky top-0 z-50 pwa-header bg-[#0b0c0f]/95 backdrop-blur-xl border-b border-white/[0.08] relative overflow-hidden">
+          <div className="relative z-10 p-4 space-y-2">
             {/* First Row - Back Button, Title, and Upload */}
             <div className="flex items-center justify-between">
               <div className="flex items-center space-x-3">
@@ -530,15 +530,15 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                   onClick={handleBack}
                   variant="ghost"
                   size="sm"
-                  className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
+                  className="bg-white/[0.045] border border-white/[0.08] hover:bg-white/[0.08] transition-all h-9 w-9 p-0 flex-shrink-0 rounded-[10px] text-[#c8ccd4]"
                 >
                   <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div>
-                  <h1 className="text-lg font-bold text-white/95 leading-none">
+                  <h1 className="text-[15px] font-bold text-[#e9ebef] leading-none">
                     {t('modelBrowser.title')}
                   </h1>
-                  <p className="text-[11px] text-white/40 mt-1">
+                  <p className="font-mono text-[9px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-1">
                     {t('modelBrowser.subtitle')}
                   </p>
                 </div>
@@ -563,14 +563,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                   placeholder={t('modelBrowser.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-9 h-9 bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl text-sm"
+                  className="pl-9 h-[42px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#71798a] rounded-[10px] text-[12.5px] focus-visible:ring-0 focus-visible:border-[#3069f0]/50"
                 />
               </div>
               <Select value={selectedFolder} onValueChange={setSelectedFolder}>
-                <SelectTrigger className="w-32 h-9 bg-black/20 border-white/10 text-white/90 rounded-xl text-sm">
+                <SelectTrigger className="w-32 h-[42px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] rounded-[10px] text-[12.5px]">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="bg-[#1e293b] border-white/10 text-white">
+                <SelectContent className="bg-[#101217] border-white/10 text-white">
                   <SelectItem value="all text-xs">{t('modelBrowser.allFolders')}</SelectItem>
                   {folders.map((folder) => (
                     <SelectItem key={folder.name} value={folder.name} className="text-xs">
@@ -591,13 +591,13 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
         </div>
 
         {/* Content */}
-        <div className="container mx-auto px-4 py-8 max-w-6xl">
+        <div className="container mx-auto px-4 py-5 max-w-6xl">
           {/* Partial Uploads Banner */}
           {partialUploads.length > 0 && (
-            <div className="mb-8 p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-2xl">
+            <div className="mb-8 p-4 bg-[#ffa348]/[0.06] border border-[#ffa348]/[0.22] rounded-xl">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-medium text-yellow-400 mb-2 flex items-center">
+                  <h3 className="font-medium text-[#ffa348] mb-2 flex items-center">
                     <AlertTriangle className="h-4 w-4 mr-2" />
                     {t('modelBrowser.incompleteUploads', { count: partialUploads.length })}
                   </h3>
@@ -605,7 +605,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                     {partialUploads.map((partial) => (
                       <div key={partial.partial_filename} className="flex items-center justify-between bg-black/20 p-2 rounded-xl border border-white/5">
                         <div className="flex-1 min-w-0">
-                          <div className="font-medium text-sm truncate text-white/90">{partial.filename}</div>
+                          <div className="font-medium text-[12px] truncate text-white/90">{partial.filename}</div>
                           <div className="text-xs text-white/40">
                             {partial.size_mb} MB uploaded · {new Date(partial.modified_iso).toLocaleString()}
                           </div>
@@ -614,7 +614,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                           <Button
                             size="sm"
                             variant="default"
-                            className="text-xs bg-yellow-500/20 text-yellow-400 hover:bg-yellow-500/30 border-yellow-500/20 rounded-lg h-8"
+                            className="text-xs bg-yellow-500/20 text-[#ffa348] hover:bg-yellow-500/30 border-yellow-500/20 rounded-lg h-8"
                             onClick={() => {
                               // Pre-fill upload form with this file's info
                               setUploadFolder(selectedFolder !== 'all' ? selectedFolder : '');
@@ -643,10 +643,10 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
 
           {/* Error Display */}
           {error && (
-            <div className="mb-8 p-4 bg-red-500/10 border border-red-500/20 rounded-2xl">
-              <div className="flex items-center space-x-2 text-red-400">
+            <div className="mb-8 p-4 bg-[#f25555]/10 border border-[#f25555]/20 rounded-xl">
+              <div className="flex items-center space-x-2 text-[#f87c7c]">
                 <AlertTriangle className="h-4 w-4 rotate-0" />
-                <span className="text-sm">{error}</span>
+                <span className="text-[12px]">{error}</span>
                 <Button
                   variant="ghost"
                   size="sm"
@@ -661,18 +661,18 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
 
           {/* Model List - Grouped */}
           {isLoading ? (
-            <div className="flex flex-col items-center justify-center h-64 space-y-4">
-              <Loader2 className="h-10 w-10 text-indigo-400 animate-spin" />
-              <p className="text-white/20 text-sm animate-pulse">Loading Models...</p>
+            <div className="flex flex-col items-center justify-center h-64 space-y-2.5">
+              <Loader2 className="h-10 w-10 text-[#5b8af5] animate-spin" />
+              <p className="text-white/20 text-[12px] animate-pulse">Loading Models...</p>
             </div>
           ) : displayModels.length === 0 ? (
             <div className="flex flex-col items-center justify-center h-64 text-white/20">
               <File className="h-16 w-16 mb-4 opacity-10" />
-              <p className="text-lg font-medium">{searchQuery ? t('modelBrowser.noModels') : t('modelBrowser.noModelsFolder')}</p>
-              <p className="text-sm opacity-60">{t('modelBrowser.tryAdjusting')}</p>
+              <p className="text-[14px] font-medium">{searchQuery ? t('modelBrowser.noModels') : t('modelBrowser.noModelsFolder')}</p>
+              <p className="text-[12px] opacity-60">{t('modelBrowser.tryAdjusting')}</p>
             </div>
           ) : (
-            <div className="space-y-6">
+            <div className="space-y-2">
               {Object.entries(
                 displayModels.reduce((acc, model) => {
                   if (!acc[model.folder_type]) acc[model.folder_type] = [];
@@ -680,7 +680,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                   return acc;
                 }, {} as Record<string, ModelFile[]>)
               ).map(([folderName, folderModels]) => (
-                <div key={folderName} className="space-y-4">
+                <div key={folderName} className="space-y-2.5">
                   <div
                     className="flex items-center space-x-3 px-1 cursor-pointer select-none active:opacity-70 transition-opacity"
                     onClick={() => toggleGroup(folderName)}
@@ -702,12 +702,12 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                   {expandedGroups[folderName] && (
                     <div className="grid grid-cols-1 gap-3">
                       {folderModels.map((model, index) => (
-                        <div key={`${model.relative_path}-${index}`} className="hover:shadow-lg transition-all border border-white/5 bg-black/20 backdrop-blur-sm rounded-2xl px-4 py-4 space-y-2 group">
+                        <div key={`${model.relative_path}-${index}`} className="transition-all border border-white/[0.07] bg-white/[0.025] hover:bg-white/[0.04] hover:border-white/[0.12] rounded-[11px] px-3 py-3 space-y-2 group">
                           {/* Line 1: Title with File Icon and Date */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center space-x-2 flex-1 min-w-0">
                               {getFileIcon(model.extension)}
-                              <h3 className="font-medium text-white/95 truncate text-sm">
+                              <h3 className="text-[13px] font-semibold text-[#e9ebef] truncate leading-[1.35]">
                                 {model.filename}
                               </h3>
                             </div>
@@ -718,7 +718,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
 
                           {/* Line 2: Badges (Extension, Type, Folder, Size) */}
                           <div className="flex items-center flex-wrap gap-1">
-                            <Badge variant="secondary" className="text-[9px] bg-white/5 text-white/60 border-white/5 uppercase font-mono py-0.5">
+                            <Badge variant="secondary" className="font-mono text-[9px] bg-white/[0.05] text-[#8a919e] border-white/[0.06] uppercase py-0.5">
                               {model.extension}
                             </Badge>
                             {model.folder_type === 'loras' && (
@@ -726,11 +726,11 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                                 LoRA
                               </Badge>
                             )}
-                            <Badge variant="outline" className="text-[9px] border-white/5 text-white/40 uppercase py-0.5 bg-black/20">
+                            <Badge variant="outline" className="font-mono text-[9px] border-white/[0.06] text-[#565d6b] uppercase py-0.5 bg-black/20">
                               <FolderOpen className="h-2.5 w-2.5 mr-1" />
                               {model.subfolder ? `${model.subfolder}` : 'Root'}
                             </Badge>
-                            <Badge variant="outline" className="text-[9px] border-white/5 text-white/40 uppercase py-0.5 bg-black/20">
+                            <Badge variant="outline" className="font-mono text-[9px] border-white/[0.06] text-[#565d6b] uppercase py-0.5 bg-black/20">
                               {formatFileSize(model.size)}
                             </Badge>
                           </div>
@@ -738,7 +738,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                           {/* Trigger Words Count for LoRA (if exists) */}
                           {model.folder_type === 'loras' && triggerWords && triggerWords[model.filename] && Array.isArray(triggerWords[model.filename]) && triggerWords[model.filename].length > 0 && (
                             <div className="flex items-center gap-1">
-                              <Badge variant="outline" className="text-[9px] bg-purple-500/10 text-purple-400 border-purple-500/20 font-bold py-0.5">
+                              <Badge variant="outline" className="text-[9px] bg-purple-500/10 text-[#9a8af0] border-purple-500/20 font-bold py-0.5">
                                 <Zap className="h-2.5 w-2.5 mr-1" />
                                 {triggerWords[model.filename].length} WORD{triggerWords[model.filename].length === 1 ? '' : 'S'}
                               </Badge>
@@ -750,7 +750,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-white/30 hover:text-white/90 hover:bg-white/5 rounded-xl transition-all"
+                              className="h-10 p-1 flex flex-col items-center justify-center space-y-1 text-[#71798a] hover:text-[#c8ccd4] hover:bg-white/[0.05] rounded-lg transition-all"
                               onClick={() => openOperationModal('copy', model)}
                               title={t('modelBrowser.actions.copy')}
                             >
@@ -760,7 +760,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-white/30 hover:text-white/90 hover:bg-white/5 rounded-xl transition-all"
+                              className="h-10 p-1 flex flex-col items-center justify-center space-y-1 text-[#71798a] hover:text-[#c8ccd4] hover:bg-white/[0.05] rounded-lg transition-all"
                               onClick={() => openOperationModal('move', model)}
                               title={t('modelBrowser.actions.move')}
                             >
@@ -770,7 +770,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-white/30 hover:text-white/90 hover:bg-white/5 rounded-xl transition-all"
+                              className="h-10 p-1 flex flex-col items-center justify-center space-y-1 text-[#71798a] hover:text-[#c8ccd4] hover:bg-white/[0.05] rounded-lg transition-all"
                               onClick={() => openOperationModal('rename', model)}
                               title={t('modelBrowser.actions.rename')}
                             >
@@ -781,7 +781,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-purple-400/60 hover:text-purple-300 hover:bg-purple-500/10 rounded-xl transition-all"
+                                className="h-10 p-1 flex flex-col items-center justify-center space-y-1 text-[#9a8af0]/70 hover:text-[#b9adf5] hover:bg-[#9a8af0]/10 rounded-lg transition-all"
                                 onClick={() => openTriggerWordsModal(model.filename)}
                                 title={t('modelBrowser.actions.trigger')}
                               >
@@ -794,11 +794,11 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-12 p-1 flex flex-col items-center justify-center space-y-1 text-red-400/60 hover:text-red-300 hover:bg-red-500/10 rounded-xl transition-all"
+                              className="h-10 p-1 flex flex-col items-center justify-center space-y-1 text-[#f87c7c]/70 hover:text-[#f8b3b3] hover:bg-[#f25555]/10 rounded-lg transition-all"
                               onClick={() => openOperationModal('delete', model)}
                               title={t('modelBrowser.actions.delete')}
                             >
-                              <Trash2 className="h-4 w-4 text-red-400/80" />
+                              <Trash2 className="h-4 w-4 text-[#f87c7c]/80" />
                               <span className="text-[9px] font-bold uppercase tracking-wider">{t('modelBrowser.actions.delete')}</span>
                             </Button>
                           </div>
@@ -821,21 +821,21 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
           </DialogHeader>
 
           {selectedModel && (
-            <div className="space-y-4">
-              <div className="text-sm text-slate-600 dark:text-slate-400">
+            <div className="space-y-2.5">
+              <div className="text-[12px] text-[#8a919e]">
                 {operationType === 'delete' ? t('modelBrowser.operation.deleteConfirm') : t('modelBrowser.operation.configure')}
               </div>
 
-              <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                <div className="font-medium text-sm">{selectedModel.filename}</div>
-                <div className="text-xs text-slate-500">
+              <div className="p-3 bg-slate-50 dark:bg-[#14171e] rounded-lg">
+                <div className="font-medium text-[12px]">{selectedModel.filename}</div>
+                <div className="text-xs text-[#71798a]">
                   {selectedModel.folder_type}{selectedModel.subfolder ? `/${selectedModel.subfolder}` : ''}
                 </div>
               </div>
 
               {operationType === 'rename' && (
                 <div>
-                  <label className="text-sm font-medium">{t('modelBrowser.operation.newFilename')}</label>
+                  <label className="text-[12px] font-medium">{t('modelBrowser.operation.newFilename')}</label>
                   <Input
                     value={newFilename}
                     onChange={(e) => setNewFilename(e.target.value)}
@@ -847,7 +847,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
               {(operationType === 'copy' || operationType === 'move') && (
                 <>
                   <div>
-                    <label className="text-sm font-medium">{t('modelBrowser.operation.targetFolder')}</label>
+                    <label className="text-[12px] font-medium">{t('modelBrowser.operation.targetFolder')}</label>
                     <Select value={targetFolder} onValueChange={setTargetFolder}>
                       <SelectTrigger>
                         <SelectValue />
@@ -862,7 +862,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                     </Select>
                   </div>
                   <div>
-                    <label className="text-sm font-medium">{t('modelBrowser.operation.targetSubfolder')}</label>
+                    <label className="text-[12px] font-medium">{t('modelBrowser.operation.targetSubfolder')}</label>
                     <Input
                       value={targetSubfolder}
                       onChange={(e) => setTargetSubfolder(e.target.value)}
@@ -898,8 +898,8 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="text-sm text-slate-600 dark:text-slate-400">
+          <div className="space-y-2.5">
+            <div className="text-[12px] text-[#8a919e]">
               <Trans i18nKey="modelBrowser.triggerWords.configureFor" values={{ name: selectedLora }}>
                 Configure trigger words for: <strong>{selectedLora}</strong>
               </Trans>
@@ -920,14 +920,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
 
             {/* Current trigger words */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">{t('modelBrowser.triggerWords.current')}</label>
+              <label className="text-[12px] font-medium">{t('modelBrowser.triggerWords.current')}</label>
               <div className="max-h-32 overflow-y-auto space-y-1">
                 {currentTriggerWords.length === 0 ? (
-                  <div className="text-sm text-slate-500 italic">{t('modelBrowser.triggerWords.noWords')}</div>
+                  <div className="text-[12px] text-[#71798a] italic">{t('modelBrowser.triggerWords.noWords')}</div>
                 ) : (
                   currentTriggerWords.map((word, index) => (
-                    <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-800 rounded">
-                      <span className="text-sm">{word}</span>
+                    <div key={index} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-[#14171e] rounded">
+                      <span className="text-[12px]">{word}</span>
                       <Button
                         variant="ghost"
                         size="sm"
@@ -965,14 +965,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
             </DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-4">
-            <div className="text-sm text-slate-600 dark:text-slate-400">
+          <div className="space-y-2.5">
+            <div className="text-[12px] text-[#8a919e]">
               {t('modelBrowser.uploadModal.desc')}
             </div>
 
             {/* File Selection */}
             <div>
-              <label className="text-sm font-medium block mb-2">{t('modelBrowser.uploadModal.selectFile')}</label>
+              <label className="text-[12px] font-medium block mb-2">{t('modelBrowser.uploadModal.selectFile')}</label>
               <Input
                 type="file"
                 onChange={handleFileSelect}
@@ -980,9 +980,9 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
                 accept="*/*"
               />
               {uploadFile && (
-                <div className="mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded text-sm">
+                <div className="mt-2 p-2 bg-slate-50 dark:bg-[#14171e] rounded text-[12px]">
                   <div className="font-medium truncate">{uploadFile.name}</div>
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-[#71798a]">
                     {formatFileSize(uploadFile.size)}
                   </div>
                 </div>
@@ -991,7 +991,7 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
 
             {/* Target Folder */}
             <div>
-              <label className="text-sm font-medium block mb-2">{t('modelBrowser.uploadModal.targetFolder')}</label>
+              <label className="text-[12px] font-medium block mb-2">{t('modelBrowser.uploadModal.targetFolder')}</label>
               <Select value={uploadFolder} onValueChange={setUploadFolder} disabled={isUploading}>
                 <SelectTrigger>
                   <SelectValue placeholder={t('modelBrowser.uploadModal.selectFolder')} />
@@ -1008,14 +1008,14 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
 
             {/* Subfolder (Optional) */}
             <div>
-              <label className="text-sm font-medium block mb-2">{t('modelBrowser.uploadModal.subfolder')}</label>
+              <label className="text-[12px] font-medium block mb-2">{t('modelBrowser.uploadModal.subfolder')}</label>
               <Input
                 value={uploadSubfolder}
                 onChange={(e) => setUploadSubfolder(e.target.value)}
                 placeholder="e.g., character, style..."
                 disabled={isUploading}
               />
-              <p className="text-xs text-slate-500 mt-1">
+              <p className="text-xs text-[#71798a] mt-1">
                 {t('modelBrowser.uploadModal.subfolderDesc')}
               </p>
             </div>
@@ -1025,11 +1025,11 @@ const ModelBrowser: React.FC<ModelBrowserProps> = ({ serverUrl: propServerUrl })
             {/* Upload Progress */}
             {isUploading && (
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
+                <div className="flex items-center justify-between text-[12px]">
                   <span>Uploading...</span>
                   <span>{uploadProgress}%</span>
                 </div>
-                <div className="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-2">
+                <div className="w-full bg-white/[0.08] rounded-full h-2">
                   <div
                     className="bg-indigo-600 h-2 rounded-full transition-all duration-300"
                     style={{ width: `${uploadProgress}%` }}

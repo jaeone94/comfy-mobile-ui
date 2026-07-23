@@ -105,20 +105,23 @@ export function QuickActionPanel({
   }, [onClearQueue]);
 
   return (
-    <div className="fixed right-6 bottom-4 z-40">
-      <div className="bg-slate-600/40 backdrop-blur-3xl rounded-[28px] shadow-[0_20px_50px_rgba(0,0,0,0.3)] border border-white/30 p-1.5 relative">
-        {/* Button Group - Separated with gaps */}
-        <div className="flex items-center gap-2 relative z-10">
+    <div className="fixed right-3.5 bottom-4 z-40">
+      <div
+        className="rounded-[14px] border border-white/[0.09] p-1.5 relative"
+        style={{ background: 'rgba(15,17,22,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}
+      >
+        {/* Button Group */}
+        <div className="flex items-center gap-1.5 relative z-10">
           <AnimatePresence>
             {imageUrl && (
               <motion.div
                 initial={{ opacity: 0, x: -20, scale: 0.8 }}
                 animate={{ opacity: 1, x: 0, scale: 1 }}
                 exit={{ opacity: 0, x: -20, scale: 0.8 }}
-                className="flex items-center"
+                className="flex items-center gap-1.5"
               >
                 <div className="relative">
-                  {/* Floating Preview (Bubble) - Localized */}
+                  {/* Floating Preview (Bubble) */}
                   <AnimatePresence>
                     {isVisible && (
                       <motion.div
@@ -129,8 +132,8 @@ export function QuickActionPanel({
                         onClick={() => setLatentPreviewFullscreen(true)}
                       >
                         <div
-                          className="bg-slate-800/60 backdrop-blur-2xl rounded-2xl shadow-2xl border border-white/20 overflow-hidden cursor-pointer group relative"
-                          style={{ width: '100px', height: '100px' }}
+                          className="rounded-[14px] border border-white/[0.12] overflow-hidden cursor-pointer group relative"
+                          style={{ width: '104px', height: '104px', background: '#14171e', boxShadow: '0 16px 40px rgba(0,0,0,0.55)' }}
                         >
                           <img
                             src={imageUrl}
@@ -140,11 +143,13 @@ export function QuickActionPanel({
                           <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                             <Maximize2 className="text-white w-5 h-5" />
                           </div>
-                          {/* Floating preview badge/info - Localized */}
                           {nodeId && nodeId !== 'unknown' && (
-                            <div className="absolute top-2 left-2 z-20">
-                              <div className="bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/20">
-                                <span className="text-[10px] font-bold text-white tracking-tighter">
+                            <div className="absolute top-1.5 left-1.5 z-20">
+                              <div
+                                className="px-1.5 py-[3px] rounded-full border border-white/[0.12]"
+                                style={{ background: 'rgba(10,14,22,0.7)' }}
+                              >
+                                <span className="font-mono text-[8.5px] font-bold text-[#cfe0ff]">
                                   {t('latentPreview.fullScreen.node', { id: nodeId })}
                                 </span>
                               </div>
@@ -155,86 +160,73 @@ export function QuickActionPanel({
                     )}
                   </AnimatePresence>
 
-                  <Button
-                    size="lg"
-                    variant="outline"
-                    className={`h-11 w-11 rounded-[22px] border transition-all duration-150 p-0 active:scale-95 active:translate-y-px ${isVisible
-                      ? 'bg-violet-500/20 border-violet-400 text-violet-600 dark:text-violet-400 shadow-[0_0_15px_rgba(139,92,246,0.3)]'
-                      : 'bg-white/10 dark:bg-white/10 border-white/20 text-slate-300 hover:text-white hover:bg-white/20'
-                      }`}
+                  <button
+                    className={`w-10 h-10 rounded-[10px] border flex items-center justify-center transition-all duration-150 active:scale-95 ${isVisible ? '' : 'border-white/[0.08] text-[#9aa3b2] hover:text-[#c8ccd4]'}`}
+                    style={isVisible
+                      ? { background: 'rgba(139,92,246,0.14)', borderColor: 'rgba(139,92,246,0.35)', color: '#a78bfa' }
+                      : { background: 'rgba(255,255,255,0.05)' }}
                     onClick={() => setVisible(!isVisible)}
                     title="Toggle Latent Preview"
                   >
                     <div className="relative">
-                      <Image className="w-5 h-5" />
+                      <Image className="w-[15px] h-[15px]" strokeWidth={1.8} />
                       {!isVisible && (
                         <span className="absolute -top-1 -right-1 flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-violet-500"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#a78bfa] opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-[#8b5cf6]"></span>
                         </span>
                       )}
                     </div>
-                  </Button>
+                  </button>
                 </div>
 
-                <div className="w-px h-6 bg-white/10 mx-2" />
+                <div className="w-px h-[22px] bg-white/[0.08]" />
               </motion.div>
             )}
           </AnimatePresence>
 
           {/* Execute Workflow Button - ALWAYS ENABLED */}
-          <Button
-            size="lg"
-            variant="outline"
-            disabled={false}
-            className="h-11 px-5 rounded-[22px] bg-white/10 dark:bg-white/10 border transition-all duration-150 font-medium active:translate-y-px border-green-200 dark:border-green-800 hover:bg-green-500/10 dark:hover:bg-green-500/20 hover:border-green-300 dark:hover:border-green-700 text-green-600 dark:text-green-400 hover:text-green-700 dark:hover:text-green-300 active:text-green-800 dark:active:text-green-200 active:border-green-400 dark:active:border-green-600 shadow-none hover:shadow-sm active:shadow-none active:scale-95"
+          <button
+            className="h-10 px-4 rounded-[10px] border flex items-center gap-2 text-[13px] font-semibold whitespace-nowrap transition-all duration-150 active:scale-95"
+            style={{ background: 'rgba(52,199,123,0.13)', borderColor: 'rgba(52,199,123,0.3)', color: '#4ade80' }}
             onClick={handleExecuteClick}
             title={t('workflow.executeWorkflow')}
           >
-            <Play className="w-4 h-4 mr-2" />
+            <Play className="w-[13px] h-[13px] fill-current" strokeWidth={0} />
             {t('workflow.execute')}
-          </Button>
+          </button>
 
           {/* Interrupt Execution Button */}
-          <Button
-            size="lg"
-            variant="outline"
-            disabled={false}
-            className="h-11 w-11 rounded-[22px] bg-white/10 dark:bg-white/10 border transition-all duration-150 p-0 active:scale-95 active:translate-y-px border-orange-200 dark:border-orange-800 hover:bg-orange-500/10 dark:hover:bg-orange-500/20 hover:border-orange-300 dark:hover:border-orange-700 text-orange-600 dark:text-orange-400 hover:text-orange-700 dark:hover:text-orange-300 active:text-orange-800 dark:active:text-orange-200 active:border-orange-400 dark:active:border-orange-600 shadow-none hover:shadow-sm active:shadow-none"
+          <button
+            className="w-10 h-10 rounded-[10px] border flex items-center justify-center transition-all duration-150 active:scale-95"
+            style={{ background: 'rgba(255,163,72,0.09)', borderColor: 'rgba(255,163,72,0.28)' }}
             onClick={handleInterruptClick}
             title={t('workflow.interruptExecution')}
           >
-            <Square className="w-4 h-4" />
-            {/* {t('workflow.interrupt')} */}
-          </Button>
+            <Square className="w-3 h-3 fill-[#ffa348] text-[#ffa348]" strokeWidth={0} />
+          </button>
 
           {/* Clear Queue Button with Badge */}
           <div className="relative">
-            <Button
-              size="lg"
-              variant="outline"
-              disabled={false}
-              className="h-11 w-11 rounded-[22px] bg-white/10 dark:bg-white/10 border transition-all duration-150 p-0 active:scale-95 active:translate-y-px border-red-200 dark:border-red-800 hover:bg-red-500/10 dark:hover:bg-red-500/20 hover:border-red-300 dark:hover:border-red-700 text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 active:text-red-800 dark:active:text-red-200 active:border-red-400 dark:active:border-red-600 shadow-none hover:shadow-sm active:shadow-none"
+            <button
+              className="w-10 h-10 rounded-[10px] border flex items-center justify-center transition-all duration-150 active:scale-95"
+              style={{ background: 'rgba(242,85,85,0.09)', borderColor: 'rgba(242,85,85,0.28)' }}
               onClick={handleClearQueueClick}
               title={t('workflow.clearQueuePending', { count: queueCount })}
             >
-              <X className="w-4 h-4" />
-            </Button>
+              <X className="w-3.5 h-3.5 text-[#f25555]" strokeWidth={2} />
+            </button>
 
             {/* Queue Counter Badge */}
             {queueCount > 0 && (
-              <Badge
-                variant="destructive"
-                className="absolute -top-2 -right-2 h-6 w-6 p-0 rounded-full flex items-center justify-center font-bold bg-red-200 dark:bg-red-600 text-white shadow-sm border-0"
-                style={{ fontSize: '13px' }}
-              >
+              <span className="absolute -top-1.5 -right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-[#f25555] flex items-center justify-center font-mono text-[10px] font-bold text-white">
                 {queueCount > 99 ? '99+' : queueCount}
-              </Badge>
+              </span>
             )}
 
             {/* Loading indicator (small dot) */}
             {isLoadingQueue && (
-              <div className="absolute -top-1 -right-1 h-2 w-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <div className="absolute -top-1 -right-1 h-2 w-2 bg-[#3069f0] rounded-full animate-pulse"></div>
             )}
           </div>
         </div>

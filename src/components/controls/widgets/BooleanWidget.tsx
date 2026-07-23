@@ -39,16 +39,16 @@ export const BooleanWidget: React.FC<BooleanWidgetProps> = ({
 
   return (
     <div className="flex items-center justify-center space-x-4 py-4">
-      <span className={`text-lg font-medium transition-colors ${!editingValue ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'
+      <span className={`text-[14px] font-medium transition-colors ${!editingValue ? 'text-[#e9ebef]' : 'text-[#71798a]'
         }`}>
         {t('node.false')}
       </span>
       <Switch
         checked={Boolean(editingValue)}
         onCheckedChange={handleValueChange}
-        className="data-[state=checked]:bg-green-600 data-[state=unchecked]:bg-slate-200 dark:data-[state=unchecked]:bg-slate-700"
+ className="data-[state=checked]:bg-[#34c77b] data-[state=unchecked]:bg-white/[0.1]"
       />
-      <span className={`text-lg font-medium transition-colors ${editingValue ? 'text-slate-900 dark:text-slate-100' : 'text-slate-500 dark:text-slate-400'
+      <span className={`text-[14px] font-medium transition-colors ${editingValue ? 'text-[#e9ebef]' : 'text-[#71798a]'
         }`}>
         {t('node.true')}
       </span>

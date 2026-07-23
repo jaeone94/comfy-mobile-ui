@@ -228,7 +228,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
       parts.push(
         <mark
           key={index}
-          className="bg-yellow-200 dark:bg-yellow-600/30 text-slate-900 dark:text-slate-100 font-semibold rounded px-0.5"
+ className="bg-yellow-200 dark:bg-yellow-600/30 text-[#e9ebef] font-semibold rounded px-0.5"
         >
           {text.slice(match.start, match.end)}
         </mark>
@@ -257,7 +257,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
 
   return (
     <div className="space-y-2">
-      <label className="text-sm text-slate-600 dark:text-slate-400">
+      <label className="text-[12px] text-[#8a919e]">
         {param.label || param.name}
       </label>
       <div className="relative" ref={inputContainerRef}>
@@ -267,7 +267,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
             value={String(editingValue || '')}
             readOnly
             placeholder={t('node.clickDropdownToSelect')}
-            className="text-lg pr-16 cursor-pointer"
+ className="text-[14px] pr-16 cursor-pointer"
             onClick={() => setIsDropdownOpen(true)}
           />
           <div className="absolute right-1 top-1/2 -translate-y-1/2 flex">
@@ -275,7 +275,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
+ className="h-8 w-8 p-0 hover:bg-white/[0.08]"
                 onClick={clearSelection}
                 title={t('node.clearSelection')}
               >
@@ -285,7 +285,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
             <Button
               variant="ghost"
               size="sm"
-              className="h-8 w-8 p-0 hover:bg-slate-200 dark:hover:bg-slate-700"
+ className="h-8 w-8 p-0 hover:bg-white/[0.08]"
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               title={t('node.browseOptions')}
             >
@@ -298,7 +298,7 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
         {isDropdownOpen && ReactDOM.createPortal(
           <div
             ref={dropdownRef}
-            className="z-[9999] bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md shadow-lg max-h-60 overflow-hidden"
+ className="z-[9999] bg-[#14171e] border border-white/[0.08] rounded-md shadow-lg max-h-60 overflow-hidden"
             style={{
               position: 'fixed',
               top: `${dropdownPosition.top}px`,
@@ -307,19 +307,19 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
             }}
           >
             {/* Search input */}
-            <div className="p-2 border-b border-slate-200 dark:border-slate-700">
+            <div className="p-2 border-b border-white/[0.08]">
               <div className="relative">
-                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+                <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-[#565d6b]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t('node.searchOptionsPlaceholder')}
-                  className="w-full pl-7 pr-2 py-1 text-sm bg-transparent border-none outline-none text-slate-700 dark:text-slate-300 placeholder-slate-400"
+ className="w-full pl-7 pr-2 py-1 text-[12px] bg-transparent border-none outline-none text-[#c8ccd4] placeholder-[#565d6b]"
                 />
               </div>
               {searchQuery && (
-                <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+                <div className="mt-1 text-xs text-[#71798a]">
                   {t('node.matchesFound', { count: filteredOptions.length })}
                 </div>
               )}
@@ -332,15 +332,15 @@ export const ComboWidget: React.FC<ComboWidgetProps> = ({
                   <button
                     key={String(option)}
                     onClick={() => handleOptionSelection(option)}
-                    className="w-full px-3 py-2 text-left hover:bg-slate-100 dark:hover:bg-slate-700 border-none outline-none text-sm transition-colors"
+ className="w-full px-3 py-2 text-left hover:bg-white/[0.06] border-none outline-none text-[12px] transition-colors"
                   >
-                    <div className="font-medium text-slate-700 dark:text-slate-300">
+                    <div className="font-medium text-[#c8ccd4]">
                       {highlightMatches(String(option), searchQuery)}
                     </div>
                   </button>
                 ))
               ) : (
-                <div className="px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
+                <div className="px-3 py-2 text-[12px] text-[#71798a]">
                   {searchQuery ? t('node.noOptionsMatch', { query: searchQuery }) : t('node.noOptionsAvailable')}
                 </div>
               )}

@@ -32,7 +32,7 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [isHeaderCompact, setIsHeaderCompact] = useState(false);
 
-  const baseTitleSize = '1.5rem';
+  const baseTitleSize = '1.125rem';
 
   useEffect(() => {
     if (isOpen) {
@@ -98,20 +98,20 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
+          className="relative w-[92vw] max-w-lg h-[76vh] pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Main Card */}
           <div
-            style={{ backgroundColor: '#374151' }}
-            className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
+            style={{ backgroundColor: '#101217' }}
+            className="relative w-full h-full rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col text-white"
           >
             {/* Dynamic Sticky Header */}
             <div
               className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] transition-all duration-300 ease-in-out
                 ${isHeaderCompact
-                  ? 'pt-2 pb-[11px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10'
-                  : 'pt-5 pb-5 pl-6 pr-16 border-transparent bg-black/20 backdrop-blur-0'
+                  ? 'pt-1.5 pb-[11px] pl-4 pr-[40px] bg-[#0f1116]/90 backdrop-blur-xl border-white/[0.08]'
+                  : 'pt-4 pb-3.5 pl-4 pr-12 border-transparent bg-black/20 backdrop-blur-0'
                 }`}
             >
               {/* Floating Close Button */}
@@ -120,7 +120,7 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
               >
                 <button
                   onClick={onClose}
-                  className="p-1.5 rounded-full bg-black/20 text-white hover:bg-black/40 transition-all pointer-events-auto"
+                  className="p-1.5 rounded-lg bg-white/[0.06] text-[#9aa3b2] hover:text-white hover:bg-white/[0.1] transition-all pointer-events-auto"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -128,15 +128,15 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
 
               <div className="flex flex-col justify-center flex-1 min-w-0 pointer-events-none">
                 <div className={`flex items-center space-x-2 transition-all duration-300 origin-left ${isHeaderCompact ? 'mb-0.5 scale-90' : 'mb-2 scale-100'}`}>
-                  <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-black/20 text-white/80 border-transparent">
+                  <Badge variant="secondary" className="text-[9px] font-mono px-1.5 py-0.5 rounded-md bg-black/20 text-white/80 border-transparent">
                     SYSTEM
                   </Badge>
-                  <span className="text-[9px] font-bold uppercase tracking-widest text-white/60">
+                  <span className="font-mono text-[9px] font-semibold uppercase tracking-[0.12em] text-white/60">
                     {t('missingModels.title')}
                   </span>
                 </div>
 
-                <div className="flex items-center min-w-0 transition-all duration-300" style={{ height: isHeaderCompact ? '11px' : '1.75rem' }}>
+                <div className="flex items-center min-w-0 transition-all duration-300" style={{ height: isHeaderCompact ? '12px' : '1.125rem' }}>
                   <h2
                     style={{
                       fontSize: baseTitleSize,
@@ -155,18 +155,18 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
             {/* Content Area */}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
               {/* Static Top Bumper */}
-              <div className="h-[120px] relative pointer-events-none">
+              <div className="h-[96px] relative pointer-events-none">
                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
               </div>
 
               <div className="px-5 pb-6 sm:px-6">
                 {missingModels.length === 0 ? (
-                  <div className="text-center py-16 rounded-[32px] bg-black/10 border border-dashed border-white/10">
+                  <div className="text-center py-16 rounded-xl bg-black/10 border border-dashed border-white/10">
                     <div className="relative mb-4">
-                      <Package className="h-12 w-12 text-white/10 mx-auto" />
-                      <Sparkles className="absolute top-0 right-1/2 translate-x-10 h-5 w-5 text-violet-400/30 animate-pulse" />
+                      <Package className="h-10 w-12 text-white/10 mx-auto" />
+                      <Sparkles className="absolute top-0 right-1/2 translate-x-10 h-5 w-5 text-[#5b8af5]/30 animate-pulse" />
                     </div>
-                    <p className="text-base font-medium text-white/60">
+                    <p className="text-[13px] font-medium text-white/60">
                       {t('missingModels.noMissingModels')}
                     </p>
                     <p className="text-xs text-white/30 mt-1">
@@ -176,10 +176,10 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
                 ) : (
                   <div className="space-y-5">
                     {/* Warning Banner */}
-                    <div className="p-4 rounded-[20px] bg-yellow-500/10 border border-yellow-500/20">
+                    <div className="p-4 rounded-[20px] bg-[#ffa348]/10 border border-yellow-500/20">
                       <div className="flex items-start gap-3">
-                        <div className="p-1.5 rounded-lg bg-yellow-500/20">
-                          <AlertTriangle className="h-4 w-4 text-yellow-400" />
+                        <div className="p-1.5 rounded-lg bg-[#ffa348]/20">
+                          <AlertTriangle className="h-4 w-4 text-[#ffa348]" />
                         </div>
                         <div className="flex-1">
                           <p className="text-xs font-bold text-yellow-200">
@@ -209,11 +209,11 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
                               <div className="flex items-start justify-between">
                                 <div className="flex-1 min-w-0">
                                   <div className="flex items-center gap-3 mb-2">
-                                    <div className={`p-2.5 rounded-xl bg-black/20 border border-white/5 transition-colors ${isExpanded ? 'text-violet-400 border-violet-500/20' : 'text-white/40'}`}>
+                                    <div className={`p-2.5 rounded-xl bg-black/20 border border-white/5 transition-colors ${isExpanded ? 'text-[#5b8af5] border-[#3069f0]/20' : 'text-white/40'}`}>
                                       <Package className="h-4 w-4" />
                                     </div>
                                     <div className="min-w-0">
-                                      <h3 className="text-sm font-bold text-white/95 break-all leading-tight mb-0.5">
+                                      <h3 className="text-[12px] font-bold text-white/95 break-all leading-tight mb-0.5">
                                         {modelName}
                                       </h3>
                                       <Badge variant="outline" className="bg-white/5 text-white/40 border-white/10 text-[8px] font-bold tracking-widest uppercase px-1 py-0 h-4">
@@ -282,7 +282,7 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
                                             </p>
                                             {widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) &&
                                               widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) !== info.missingModel && (
-                                                <Badge className="bg-emerald-500/20 text-emerald-300 border-emerald-500/30 text-[8px] h-3.5">
+                                                <Badge className="bg-[#34c77b]/20 text-emerald-300 border-emerald-500/30 text-[8px] h-3.5">
                                                   SAVED
                                                 </Badge>
                                               )}
@@ -307,7 +307,7 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
 
                                           {widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) &&
                                             widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) !== info.missingModel && (
-                                              <p className="text-[9px] font-medium text-emerald-400 animate-in fade-in slide-in-from-left-1">
+                                              <p className="text-[9px] font-medium text-[#4ade80] animate-in fade-in slide-in-from-left-1">
                                                 ✓ {t('missingModels.replacementSelected', { value: widgetEditor.getWidgetValue(info.nodeId, info.widgetName, null) })}
                                               </p>
                                             )}
@@ -324,10 +324,10 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
                     </div>
 
                     {/* Instructions */}
-                    <div className="p-5 rounded-[24px] bg-blue-500/10 border border-blue-500/20">
+                    <div className="p-5 rounded-[24px] bg-[#3069f0]/10 border border-[#3069f0]/20">
                       <div className="flex items-start gap-4">
-                        <div className="p-1.5 rounded-lg bg-blue-500/20">
-                          <Info className="h-4 w-4 text-blue-400" />
+                        <div className="p-1.5 rounded-lg bg-[#3069f0]/20">
+                          <Info className="h-4 w-4 text-[#5b8af5]" />
                         </div>
                         <div className="flex-1">
                           <p className="text-xs font-bold text-blue-200 mb-2">
@@ -336,7 +336,7 @@ const MissingModelDetectorModal: React.FC<MissingModelDetectorModalProps> = ({
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-6 gap-y-2">
                             {[1, 2, 3, 4].map((step) => (
                               <div key={step} className="flex gap-2">
-                                <span className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-500/20 flex items-center justify-center text-[9px] font-bold text-blue-300 border border-blue-500/30">
+                                <span className="flex-shrink-0 w-4 h-4 rounded-full bg-[#3069f0]/20 flex items-center justify-center text-[9px] font-bold text-[#7ba3f5] border border-[#3069f0]/30">
                                   {step}
                                 </span>
                                 <p className="text-[10px] text-blue-100/60 leading-tight">

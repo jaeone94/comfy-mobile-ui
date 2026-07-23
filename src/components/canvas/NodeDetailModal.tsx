@@ -169,7 +169,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     const isBypassed = currentMode === 4;
     const isAlways = currentMode === 0;
 
-    const baseColor = (selectedNode.bgcolor || selectedNode.color || (selectedNode.properties?.['Node Color'])) || '#374151';
+    const baseColor = (selectedNode.bgcolor || selectedNode.color || (selectedNode.properties?.['Node Color'])) || '#14171e';
     const effectiveBgColor = isMuted ? '#3b82f6' : (isBypassed ? '#9333ea' : baseColor);
     const effectiveOpacity = (isMuted || isBypassed) ? 0.5 : 1;
 
@@ -207,9 +207,9 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     // Fixed base font size based on title length
     const baseTitleSize = useMemo(() => {
         const len = titleText?.length || 0;
-        if (len < 15) return '1.875rem'; // 30px
-        if (len < 25) return '1.5rem';    // 24px
-        return '1.25rem';                // 20px
+        if (len < 15) return '1.125rem'; // 18px
+        if (len < 25) return '1rem';      // 16px
+        return '0.875rem';               // 14px
     }, [titleText]);
 
     // Use IntersectionObserver to toggle compact mode
@@ -487,11 +487,11 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     };
 
     const renderSectionHeader = (title: string, count?: number, icon?: React.ReactNode) => (
-        <div className={`flex items-center space-x-2 mb-4 mt-8 pb-2 border-b ${hasCustomColor ? 'border-white/10' : 'border-slate-100 dark:border-slate-800'}`}>
-            {icon && <span className={`${hasCustomColor ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>{icon}</span>}
-            <h3 className={`text-xs font-bold uppercase tracking-widest ${hasCustomColor ? 'text-white/70' : 'text-slate-500 dark:text-slate-400'}`}>
+        <div className={`flex items-center space-x-2 mb-2.5 mt-5 pb-1.5 border-b ${hasCustomColor ? 'border-white/10' : 'border-white/[0.07]'}`}>
+            {icon && <span className={`${hasCustomColor ? 'text-white/70' : 'text-[#71798a]'}`}>{icon}</span>}
+            <h3 className={`font-mono text-[10px] font-semibold uppercase tracking-[0.12em] ${hasCustomColor ? 'text-white/70' : 'text-[#71798a]'}`}>
                 {title}
-                {count !== undefined && <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${hasCustomColor ? 'bg-black/20 text-white/80' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{count}</span>}
+                {count !== undefined && <span className={`ml-2 px-1.5 py-0.5 rounded-md text-[10px] font-bold ${hasCustomColor ? 'bg-black/20 text-white/80' : 'bg-white/[0.06] text-[#71798a]'}`}>{count}</span>}
             </h3>
         </div>
     );
@@ -503,7 +503,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
         const filteredParams = isPointsEditor ? params.filter(param => !readonlyParams.includes(param.name)) : params;
 
         return (
-            <div className="space-y-4">
+            <div className="space-y-2.5">
                 {/* Title is optional for widgets if it's the main section */}
                 {title !== "Node Widgets" && renderSectionHeader(title, filteredParams.length, icon)}
 
@@ -518,14 +518,14 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                     </div>
                 )}
 
-                <div className="grid grid-cols-1 gap-4">
+                <div className="grid grid-cols-1 gap-2">
                     {filteredParams.map((param, index) => (
                         <div key={`${param.name}-${index}`} className="group relative">
                             {isWidgetValues && selectedNode ? (
                                 isInputConnected(param.name) ? (
-                                    <div className={`flex items-center justify-between p-3 rounded-lg border ${hasCustomColor ? 'bg-black/10 border-white/10 text-white' : 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900'}`}>
+                                    <div className={`flex items-center justify-between px-2.5 py-2 rounded-lg border ${hasCustomColor ? 'bg-black/10 border-white/10 text-white' : 'bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900'}`}>
                                         <div className="flex items-center space-x-2">
-                                            <span className={`text-sm font-medium ${hasCustomColor ? 'text-white' : 'text-slate-700 dark:text-slate-300'}`}>{getSlotLabel(param)}</span>
+                                            <span className={`text-[12px] font-medium ${hasCustomColor ? 'text-white' : 'text-[#c8ccd4]'}`}>{getSlotLabel(param)}</span>
                                         </div>
                                         <div className={`flex items-center space-x-2 text-xs ${hasCustomColor ? 'text-white/70' : 'text-blue-600 dark:text-blue-400'}`}>
                                             <ExternalLink className="w-3 h-3" />
@@ -608,9 +608,9 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 )
                             ) : (
                                 // Read-only
-                                <div className={`flex justify-between items-center p-3 rounded-lg ${hasCustomColor ? 'bg-black/10 text-white' : 'bg-slate-50 dark:bg-slate-800/50'}`}>
-                                    <span className={`text-sm font-medium ${hasCustomColor ? 'text-white' : 'text-slate-700 dark:text-slate-300'}`}>{getSlotLabel(param)}</span>
-                                    <span className={`text-sm ${hasCustomColor ? 'text-white/70' : 'text-slate-500'}`}>{String(param.value)}</span>
+                                <div className={`flex justify-between items-center px-2.5 py-2 rounded-lg ${hasCustomColor ? 'bg-black/10 text-white' : 'bg-white/[0.04]'}`}>
+                                    <span className={`text-[12px] font-medium ${hasCustomColor ? 'text-white' : 'text-[#c8ccd4]'}`}>{getSlotLabel(param)}</span>
+                                    <span className={`text-[12px] ${hasCustomColor ? 'text-white/70' : 'text-[#71798a]'}`}>{String(param.value)}</span>
                                 </div>
                             )}
                         </div>
@@ -712,22 +712,22 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                         return (
                             <div key={`input-${index}`} className="group">
                                 {input.link && sourceInfo ? (
-                                    <div className={`flex items-center justify-between p-3 rounded-lg border shadow-sm transition-all ${hasCustomColor ? 'bg-black/10 border-white/5 hover:border-white/30' : 'bg-white border-slate-200 hover:border-blue-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-blue-700'}`}>
+                                    <div className={`flex items-center justify-between px-2.5 py-2 rounded-lg border shadow-sm transition-all ${hasCustomColor ? 'bg-black/10 border-white/5 hover:border-white/30' : 'bg-white/[0.03] border-white/[0.08] hover:border-[#3069f0]/40'}`}>
                                         <div className="flex items-center min-w-0 mr-3">
                                             {/* Dot */}
                                             <div className="w-2.5 h-2.5 rounded-full mr-3 flex-shrink-0 shadow-sm" style={{ backgroundColor: getSlotColor(input.type) }} />
                                             <div className="flex flex-col min-w-0">
-                                                <span className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${hasCustomColor ? 'text-white/50' : 'text-slate-500'}`}>{getSlotLabel(input)}</span>
+                                                <span className={`text-xs font-semibold uppercase tracking-wider mb-0.5 ${hasCustomColor ? 'text-white/50' : 'text-[#71798a]'}`}>{getSlotLabel(input)}</span>
                                                 <div className="flex items-center space-x-1.5 cursor-pointer"
                                                     onClick={() => {
                                                         onNavigateToNode(sourceInfo.sourceNodeId);
                                                         const sourceNode = nodeBounds.get(sourceInfo.sourceNodeId)?.node;
                                                         if (sourceNode) setTimeout(() => onSelectNode(sourceNode), 300);
                                                     }}>
-                                                    <span className={`text-sm font-medium truncate hover:underline ${hasCustomColor ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`}>
+                                                    <span className={`text-[12px] font-medium truncate hover:underline ${hasCustomColor ? 'text-white' : 'text-blue-600 dark:text-blue-400'}`}>
                                                         {sourceInfo.sourceNodeTitle}
                                                     </span>
-                                                    <ExternalLink className={`w-3 h-3 ${hasCustomColor ? 'text-white/40' : 'text-slate-400'}`} />
+                                                    <ExternalLink className={`w-3 h-3 ${hasCustomColor ? 'text-white/40' : 'text-[#565d6b]'}`} />
                                                 </div>
                                             </div>
                                         </div>
@@ -739,19 +739,19 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                     const actualIndex = selectedNode.inputs?.findIndex(i => i.name === input.name && i.type === input.type) ?? -1;
                                                     if (actualIndex >= 0) onDisconnectInput(nodeId, actualIndex);
                                                 }}
-                                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                                className="p-1.5 text-[#565d6b] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                             >
                                                 <X className="w-4 h-4" />
                                             </button>
                                         )}
                                     </div>
                                 ) : (
-                                    <div className={`flex items-center justify-between p-2.5 rounded-lg border ${hasCustomColor ? 'bg-black/5 border-white/5' : 'bg-slate-50/50 border-slate-100 dark:bg-slate-800/30 dark:border-slate-800'}`}>
+                                    <div className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border ${hasCustomColor ? 'bg-black/5 border-white/5' : 'bg-white/[0.03] border-white/[0.07]'}`}>
                                         <div className="flex items-center space-x-3">
                                             <div className="w-2 h-2 rounded-full ring-2 ring-opacity-50" style={{ backgroundColor: 'transparent', borderColor: getSlotColor(input.type) }} />
-                                            <span className={`text-sm font-medium ${hasCustomColor ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>{getSlotLabel(input)}</span>
+                                            <span className={`text-[12px] font-medium ${hasCustomColor ? 'text-white/80' : 'text-[#8a919e]'}`}>{getSlotLabel(input)}</span>
                                         </div>
-                                        <Badge variant="secondary" className={`text-[10px] font-normal ${hasCustomColor ? 'bg-black/20 text-white/50' : 'text-slate-400 bg-slate-100 dark:bg-slate-800'}`}>
+                                        <Badge variant="secondary" className={`text-[10px] font-normal ${hasCustomColor ? 'bg-black/20 text-white/50' : 'text-[#565d6b] bg-white/[0.06]'}`}>
                                             {input.type}
                                         </Badge>
                                     </div>
@@ -777,17 +777,17 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 {/* Output Header / Label */}
                                 <div className="flex items-center px-1">
                                     <div className="w-2.5 h-2.5 rounded-full mr-3 flex-shrink-0 shadow-sm" style={{ backgroundColor: getSlotColor(output.type) }} />
-                                    <span className={`text-sm font-semibold ${hasCustomColor ? 'text-white' : 'text-slate-700 dark:text-slate-300'}`}>{getSlotLabel(output)}</span>
-                                    <span className={`ml-auto text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded ${hasCustomColor ? 'bg-black/20 text-white/50' : 'text-slate-400 bg-slate-100 dark:bg-slate-800'}`}>{output.type}</span>
+                                    <span className={`text-[12px] font-semibold ${hasCustomColor ? 'text-white' : 'text-[#c8ccd4]'}`}>{getSlotLabel(output)}</span>
+                                    <span className={`ml-auto text-[10px] uppercase tracking-wider font-medium px-1.5 py-0.5 rounded ${hasCustomColor ? 'bg-black/20 text-white/50' : 'text-[#565d6b] bg-white/[0.06]'}`}>{output.type}</span>
                                 </div>
 
                                 {/* Connections List */}
                                 {hasConnections ? (
-                                    <div className={`ml-3 pl-3 border-l-2 space-y-2 ${hasCustomColor ? 'border-white/10' : 'border-slate-100 dark:border-slate-800'}`}>
+                                    <div className={`ml-3 pl-3 border-l-2 space-y-2 ${hasCustomColor ? 'border-white/10' : 'border-white/[0.07]'}`}>
                                         {output.links.map((linkId: number) => {
                                             const targetInfo = getTargetNodeInfo(linkId);
                                             return targetInfo ? (
-                                                <div key={linkId} className={`flex items-center justify-between p-2.5 rounded-lg border shadow-sm transition-all ${hasCustomColor ? 'bg-black/10 border-white/5 hover:border-white/30' : 'bg-white border-slate-200 hover:border-green-300 dark:bg-slate-800 dark:border-slate-700 dark:hover:border-green-700'}`}>
+                                                <div key={linkId} className={`flex items-center justify-between px-2.5 py-1.5 rounded-lg border shadow-sm transition-all ${hasCustomColor ? 'bg-black/10 border-white/5 hover:border-white/30' : 'bg-white/[0.03] border-white/[0.08] hover:border-[#34c77b]/40'}`}>
                                                     <div className="flex items-center space-x-2 cursor-pointer overflow-hidden flex-1"
                                                         onClick={() => {
                                                             onNavigateToNode(targetInfo.targetNodeId);
@@ -796,10 +796,10 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                         }}
                                                     >
                                                         <ExternalLink className="w-3 h-3 text-green-500 flex-shrink-0" />
-                                                        <span className={`text-sm font-medium truncate hover:underline ${hasCustomColor ? 'text-white' : 'text-slate-900 dark:text-slate-200'}`}>
+                                                        <span className={`text-[12px] font-medium truncate hover:underline ${hasCustomColor ? 'text-white' : 'text-[#e9ebef]'}`}>
                                                             {targetInfo.targetNodeTitle}
                                                         </span>
-                                                        <span className={`hidden sm:inline-block text-xs truncate ${hasCustomColor ? 'text-white/50' : 'text-slate-400'}`}>({targetInfo.targetInputName})</span>
+                                                        <span className={`hidden sm:inline-block text-xs truncate ${hasCustomColor ? 'text-white/50' : 'text-[#565d6b]'}`}>({targetInfo.targetInputName})</span>
                                                     </div>
 
                                                     {onDisconnectOutput && (
@@ -808,7 +808,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                                 e.stopPropagation();
                                                                 onDisconnectOutput(nodeId, index, linkId);
                                                             }}
-                                                            className="flex-shrink-0 p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
+                                                            className="flex-shrink-0 p-1.5 text-[#565d6b] hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded transition-colors"
                                                         >
                                                             <X className="w-4 h-4" />
                                                         </button>
@@ -819,7 +819,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                     </div>
                                 ) : (
                                     <div className="ml-4 pl-3">
-                                        <p className="text-xs text-slate-400 italic">No connections</p>
+                                        <p className="text-xs text-[#565d6b] italic">No connections</p>
                                     </div>
                                 )}
                             </div>
@@ -833,11 +833,11 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     const renderSingleExecute = () => {
         if (!canSingleExecute || !onSingleExecute) return null;
         return (
-            <div className="mt-10 pt-6 border-t border-slate-100 dark:border-slate-800">
+            <div className="mt-10 pt-6 border-t border-white/[0.07]">
                 <div className="flex items-center justify-between mb-2">
                     <div>
-                        <h4 className="text-sm font-bold text-slate-900 dark:text-slate-100">Single Execution</h4>
-                        <p className="text-xs text-slate-500 mt-0.5">Process only this node.</p>
+                        <h4 className="text-[12px] font-bold text-[#e9ebef]">Single Execution</h4>
+                        <p className="text-xs text-[#71798a] mt-0.5">Process only this node.</p>
                     </div>
                 </div>
                 <Button
@@ -885,10 +885,10 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                     }}
                     exit={{ opacity: 0, scale: 0.96, y: 15 }}
                     transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-                    className="relative w-[80vw] h-[75vh] pointer-events-auto flex flex-col"
+                    className="relative w-[85vw] max-w-md h-[66vh] pointer-events-auto flex flex-col"
                 >
                     {/* Action Buttons Row - Positioned above the modal */}
-                    <div className="absolute top-0 left-0 -translate-y-[calc(100%+16px)] flex items-center w-full min-h-[48px] pointer-events-none">
+                    <div className="absolute top-0 left-0 -translate-y-[calc(100%+12px)] flex items-center w-full min-h-[40px] pointer-events-none">
                         <div className="flex items-center pointer-events-auto">
                             <AnimatePresence mode="wait">
                                 {!showColorPicker ? (
@@ -908,39 +908,39 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                     onEnterSubgraph(selectedNode.type, selectedNode.title || subgraphDefinition.name || 'Subgraph');
                                                     onClose();
                                                 }}
-                                                className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/10 flex items-center justify-center text-blue-400 hover:text-blue-500 hover:bg-blue-500/10 transition-all active:scale-95"
+                                                className="w-[38px] h-[38px] rounded-[10px] bg-[#0f1116]/90 backdrop-blur-md shadow-xl border border-white/10 flex items-center justify-center text-[#5b8af5] hover:text-[#7ba3f5] hover:bg-[#3069f0]/10 transition-all active:scale-95"
                                                 title="Edit Subgraph"
                                             >
-                                                <Edit3 className="w-5 h-5" />
+                                                <Edit3 className="w-4 h-4" />
                                             </button>
                                         ) : (
                                             <button
                                                 onClick={() => onCopyNode?.(nodeId)}
-                                                className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors active:scale-95"
+                                                className="w-[38px] h-[38px] rounded-[10px] bg-[#0f1116]/90 backdrop-blur-md shadow-xl border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-colors active:scale-95"
                                                 title={t('circularMenu.node.copy')}
                                             >
-                                                <Copy className="w-5 h-5" />
+                                                <Copy className="w-4 h-4" />
                                             </button>
                                         )}
 
                                         <div className="w-[1px] h-6 bg-white/10 mx-1" />
 
-                                        <div className="flex items-center gap-1 p-1 bg-[#374151] rounded-full shadow-xl border border-white/10">
+                                        <div className="flex items-center gap-1 p-1 bg-[#0f1116]/90 backdrop-blur-md rounded-[10px] shadow-xl border border-white/10">
                                             {[
-                                                { id: 0, icon: Play, activeColor: 'text-emerald-400', label: t('node.mode.always') },
-                                                { id: 2, icon: VolumeX, activeColor: 'text-[#3b82f6]', label: t('node.mode.mute') },
-                                                { id: 4, icon: Shuffle, activeColor: 'text-[#9333ea]', label: t('node.mode.bypass') }
+                                                { id: 0, icon: Play, activeColor: 'text-[#4ade80]', label: t('node.mode.always') },
+                                                { id: 2, icon: VolumeX, activeColor: 'text-[#5b8af5]', label: t('node.mode.mute') },
+                                                { id: 4, icon: Shuffle, activeColor: 'text-[#9a8af0]', label: t('node.mode.bypass') }
                                             ].map((mode) => (
                                                 <button
                                                     key={mode.id}
                                                     onClick={() => onNodeModeChange?.(nodeId, mode.id)}
                                                     title={mode.label}
-                                                    className={`w-10 h-10 rounded-full flex items-center justify-center transition-all active:scale-90 ${currentMode === mode.id
+                                                    className={`w-8 h-8 rounded-[7px] flex items-center justify-center transition-all active:scale-90 ${currentMode === mode.id
                                                         ? `${mode.activeColor} bg-white/10 shadow-inner`
                                                         : 'text-white/40 hover:text-white/60 hover:bg-white/5'
                                                         }`}
                                                 >
-                                                    <mode.icon className="w-5 h-5" />
+                                                    <mode.icon className="w-4 h-4" />
                                                 </button>
                                             ))}
                                         </div>
@@ -949,20 +949,20 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
 
                                         <button
                                             onClick={() => setShowColorPicker(true)}
-                                            className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"
+                                            className="w-[38px] h-[38px] rounded-[10px] bg-[#0f1116]/90 backdrop-blur-md shadow-xl border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"
                                             title={t('circularMenu.node.color')}
                                         >
-                                            <Palette className="w-5 h-5" />
+                                            <Palette className="w-4 h-4" />
                                         </button>
 
                                         <div className="w-[1px] h-6 bg-white/10 mx-1" />
 
                                         <button
                                             onClick={() => onNodeDelete?.(nodeId)}
-                                            className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/10 flex items-center justify-center text-red-400 hover:text-red-500 hover:bg-red-500/10 transition-all active:scale-95"
+                                            className="w-[38px] h-[38px] rounded-[10px] bg-[#0f1116]/90 backdrop-blur-md shadow-xl border border-white/10 flex items-center justify-center text-[#f87c7c] hover:text-[#f25555] hover:bg-[#f25555]/10 transition-all active:scale-95"
                                             title={t('circularMenu.node.delete')}
                                         >
-                                            <Trash2 className="w-5 h-5" />
+                                            <Trash2 className="w-4 h-4" />
                                         </button>
 
 
@@ -978,12 +978,12 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                     >
                                         <button
                                             onClick={() => setShowColorPicker(false)}
-                                            className="w-12 h-12 rounded-full bg-[#374151] shadow-xl border border-white/30 flex items-center justify-center text-white transition-all active:scale-95 flex-shrink-0"
+                                            className="w-[38px] h-[38px] rounded-[10px] bg-[#0f1116]/90 backdrop-blur-md shadow-xl border border-white/25 flex items-center justify-center text-white transition-all active:scale-95 flex-shrink-0"
                                         >
                                             <X className="w-5 h-5" />
                                         </button>
 
-                                        <div className="grid grid-cols-5 items-center gap-1.5 p-1.5 bg-[#374151] rounded-2xl shadow-xl border border-white/10 max-w-full overflow-hidden">
+                                        <div className="grid grid-cols-5 items-center gap-1.5 p-1.5 bg-[#0f1116]/90 backdrop-blur-md rounded-[10px] shadow-xl border border-white/10 max-w-full overflow-hidden">
                                             {NODE_COLORS.map((c) => (
                                                 <button
                                                     key={c.name}
@@ -991,8 +991,8 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                         onNodeColorChange?.(nodeId, c.value);
                                                         setShowColorPicker(false);
                                                     }}
-                                                    style={{ backgroundColor: c.value || '#374151' }}
-                                                    className="w-10 h-10 rounded-full border border-white/20 shadow-sm active:scale-90 transition-transform flex-shrink-0"
+                                                    style={{ backgroundColor: c.value || '#14171e' }}
+                                                    className="w-8 h-8 rounded-[7px] border border-white/20 shadow-sm active:scale-90 transition-transform flex-shrink-0"
                                                     title={t(c.key)}
                                                 />
                                             ))}
@@ -1009,14 +1009,14 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                             backgroundColor: effectiveBgColor,
                             opacity: effectiveOpacity
                         }}
-                        className={`relative w-full h-full bg-white dark:bg-slate-950 rounded-3xl shadow-2xl ring-1 ring-slate-900/5 dark:ring-slate-100/10 overflow-hidden flex flex-col ${hasCustomColor ? 'text-white' : ''}`}
+                        className={`relative w-full h-full bg-[#101217] rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col ${hasCustomColor ? 'text-white' : ''}`}
                     >
                         {/* Dynamic Sticky Header - Overlay Architecture */}
                         <div
                             className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] transition-all duration-300 ease-in-out
                                 ${isHeaderCompact
-                                    ? 'pt-2 pb-[13px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10'
-                                    : `pt-6 pb-6 pl-6 pr-16 border-transparent ${hasCustomColor ? 'bg-black/20' : 'bg-transparent'} backdrop-blur-0`
+                                    ? `pt-1.5 pb-[11px] pl-4 pr-[40px] backdrop-blur-xl border-white/[0.08] ${hasCustomColor ? 'bg-black/30' : 'bg-[#0f1116]/90'}`
+                                    : `pt-4 pb-3.5 pl-4 pr-12 border-transparent ${hasCustomColor ? 'bg-black/20' : 'bg-transparent'} backdrop-blur-0`
                                 }`}
                         >
                             {/* Minimalist Floating Close Button */}
@@ -1025,20 +1025,20 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                             >
                                 <button
                                     onClick={onClose}
-                                    className={`p-2 rounded-full transition-all ${hasCustomColor ? 'bg-black/20 text-white hover:bg-black/40' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-900 hover:bg-slate-200 dark:hover:text-slate-200 dark:hover:bg-slate-700'}`}
+                                    className={`p-1.5 rounded-lg transition-all ${hasCustomColor ? 'bg-black/20 text-white hover:bg-black/40' : 'bg-white/[0.06] text-[#9aa3b2] hover:text-white hover:bg-white/[0.1]'}`}
                                 >
-                                    <X className="w-5 h-5" />
+                                    <X className="w-4 h-4" />
                                 </button>
                             </div>
 
                             <div className="flex flex-col justify-center flex-1 min-w-0">
                                 <div
-                                    className={`flex items-center space-x-2 transition-all duration-300 origin-left min-w-0 ${isHeaderCompact ? 'mb-1 scale-90' : 'mb-3 scale-100'}`}
+                                    className={`flex items-center space-x-2 transition-all duration-300 origin-left min-w-0 ${isHeaderCompact ? 'mb-0.5 scale-90' : 'mb-2 scale-100'}`}
                                 >
-                                    <Badge variant="secondary" className={`text-[10px] font-mono px-2 py-0.5 rounded-full transition-colors flex-shrink-0 ${hasCustomColor ? 'bg-black/20 text-white/80' : 'text-slate-500 bg-slate-100 dark:bg-slate-900'}`}>
+                                    <Badge variant="secondary" className={`text-[9px] font-mono px-1.5 py-0.5 rounded-md transition-colors flex-shrink-0 ${hasCustomColor ? 'bg-black/20 text-white/80' : 'text-[#8a919e] bg-white/[0.06]'}`}>
                                         ID: {nodeId}
                                     </Badge>
-                                    <span className={`text-[10px] font-bold uppercase tracking-widest transition-colors truncate min-w-0 block ${hasCustomColor ? 'text-white/60' : 'text-slate-400'}`}>
+                                    <span className={`font-mono text-[9px] font-semibold uppercase tracking-[0.12em] transition-colors truncate min-w-0 block ${hasCustomColor ? 'text-white/60' : 'text-[#565d6b]'}`}>
                                         {selectedNode.type}
                                     </span>
                                 </div>
@@ -1046,7 +1046,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 {isEditingTitle ? (
                                     <div
                                         className="flex items-center min-w-0 transition-all duration-300"
-                                        style={{ height: isHeaderCompact ? '13px' : baseTitleSize }}
+                                        style={{ height: isHeaderCompact ? '12px' : baseTitleSize }}
                                     >
                                         <div className="flex items-center space-x-2 w-full">
                                             <input
@@ -1057,12 +1057,12 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                 style={{
                                                     fontSize: baseTitleSize,
                                                     lineHeight: '1',
-                                                    transform: isHeaderCompact ? `scale(${0.8125 / parseFloat(baseTitleSize)})` : 'scale(1)',
+                                                    transform: isHeaderCompact ? `scale(${0.75 / parseFloat(baseTitleSize)})` : 'scale(1)',
                                                     transformOrigin: 'left center',
                                                     width: '100%',
                                                     maxWidth: '100%'
                                                 }}
-                                                className={`flex-1 font-extrabold bg-transparent border-b-2 focus:outline-none transition-all ${hasCustomColor ? 'text-white border-white/50' : 'text-slate-900 dark:text-white border-primary'}`}
+                                                className={`flex-1 font-extrabold bg-transparent border-b-2 focus:outline-none transition-all ${hasCustomColor ? 'text-white border-white/50' : 'text-[#e9ebef] border-primary'}`}
                                                 autoFocus
                                             />
                                             <Button variant="ghost" size="icon" onClick={handleSaveTitleChange} className={`h-8 w-8 ${hasCustomColor ? 'text-white/80 hover:bg-white/10' : 'text-green-500'}`}>
@@ -1076,27 +1076,27 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 ) : (
                                     <div
                                         className="flex items-center min-w-0 transition-all duration-300"
-                                        style={{ height: isHeaderCompact ? '13px' : baseTitleSize }}
+                                        style={{ height: isHeaderCompact ? '12px' : baseTitleSize }}
                                     >
                                         <div
                                             style={{
                                                 fontSize: baseTitleSize,
                                                 lineHeight: '1',
-                                                transform: isHeaderCompact ? `scale(${0.8125 / parseFloat(baseTitleSize)})` : 'scale(1)',
+                                                transform: isHeaderCompact ? `scale(${0.75 / parseFloat(baseTitleSize)})` : 'scale(1)',
                                                 transformOrigin: 'left center',
                                                 pointerEvents: isHeaderCompact ? 'none' : 'auto',
                                             }}
                                             className={`flex items-center group/title ${!subgraphDefinition ? 'cursor-pointer' : ''} font-extrabold tracking-tight leading-tight w-full overflow-visible transition-transform duration-300 will-change-transform`}
                                             onClick={!subgraphDefinition ? handleStartEditingTitle : undefined}
                                         >
-                                            <span className={`truncate ${hasCustomColor ? 'text-white/95' : 'text-slate-900 dark:text-white'}`}>
+                                            <span className={`truncate ${hasCustomColor ? 'text-white/95' : 'text-[#e9ebef]'}`}>
                                                 {titleText}
                                             </span>
                                             {!subgraphDefinition && (
                                                 <div
                                                     className={`transition-all duration-300 ${isHeaderCompact ? 'opacity-0 scale-75' : 'opacity-0 group-hover/title:opacity-100 scale-100'}`}
                                                 >
-                                                    <Edit3 className={`w-5 h-5 ${hasCustomColor ? 'text-white/70' : 'text-slate-400'}`} />
+                                                    <Edit3 className={`w-5 h-5 ${hasCustomColor ? 'text-white/70' : 'text-[#565d6b]'}`} />
                                                 </div>
                                             )}
                                         </div>
@@ -1105,10 +1105,10 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
 
                                 {
                                     <div
-                                        className={`inline-flex self-start items-center text-xs font-medium px-2 rounded-md border m-0 transition-all duration-300 overflow-hidden
+                                        className={`inline-flex self-start items-center text-[10px] font-medium px-1.5 rounded-md border m-0 transition-all duration-300 overflow-hidden
                                             ${isHeaderCompact
                                                 ? 'opacity-0 scale-75 h-0 mt-0 py-0 border-transparent'
-                                                : `opacity-100 scale-100 h-6 mt-3 py-1 ${hasCustomColor ? 'text-white/80 bg-black/20 border-white/10' : 'text-slate-500 bg-slate-50 dark:bg-slate-900/50 border-slate-100 dark:border-slate-800'}`
+                                                : `opacity-100 scale-100 h-5 mt-2 py-0.5 ${hasCustomColor ? 'text-white/80 bg-black/20 border-white/10' : 'text-[#71798a] bg-white/[0.04] border-white/[0.07]'}`
                                             }`}
                                     >
                                         {metadata?.category || "No Category"}
@@ -1120,19 +1120,19 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                         {/* Single Scrollable Content Area */}
                         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
                             {/* Static Top Bumper - Prevents initial jitter */}
-                            <div className="h-[110px] relative pointer-events-none">
+                            <div className="h-[96px] relative pointer-events-none">
                                 {/* Sentinel for IntersectionObserver at exactly 80px scroll depth */}
                                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
                             </div>
 
-                            <div className="px-5 py-6">
+                            <div className="px-3 py-4">
                                 {/* Extra top padding when header is NOT compact to avoid overlapping or awkward spacing if needed, 
                                    actually since it's NOT absolute but flex-col, it pushes down naturally. 
                                    We just removed the old identity header from here. */}
 
                                 {/* Image Preview */}
                                 {imagePreview && (
-                                    <div className={`mb-8 rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
+                                    <div className={`mb-4 rounded-[10px] overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white/[0.03] border-white/[0.08]'}`}>
                                         <InlineImagePreview
                                             imagePreview={imagePreview}
                                             onClick={() => onFilePreview(imagePreview.filename || imagePreview)}
@@ -1150,7 +1150,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                 {videoPreview && (
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                                         {(Array.isArray(videoPreview) ? videoPreview : [videoPreview]).map((vp: any, idx: number) => (
-                                            <div key={idx} className={`rounded-2xl overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white border-slate-200 dark:border-slate-800'}`}>
+                                            <div key={idx} className={`rounded-[10px] overflow-hidden shadow-sm border ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white/[0.03] border-white/[0.08]'}`}>
                                                 <VideoPreviewSection
                                                     videoPreview={vp}
                                                     nodeId={nodeId}
@@ -1174,20 +1174,20 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                         renderParameterSection(t('node.parameters'), widgets, <SlidersHorizontal className="w-4 h-4" />, true)
                                     ) : (
                                         selectedNode.widgets_values && (
-                                            <div className={`p-4 rounded-xl border mt-8 ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-slate-50 dark:bg-slate-900 border-slate-100 dark:border-slate-800'}`}>
-                                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${hasCustomColor ? 'text-white/50' : 'text-slate-400'}`}>Raw Widget Values</p>
-                                                <code className={`text-xs break-all font-mono leading-relaxed ${hasCustomColor ? 'text-white/80' : 'text-slate-600 dark:text-slate-400'}`}>
+                                            <div className={`p-4 rounded-xl border mt-8 ${hasCustomColor ? 'bg-black/10 border-white/10' : 'bg-white/[0.04] border-white/[0.07]'}`}>
+                                                <p className={`text-[10px] font-bold uppercase tracking-widest mb-3 ${hasCustomColor ? 'text-white/50' : 'text-[#565d6b]'}`}>Raw Widget Values</p>
+                                                <code className={`text-xs break-all font-mono leading-relaxed ${hasCustomColor ? 'text-white/80' : 'text-[#8a919e]'}`}>
                                                     {JSON.stringify(selectedNode.widgets_values)}
                                                 </code>
 
                                                 {/* Refresh Button for Raw Values Mode */}
                                                 {onNodeRefresh && (
-                                                    <div className={`mt-4 pt-4 border-t ${hasCustomColor ? 'border-white/10' : 'border-slate-200 dark:border-slate-700'}`}>
+                                                    <div className={`mt-4 pt-4 border-t ${hasCustomColor ? 'border-white/10' : 'border-white/[0.08]'}`}>
                                                         <Button
                                                             variant="outline"
                                                             size="sm"
                                                             onClick={() => onNodeRefresh(nodeId)}
-                                                            className={`w-full text-xs h-9 ${hasCustomColor ? 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white' : 'text-slate-600 dark:text-slate-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400'}`}
+                                                            className={`w-full text-xs h-9 ${hasCustomColor ? 'bg-white/5 border-white/10 text-white/80 hover:bg-white/10 hover:text-white' : 'text-[#8a919e] hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 dark:hover:text-blue-400'}`}
                                                         >
                                                             <RefreshCw className="w-3.5 h-3.5 mr-2" />
                                                             Refresh Node
@@ -1218,7 +1218,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                 {/* File Gallery Portal */}
                 {
                     fileSelectionState.isOpen && fileSelectionState.paramType && createPortal(
-                        <div className="fixed inset-0 z-[9999] bg-white dark:bg-slate-900 overflow-auto">
+                        <div className="fixed inset-0 z-[9999] bg-[#0b0c0f] overflow-auto">
                             <OutputsGallery
                                 isFileSelectionMode={true}
                                 allowImages={true}

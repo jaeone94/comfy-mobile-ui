@@ -77,23 +77,23 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         transition={{ duration: 0.2, ease: 'easeOut' }}
-                        className="relative w-full max-w-md bg-white/90 dark:bg-slate-900/90 backdrop-blur-3xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 overflow-hidden"
+                        className="relative w-full max-w-md bg-[#101217] rounded-xl shadow-2xl border border-white/10 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Gradient Overlay */}
-                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-slate-900/5 pointer-events-none rounded-3xl" />
+                        <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 via-transparent to-transparent pointer-events-none rounded-xl" />
 
                         {showDeleteConfirm ? (
                             // Delete Confirmation View
-                            <div className="p-6 space-y-6">
-                                <div className="flex flex-col items-center text-center space-y-4">
-                                    <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center">
-                                        <AlertTriangle className="w-8 h-8 text-red-600 dark:text-red-400" />
+                            <div className="p-4 space-y-6">
+                                <div className="flex flex-col items-center text-center space-y-2.5">
+                                    <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center">
+                                        <AlertTriangle className="w-8 h-8 text-[#f87c7c]" />
                                     </div>
-                                    <h3 className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                                    <h3 className="text-[14px] font-bold text-[#e9ebef]">
                                         {t('folder.deleteConfirm')}
                                     </h3>
-                                    <p className="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">
+                                    <p className="text-[12px] text-[#8a919e] leading-relaxed">
                                         {t('folder.deleteMessage', { workflowCount, subfolderCount })}
                                         <br /><br />
                                         {t('folder.deleteConfirmQuery')}
@@ -104,7 +104,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                     <Button
                                         onClick={() => setShowDeleteConfirm(false)}
                                         variant="outline"
-                                        className="flex-1 py-3 rounded-xl border-slate-200 dark:border-slate-700"
+                                        className="flex-1 py-3 rounded-xl border-white/[0.08]"
                                     >
                                         {t('common.cancel')}
                                     </Button>
@@ -120,46 +120,46 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                             // Normal Detail View
                             <>
                                 {/* Header */}
-                                <div className="relative z-10 flex items-center justify-between px-6 py-4 border-b border-white/10 dark:border-slate-600/10">
+                                <div className="relative z-10 flex items-center justify-between px-4 py-4 border-b border-white/[0.08]">
                                     <div className="flex items-center gap-3 min-w-0 flex-1">
                                         <div className="w-10 h-10 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 border border-amber-400/30 flex items-center justify-center shadow-lg">
                                             <Folder className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                         </div>
                                         <div className="min-w-0 flex-1">
-                                            <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
+                                            <h2 className="text-[14px] font-bold text-[#e9ebef] truncate">
                                                 {folder.name}
                                             </h2>
-                                            <p className="text-xs text-slate-600 dark:text-slate-400">
+                                            <p className="text-xs text-[#8a919e]">
                                                 {t('folder.details')}
                                             </p>
                                         </div>
                                     </div>
                                     <button
                                         onClick={onClose}
-                                        className="flex-shrink-0 ml-3 p-2 bg-white/30 dark:bg-slate-700/30 backdrop-blur-sm border border-white/20 dark:border-slate-600/20 hover:bg-white/50 dark:hover:bg-slate-700/50 transition-all duration-200 rounded-xl"
+                                        className="flex-shrink-0 ml-3 p-2 bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] transition-all duration-200 rounded-xl"
                                         aria-label={t('common.close')}
                                     >
-                                        <X className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+                                        <X className="w-5 h-5 text-[#c8ccd4]" />
                                     </button>
                                 </div>
 
                                 {/* Content */}
-                                <div className="p-6 space-y-6 relative z-10">
+                                <div className="p-4 space-y-6 relative z-10">
                                     {/* Stats */}
-                                    <div className="grid grid-cols-2 gap-4">
-                                        <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl p-4 border border-white/20 dark:border-slate-600/20 flex flex-col items-center justify-center text-center">
-                                            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">
+                                    <div className="grid grid-cols-2 gap-2.5">
+                                        <div className="bg-white/[0.03] rounded-[10px] p-3 border border-white/[0.08] flex flex-col items-center justify-center text-center">
+                                            <span className="text-[15px] font-bold text-[#e9ebef] mb-1">
                                                 {workflowCount}
                                             </span>
-                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                            <span className="text-xs text-[#71798a] font-medium">
                                                 {t('workflow.listTitle')}
                                             </span>
                                         </div>
-                                        <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl p-4 border border-white/20 dark:border-slate-600/20 flex flex-col items-center justify-center text-center">
-                                            <span className="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-1">
+                                        <div className="bg-white/[0.03] rounded-[10px] p-3 border border-white/[0.08] flex flex-col items-center justify-center text-center">
+                                            <span className="text-[15px] font-bold text-[#e9ebef] mb-1">
                                                 {subfolderCount}
                                             </span>
-                                            <span className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+                                            <span className="text-xs text-[#71798a] font-medium">
                                                 {t('folder.subfolders')}
                                             </span>
                                         </div>
@@ -167,15 +167,15 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
 
                                     {/* Preview Grid */}
                                     {previewWorkflows.length > 0 && (
-                                        <div className="space-y-3">
-                                            <p className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                                        <div className="space-y-2">
+                                            <p className="text-[12px] font-medium text-[#c8ccd4]">
                                                 {t('common.preview')}
                                             </p>
                                             <div className="grid grid-cols-2 gap-2">
                                                 {previewWorkflows.map((wf) => (
                                                     <div
                                                         key={wf.id}
-                                                        className="aspect-square rounded-xl overflow-hidden bg-slate-100/50 dark:bg-slate-800/50 border border-slate-200/30 dark:border-slate-600/30 relative"
+                                                        className="aspect-square rounded-xl overflow-hidden bg-white/[0.04] border border-white/[0.07] relative"
                                                     >
                                                         {wf.thumbnail ? (
                                                             <img
@@ -185,7 +185,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                                             />
                                                         ) : (
                                                             <div className="w-full h-full flex items-center justify-center">
-                                                                <FileText className="w-6 h-6 text-slate-400" />
+                                                                <FileText className="w-6 h-6 text-[#565d6b]" />
                                                             </div>
                                                         )}
                                                     </div>
@@ -195,21 +195,21 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                     )}
 
                                     {/* Created Date */}
-                                    <div className="bg-white/40 dark:bg-slate-800/40 backdrop-blur-md rounded-2xl p-4 border border-white/20 dark:border-slate-600/20 flex items-center justify-between">
-                                        <span className="text-sm text-slate-600 dark:text-slate-400">{t('workflow.created')}</span>
-                                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                    <div className="bg-white/[0.03] rounded-[10px] p-3 border border-white/[0.08] flex items-center justify-between">
+                                        <span className="text-[12px] text-[#8a919e]">{t('workflow.created')}</span>
+                                        <span className="text-[12px] font-medium text-[#e9ebef]">
                                             {new Date(folder.createdAt).toLocaleDateString()}
                                         </span>
                                     </div>
                                 </div>
 
                                 {/* Footer */}
-                                <div className="relative z-10 px-6 py-4 border-t border-white/10 dark:border-slate-600/10 bg-white/30 dark:bg-slate-900/30 backdrop-blur-xl flex gap-3">
+                                <div className="relative z-10 px-4 py-4 border-t border-white/[0.08] bg-[#0f1116]/90 backdrop-blur-xl flex gap-3">
                                     {onMove && (
                                         <Button
                                             onClick={() => onMove(folder)}
                                             variant="ghost"
-                                            className="flex-1 py-3 rounded-2xl bg-blue-500/10 border border-blue-400/30 text-blue-600 dark:text-blue-400 hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 flex items-center justify-center gap-2"
+                                            className="flex-1 py-3 rounded-[10px] bg-blue-500/10 border border-blue-400/30 text-[#5b8af5] hover:bg-blue-500/20 hover:text-blue-700 dark:hover:text-blue-300 flex items-center justify-center gap-2"
                                         >
                                             <FolderInput className="w-5 h-5" />
                                             {t('folder.moveTitle')}
@@ -218,7 +218,7 @@ const FolderDetailModal: React.FC<FolderDetailModalProps> = ({
                                     <Button
                                         onClick={handleDeleteClick}
                                         variant="ghost"
-                                        className="flex-1 py-3 rounded-2xl bg-red-500/10 border border-red-400/30 text-red-600 dark:text-red-400 hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 flex items-center justify-center gap-2"
+                                        className="flex-1 py-3 rounded-[10px] bg-red-500/10 border border-red-400/30 text-[#f87c7c] hover:bg-red-500/20 hover:text-red-700 dark:hover:text-red-300 flex items-center justify-center gap-2"
                                     >
                                         <Trash2 className="w-5 h-5" />
                                         {t('folder.deleteFolder')}

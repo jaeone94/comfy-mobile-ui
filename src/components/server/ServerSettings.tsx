@@ -111,10 +111,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
       }}
     >
       {/* Main Background with Dark Theme */}
-      <div className="absolute inset-0 bg-[#374151]" />
-
-      {/* Glassmorphism Background Overlay */}
-      <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+      <div className="absolute inset-0 bg-[#0b0c0f]" />
 
       {/* Main Scrollable Content Area */}
       <div
@@ -128,22 +125,22 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
         }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-50 pwa-header bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
+        <header className="sticky top-0 z-50 pwa-header bg-[#0b0c0f]/95 backdrop-blur-xl border-b border-white/[0.08] relative overflow-hidden">
           <div className="relative z-10 flex items-center justify-between p-4">
             <div className="flex items-center space-x-3">
               <Button
                 onClick={handleBackNavigation}
                 variant="ghost"
                 size="sm"
-                className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
+                className="bg-white/[0.045] border border-white/[0.08] hover:bg-white/[0.08] transition-all h-9 w-9 p-0 flex-shrink-0 rounded-[10px] text-[#c8ccd4]"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-lg font-bold text-white/95 leading-none">
+                <h1 className="text-[15px] font-bold text-[#e9ebef] leading-none">
                   {t('serverSettings.title')}
                 </h1>
-                <p className="text-[11px] text-white/40 mt-1">
+                <p className="font-mono text-[9px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-1">
                   {t('serverSettings.subtitle')}
                 </p>
               </div>
@@ -152,166 +149,133 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
         </header>
 
         {/* Content */}
-        <div className="container mx-auto px-6 py-8 max-w-4xl space-y-6">
+        <div className="container mx-auto px-4 py-4 max-w-xl space-y-3">
           {/* Connection Status Card */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-white/90">
-                <Server className="h-5 w-5 text-blue-400" />
-                <span>{t('serverSettings.statusTitle')}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <span className="font-medium text-white/70">{t('common.status')}</span>
-                {isConnected ? (
-                  <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
-                    <Wifi className="w-3 h-3 mr-1" />
-                    {t('common.connected')}
-                  </Badge>
-                ) : (
-                  <Badge variant="destructive" className="bg-red-500/20 text-red-400 border-red-500/30">
-                    <WifiOff className="w-3 h-3 mr-1" />
-                    {t('common.disconnected')}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Enhanced verification steps */}
-              <div className="space-y-3 pt-2 border-t border-white/5">
-                {[
-                  { label: 'ComfyUI API', status: (isConnected || isConnecting) ? apiStatus : 'idle', icon: Server },
-                  { label: t('common.extension'), status: (isConnected || isConnecting) ? extensionStatus : 'idle', icon: Info }
-                ].map((step, idx) => (
-                  <div key={idx} className="flex items-center justify-between text-sm">
-                    <div className="flex items-center space-x-2 text-white/60">
-                      <step.icon className="h-4 w-4" />
-                      <span>{step.label}</span>
-                    </div>
-                    <div>
-                      {step.status === 'checking' && <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />}
-                      {step.status === 'success' && <CheckCircle className="h-4 w-4 text-green-400" />}
-                      {step.status === 'failed' && <XCircle className="h-4 w-4 text-red-400" />}
-                      {step.status === 'idle' && <div className="h-4 w-4 rounded-full border border-white/10" />}
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {error && (
-                <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-lg">
-                  <div className="flex items-start space-x-3">
-                    <XCircle className="h-5 w-5 text-red-400 flex-shrink-0 mt-0.5" />
-                    <div className="text-sm text-red-400">
-                      {error}
-                    </div>
-                  </div>
-                </div>
+          <div className="border border-white/[0.08] rounded-xl px-3.5" style={{ background: 'rgba(255,255,255,0.025)' }}>
+            <div className="h-11 flex items-center justify-between">
+              <span className="text-[13px] font-semibold text-[#e9ebef]">{t('serverSettings.statusTitle')}</span>
+              {isConnected ? (
+                <span className="flex items-center gap-[7px] px-2.5 py-[5px] rounded-lg border text-[11.5px] font-semibold" style={{ background: 'rgba(52,199,123,.12)', borderColor: 'rgba(52,199,123,.28)', color: '#4ade80' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#4ade80]" />
+                  {t('common.connected')}
+                </span>
+              ) : (
+                <span className="flex items-center gap-[7px] px-2.5 py-[5px] rounded-lg border text-[11.5px] font-semibold" style={{ background: 'rgba(242,85,85,.12)', borderColor: 'rgba(242,85,85,.3)', color: '#f87c7c' }}>
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#f25555]" />
+                  {t('common.disconnected')}
+                </span>
               )}
-            </CardContent>
-          </Card>
+            </div>
+            <div className="h-px bg-white/[0.06]" />
+            {[
+              { label: 'ComfyUI API', status: (isConnected || isConnecting) ? apiStatus : 'idle' },
+              { label: t('common.extension'), status: (isConnected || isConnecting) ? extensionStatus : 'idle' }
+            ].map((step, idx) => (
+              <div key={idx} className="h-10 flex items-center justify-between">
+                <span className="text-[12.5px] text-[#9aa3b2]">{step.label}</span>
+                <span>
+                  {step.status === 'checking' && <Loader2 className="h-4 w-4 text-[#5b8af5] animate-spin" />}
+                  {step.status === 'success' && <CheckCircle className="h-4 w-4 text-[#4ade80]" strokeWidth={1.9} />}
+                  {step.status === 'failed' && <XCircle className="h-4 w-4 text-[#f87c7c]" strokeWidth={1.9} />}
+                  {step.status === 'idle' && <span className="block h-4 w-4 rounded-full border border-white/10" />}
+                </span>
+              </div>
+            ))}
+            {error && (
+              <div className="mb-3 p-2.5 bg-[#f25555]/10 border border-[#f25555]/25 rounded-lg flex items-start gap-2">
+                <XCircle className="h-3.5 w-3.5 text-[#f87c7c] flex-shrink-0 mt-0.5" strokeWidth={1.9} />
+                <div className="text-[11.5px] leading-relaxed text-[#f87c7c]">{error}</div>
+              </div>
+            )}
+          </div>
 
           {/* Server Configuration Card */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-white/90">
-                <TestTube className="h-5 w-5 text-purple-400" />
-                <span>{t('serverSettings.configTitle')}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {/* URL Input */}
-              <div className="space-y-2">
-                <Label className="text-white/70">
-                  {t('serverSettings.urlLabel')}
-                </Label>
-                <Input
-                  type="url"
-                  value={inputUrl}
-                  onChange={(e) => {
-                    setInputUrl(e.target.value);
-                    setError(null);
-                  }}
-                  placeholder="http://127.0.0.1:8188"
-                  className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
-                />
-                <p className="text-xs text-white/40">
-                  {t('serverSettings.urlDesc')}
-                </p>
-              </div>
+          <div className="border border-white/[0.08] rounded-xl p-3.5" style={{ background: 'rgba(255,255,255,0.025)' }}>
+            <div className="text-[13px] font-semibold text-[#e9ebef] mb-2.5">{t('serverSettings.configTitle')}</div>
 
-              {/* Quick URL Options */}
-              <div className="space-y-2">
-                <Label className="text-white/70 block">
-                  {t('serverSettings.quickOptions')}
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {getDefaultUrls().map((defaultUrl) => (
-                    <Button
-                      key={defaultUrl}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => {
-                        setInputUrl(defaultUrl);
-                        setError(null);
-                      }}
-                      className="text-xs border-white/10 text-white/60 hover:bg-white/10 hover:text-white bg-transparent"
-                    >
-                      {defaultUrl}
-                    </Button>
-                  ))}
-                </div>
-              </div>
+            <div className="font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mb-[7px]">
+              {t('serverSettings.urlLabel')}
+            </div>
+            <Input
+              type="url"
+              value={inputUrl}
+              onChange={(e) => {
+                setInputUrl(e.target.value);
+                setError(null);
+              }}
+              placeholder="http://127.0.0.1:8188"
+              className="h-[42px] px-3 font-mono text-[13px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#5b8af5]/40 focus-visible:shadow-[0_0_0_3px_rgba(48,105,240,0.1)]"
+            />
+            <p className="text-[11px] leading-relaxed text-[#66758a] mt-[7px]">
+              {t('serverSettings.urlDesc')}
+            </p>
 
-              {/* Action Buttons removed - integrated into Connect */}
-
-              {/* Connect/Disconnect Button */}
-              <div className="pt-2">
-                {isConnected ? (
-                  <Button
-                    onClick={handleDisconnect}
-                    variant="destructive"
-                    className="w-full bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30"
+            <div className="font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-3.5 mb-[7px]">
+              {t('serverSettings.quickOptions')}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {getDefaultUrls().map((defaultUrl) => {
+                const active = inputUrl === defaultUrl;
+                return (
+                  <button
+                    key={defaultUrl}
+                    onClick={() => {
+                      setInputUrl(defaultUrl);
+                      setError(null);
+                    }}
+                    className={`px-[11px] py-2 rounded-lg border font-mono text-[11px] whitespace-nowrap transition-colors ${active
+                      ? 'text-[#7ba3f5] border-[#3069f0]/30'
+                      : 'text-[#9aa3b2] border-white/[0.08] hover:text-[#c8ccd4]'
+                      }`}
+                    style={{ background: active ? 'rgba(61,123,253,.1)' : 'rgba(255,255,255,.04)' }}
                   >
-                    <WifiOff className="h-4 w-4 mr-2" />
-                    {t('serverSettings.disconnect')}
-                  </Button>
-                ) : (
-                  <Button
-                    onClick={handleConnect}
-                    disabled={isConnecting}
-                    className="w-full bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 text-white shadow-lg shadow-blue-900/20"
-                  >
-                    {isConnecting ? (
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                    ) : (
-                      <Power className="h-4 w-4 mr-2" />
-                    )}
-                    {isConnecting ? t('serverSettings.connecting') : t('serverSettings.connect')}
-                  </Button>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+                    {defaultUrl}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4">
+              {isConnected ? (
+                <button
+                  onClick={handleDisconnect}
+                  className="w-full h-11 flex items-center justify-center gap-2 rounded-[10px] border text-[13px] font-semibold transition-colors"
+                  style={{ background: 'rgba(242,85,85,.1)', borderColor: 'rgba(242,85,85,.3)', color: '#f87c7c' }}
+                >
+                  <WifiOff className="h-[15px] w-[15px]" strokeWidth={1.8} />
+                  {t('serverSettings.disconnect')}
+                </button>
+              ) : (
+                <button
+                  onClick={handleConnect}
+                  disabled={isConnecting}
+                  className="w-full h-11 flex items-center justify-center gap-2 rounded-[10px] bg-[#3069f0] hover:bg-[#3f78f5] text-white text-[13px] font-semibold transition-colors disabled:opacity-60"
+                >
+                  {isConnecting ? (
+                    <Loader2 className="h-[15px] w-[15px] animate-spin" />
+                  ) : (
+                    <Power className="h-[15px] w-[15px]" strokeWidth={1.8} />
+                  )}
+                  {isConnecting ? t('serverSettings.connecting') : t('serverSettings.connect')}
+                </button>
+              )}
+            </div>
+          </div>
 
           {/* Connection Help Card */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-white/90">
-                <Info className="h-5 w-5 text-cyan-400" />
-                <span>{t('serverSettings.helpTitle')}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-2 text-sm text-white/60">
-                <p>• {t('serverSettings.helpList.1')}</p>
-                <p>• {t('serverSettings.helpList.2')}</p>
-                <p>• {t('serverSettings.helpList.3')}</p>
-                <p>• {t('serverSettings.helpList.4')}</p>
-                <p>• {t('serverSettings.helpList.5')}</p>
-              </div>
-            </CardContent>
-          </Card>
+          <div className="border border-white/[0.08] rounded-xl p-3.5" style={{ background: 'rgba(255,255,255,0.025)' }}>
+            <div className="flex items-center gap-2 mb-2.5">
+              <Info className="h-3.5 w-3.5 text-[#5b8af5]" strokeWidth={1.8} />
+              <span className="text-[13px] font-semibold text-[#e9ebef]">{t('serverSettings.helpTitle')}</span>
+            </div>
+            <div className="flex flex-col gap-[7px] text-[11.5px] leading-[1.55] text-[#8a919e]">
+              <div>· {t('serverSettings.helpList.1')}</div>
+              <div>· {t('serverSettings.helpList.2')}</div>
+              <div>· {t('serverSettings.helpList.3')}</div>
+              <div>· {t('serverSettings.helpList.4')}</div>
+              <div>· {t('serverSettings.helpList.5')}</div>
+            </div>
+          </div>
         </div>
       </div>
     </div>

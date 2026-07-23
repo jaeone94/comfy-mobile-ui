@@ -138,7 +138,7 @@ export const InlineImagePreview: React.FC<InlineImagePreviewProps> = ({
   if (loading) {
     return (
       <div
-        className="w-full h-32 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-blue-300 dark:border-blue-700"
+ className="w-full h-32 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-900/30 dark:to-purple-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-blue-300 dark:border-blue-700"
         onClick={onClick}
       >
         <div className="text-center">
@@ -152,7 +152,7 @@ export const InlineImagePreview: React.FC<InlineImagePreviewProps> = ({
   if (error || !imageUrl) {
     return (
       <div
-        className="w-full h-32 bg-gradient-to-r from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-red-300 dark:border-red-700"
+ className="w-full h-32 bg-gradient-to-r from-red-100 to-orange-100 dark:from-red-900/30 dark:to-orange-900/30 rounded-lg flex items-center justify-center cursor-pointer hover:shadow-md transition-shadow border-2 border-dashed border-red-300 dark:border-red-700"
         onClick={onClick}
       >
         <div className="text-center">
@@ -166,24 +166,24 @@ export const InlineImagePreview: React.FC<InlineImagePreviewProps> = ({
 
   return (
     <div
-      className={`w-full rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] group ${themeOverride?.container || 'bg-slate-50 dark:bg-slate-800/50'}`}
+ className={`w-full rounded-lg overflow-hidden cursor-pointer hover:shadow-md transition-all hover:scale-[1.02] group ${themeOverride?.container || 'bg-white/[0.04]'}`}
       onClick={onClick}
     >
       <div className="relative">
         <img
           src={imageUrl}
           alt={typeof imagePreview === 'string' ? imagePreview : (imagePreview.filename || t('media.preview'))}
-          className="w-full max-h-48 object-contain"
+ className="w-full max-h-48 object-contain"
           onError={() => setError(t('media.failedToDisplayImage'))}
         />
         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
-          <div className="bg-white/90 dark:bg-slate-900/90 rounded-full p-2">
-            <Image className="w-5 h-5 text-slate-700 dark:text-slate-300" />
+          <div className="bg-white/90 rounded-full p-2">
+            <Image className="w-5 h-5 text-[#c8ccd4]" />
           </div>
         </div>
       </div>
       <div className="p-3">
-        <p className={`text-xs truncate ${themeOverride?.text || 'text-slate-600 dark:text-slate-400'}`}>
+        <p className={`text-xs truncate ${themeOverride?.text || 'text-[#8a919e]'}`}>
           {typeof imagePreview === 'string' ? imagePreview : (imagePreview.filename || t('media.preview'))}
         </p>
         <p className={`text-xs mt-1 ${themeOverride?.secondaryText || 'text-blue-600 dark:text-blue-400'}`}>

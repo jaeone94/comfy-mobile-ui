@@ -229,7 +229,8 @@
             "existsTitle": "工作流已存在",
             "existsDesc": "名为 {{name}} 的工作流已存在于您的本地集合中。",
             "existsPrompt": "是否仍要导入并创建重命名的副本？",
-            "importAnyway": "仍要导入"
+            "importAnyway": "仍要导入",
+            "importButton": "导入"
         },
         "snapshot": {
             "title": "工作流快照",

@@ -342,18 +342,18 @@ export const PointEditor: React.FC<PointEditorProps> = ({
       {/* Always show the button - matching other widget styles */}
       <div className={`p-3 rounded-lg cursor-pointer transition-all duration-200 ${isModified && modifiedHighlightClasses
           ? modifiedHighlightClasses
-          : 'bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+          : 'bg-white/[0.04] border border-white/[0.08] hover:bg-white/[0.06] '
         }`}>
         <div
           onClick={() => setIsOpen(true)}
-          className="w-full flex items-center justify-between"
+ className="w-full flex items-center justify-between"
         >
           <div className="flex items-center space-x-2">
-            <span className="font-medium text-slate-900 dark:text-slate-100">
+            <span className="font-medium text-[#e9ebef]">
               Points Editor
             </span>
           </div>
-          <div className="text-sm text-slate-600 dark:text-slate-400">
+          <div className="text-[12px] text-[#8a919e]">
             {points.positive.length} positive, {points.negative.length} negative
           </div>
         </div>
@@ -361,43 +361,43 @@ export const PointEditor: React.FC<PointEditorProps> = ({
 
       {/* Modal - rendered with createPortal to document.body */}
       {isOpen && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-slate-900/40 via-blue-900/20 to-purple-900/40 backdrop-blur-md">
+        <div className="fixed inset-0 z-[9999] bg-gradient-to-br from-black/40 via-blue-900/20 to-purple-900/40 backdrop-blur-md">
           <div className="fixed inset-4 z-[9999] max-h-screen overflow-y-auto">
-            <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur-xl rounded-3xl shadow-2xl border border-white/20 dark:border-slate-600/20 w-full h-full flex flex-col overflow-hidden">
+            <div className="bg-white/20 dark:bg-[#14171e]/20 backdrop-blur-xl rounded-xl shadow-2xl border border-white/20 dark:border-white/[0.1]/20 w-full h-full flex flex-col overflow-hidden">
 
               {/* Header */}
-              <div className="relative flex items-center justify-between p-6 bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10">
-                <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">
+              <div className="relative flex items-center justify-between p-3 bg-white/[0.04] border-b border-white/[0.08]">
+                <h2 className="text-[15px] font-semibold text-[#e9ebef]">
                   Points Editor - {width}x{height}
                 </h2>
                 <Button
                   variant="ghost"
                   size="sm"
                   onClick={() => setIsOpen(false)}
-                  className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full"
+ className="h-8 w-8 p-0 hover:bg-white/20 /30 text-[#c8ccd4] dark:text-[#d5d9e0] backdrop-blur-sm border border-white/10 dark:border-white/[0.1]/10 rounded-full"
                 >
                   <X className="h-4 w-4" />
                 </Button>
               </div>
 
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              <div className="flex-1 overflow-y-auto p-4 space-y-6">
                 {/* Background Image Controls */}
                 <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-slate-800 dark:text-slate-100">Background Image</h3>
+                  <h3 className="text-[14px] font-medium text-[#e9ebef]">Background Image</h3>
                   <div className="flex gap-2 flex-wrap">
                     <input
                       type="file"
                       accept="image/*"
                       onChange={handleImageUpload}
-                      className="hidden"
+ className="hidden"
                       id="bg-image-upload"
                     />
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={() => document.getElementById('bg-image-upload')?.click()}
-                      className="bg-white/30 dark:bg-slate-800/30 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 hover:bg-white/50 dark:hover:bg-slate-800/50"
+ className="bg-white/30 dark:bg-[#14171e]/30 backdrop-blur border border-white/[0.08] dark:border-white/[0.08]/40 hover:bg-white/50 dark:hover:bg-[#14171e]/50"
                     >
                       <Upload className="h-4 w-4 mr-2" />
                       Upload from Device
@@ -407,7 +407,7 @@ export const PointEditor: React.FC<PointEditorProps> = ({
                       variant="outline"
                       size="sm"
                       onClick={() => setShowOutputsGallery(true)}
-                      className="bg-white/30 dark:bg-slate-800/30 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 hover:bg-white/50 dark:hover:bg-slate-800/50"
+ className="bg-white/30 dark:bg-[#14171e]/30 backdrop-blur border border-white/[0.08] dark:border-white/[0.08]/40 hover:bg-white/50 dark:hover:bg-[#14171e]/50"
                     >
                       <Image className="h-4 w-4 mr-2" />
                       Select from Gallery
@@ -430,7 +430,7 @@ export const PointEditor: React.FC<PointEditorProps> = ({
                           setPoints({ positive: [], negative: [] });
                           setPointHistory([]);
                         }}
-                        className="bg-red-50/80 dark:bg-red-950/40 backdrop-blur border border-red-200/40 dark:border-red-800/40 hover:bg-red-100/80 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300"
+ className="bg-red-50/80 dark:bg-red-950/40 backdrop-blur border border-red-200/40 dark:border-red-800/40 hover:bg-red-100/80 dark:hover:bg-red-900/50 text-red-700 dark:text-red-300"
                       >
                         <X className="h-4 w-4 mr-2" />
                         Clear Image
@@ -446,8 +446,8 @@ export const PointEditor: React.FC<PointEditorProps> = ({
 
                 {/* Point Mode Selection */}
                 <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-slate-800 dark:text-slate-100">Point Mode</h3>
-                  <div className="bg-white/30 dark:bg-slate-800/30 backdrop-blur rounded-xl border border-slate-200/40 dark:border-slate-700/40 p-4">
+                  <h3 className="text-[14px] font-medium text-[#e9ebef]">Point Mode</h3>
+                  <div className="bg-white/30 dark:bg-[#14171e]/30 backdrop-blur rounded-xl border border-white/[0.08] dark:border-white/[0.08]/40 p-4">
                     <SegmentedControl
                       items={[
                         { value: 'positive', label: 'Positive', color: 'green' },
@@ -461,11 +461,11 @@ export const PointEditor: React.FC<PointEditorProps> = ({
 
                 {/* Canvas */}
                 <div className="space-y-3">
-                  <h3 className="text-lg font-medium text-slate-800 dark:text-slate-100">Canvas</h3>
-                  <div className="bg-white/30 dark:bg-slate-800/30 backdrop-blur rounded-xl border border-slate-200/40 dark:border-slate-700/40 p-4 flex items-center justify-center">
+                  <h3 className="text-[14px] font-medium text-[#e9ebef]">Canvas</h3>
+                  <div className="bg-white/30 dark:bg-[#14171e]/30 backdrop-blur rounded-xl border border-white/[0.08] dark:border-white/[0.08]/40 p-4 flex items-center justify-center">
                     <canvas
                       ref={canvasRef}
-                      className="max-w-full max-h-96 cursor-crosshair block rounded-lg"
+ className="max-w-full max-h-96 cursor-crosshair block rounded-lg"
                       style={{ aspectRatio: `${width}/${height}` }}
                       onClick={handleCanvasClick}
                     />
@@ -480,7 +480,7 @@ export const PointEditor: React.FC<PointEditorProps> = ({
                       size="sm"
                       onClick={handleUndo}
                       disabled={pointHistory.length === 0}
-                      className="bg-white/30 dark:bg-slate-800/30 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 hover:bg-white/50 dark:hover:bg-slate-800/50 disabled:opacity-50"
+ className="bg-white/30 dark:bg-[#14171e]/30 backdrop-blur border border-white/[0.08] dark:border-white/[0.08]/40 hover:bg-white/50 dark:hover:bg-[#14171e]/50 disabled:opacity-50"
                     >
                       <Undo className="h-4 w-4 mr-2" />
                       Undo
@@ -491,7 +491,7 @@ export const PointEditor: React.FC<PointEditorProps> = ({
                       size="sm"
                       onClick={handleClearAll}
                       disabled={points.positive.length === 0 && points.negative.length === 0}
-                      className="bg-orange-50/80 dark:bg-orange-950/40 backdrop-blur border border-orange-200/40 dark:border-orange-800/40 hover:bg-orange-100/80 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-300 disabled:opacity-50"
+ className="bg-orange-50/80 dark:bg-orange-950/40 backdrop-blur border border-orange-200/40 dark:border-orange-800/40 hover:bg-orange-100/80 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-300 disabled:opacity-50"
                     >
                       <Trash2 className="h-4 w-4 mr-2" />
                       Clear All
@@ -502,22 +502,22 @@ export const PointEditor: React.FC<PointEditorProps> = ({
                     <Button
                       variant="outline"
                       onClick={() => setIsOpen(false)}
-                      className="bg-white/30 dark:bg-slate-800/30 backdrop-blur border border-slate-200/40 dark:border-slate-700/40 hover:bg-white/50 dark:hover:bg-slate-800/50"
+ className="bg-white/30 dark:bg-[#14171e]/30 backdrop-blur border border-white/[0.08] dark:border-white/[0.08]/40 hover:bg-white/50 dark:hover:bg-[#14171e]/50"
                     >
                       Cancel
                     </Button>
 
                     <Button
                       onClick={handleApply}
-                      className="bg-blue-500/80 dark:bg-blue-600/80 backdrop-blur border border-blue-300/40 dark:border-blue-500/40 hover:bg-blue-600/80 dark:hover:bg-blue-500/80 text-white"
+ className="bg-[#3069f0] dark:bg-[#3069f0]/80 backdrop-blur border border-blue-300/40 dark:border-[#3069f0]/40 hover:bg-[#3069f0]/80 dark:hover:bg-[#3f78f5]/80 text-white"
                     >
                       Apply
                     </Button>
                   </div>
 
                   {/* Status */}
-                  <div className="bg-white/20 dark:bg-slate-800/20 backdrop-blur rounded-lg border border-slate-200/30 dark:border-slate-700/30 p-3">
-                    <div className="text-sm text-slate-700 dark:text-slate-300">
+                  <div className="bg-white/20 dark:bg-[#14171e]/20 backdrop-blur rounded-lg border border-white/[0.07] dark:border-white/[0.08]/30 p-3">
+                    <div className="text-[12px] text-[#c8ccd4]">
                       Positive: {points.positive.length} points, Negative: {points.negative.length} points
                     </div>
                   </div>
@@ -531,7 +531,7 @@ export const PointEditor: React.FC<PointEditorProps> = ({
 
       {/* OutputsGallery Modal */}
       {showOutputsGallery && createPortal(
-        <div className="fixed inset-0 z-[9999] bg-white dark:bg-slate-900 overflow-auto overscroll-contain">
+        <div className="fixed inset-0 z-[9999] bg-[#101217] overflow-auto overscroll-contain">
           <OutputsGallery
             isFileSelectionMode={true}
             allowImages={true}

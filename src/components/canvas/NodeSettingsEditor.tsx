@@ -127,13 +127,13 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: 10 }}
       transition={{ duration: 0.2 }}
-      className="absolute inset-0 bg-white dark:bg-slate-900"
+ className="absolute inset-0 bg-white"
     >
       <ScrollArea className="h-full">
         <div className="p-6 space-y-6">
           {/* Node Mode Section */}
           <div className="space-y-4">
-            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+            <h3 className="text-sm font-semibold text-[#c8ccd4] uppercase tracking-wide">
               {t('node.executionMode')}
             </h3>
             <SegmentedControl
@@ -157,9 +157,9 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                 }
               ]}
               size="md"
-              className="w-full"
+ className="w-full"
             />
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-xs text-[#71798a]">
               {nodeMode === NodeMode.ALWAYS && t('node.modeAlwaysDesc')}
               {nodeMode === NodeMode.NEVER && t('node.modeMuteDesc')}
               {nodeMode === NodeMode.BYPASS && t('node.modeBypassDesc')}
@@ -172,20 +172,20 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
           {onNodeColorChange && (
             <>
               <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+                <h3 className="text-sm font-semibold text-[#c8ccd4] uppercase tracking-wide">
                   {t('node.color')}
                 </h3>
                 <div className="flex flex-wrap gap-2">
                   {/* Clear/None option */}
                   <button
                     onClick={() => handleColorChange('')}
-                    className={`w-12 h-12 rounded-lg border-2 transition-all flex items-center justify-center ${isNoneSelected
-                      ? 'border-blue-500 scale-105 shadow-lg bg-slate-100 dark:bg-slate-800'
-                      : 'border-gray-300 dark:border-gray-600 hover:scale-105 bg-slate-50 dark:bg-slate-900'
+ className={`w-12 h-12 rounded-lg border-2 transition-all flex items-center justify-center ${isNoneSelected
+                      ? 'border-blue-500 scale-105 shadow-lg bg-white/[0.06] '
+                      : 'border-gray-300 dark:border-gray-600 hover:scale-105 bg-white/[0.04] '
                       }`}
                     title={t('node.clearColor')}
                   >
-                    <span className="text-xl font-bold text-slate-600 dark:text-slate-400">×</span>
+                    <span className="text-xl font-bold text-[#8a919e]">×</span>
                   </button>
 
                   {/* Color options */}
@@ -193,7 +193,7 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                     <button
                       key={color.value}
                       onClick={() => handleColorChange(color.value)}
-                      className={`w-12 h-12 rounded-lg border-2 transition-all shadow-sm ${selectedColor === color.value
+ className={`w-12 h-12 rounded-lg border-2 transition-all shadow-sm ${selectedColor === color.value
                         ? 'border-blue-500 scale-105 shadow-lg ring-2 ring-blue-200 dark:ring-blue-800'
                         : 'border-gray-300 dark:border-gray-600 hover:scale-105 hover:shadow-md'
                         }`}
@@ -205,7 +205,7 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                   {/* Show custom color indicator if selected color is not in predefined list */}
                   {selectedColor && !isColorInPredefined && (
                     <div
-                      className="w-12 h-12 rounded-lg border-2 border-orange-500 scale-105 shadow-lg ring-2 ring-orange-200 dark:ring-orange-800 relative"
+ className="w-12 h-12 rounded-lg border-2 border-orange-500 scale-105 shadow-lg ring-2 ring-orange-200 dark:ring-orange-800 relative"
                       style={{ backgroundColor: selectedColor }}
                       title={`Custom color: ${selectedColor}`}
                     >
@@ -223,13 +223,13 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
           {/* Node Size Section */}
           {(onNodeSizeChange || onNodeCollapseChange) && (
             <div className="space-y-6">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wide">
+              <h3 className="text-sm font-semibold text-[#c8ccd4] uppercase tracking-wide">
                 {t('node.sizeLayout')}
               </h3>
 
               {/* Collapse Toggle */}
               <div className="flex items-center justify-between py-2">
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('node.collapsed')}</label>
+                <label className="text-sm font-medium text-[#8a919e]">{t('node.collapsed')}</label>
                 <Switch
                   checked={previewCollapsed}
                   onCheckedChange={handleCollapseChange}
@@ -239,9 +239,9 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
               {/* Width Slider */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('node.width')}</label>
+                  <label className="text-sm font-medium text-[#8a919e]">{t('node.width')}</label>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-mono text-slate-700 dark:text-slate-300 min-w-[60px] text-right">
+                    <span className="text-sm font-mono text-[#c8ccd4] min-w-[60px] text-right">
                       {Math.round(previewWidth)}px
                     </span>
                     {Math.abs(Number(widthChange)) > 0 && (
@@ -260,7 +260,7 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                   min={80}
                   max={1600}
                   step={10}
-                  className="w-full"
+ className="w-full"
                   disabled={previewCollapsed}
                 />
               </div>
@@ -268,9 +268,9 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
               {/* Height Slider */}
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('node.height')}</label>
+                  <label className="text-sm font-medium text-[#8a919e]">{t('node.height')}</label>
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm font-mono text-slate-700 dark:text-slate-300 min-w-[60px] text-right">
+                    <span className="text-sm font-mono text-[#c8ccd4] min-w-[60px] text-right">
                       {Math.round(previewHeight)}px
                     </span>
                     {Math.abs(Number(heightChange)) > 0 && (
@@ -289,16 +289,16 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                   min={30}
                   max={1600}
                   step={10}
-                  className="w-full"
+ className="w-full"
                   disabled={previewCollapsed}
                 />
               </div>
 
               {/* Visual Preview */}
               <div className="space-y-3">
-                <label className="text-sm font-medium text-slate-600 dark:text-slate-400">{t('node.preview')}</label>
+                <label className="text-sm font-medium text-[#8a919e]">{t('node.preview')}</label>
                 <div
-                  className="relative bg-slate-50 dark:bg-slate-800/50 rounded-lg border border-slate-200 dark:border-slate-700"
+ className="relative bg-white/[0.04] rounded-lg border border-white/[0.08]"
                   style={{ height: '180px' }}  // Fixed height container
                 >
                   <div className="absolute inset-0 flex justify-center items-center p-4">
@@ -332,7 +332,7 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                         <div className="relative" style={{ width: '100%', height: '100%' }}>
                           {/* Original size (ghost) */}
                           <div
-                            className="absolute border-2 border-slate-300 dark:border-slate-600 rounded opacity-40"
+ className="absolute border-2 border-white/[0.1] rounded opacity-40"
                             style={{
                               width: `${scaledOrigWidth}px`,
                               height: `${scaledOrigHeight}px`,
@@ -344,13 +344,13 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
                           >
                             {originalCollapsed && (
                               <div className="absolute inset-0 flex items-center justify-center">
-                                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium opacity-75">{t('node.original')}</span>
+                                <span className="text-[10px] text-[#71798a] font-medium opacity-75">{t('node.original')}</span>
                               </div>
                             )}
                           </div>
                           {/* New size */}
                           <div
-                            className="absolute border-2 border-blue-500 dark:border-blue-400 rounded bg-blue-100/50 dark:bg-blue-900/30"
+ className="absolute border-2 border-blue-500 dark:border-blue-400 rounded bg-blue-100/50 dark:bg-blue-900/30"
                             style={{
                               width: `${scaledNewWidth}px`,
                               height: `${scaledNewHeight}px`,
@@ -369,7 +369,7 @@ export const NodeSettingsEditor: React.FC<NodeSettingsEditorProps> = ({
 
                           {/* Size labels */}
                           <div className="absolute bottom-2 left-2 right-2 flex justify-between text-[10px]">
-                            <span className="text-slate-500 dark:text-slate-400">
+                            <span className="text-[#71798a]">
                               {t('node.original')}: {origWidth}×{origHeight}
                             </span>
                             <span className="text-blue-600 dark:text-blue-400 font-medium">

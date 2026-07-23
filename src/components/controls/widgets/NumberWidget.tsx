@@ -57,7 +57,7 @@ export const NumberWidget: React.FC<NumberWidgetProps> = ({
     <div className="space-y-3">
       {/* Slider */}
       <div 
-        className="px-2"
+ className="px-2"
         style={{ 
           touchAction: 'pan-x pinch-zoom', // Allow horizontal panning for slider
           WebkitTouchCallout: 'none',
@@ -74,7 +74,7 @@ export const NumberWidget: React.FC<NumberWidgetProps> = ({
           min={min}
           max={max}
           step={step}
-          className="w-full"
+ className="w-full"
           data-slider="true"
           onTouchStart={(e) => {
             e.stopPropagation();
@@ -93,7 +93,7 @@ export const NumberWidget: React.FC<NumberWidgetProps> = ({
         min={min}
         max={max}
         step={step}
-        className="text-center text-lg font-medium"
+ className="text-center text-[14px] font-medium"
       />
     </div>
   );

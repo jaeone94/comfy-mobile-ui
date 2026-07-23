@@ -84,24 +84,24 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
           />
 
           {/* Modal Container */}
-          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 sm:p-6 pwa-modal" style={{ pointerEvents: 'none' }}>
+          <div className="fixed inset-0 z-[101] flex items-center justify-center p-4 sm:p-4 pwa-modal" style={{ pointerEvents: 'none' }}>
             <motion.div
               initial={{ opacity: 0, scale: 0.96, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 15 }}
               transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-              className="relative w-full max-w-lg h-[75vh] pointer-events-auto flex flex-col overflow-hidden rounded-3xl shadow-2xl border border-white/10 text-white"
-              style={{ backgroundColor: '#374151' }}
+              className="relative w-full max-w-lg h-[75vh] pointer-events-auto flex flex-col overflow-hidden rounded-xl shadow-2xl border border-white/10 text-white"
+              style={{ backgroundColor: '#101217' }}
             >
               {/* Header */}
               <div className="px-6 py-5 border-b border-white/10 bg-black/20 backdrop-blur-xl">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-4">
-                    <div className="p-2.5 bg-blue-500/20 rounded-2xl border border-blue-500/30">
-                      <Cable className="h-6 w-6 text-blue-400" />
+                    <div className="p-2.5 bg-[#3069f0]/20 rounded-xl border border-[#3069f0]/30">
+                      <Cable className="h-6 w-6 text-[#5b8af5]" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-extrabold tracking-tight text-white">
+                      <h2 className="text-[15px] font-extrabold tracking-tight text-white">
                         {t('node.createConnection')}
                       </h2>
                       <p className="text-xs font-bold uppercase tracking-widest text-white/80 mt-0.5">
@@ -128,11 +128,11 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                       {t('node.source')}
                     </span>
                   </div>
-                  <div className="p-3 bg-blue-500/15 rounded-2xl border border-blue-500/30">
-                    <div className="text-sm font-black text-blue-200 truncate" title={sourceNode.type}>
+                  <div className="p-3 bg-[#3069f0]/15 rounded-xl border border-[#3069f0]/30">
+                    <div className="text-[12px] font-black text-blue-200 truncate" title={sourceNode.type}>
                       {sourceNode.type}
                     </div>
-                    <div className="text-[10px] font-mono text-blue-300/80 mt-0.5">
+                    <div className="text-[10px] font-mono text-[#7ba3f5]/80 mt-0.5">
                       ID: {sourceNode.id}
                     </div>
                   </div>
@@ -150,8 +150,8 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                     </span>
                     <div className="w-1.5 h-1.5 rounded-full bg-red-400" />
                   </div>
-                  <div className="p-3 bg-red-500/15 rounded-2xl border border-red-500/30 text-right">
-                    <div className="text-sm font-black text-red-200 truncate" title={targetNode.type}>
+                  <div className="p-3 bg-[#f25555]/15 rounded-xl border border-[#f25555]/30 text-right">
+                    <div className="text-[12px] font-black text-red-200 truncate" title={targetNode.type}>
                       {targetNode.type}
                     </div>
                     <div className="text-[10px] font-mono text-red-300/80 mt-0.5">
@@ -164,9 +164,9 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
               {/* Connection Options List */}
               <div className="flex-1 overflow-y-auto custom-scrollbar bg-black/5">
                 {compatibility.isCompatible ? (
-                  <div className="p-6 space-y-3">
+                  <div className="p-4 space-y-3">
                     <div className="flex items-center space-x-2 mb-2 px-1">
-                      <div className="w-4 h-4 rounded-full bg-green-500/20 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded-full bg-[#34c77b]/20 flex items-center justify-center">
                         <div className="w-1.5 h-1.5 rounded-full bg-green-400" />
                       </div>
                       <span className="text-[10px] font-bold uppercase tracking-widest text-white/90">
@@ -188,11 +188,11 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                             onClick={() => handleConnectionSelect(connection.sourceSlot, connection.targetSlot)}
                             className="w-full relative group"
                           >
-                            <div className="p-4 bg-black/20 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-2xl transition-all duration-200 active:scale-[0.98]">
+                            <div className="p-4 bg-black/20 hover:bg-white/5 border border-white/5 hover:border-white/10 rounded-xl transition-all duration-200 active:scale-[0.98]">
                               <div className="flex items-center justify-between gap-4">
                                 {/* Source Info */}
                                 <div className="flex-1 min-w-0 text-left">
-                                  <div className={`text-sm font-bold transition-colors ${isNameMatch ? 'text-green-400' : 'text-white'}`}>
+                                  <div className={`text-[12px] font-bold transition-colors ${isNameMatch ? 'text-[#4ade80]' : 'text-white'}`}>
                                     {connection.sourceSlotName}
                                   </div>
                                   <div className="text-[10px] font-mono text-white/60 mt-0.5">
@@ -224,7 +224,7 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
 
                                 {/* Target Info */}
                                 <div className="flex-1 min-w-0 text-right">
-                                  <div className={`text-sm font-bold transition-colors ${isNameMatch ? 'text-green-400' : 'text-white'}`}>
+                                  <div className={`text-[12px] font-bold transition-colors ${isNameMatch ? 'text-[#4ade80]' : 'text-white'}`}>
                                     {connection.targetSlotName}
                                   </div>
                                   <div className="text-[10px] font-mono text-white/60 mt-0.5">
@@ -240,13 +240,13 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
                   </div>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full p-12 text-center">
-                    <div className="w-16 h-16 mb-4 bg-red-500/10 rounded-full flex items-center justify-center border border-red-500/20">
-                      <X className="h-8 w-8 text-red-400" />
+                    <div className="w-10 h-10 mb-4 bg-[#f25555]/10 rounded-full flex items-center justify-center border border-[#f25555]/20">
+                      <X className="h-8 w-8 text-[#f87c7c]" />
                     </div>
-                    <h3 className="text-lg font-extrabold text-white pr-4">
+                    <h3 className="text-[14px] font-extrabold text-white pr-4">
                       {t('node.noCompatibleConnections')}
                     </h3>
-                    <p className="text-sm text-white/80 mt-2">
+                    <p className="text-[12px] text-white/80 mt-2">
                       {t('node.noConnectionsDesc')}
                     </p>
                   </div>
@@ -257,7 +257,7 @@ export const ConnectionModal: React.FC<ConnectionModalProps> = ({
               <div className="px-6 py-5 bg-black/20 border-t border-white/10">
                 <Button
                   onClick={onClose}
-                  className="w-full h-12 rounded-[22px] bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold transition-all active:scale-95"
+                  className="w-full h-10 rounded-[22px] bg-white/5 border border-white/10 hover:bg-white/10 text-white font-bold transition-all active:scale-95"
                 >
                   {t('common.cancel')}
                 </Button>

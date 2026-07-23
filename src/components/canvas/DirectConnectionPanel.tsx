@@ -94,7 +94,7 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
         const currentMode = nodeAny.mode || 0;
         const isMuted = currentMode === 2;
         const isBypassed = currentMode === 4;
-        const baseColor = (nodeAny.bgcolor || nodeAny.color || (nodeAny.properties?.['Node Color'])) || '#374151';
+        const baseColor = (nodeAny.bgcolor || nodeAny.color || (nodeAny.properties?.['Node Color'])) || '#101217';
 
         if (isMuted) return '#3b82f6';
         if (isBypassed) return '#9333ea';
@@ -260,11 +260,11 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                     {/* Header - Fixed Height */}
                     <div className="px-8 py-6 flex-shrink-0 flex items-center justify-between">
                         <div className="flex items-center space-x-4 min-w-0 flex-1">
-                            <div className="p-3 bg-blue-500 rounded-2xl shadow-lg ring-4 ring-blue-500/20 flex-shrink-0">
+                            <div className="p-3 bg-[#3069f0] rounded-xl shadow-lg ring-4 ring-blue-500/20 flex-shrink-0">
                                 <Cable className="w-6 h-6 text-white" />
                             </div>
                             <div className="min-w-0">
-                                <h2 className="text-2xl font-black text-white tracking-tight truncate">{t('node.connectNodes')}</h2>
+                                <h2 className="text-[16px] font-black text-white tracking-tight truncate">{t('node.connectNodes')}</h2>
                                 <div className="flex items-center space-x-2 text-white/40 text-[10px] uppercase font-bold tracking-widest mt-1">
                                     <span className="truncate max-w-[120px] sm:max-w-[200px]">{sourceNode.type}</span>
                                     <div className="w-1 h-1 rounded-full bg-white/20 flex-shrink-0" />
@@ -279,13 +279,13 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                         className="flex-1 min-h-0 relative flex justify-between items-center px-4 overflow-hidden"
                     >
                         <div
-                            className="w-[42%] max-w-[320px] h-[90%] rounded-r-[40px] border-y border-r border-white/10 shadow-2xl flex flex-col py-8 pl-6 pr-2 relative overflow-hidden -ml-4"
+                            className="w-[42%] max-w-[320px] h-[90%] rounded-r-xl border-y border-r border-white/10 shadow-2xl flex flex-col py-5 pl-4 pr-2 relative overflow-hidden -ml-4"
                             style={{ backgroundColor: sourceBgColor }}
                         >
                             <div className="absolute top-0 left-0 w-1.5 h-full bg-black/20" />
                             <div className="mb-6">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-blue-400">{t('node.sourceOutputs')}</span>
-                                <h3 className="text-lg font-bold text-white/90 line-clamp-2 break-all">{sourceNode.title || sourceNode.type}</h3>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#5b8af5]">{t('node.sourceOutputs')}</span>
+                                <h3 className="text-[14px] font-bold text-white/90 line-clamp-2 break-all">{sourceNode.title || sourceNode.type}</h3>
                             </div>
                             <div
                                 className={`flex-1 ${activeDrag ? 'overflow-hidden' : 'overflow-y-auto'} custom-scrollbar flex flex-col`}
@@ -310,7 +310,7 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                                                 ref={el => { leftSlotsRef.current[idx] = el; }}
                                                 onMouseDown={(e) => onDragStart(e, idx, output.type, true)}
                                                 onTouchStart={(e) => onDragStart(e, idx, output.type, true)}
-                                                className={`w-10 h-10 rounded-full bg-white/10 border-4 border-[#374151] flex flex-shrink-0 items-center justify-center cursor-crosshair active:scale-90 transition-all hover:bg-white/20 ${activeDrag ? 'pointer-events-none' : ''}`}
+                                                className={`w-10 h-10 rounded-full bg-black/25 border-[3px] border-white/15 flex flex-shrink-0 items-center justify-center cursor-crosshair active:scale-90 transition-all hover:bg-black/40 ${activeDrag ? 'pointer-events-none' : ''}`}
                                             >
                                                 <div
                                                     className="w-3 h-3 rounded-full pointer-events-none"
@@ -327,13 +327,13 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                         </div>
 
                         <div
-                            className="w-[42%] max-w-[320px] h-[90%] rounded-l-[40px] border-y border-l border-white/10 shadow-2xl flex flex-col py-8 pr-6 pl-2 relative overflow-hidden -mr-4"
+                            className="w-[42%] max-w-[320px] h-[90%] rounded-l-xl border-y border-l border-white/10 shadow-2xl flex flex-col py-5 pr-4 pl-2 relative overflow-hidden -mr-4"
                             style={{ backgroundColor: targetBgColor }}
                         >
                             <div className="absolute top-0 right-0 w-1.5 h-full bg-black/20" />
                             <div className="mb-6 text-right">
-                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400">{t('node.targetInputs')}</span>
-                                <h3 className="text-lg font-bold text-white/90 line-clamp-2 break-all">{targetNode.title || targetNode.type}</h3>
+                                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-[#f87c7c]">{t('node.targetInputs')}</span>
+                                <h3 className="text-[14px] font-bold text-white/90 line-clamp-2 break-all">{targetNode.title || targetNode.type}</h3>
                             </div>
                             <div
                                 className={`flex-1 ${activeDrag ? 'overflow-hidden' : 'overflow-y-auto'} custom-scrollbar flex flex-col`}
@@ -357,7 +357,7 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                                                 ref={el => { rightSlotsRef.current[idx] = el; }}
                                                 onMouseDown={(e) => onDragStart(e, idx, input.type, false)}
                                                 onTouchStart={(e) => onDragStart(e, idx, input.type, false)}
-                                                className={`w-10 h-10 rounded-full bg-white/10 border-4 border-[#374151] flex flex-shrink-0 items-center justify-center cursor-crosshair active:scale-90 transition-all hover:bg-white/20 ${activeDrag ? 'pointer-events-none' : ''}`}
+                                                className={`w-10 h-10 rounded-full bg-black/25 border-[3px] border-white/15 flex flex-shrink-0 items-center justify-center cursor-crosshair active:scale-90 transition-all hover:bg-black/40 ${activeDrag ? 'pointer-events-none' : ''}`}
                                             >
                                                 <div
                                                     className="w-3 h-3 rounded-full pointer-events-none"
@@ -444,13 +444,13 @@ export const DirectConnectionPanel: React.FC<DirectConnectionPanelProps> = ({
                             <Button
                                 variant="outline"
                                 onClick={onClose}
-                                className="h-14 px-10 rounded-[28px] bg-white/5 border-white/10 text-white font-bold hover:bg-white/10 active:scale-95 transition-all"
+                                className="h-10 px-10 rounded-[14px] bg-white/5 border-white/10 text-white font-bold hover:bg-white/10 active:scale-95 transition-all"
                             >
                                 {t('common.cancel')}
                             </Button>
                             <Button
                                 onClick={handleApply}
-                                className="h-14 px-10 rounded-[28px] bg-blue-500 hover:bg-blue-600 text-white font-black shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center space-x-2"
+                                className="h-10 px-10 rounded-[14px] bg-[#3069f0] hover:bg-[#3069f0] text-white font-black shadow-xl shadow-blue-500/20 active:scale-95 transition-all flex items-center space-x-2"
                             >
                                 <Check className="w-5 h-5" />
                                 <span>{t('node.applyChanges')}</span>

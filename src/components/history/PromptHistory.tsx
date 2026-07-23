@@ -98,11 +98,11 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick, imageL
 
   const getFileIcon = (filename: string) => {
     if (isImageFile(filename)) {
-      return <ImageIcon className="h-4 w-4 text-blue-400" />;
+      return <ImageIcon className="h-4 w-4 text-[#7ba3f5]" />;
     } else if (isVideoFile(filename)) {
       return <Video className="h-4 w-4 text-purple-400" />;
     } else {
-      return <FileText className="h-4 w-4 text-slate-400" />;
+      return <FileText className="h-4 w-4 text-[#565d6b]" />;
     }
   };
 
@@ -175,18 +175,18 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick, imageL
 
   return (
     <div
-      className="flex items-center space-x-3 p-3 bg-white/20 dark:bg-slate-800/20 backdrop-blur-sm border border-white/20 dark:border-slate-700/20 rounded-xl hover:bg-white/30 dark:hover:bg-slate-700/30 cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
+      className="flex items-center gap-2 p-2 bg-white/[0.03] border border-white/[0.07] rounded-[10px] hover:bg-white/[0.06] cursor-pointer transition-all duration-200 hover:scale-[1.02] hover:shadow-lg"
       onClick={() => onFileClick(file)}
     >
       <div
         ref={thumbnailRef}
-        className="flex-shrink-0 w-12 h-12 bg-white/10 dark:bg-slate-700/30 backdrop-blur-sm border border-white/10 dark:border-slate-600/30 rounded-lg overflow-hidden relative"
+        className="flex-shrink-0 w-9 h-9 bg-white/[0.05] border border-white/[0.08] rounded-md overflow-hidden relative"
       >
         <div className="absolute inset-0 flex items-center justify-center">
           {!isInView || hasError ? (
             getFileIcon(file.filename)
           ) : !isLoaded && thumbnailUrl ? (
-            <Loader2 className="h-4 w-4 animate-spin text-slate-400" />
+            <Loader2 className="h-4 w-4 animate-spin text-[#565d6b]" />
           ) : !thumbnailUrl ? (
             getFileIcon(file.filename)
           ) : null}
@@ -206,15 +206,15 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick, imageL
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-slate-900 dark:text-slate-100 truncate">
+        <p className="text-[11.5px] font-medium text-[#e9ebef] truncate">
           {file.filename}
         </p>
         <div className="flex items-center space-x-2 mt-1">
-          <span className="text-xs text-slate-500 dark:text-slate-400 capitalize">
+          <span className="text-xs text-[#71798a] capitalize">
             {file.type}
           </span>
           {file.subfolder && (
-            <span className="text-xs text-slate-500 dark:text-slate-400">
+            <span className="text-xs text-[#71798a]">
               • {file.subfolder}
             </span>
           )}
@@ -558,40 +558,40 @@ export const PromptHistoryContent: React.FC<{
     }
 
     if (hasException || status.status_str === 'error') {
-      return <XCircle className="h-4 w-4 text-red-400" />;
+      return <XCircle className="h-3.5 w-3.5 text-[#f87c7c]" />;
     }
 
     if (status.completed) {
-      return <CheckCircle className="h-4 w-4 text-green-400" />;
+      return <CheckCircle className="h-3.5 w-3.5 text-[#4ade80]" />;
     }
 
     if (status.status_str === 'executing') {
-      return <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />;
+      return <Loader2 className="h-3.5 w-3.5 text-[#7ba3f5] animate-spin" />;
     }
 
-    return <Clock className="h-4 w-4 text-yellow-400" />;
+    return <Clock className="h-3.5 w-3.5 text-[#ffa348]" />;
   };
 
   const getStatusIndicator = (item: PromptHistoryItem, hasException: boolean) => {
     const { status, isInterrupted } = item;
 
     if (isInterrupted) {
-      return <div className="w-3 h-3 rounded-full bg-orange-400 flex-shrink-0 shadow-lg shadow-orange-400/50" title={t('promptHistory.status.interrupted')} />;
+      return <div className="w-2 h-2 rounded-full bg-[#ffa348] flex-shrink-0 " title={t('promptHistory.status.interrupted')} />;
     }
 
     if (hasException || status.status_str === 'error') {
-      return <div className="w-3 h-3 rounded-full bg-red-400 flex-shrink-0 shadow-lg shadow-red-400/50" title={t('promptHistory.status.error')} />;
+      return <div className="w-2 h-2 rounded-full bg-[#f25555] flex-shrink-0 " title={t('promptHistory.status.error')} />;
     }
 
     if (status.completed) {
-      return <div className="w-3 h-3 rounded-full bg-green-400 flex-shrink-0 shadow-lg shadow-green-400/50" title={t('promptHistory.status.completed')} />;
+      return <div className="w-2 h-2 rounded-full bg-[#4ade80] flex-shrink-0 " title={t('promptHistory.status.completed')} />;
     }
 
     if (status.status_str === 'executing') {
-      return <div className="w-3 h-3 rounded-full bg-blue-400 animate-pulse flex-shrink-0 shadow-lg shadow-blue-400/50" title={t('promptHistory.status.executing')} />;
+      return <div className="w-2 h-2 rounded-full bg-[#3069f0] animate-pulse flex-shrink-0 " title={t('promptHistory.status.executing')} />;
     }
 
-    return <div className="w-3 h-3 rounded-full bg-slate-400 flex-shrink-0 shadow-lg shadow-slate-400/50" title={t('promptHistory.status.pending')} />;
+    return <div className="w-2 h-2 rounded-full bg-[#565d6b] flex-shrink-0 " title={t('promptHistory.status.pending')} />;
   };
 
   const getShortPromptId = (promptId: string): string => {
@@ -678,11 +678,11 @@ export const PromptHistoryContent: React.FC<{
     <>
       <div className={`flex flex-col h-full overflow-hidden relative ${isEmbedded ? '' : ''}`}>
         {/* Glassmorphism Header with Tabs */}
-        <div className={`relative flex flex-col ${isEmbedded ? 'bg-transparent' : 'bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border-b border-white/10 dark:border-slate-600/10'}`}>
+        <div className={`relative flex flex-col ${isEmbedded ? 'bg-transparent' : 'bg-[#0f1116]/90 backdrop-blur-xl border-b border-white/[0.08]'}`}>
           <div className={`flex items-center justify-between ${isEmbedded ? 'p-0 pb-3' : 'p-6 pb-4'}`}>
             <div className="flex items-center space-x-3">
-              <Layers className={`${isEmbedded ? 'h-5 w-5' : 'h-6 w-6'} text-violet-400 drop-shadow-sm`} />
-              <h2 className={`${isEmbedded ? 'text-lg' : 'text-xl'} font-bold text-slate-900 dark:text-white drop-shadow-sm`}>
+              <Layers className={`${isEmbedded ? 'h-4 w-4' : 'h-5 w-5'} text-[#5b8af5]`} strokeWidth={1.8} />
+              <h2 className={`${isEmbedded ? 'text-[13.5px]' : 'text-[17px]'} font-bold text-[#e9ebef]`}>
                 {t('promptHistory.title')}
               </h2>
             </div>
@@ -692,7 +692,7 @@ export const PromptHistoryContent: React.FC<{
                 disabled={isLoading || outputsLoading}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full disabled:opacity-50"
+                className="h-7 w-7 p-0 rounded-[7px] border border-white/[0.08] bg-white/[0.045] text-[#c8ccd4] hover:text-white hover:bg-white/[0.08] disabled:opacity-50"
               >
                 <RefreshCw className={`h-4 w-4 ${(isLoading || outputsLoading) ? 'animate-spin' : ''}`} />
               </Button>
@@ -701,7 +701,7 @@ export const PromptHistoryContent: React.FC<{
                   onClick={onClose}
                   variant="ghost"
                   size="sm"
-                  className="h-8 w-8 p-0 hover:bg-white/20 dark:hover:bg-slate-700/30 text-slate-700 dark:text-slate-200 backdrop-blur-sm border border-white/10 dark:border-slate-600/10 rounded-full"
+                  className="h-7 w-7 p-0 rounded-[7px] border border-white/[0.08] bg-white/[0.045] text-[#c8ccd4] hover:text-white hover:bg-white/[0.08]"
                 >
                   <X className="h-4 w-4" />
                 </Button>
@@ -711,19 +711,19 @@ export const PromptHistoryContent: React.FC<{
 
           {/* Enhanced Glassmorphism Tabs */}
           <div className={`flex ${isEmbedded ? 'px-0 pb-3' : 'px-6 pb-2'}`}>
-            <div className="flex bg-white/10 dark:bg-slate-700/10 backdrop-blur-sm border border-white/20 dark:border-slate-600/20 rounded-2xl p-1 shadow-lg w-full">
+            <div className="flex gap-[3px] bg-white/[0.04] border border-white/[0.08] rounded-[10px] p-1 w-full">
               <button
                 onClick={() => setActiveTab('queues')}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 ${activeTab === 'queues'
-                  ? 'bg-white/30 dark:bg-slate-600/30 text-slate-900 dark:text-white shadow-lg backdrop-blur-sm border border-white/20 dark:border-slate-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/10 dark:hover:bg-slate-700/10'
+                className={`flex-1 px-3 py-1.5 text-[11.5px] font-semibold rounded-[7px] transition-all duration-200 ${activeTab === 'queues'
+                  ? 'bg-[#e9ebef] text-[#0b0c0f]'
+                  : 'text-[#71798a] hover:text-[#9aa3b2]'
                   }`}
               >
                 <div className="flex items-center justify-center space-x-2">
                   <Clock className="h-4 w-4" />
                   <span>{t('promptHistory.queuesTab')}</span>
                   {historyData.length > 0 && activeTab === 'queues' && (
-                    <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
+                    <Badge variant="secondary" className="ml-1 h-[17px] px-1.5 rounded-md bg-black/20 text-current font-mono text-[10px]">
                       {historyData.length}
                     </Badge>
                   )}
@@ -731,16 +731,16 @@ export const PromptHistoryContent: React.FC<{
               </button>
               <button
                 onClick={() => setActiveTab('outputs')}
-                className={`flex-1 px-4 py-2 text-sm font-medium rounded-xl transition-all duration-300 ${activeTab === 'outputs'
-                  ? 'bg-white/30 dark:bg-slate-600/30 text-slate-900 dark:text-white shadow-lg backdrop-blur-sm border border-white/20 dark:border-slate-500/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:bg-white/10 dark:hover:bg-slate-700/10'
+                className={`flex-1 px-3 py-1.5 text-[11.5px] font-semibold rounded-[7px] transition-all duration-200 ${activeTab === 'outputs'
+                  ? 'bg-[#e9ebef] text-[#0b0c0f]'
+                  : 'text-[#71798a] hover:text-[#9aa3b2]'
                   }`}
               >
                 <div className="flex items-center justify-center space-x-2">
                   <ImageIcon className="h-4 w-4" />
                   <span>{t('promptHistory.outputsTab')}</span>
                   {outputFiles.length > 0 && activeTab === 'outputs' && (
-                    <Badge variant="secondary" className="ml-1 bg-white/20 dark:bg-slate-800/30">
+                    <Badge variant="secondary" className="ml-1 h-[17px] px-1.5 rounded-md bg-black/20 text-current font-mono text-[10px]">
                       {outputFiles.length}
                     </Badge>
                   )}
@@ -765,8 +765,8 @@ export const PromptHistoryContent: React.FC<{
                 {isLoading && (
                   <div className="flex-1 flex items-center justify-center py-12">
                     <div className="text-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-4" />
-                      <p className="text-slate-600 dark:text-slate-400">{t('promptHistory.loading')}</p>
+                      <Loader2 className="h-8 w-8 animate-spin text-[#5b8af5] mx-auto mb-4" />
+                      <p className="text-[#8a919e]">{t('promptHistory.loading')}</p>
                     </div>
                   </div>
                 )}
@@ -774,13 +774,13 @@ export const PromptHistoryContent: React.FC<{
                 {error && !isLoading && (
                   <div className="flex-1 flex items-center justify-center py-12">
                     <div className="text-center">
-                      <AlertTriangle className="h-8 w-8 text-red-400 mx-auto mb-4" />
-                      <p className="text-red-400 mb-4">{error}</p>
+                      <AlertTriangle className="h-8 w-8 text-[#f87c7c] mx-auto mb-4" />
+                      <p className="text-[#f87c7c] mb-4">{error}</p>
                       <Button
                         onClick={fetchHistory}
                         variant="outline"
                         size="sm"
-                        className="bg-white/10 dark:bg-slate-800/20 backdrop-blur-sm border-white/20 dark:border-slate-700/20 hover:bg-white/20 dark:hover:bg-slate-700/30"
+                        className="bg-white/[0.05] border-white/[0.08] text-[#c8ccd4] hover:bg-white/[0.08]"
                       >
                         <RefreshCw className="h-4 w-4 mr-2" />
                         {t('promptHistory.retry')}
@@ -792,38 +792,38 @@ export const PromptHistoryContent: React.FC<{
                 {!isLoading && !error && historyData.length === 0 && (
                   <div className="flex-1 flex items-center justify-center py-12">
                     <div className="text-center">
-                      <Clock className="h-8 w-8 text-slate-400 mx-auto mb-4" />
-                      <p className="text-slate-600 dark:text-slate-400">{t('promptHistory.empty')}</p>
+                      <Clock className="h-8 w-8 text-[#565d6b] mx-auto mb-4" />
+                      <p className="text-[#8a919e]">{t('promptHistory.empty')}</p>
                     </div>
                   </div>
                 )}
 
                 {!isLoading && !error && historyData.length > 0 && (
-                  <div className={`${isEmbedded ? 'p-1' : 'p-6'} space-y-4`}>
+                  <div className={`${isEmbedded ? 'p-0.5' : 'p-6'} space-y-2`}>
                     {historyData.map((item) => {
                       const hasException = !!(item.exception_message || item.exception_type);
 
                       return (
                         <div
                           key={item.promptId}
-                          className="p-4 bg-white/10 dark:bg-slate-800/10 backdrop-blur-sm border border-white/20 dark:border-slate-700/20 rounded-xl hover:bg-white/20 dark:hover:bg-slate-700/20 transition-all duration-200 hover:scale-[1.01] hover:shadow-lg"
+                          className="px-2 py-1.5 bg-white/[0.03] border border-white/[0.07] rounded-lg hover:bg-white/[0.05] hover:border-white/[0.12] transition-colors"
                         >
                           <div className="flex items-start justify-between">
-                            <div className="flex-1 space-y-3">
+                            <div className="flex-1 space-y-1.5">
                               <div className="flex items-center justify-between">
-                                <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                <div className="flex items-center space-x-2 flex-1 min-w-0">
                                   {getStatusIcon(item, hasException)}
-                                  <span className="font-mono text-xs text-slate-700 dark:text-slate-300 truncate flex-1">
+                                  <span className="font-mono text-[11px] text-[#c8ccd4] truncate flex-1">
                                     {getShortPromptId(item.promptId)}
                                   </span>
                                   {getStatusIndicator(item, hasException)}
                                 </div>
                                 <div className="flex flex-col items-end ml-3">
-                                  <span className="text-[10px] text-slate-500 dark:text-slate-400 flex-shrink-0">
+                                  <span className="font-mono text-[9px] text-[#71798a] flex-shrink-0">
                                     {formatTimestamp(item.timestamp)}
                                   </span>
                                   {item.duration !== undefined && (
-                                    <span className="text-[9px] text-violet-400/70 font-mono mt-0.5">
+                                    <span className="text-[9px] text-[#5b8af5]/70 font-mono mt-0.5">
                                       {formatDuration(item.duration)}
                                     </span>
                                   )}
@@ -837,13 +837,13 @@ export const PromptHistoryContent: React.FC<{
 
                               {hasException && (
                                 <div
-                                  className="p-3 bg-red-500/10 backdrop-blur-sm border border-red-400/20 rounded-lg space-y-3 cursor-pointer hover:bg-red-500/20 transition-colors"
+                                  className="p-2 bg-[#f25555]/10 border border-[#f25555]/25 rounded-lg space-y-1.5 cursor-pointer hover:bg-red-500/20 transition-colors"
                                   onClick={() => handleErrorClick(item)}
                                   title="Click to view full error details"
                                 >
                                   {item.exception_type && (
                                     <div className="flex items-start space-x-2">
-                                      <XCircle className="h-5 w-5 text-red-400 mt-0.5 flex-shrink-0" />
+                                      <XCircle className="h-3.5 w-3.5 text-[#f87c7c] mt-0.5 flex-shrink-0" />
                                       <div className="flex-1">
                                         <div className="font-medium text-red-300 mb-1 text-xs">
                                           {t('promptHistory.errorType')}
@@ -872,19 +872,19 @@ export const PromptHistoryContent: React.FC<{
                                   <Button
                                     onClick={() => toggleOutputsExpansion(item.promptId)}
                                     variant="ghost"
-                                    className={`w-full p-3 backdrop-blur-sm border rounded-lg ${expandedPromptId === item.promptId
-                                      ? 'bg-green-500/20 border-green-400/40 shadow-lg shadow-green-500/10'
-                                      : 'bg-green-500/10 border-green-400/20 hover:bg-green-500/20'
+                                    className={`w-full h-7 px-2 py-0 border rounded-md ${expandedPromptId === item.promptId
+                                      ? 'bg-[#34c77b]/[0.18] border-[#34c77b]/40'
+                                      : 'bg-[#34c77b]/[0.1] border-[#34c77b]/25 hover:bg-[#34c77b]/[0.18]'
                                       }`}
                                   >
                                     <div className="flex items-center justify-between w-full">
                                       <div className="flex items-center space-x-2">
-                                        <CheckCircle className="h-4 w-4 text-green-400" />
-                                        <span className="text-xs text-green-300 font-bold">
+                                        <CheckCircle className="h-3.5 w-3.5 text-[#4ade80]" />
+                                        <span className="text-[10.5px] text-[#4ade80] font-semibold">
                                           {t('promptHistory.generatedFiles', { count: getOutputFiles(item.outputs).length })}
                                         </span>
                                       </div>
-                                      <ChevronDown className={`h-4 w-4 text-green-400 ${expandedPromptId === item.promptId ? 'rotate-180' : ''}`} />
+                                      <ChevronDown className={`h-3.5 w-3.5 text-[#4ade80] ${expandedPromptId === item.promptId ? 'rotate-180' : ''}`} />
                                     </div>
                                   </Button>
 
@@ -894,21 +894,21 @@ export const PromptHistoryContent: React.FC<{
                                         <button
                                           key={`${item.promptId}-${idx}`}
                                           onClick={() => handleOutputFileClick(file)}
-                                          className="flex items-center space-x-3 p-2.5 bg-white/5 dark:bg-slate-800/10 border border-white/10 dark:border-slate-700/20 rounded-lg hover:bg-white/10 dark:hover:bg-slate-700/20 transition-colors w-full group"
+                                          className="flex items-center gap-2 p-2 bg-white/[0.03] border border-white/[0.07] rounded-lg hover:bg-white/[0.06] transition-colors w-full group"
                                         >
-                                          <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center bg-white/10 rounded-md group-hover:bg-violet-500/20 transition-colors">
+                                          <div className="flex-shrink-0 w-7 h-7 flex items-center justify-center bg-white/[0.07] rounded-md group-hover:bg-[#3069f0]/20 transition-colors">
                                             {isImageFile(file.filename) ? (
-                                              <ImageIcon className="h-4 w-4 text-blue-400 group-hover:text-blue-300" />
+                                              <ImageIcon className="h-4 w-4 text-[#7ba3f5] group-hover:text-blue-300" />
                                             ) : isVideoFile(file.filename) ? (
                                               <Video className="h-4 w-4 text-purple-400 group-hover:text-purple-300" />
                                             ) : (
-                                              <FileText className="h-4 w-4 text-slate-400" />
+                                              <FileText className="h-4 w-4 text-[#565d6b]" />
                                             )}
                                           </div>
-                                          <span className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate text-left flex-1">
+                                          <span className="text-xs font-medium text-[#c8ccd4] truncate text-left flex-1">
                                             {file.filename}
                                           </span>
-                                          <Eye className="h-3.5 w-3.5 text-slate-500 group-hover:text-violet-400" />
+                                          <Eye className="h-3.5 w-3.5 text-[#71798a] group-hover:text-[#5b8af5]" />
                                         </button>
                                       ))}
                                     </div>
@@ -937,8 +937,8 @@ export const PromptHistoryContent: React.FC<{
                 {outputsLoading && (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-violet-400 mx-auto mb-3" />
-                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                      <Loader2 className="h-8 w-8 animate-spin text-[#5b8af5] mx-auto mb-3" />
+                      <p className="text-[11.5px] text-[#8a919e]">
                         {t('promptHistory.loadingOutputs')}
                       </p>
                     </div>
@@ -947,7 +947,7 @@ export const PromptHistoryContent: React.FC<{
 
                 {outputsError && (
                   <div className="p-4 m-4 bg-red-500/10 backdrop-blur-sm border border-red-400/20 rounded-xl">
-                    <p className="text-sm text-red-400">{outputsError}</p>
+                    <p className="text-[11.5px] text-[#f87c7c]">{outputsError}</p>
                     <button
                       onClick={loadOutputHistory}
                       className="mt-2 text-xs text-red-300 hover:underline"
@@ -959,11 +959,11 @@ export const PromptHistoryContent: React.FC<{
 
                 {!outputsLoading && !outputsError && outputFiles.length === 0 && (
                   <div className="text-center py-12 px-4">
-                    <ImageIcon className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-slate-900 dark:text-slate-100 mb-2">
+                    <ImageIcon className="h-16 w-16 text-[#565d6b] mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-[#e9ebef] mb-2">
                       {t('promptHistory.noOutputHistory')}
                     </h3>
-                    <p className="text-sm text-slate-500 dark:text-slate-400">
+                    <p className="text-[11.5px] text-[#71798a]">
                       {t('promptHistory.noOutputFiles')}
                     </p>
                   </div>
@@ -1029,13 +1029,13 @@ export const PromptHistory: React.FC = () => {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4"
         >
           <motion.div
             initial={{ scale: 0.9, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-lg h-[80vh] flex flex-col overflow-hidden"
+            className="bg-[#101217] border border-white/10 rounded-xl shadow-2xl w-full max-w-lg h-[76vh] flex flex-col overflow-hidden"
           >
             <PromptHistoryContent
               onClose={closePromptHistory}

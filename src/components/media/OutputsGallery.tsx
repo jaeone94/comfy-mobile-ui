@@ -144,27 +144,27 @@ const LazyImage: React.FC<LazyImageProps> = ({
 
   return (
     <div
-      className={`relative aspect-square bg-slate-900 overflow-hidden cursor-pointer group transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] ${isSelected ? 'z-10' : ''}`}
-      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 256px' }}
+      className={`relative aspect-square overflow-hidden cursor-pointer group transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] ${isSelected ? 'z-10' : ''}`}
+      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 256px', background: '#0d1016' }}
       onClick={handleClick}
     >
       {/* Loading Placeholder */}
       {!isLoaded && !hasError && (
         <div className="absolute inset-0 flex items-center justify-center">
-          <div className="h-8 w-8 bg-slate-300 dark:bg-slate-700 rounded animate-pulse" />
+          <div className="h-8 w-8 bg-white/[0.06] rounded animate-pulse" />
         </div>
       )}
 
       {/* Error State */}
       {hasError && (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-100 dark:bg-slate-800">
+        <div className="absolute inset-0 flex items-center justify-center" style={{ background: '#0d1016' }}>
           <div className="text-center">
             {isVideoFile(file.filename) ? (
-              <Video className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+              <Video className="h-8 w-8 text-white/20 mx-auto mb-2" strokeWidth={1.6} />
             ) : (
-              <ImageIcon className="h-8 w-8 text-slate-400 mx-auto mb-2" />
+              <ImageIcon className="h-8 w-8 text-white/20 mx-auto mb-2" strokeWidth={1.6} />
             )}
-            <p className="text-xs text-slate-500 dark:text-slate-400">{t('media.failedToLoad')}</p>
+            <p className="text-xs text-[#565d6b]">{t('media.failedToLoad')}</p>
           </div>
         </div>
       )}
@@ -187,14 +187,14 @@ const LazyImage: React.FC<LazyImageProps> = ({
             />
           ) : (
             /* Video placeholder when no thumbnail available */
-            <div className="w-full h-full flex items-center justify-center bg-slate-100 dark:bg-slate-800">
-              <Video className="h-12 w-12 text-slate-400" />
+            <div className="w-full h-full flex items-center justify-center" style={{ background: '#0d1016' }}>
+              <Video className="h-10 w-10 text-white/20" strokeWidth={1.6} />
             </div>
           )}
           {/* Video Overlay Icon */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="bg-black/50 rounded-full p-3">
-              <Video className="h-8 w-8 text-white" />
+            <div className="rounded-lg p-2 border border-white/[0.12]" style={{ background: 'rgba(5,6,8,0.72)' }}>
+              <Video className="h-5 w-5 text-[#e9ebef]" strokeWidth={1.8} />
             </div>
           </div>
         </>
@@ -218,33 +218,39 @@ const LazyImage: React.FC<LazyImageProps> = ({
         </>
       )}
 
-      {/* Selection Checkbox - Immersive Circle */}
+      {/* Selected State Overlay (blue wash + border, per design spec) */}
+      {isSelected && (
+        <div
+          className="absolute inset-0 z-20 pointer-events-none border-2 border-[#3069f0]"
+          style={{ background: 'rgba(48,105,240,0.28)' }}
+        />
+      )}
+
+      {/* Selection Checkbox - square check */}
       {isSelectionMode && (
-        <div className="absolute top-3 left-3 z-30">
-          <div className={`w-7 h-7 rounded-full border-2 border-white/50 backdrop-blur-md flex items-center justify-center transition-all duration-300 ${isSelected ? 'bg-blue-600 border-blue-400 scale-110 shadow-lg' : 'bg-black/20 hover:bg-black/40'}`}>
-            {isSelected && <Check className="h-4 w-4 text-white stroke-[3px]" />}
+        <div className="absolute top-1.5 left-1.5 z-30">
+          <div
+            className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${isSelected ? 'bg-[#3069f0]' : 'border-[1.5px] border-white/55'}`}
+            style={isSelected ? undefined : { background: 'rgba(5,6,8,0.4)' }}
+          >
+            {isSelected && <Check className="h-3 w-3 text-white" strokeWidth={2.6} />}
           </div>
         </div>
       )}
 
-      {/* Selected State Overlay */}
-      {isSelected && (
-        <div className="absolute inset-0 border-4 border-blue-500 z-20 pointer-events-none shadow-[inset_0_0_20px_rgba(59,130,246,0.3)]" />
-      )}
-
-      {/* Folder Type Badge - Simplified */}
-      <div className="absolute top-3 right-3 z-30">
-        <div className={`px-2 py-0.5 rounded-full text-[9px] font-black tracking-widest uppercase backdrop-blur-md border border-white/20 ${file.type === 'input' ? 'bg-emerald-500/80 text-white' :
-          file.type === 'output' ? 'bg-blue-500/80 text-white' :
-            'bg-amber-500/80 text-white'
-          }`}>
+      {/* Folder Type Badge - mono micro chip */}
+      <div className="absolute top-1.5 right-1.5 z-30">
+        <div
+          className="px-1.5 py-[3px] rounded-md font-mono text-[8.5px] font-semibold tracking-[0.1em] uppercase border border-white/[0.12] text-[#e9ebef]"
+          style={{ background: 'rgba(5,6,8,0.72)' }}
+        >
           {file.type}
         </div>
       </div>
 
-      {/* Immersive Filename Overlay on Hover */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-4 opacity-0 group-hover:opacity-100 transition-all duration-300 z-30">
-        <p className="text-white text-xs font-bold truncate tracking-tight">
+      {/* Filename Overlay on Hover */}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-2.5 py-2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-30">
+        <p className="text-[#e9ebef] font-mono text-[10px] truncate">
           {file.filename}
         </p>
       </div>
@@ -843,117 +849,115 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const totalFiles = files.images.length + files.videos.length;
 
   return (
-    <div className="fixed inset-0 bg-black overflow-y-auto overflow-x-hidden pt-safe pb-safe z-0">
+    <div className="fixed inset-0 overflow-y-auto overflow-x-hidden pt-safe pb-safe z-0" style={{ background: '#050608' }}>
       {/* Immersive Fixed Header */}
       <header
         ref={headerRef}
         className="fixed top-0 inset-x-0 z-50 pointer-events-none"
       >
         <div
-          className="absolute inset-x-0 top-0 h-full backdrop-blur-xl bg-gradient-to-b from-black/25 via-black/10 to-transparent"
-          style={{
-            maskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)',
-            WebkitMaskImage: 'linear-gradient(to bottom, black 0%, transparent 100%)'
-          }}
+          className="absolute inset-x-0 top-0 h-full"
+          style={{ background: 'linear-gradient(to bottom, rgba(5,6,8,.92) 30%, transparent)' }}
         />
-        {/* Balanced Padding & Multi-row Header Layout */}
-        <div className="relative flex flex-col p-4 pt-6 md:px-8 pointer-events-auto space-y-0.5">
-          {/* Row 1: Back Button | Title | Selection Button */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={handleGoBack}
-                className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 hover:bg-white/20 transition-all active:scale-95 shadow-lg backdrop-blur-md border border-white/10"
-                title={t('common.back')}
-              >
-                <ChevronLeft className="h-8 w-8 text-white stroke-[2.5]" />
-              </button>
-              <h1 className="text-4xl font-black text-white leading-none tracking-tighter">
-                {isFileSelectionMode
-                  ? (selectionTitle || t('gallery.selectFile'))
-                  : (selectedSubfolder && viewMode === 'folders'
-                    ? (selectedSubfolder === '/' ? 'Root' : selectedSubfolder.split('/').pop())
-                    : t(`gallery.tabs.${activeTab}`))}
-              </h1>
-            </div>
+        {/* Single-row header: back tile | title + mono sub | action tiles */}
+        <div className="relative flex items-center gap-2.5 px-3.5 pt-3 pb-2 md:px-8 pointer-events-auto">
+          <button
+            onClick={handleGoBack}
+            className="w-9 h-9 shrink-0 flex items-center justify-center rounded-[10px] border border-white/10 text-[#e9ebef] backdrop-blur-md transition-all active:scale-95"
+            style={{ background: 'rgba(255,255,255,0.06)' }}
+            title={t('common.back')}
+          >
+            <ChevronLeft className="h-[17px] w-[17px]" strokeWidth={1.9} />
+          </button>
 
-            <div className="flex items-center space-x-2">
-              {/* View Mode Toggle */}
-              {!isSelectionMode && (!selectedSubfolder || selectedSubfolder === '/') && (
-                <button
-                  onClick={() => {
-                    setViewMode(viewMode === 'flat' ? 'folders' : 'flat');
-                    setSelectedSubfolder(viewMode === 'flat' ? '/' : null);
-                  }}
-                  className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl"
-                  title={viewMode === 'flat' ? 'Folders' : 'Grid'}
-                >
-                  {viewMode === 'flat' ? <FolderTree className="h-7 w-7" /> : <LayoutGrid className="h-7 w-7" />}
-                </button>
-              )}
-
-              {/* Refresh Button - Added per user request */}
-              <AnimatePresence>
-                {!isSelectionMode && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.5, x: 20 }}
-                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.5, x: 20 }}
-                    onClick={loadFiles}
-                    disabled={loading}
-                    className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl disabled:opacity-50"
-                    title={t('gallery.refreshFiles')}
-                  >
-                    <RefreshCw className={`h-7 w-7 ${loading ? 'animate-spin' : ''}`} />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-
-              {/* Select All Button - Added per user request */}
-              <AnimatePresence>
-                {isSelectionMode && (
-                  <motion.button
-                    initial={{ opacity: 0, scale: 0.5, x: 20 }}
-                    animate={{ opacity: 1, scale: 1, x: 0 }}
-                    exit={{ opacity: 0, scale: 0.5, x: 20 }}
-                    onClick={() => handleSelectAll(true)}
-                    className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 border border-white/20 text-white hover:bg-white/20 backdrop-blur-xl transition-all duration-300 active:scale-90 shadow-2xl"
-                    title={t('gallery.selectAll')}
-                  >
-                    <CheckCircle className="h-7 w-7" />
-                  </motion.button>
-                )}
-              </AnimatePresence>
-
-              {/* Selection/X Button - Balanced Size */}
-              {!isFileSelectionMode && (
-                <button
-                  onClick={toggleSelectionMode}
-                  className={`w-14 h-14 flex items-center justify-center rounded-full border-2 transition-all duration-300 active:scale-90 shadow-2xl ${isSelectionMode
-                    ? 'bg-white border-white text-black'
-                    : 'bg-white/10 border-white/20 text-white hover:bg-white/20 backdrop-blur-xl'
-                    }`}
-                  title={isSelectionMode ? t('gallery.exitSelectionMode') : t('gallery.enterSelectionMode')}
-                >
-                  {isSelectionMode ? <X className="h-7 w-7" /> : <CheckSquare className="h-7 w-7" />}
-                </button>
-              )}
-            </div>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-[19px] font-extrabold text-white leading-[1.15] tracking-[-0.01em] truncate">
+              {isFileSelectionMode
+                ? (selectionTitle || t('gallery.selectFile'))
+                : (selectedSubfolder && viewMode === 'folders'
+                  ? (selectedSubfolder === '/' ? 'Root' : selectedSubfolder.split('/').pop())
+                  : t(`gallery.tabs.${activeTab}`))}
+            </h1>
+            <p className={`font-mono text-[9px] font-medium tracking-[0.14em] uppercase mt-[3px] truncate ${isSelectionMode ? 'text-[#7ba3f5]' : 'text-[#8a919e]'}`}>
+              {isSelectionMode
+                ? `${selectedFiles.size} SELECTED`
+                : (viewMode === 'folders'
+                  ? (selectedSubfolder && selectedSubfolder !== '/' ? selectedSubfolder : 'Root Folder')
+                  : (activeFolder === 'all'
+                    ? t('gallery.filesTotal', { count: currentFiles.length })
+                    : t('gallery.folderSummary', {
+                      count: currentFiles.length,
+                      folder: t(`gallery.folders.${activeFolder}`),
+                      type: t('gallery.actions.files')
+                    })))}
+            </p>
           </div>
 
-          {/* Row 2: Sub-label aligned with Title - Scaled Up & Solid White */}
-          <div className="pl-[72px]">
-            <p className="text-base font-black text-white uppercase tracking-[0.2em]">
-              {viewMode === 'folders'
-                ? (selectedSubfolder && selectedSubfolder !== '/' ? selectedSubfolder : "Root Folder")
-                : (activeFolder === 'all'
-                  ? t('gallery.filesTotal', { count: currentFiles.length })
-                  : t('gallery.folderSummary', {
-                    count: currentFiles.length,
-                    folder: t(`gallery.folders.${activeFolder}`),
-                    type: t('gallery.actions.files')
-                  }))}
-            </p>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* View Mode Toggle */}
+            {!isSelectionMode && (!selectedSubfolder || selectedSubfolder === '/') && (
+              <button
+                onClick={() => {
+                  setViewMode(viewMode === 'flat' ? 'folders' : 'flat');
+                  setSelectedSubfolder(viewMode === 'flat' ? '/' : null);
+                }}
+                className="w-9 h-9 flex items-center justify-center rounded-[10px] border border-white/10 text-[#c8ccd4] backdrop-blur-md transition-all active:scale-95"
+                style={{ background: 'rgba(255,255,255,0.06)' }}
+                title={viewMode === 'flat' ? 'Folders' : 'Grid'}
+              >
+                {viewMode === 'flat' ? <FolderTree className="h-4 w-4" strokeWidth={1.8} /> : <LayoutGrid className="h-4 w-4" strokeWidth={1.8} />}
+              </button>
+            )}
+
+            {/* Refresh */}
+            <AnimatePresence>
+              {!isSelectionMode && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.5, x: 20 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.5, x: 20 }}
+                  onClick={loadFiles}
+                  disabled={loading}
+                  className="w-9 h-9 flex items-center justify-center rounded-[10px] border border-white/10 text-[#c8ccd4] backdrop-blur-md transition-all active:scale-95 disabled:opacity-50"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                  title={t('gallery.refreshFiles')}
+                >
+                  <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} strokeWidth={1.8} />
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Select All (labeled chip, selection mode) */}
+            <AnimatePresence>
+              {isSelectionMode && (
+                <motion.button
+                  initial={{ opacity: 0, scale: 0.5, x: 20 }}
+                  animate={{ opacity: 1, scale: 1, x: 0 }}
+                  exit={{ opacity: 0, scale: 0.5, x: 20 }}
+                  onClick={() => handleSelectAll(true)}
+                  className="h-9 px-3 flex items-center rounded-[10px] border border-white/10 text-[#c8ccd4] text-[11.5px] font-semibold whitespace-nowrap backdrop-blur-md transition-all active:scale-95"
+                  style={{ background: 'rgba(255,255,255,0.06)' }}
+                  title={t('gallery.selectAll')}
+                >
+                  {t('gallery.selectAll')}
+                </motion.button>
+              )}
+            </AnimatePresence>
+
+            {/* Selection toggle */}
+            {!isFileSelectionMode && (
+              <button
+                onClick={toggleSelectionMode}
+                className={`w-9 h-9 flex items-center justify-center rounded-[10px] border backdrop-blur-md transition-all active:scale-95 ${isSelectionMode
+                  ? 'bg-[#e9ebef] border-[#e9ebef] text-[#0b0c0f]'
+                  : 'border-white/10 text-[#c8ccd4]'
+                  }`}
+                style={isSelectionMode ? undefined : { background: 'rgba(255,255,255,0.06)' }}
+                title={isSelectionMode ? t('gallery.exitSelectionMode') : t('gallery.enterSelectionMode')}
+              >
+                {isSelectionMode ? <X className="h-4 w-4" strokeWidth={2} /> : <CheckSquare className="h-4 w-4" strokeWidth={1.8} />}
+              </button>
+            )}
           </div>
         </div>
       </header>
@@ -1009,15 +1013,16 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                               setSelectedSubfolder(folder.fullPath);
                             }
                           }}
-                          className={`bg-slate-900/50 border rounded-3xl overflow-hidden cursor-pointer group hover:bg-slate-800/80 transition-all shadow-xl ${selectedFiles.has(`folder:${folder.fullPath}`) ? 'border-blue-500 ring-2 ring-blue-500/50' : 'border-white/10'
+                          className={`border rounded-xl overflow-hidden cursor-pointer group transition-all ${selectedFiles.has(`folder:${folder.fullPath}`) ? 'border-[#3069f0]/70 ring-1 ring-[#3069f0]/40' : 'border-white/[0.08] hover:border-white/[0.16]'
                             }`}
+                          style={{ background: '#101217' }}
                         >
                           <div className="aspect-square relative">
                             {/* Selection Checkbox - Immersive Circle */}
                             {isSelectionMode && (
                               <div className="absolute top-3 left-3 z-30">
-                                <div className={`w-7 h-7 rounded-full border-2 border-white/50 backdrop-blur-md flex items-center justify-center transition-all duration-300 ${selectedFiles.has(`folder:${folder.fullPath}`) ? 'bg-blue-600 border-blue-400 scale-110 shadow-lg' : 'bg-black/20 hover:bg-black/40'}`}>
-                                  {selectedFiles.has(`folder:${folder.fullPath}`) && <Check className="h-4 w-4 text-white stroke-[3px]" />}
+                                <div className={`w-5 h-5 rounded-md flex items-center justify-center transition-colors ${selectedFiles.has(`folder:${folder.fullPath}`) ? 'bg-[#3069f0]' : 'border-[1.5px] border-white/55 bg-black/40'}`}>
+                                  {selectedFiles.has(`folder:${folder.fullPath}`) && <Check className="h-3 w-3 text-white" strokeWidth={2.6} />}
                                 </div>
                               </div>
                             )}
@@ -1047,16 +1052,16 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                               }}
                             />
                             <div className="absolute inset-0 flex items-center justify-center">
-                              <div className="bg-black/40 backdrop-blur-md rounded-full p-4 group-hover:bg-blue-600/60 transition-colors">
-                                <FolderTree className="h-8 w-8 text-white" />
+                              <div className="rounded-xl p-3 border border-white/[0.12] group-hover:border-[#3069f0]/50 transition-colors" style={{ background: 'rgba(5,6,8,0.6)' }}>
+                                <FolderTree className="h-6 w-6 text-[#e9ebef]" strokeWidth={1.7} />
                               </div>
                             </div>
-                            <div className="absolute bottom-3 right-3 bg-blue-600 text-white text-[10px] font-black px-2 py-1 rounded-full shadow-lg">
+                            <div className="absolute bottom-2 right-2 font-mono text-[9px] font-semibold text-[#7ba3f5] px-1.5 py-[3px] rounded-md border border-[#3069f0]/25" style={{ background: 'rgba(61,123,253,0.1)' }}>
                               {folder.count}
                             </div>
                           </div>
-                          <div className="p-4 bg-gradient-to-b from-transparent to-black/80">
-                            <p className="text-white font-bold truncate text-sm">
+                          <div className="px-3 py-2.5 border-t border-white/[0.06]">
+                            <p className="text-[#e9ebef] font-semibold truncate text-[12.5px]">
                               {folder.name}
                             </p>
                           </div>
@@ -1067,7 +1072,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
                   {/* Files Section Second */}
                   {folderContent.files.length > 0 ? (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px">
+                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-0.5">
                       {folderContent.files.map((file, index) => (
                         <LazyImage
                           key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
@@ -1096,7 +1101,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-px"
+                  className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-0.5"
                 >
                   {currentFiles.map((file, index) => (
                     <LazyImage
@@ -1119,96 +1124,81 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         )}
       </main>
 
-      {/* Immersive Footer - Fixed pointer events to allow scroll */}
-      <footer className="fixed bottom-0 inset-x-0 z-50 bg-gradient-to-t from-black/25 via-black/10 to-transparent pt-20 pb-10 pointer-events-none">
-        <div className="px-6 md:px-12 max-w-2xl mx-auto flex items-center justify-between pointer-events-auto">
+      {/* Immersive Footer */}
+      <footer
+        className="fixed bottom-0 inset-x-0 z-50 pt-16 pb-4 pointer-events-none"
+        style={{ background: 'linear-gradient(to top, rgba(5,6,8,.92) 25%, transparent)' }}
+      >
+        <div className="px-3.5 md:px-12 max-w-2xl mx-auto pointer-events-auto">
           {isSelectionMode ? (
-            // Selection Mode Footer
-            <div className="grid grid-cols-[1fr_auto_1fr] items-center w-full">
-              {/* Move Button */}
-              <div className="flex justify-start relative">
-                <AnimatePresence>
-                  {showMovePanel && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10, scale: 0.95 }}
-                      animate={{ opacity: 1, y: 0, scale: 1 }}
-                      exit={{ opacity: 0, y: 10, scale: 0.95 }}
-                      className="absolute bottom-20 left-0 bg-zinc-900 border border-white/10 rounded-3xl p-3 shadow-[0_20px_50px_rgba(0,0,0,0.5)] min-w-[180px]"
-                    >
-                      {(['input', 'output', 'temp'] as const).filter(f => f !== activeFolder).map(f => (
-                        <button
-                          key={f}
-                          onClick={() => handleMoveSelected(f)}
-                          className="w-full flex items-center space-x-4 px-5 py-4 hover:bg-white/5 rounded-2xl transition-colors text-white text-base font-black uppercase tracking-tight"
-                        >
-                          <FolderOpen className="h-5 w-5 text-blue-400" />
-                          <span>{t(`gallery.folders.${f}`)}</span>
-                        </button>
-                      ))}
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+            // Selection Mode: centered floating glass bar (Move | Delete)
+            <div className="flex justify-center relative">
+              <AnimatePresence>
+                {showMovePanel && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute bottom-16 border border-white/10 rounded-xl p-1.5 min-w-[170px] overflow-hidden"
+                    style={{ background: 'rgba(15,17,22,0.96)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', boxShadow: '0 20px 48px rgba(0,0,0,0.55)' }}
+                  >
+                    {(['input', 'output', 'temp'] as const).filter(f => f !== activeFolder).map(f => (
+                      <button
+                        key={f}
+                        onClick={() => handleMoveSelected(f)}
+                        className="w-full h-10 flex items-center gap-2.5 px-3 hover:bg-white/5 rounded-lg transition-colors text-[#d5d9e0] font-mono text-[11px] font-semibold tracking-[0.1em] uppercase"
+                      >
+                        <FolderOpen className="h-[15px] w-[15px] text-[#5b8af5]" strokeWidth={1.8} />
+                        <span>{t(`gallery.folders.${f}`)}</span>
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <div
+                className="flex items-center gap-1.5 p-1.5 rounded-[14px] border border-white/10"
+                style={{ background: 'rgba(15,17,22,0.9)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)', boxShadow: '0 12px 32px rgba(0,0,0,0.45)' }}
+              >
                 <button
                   onClick={() => setShowMovePanel(!showMovePanel)}
                   disabled={selectedFiles.size === 0 || isAnyFolderSelected}
-                  className={`w-14 h-14 flex items-center justify-center rounded-full backdrop-blur-md border-2 transition-all active:scale-90 ${selectedFiles.size > 0 && !isAnyFolderSelected
-                    ? 'bg-white/10 border-white/20 text-white'
-                    : 'opacity-0 scale-75 pointer-events-none'
-                    }`}
+                  className="h-10 px-[18px] flex items-center gap-2 rounded-[10px] border border-white/[0.08] text-[#c8ccd4] text-[12.5px] font-semibold whitespace-nowrap transition-all active:scale-95 disabled:opacity-35"
+                  style={{ background: 'rgba(255,255,255,0.05)' }}
                 >
-                  <FolderOpen className="h-6 w-6" />
+                  <FolderOpen className="h-[15px] w-[15px]" strokeWidth={1.8} />
+                  {t('workflow.move')}
                 </button>
-              </div>
-
-              {/* Selection Counter - Scaled Up */}
-              <div className="flex flex-col items-center">
-                <span className="text-white text-xl font-black tracking-tighter text-center leading-tight">
-                  {isAnyFolderSelected ? (
-                    t('gallery.selectionCombined', {
-                      folderCount: Array.from(selectedFiles).filter(k => k.startsWith('folder:')).length,
-                      fileCount: Array.from(selectedFiles).filter(k => !k.startsWith('folder:')).length
-                    })
-                  ) : (
-                    t('gallery.selectionSummary', { count: selectedFiles.size, type: t(`gallery.tabs.${activeTab}`) })
-                  )}
-                </span>
-                <span className="text-blue-400 text-[10px] font-black uppercase tracking-[0.3em] mt-0.5">
-                  {t('gallery.selectedLabel')}
-                </span>
-              </div>
-
-              {/* Delete Button */}
-              <div className="flex justify-end">
+                <span className="w-px h-[22px] bg-white/[0.08]" />
                 <button
                   onClick={handleDeleteClick}
                   disabled={selectedFiles.size === 0}
-                  className={`w-14 h-14 flex items-center justify-center rounded-full backdrop-blur-md border-2 transition-all active:scale-90 ${selectedFiles.size > 0
-                    ? 'bg-red-500/80 text-white border-red-500/40 shadow-lg shadow-red-500/20'
-                    : 'bg-white/5 text-white/10 border-white/5 grayscale pointer-events-none'
-                    }`}
+                  className="h-10 px-[18px] flex items-center gap-2 rounded-[10px] border text-[12.5px] font-semibold whitespace-nowrap transition-all active:scale-95 disabled:opacity-35"
+                  style={{ background: 'rgba(242,85,85,0.12)', borderColor: 'rgba(242,85,85,0.3)', color: '#f87c7c' }}
                 >
-                  <Trash2 className="h-6 w-6" />
+                  <Trash2 className="h-[15px] w-[15px]" strokeWidth={1.8} />
+                  {t('common.delete')}
                 </button>
               </div>
             </div>
           ) : (
-            // Normal Mode Footer - Responsive Alignment
-            <div className="flex items-center justify-between w-full flex-wrap gap-4 overflow-visible">
-              {/* Type Toggle Button - Larger */}
-              <div className="flex-shrink-0">
-                <button
-                  onClick={() => {
-                    setActiveTab(activeTab === 'images' ? 'videos' : 'images');
-                    window.scrollTo(0, 0);
-                  }}
-                  className="w-14 h-14 flex items-center justify-center rounded-full bg-white/10 backdrop-blur-md border-2 border-white/20 text-white hover:bg-white/20 active:scale-90 transition-all shadow-2xl"
-                >
-                  {activeTab === 'images' ? <Video className="h-6 w-6" /> : <ImageIcon className="h-6 w-6" />}
-                </button>
-              </div>
+            // Normal Mode: media-type toggle + INPUT/OUTPUT/TEMP segment control
+            <div className="flex items-center gap-2.5">
+              <button
+                onClick={() => {
+                  setActiveTab(activeTab === 'images' ? 'videos' : 'images');
+                  window.scrollTo(0, 0);
+                }}
+                className="w-11 h-11 shrink-0 flex items-center justify-center rounded-xl border border-white/10 text-[#c8ccd4] transition-all active:scale-95"
+                style={{ background: 'rgba(15,17,22,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+              >
+                {activeTab === 'images' ? <Video className="h-[18px] w-[18px]" strokeWidth={1.8} /> : <ImageIcon className="h-[18px] w-[18px]" strokeWidth={1.8} />}
+              </button>
 
-              {/* Tab Switcher (Folders) - Centered or Right Aligned if narrow */}
-              <div className="flex bg-white/10 backdrop-blur-2xl rounded-full p-2 border border-white/20 shadow-2xl mx-auto sm:mx-auto ml-auto">
+              <div
+                className="flex-1 h-11 flex gap-[3px] p-1 rounded-xl border border-white/10"
+                style={{ background: 'rgba(15,17,22,0.88)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+              >
                 {(['input', 'output', 'temp'] as FolderType[]).map((f) => (
                   <button
                     key={f}
@@ -1216,9 +1206,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                       setActiveFolder(f);
                       window.scrollTo(0, 0);
                     }}
-                    className={`px-8 py-3 rounded-full text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 ${activeFolder === f
-                      ? 'bg-white text-black shadow-[0_10px_30px_rgba(255,255,255,0.3)]'
-                      : 'text-white hover:bg-white/10'
+                    className={`flex-1 rounded-lg font-mono text-[10px] tracking-[0.12em] uppercase transition-all active:scale-[0.98] ${activeFolder === f
+                      ? 'bg-[#e9ebef] text-[#0b0c0f] font-bold'
+                      : 'text-[#71798a] font-semibold hover:text-[#9aa3b2]'
                       }`}
                   >
                     {t(`gallery.folders.${f}`)}

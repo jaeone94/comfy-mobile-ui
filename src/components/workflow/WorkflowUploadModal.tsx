@@ -91,47 +91,47 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden"
+                        className="relative w-full max-w-sm bg-[#101217] rounded-xl shadow-2xl border border-white/10 overflow-hidden"
                         onClick={(e) => e.stopPropagation()}
                     >
                         {/* Header */}
-                        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 dark:border-slate-800">
-                            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        <div className="flex items-center justify-between h-11 px-4 border-b border-white/[0.08]">
+                            <h2 className="text-[14px] font-bold text-[#e9ebef]">
                                 {t('workflow.uploadModal.title')}
                             </h2>
                             <button
                                 onClick={onClose}
                                 disabled={isLoading}
-                                className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors disabled:opacity-50"
+                                className="p-1.5 bg-white/[0.06] hover:bg-white/[0.1] rounded-lg border border-white/[0.08] transition-colors disabled:opacity-50"
                             >
-                                <X className="w-5 h-5 text-slate-500" />
+                                <X className="w-4 h-4 text-[#9aa3b2]" />
                             </button>
                         </div>
 
                         {/* Content */}
-                        <div className="p-6">
+                        <div className="p-4">
                             <div
-                                className={`relative w-full aspect-[4/3] rounded-xl border-2 border-dashed transition-all duration-200 flex flex-col items-center justify-center gap-4 ${isDragging
-                                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
-                                    : 'border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600 bg-slate-50/50 dark:bg-slate-900/50'
+                                className={`relative w-full aspect-[16/9] rounded-[10px] border border-dashed transition-all duration-200 flex flex-col items-center justify-center gap-2.5 ${isDragging
+                                    ? 'border-[#3069f0]/60 bg-[#3069f0]/[0.08]'
+                                    : 'border-white/[0.13] hover:border-white/25 bg-white/[0.02]'
                                     }`}
                                 onDragOver={handleDragOver}
                                 onDragLeave={handleDragLeave}
                                 onDrop={handleDrop}
                             >
-                                <div className="p-4 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400">
+                                <div className="w-9 h-9 rounded-[10px] border border-[#3069f0]/30 flex items-center justify-center text-[#5b8af5]" style={{ background: 'rgba(48,105,240,0.1)' }}>
                                     {isLoading ? (
-                                        <Loader2 className="w-8 h-8 animate-spin" />
+                                        <Loader2 className="w-4 h-4 animate-spin" />
                                     ) : (
-                                        <Upload className="w-8 h-8" />
+                                        <Upload className="w-4 h-4" strokeWidth={1.8} />
                                     )}
                                 </div>
 
                                 <div className="text-center space-y-1">
-                                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                    <p className="text-[12px] font-semibold text-[#e9ebef]">
                                         {isLoading ? t('common.processing') : t('workflow.uploadModal.dragDrop')}
                                     </p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400">
+                                    <p className="font-mono text-[9.5px] text-[#565d6b] uppercase tracking-[0.08em]">
                                         {t('workflow.uploadModal.supportedExt')}
                                     </p>
                                 </div>
@@ -149,20 +149,20 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                                     onClick={() => fileInputRef.current?.click()}
                                     disabled={isLoading}
                                     variant="outline"
-                                    className="mt-2"
+                                    className="mt-1 h-8 px-3 rounded-lg text-[11.5px] bg-white/[0.05] border-white/[0.08] text-[#c8ccd4] hover:bg-white/[0.08]"
                                 >
                                     {t('common.selectFile')}
                                 </Button>
                             </div>
 
                             {/* Info Alert */}
-                            <div className="mt-6 p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex gap-3">
-                                <AlertCircle className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                            <div className="mt-3 p-2.5 rounded-[10px] bg-white/[0.03] border border-white/[0.07] flex gap-2">
+                                <AlertCircle className="w-3.5 h-3.5 text-[#565d6b] flex-shrink-0 mt-0.5" strokeWidth={1.8} />
                                 <div className="space-y-1">
-                                    <p className="text-sm font-medium text-slate-900 dark:text-slate-100">
+                                    <p className="text-[11.5px] font-semibold text-[#c8ccd4]">
                                         {t('workflow.uploadModal.formatsTitle')}
                                     </p>
-                                    <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                                    <p className="text-[10.5px] text-[#66758a] leading-relaxed">
                                         {t('workflow.uploadModal.formatsDesc')}
                                     </p>
                                 </div>
@@ -170,13 +170,13 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                         </div>
 
                         {/* Create New Option */}
-                        <div className="px-6 pb-6">
+                        <div className="px-4 pb-4">
                             <div className="relative">
                                 <div className="absolute inset-0 flex items-center">
-                                    <span className="w-full border-t border-slate-200 dark:border-slate-800" />
+                                    <span className="w-full border-t border-white/[0.07]" />
                                 </div>
-                                <div className="relative flex justify-center text-xs uppercase">
-                                    <span className="bg-white dark:bg-slate-900 px-2 text-slate-500 dark:text-slate-400">
+                                <div className="relative flex justify-center">
+                                    <span className="bg-[#101217] px-2 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-[#565d6b]">
                                         {t('common.or')}
                                     </span>
                                 </div>
@@ -189,7 +189,7 @@ const WorkflowUploadModal: React.FC<WorkflowUploadModalProps> = ({
                                 }}
                                 disabled={isLoading}
                                 variant="outline"
-                                className="w-full mt-4 h-12 border-dashed border-2 hover:border-blue-500 hover:text-blue-600 dark:hover:text-blue-400 dark:hover:border-blue-500/50 transition-all"
+                                className="w-full mt-3 h-9 rounded-[10px] text-[12px] border-dashed border border-white/[0.13] text-[#8a919e] bg-transparent hover:border-[#3069f0]/50 hover:text-[#5b8af5] hover:bg-transparent transition-all"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
                                 {t('workflow.uploadModal.createNew')}

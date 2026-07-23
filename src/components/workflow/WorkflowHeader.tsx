@@ -125,58 +125,63 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
 
   return (
     <header className="absolute top-0 left-0 right-0 z-10 pwa-header">
-      <div className="bg-slate-600/20 backdrop-blur-3xl shadow-xl border-b border-white/30 px-4 py-5 space-y-2 relative overflow-hidden">
-        <div className="flex items-center space-x-4 relative z-10">
-          <Button
+      <div
+        className="border-b border-white/[0.08] relative"
+        style={{ background: 'rgba(11,12,15,0.86)', backdropFilter: 'blur(16px)', WebkitBackdropFilter: 'blur(16px)' }}
+      >
+        <div className="h-14 flex items-center gap-[11px] px-3 relative z-10">
+          <button
             onClick={onNavigateBack}
-            variant="ghost"
-            size="sm"
-            className="bg-white/10 hover:bg-white/20 border border-white/20 transition-all duration-300 h-10 w-10 p-0 flex-shrink-0 rounded-xl"
+            className="w-9 h-9 shrink-0 flex items-center justify-center rounded-[10px] border border-white/[0.08] text-[#c8ccd4] hover:text-white transition-colors"
+            style={{ background: 'rgba(255,255,255,0.045)' }}
           >
-            <ArrowLeft className="w-5 h-5 text-white" />
-          </Button>
+            <ArrowLeft className="w-[17px] h-[17px]" strokeWidth={1.8} />
+          </button>
 
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <Network className="h-4 w-4 text-blue-400 shrink-0" />
-              {sessionStack && sessionStack.length > 1 ? (
-                <div
-                  ref={breadcrumbRef}
-                  className="flex items-center space-x-1 overflow-x-auto no-scrollbar mask-gradient-left"
-                >
-                  {sessionStack.map((session, index) => {
-                    const isLast = index === sessionStack.length - 1;
-                    const isRoot = index === 0;
-                    return (
-                      <div key={index} className="flex items-center flex-shrink-0">
-                        {index > 0 && <ChevronRight className="w-4 h-4 text-slate-400 mx-1 flex-shrink-0" />}
-                        <button
-                          onClick={() => !isLast && onNavigateBreadcrumb?.(index)}
-                          disabled={isLast}
-                          className={`flex items-center space-x-1 font-bold truncate transition-colors ${isLast
-                            ? 'text-base text-slate-900 dark:text-slate-100 cursor-default'
-                            : 'text-sm text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-slate-200'
-                            }`}
-                        >
-                          <span className="truncate max-w-[300px]">{session.title || (isRoot ? workflow?.name : 'Subgraph')}</span>
-                        </button>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <h1 className="text-base font-bold text-white tracking-tight truncate">
-                  {workflow?.name || t('workflow.newWorkflowName')}
-                </h1>
+            {sessionStack && sessionStack.length > 1 ? (
+              <div
+                ref={breadcrumbRef}
+                className="flex items-center space-x-1 overflow-x-auto no-scrollbar mask-gradient-left"
+              >
+                {sessionStack.map((session, index) => {
+                  const isLast = index === sessionStack.length - 1;
+                  const isRoot = index === 0;
+                  return (
+                    <div key={index} className="flex items-center flex-shrink-0">
+                      {index > 0 && <ChevronRight className="w-3.5 h-3.5 text-[#4a5261] mx-0.5 flex-shrink-0" strokeWidth={2} />}
+                      <button
+                        onClick={() => !isLast && onNavigateBreadcrumb?.(index)}
+                        disabled={isLast}
+                        className={`flex items-center space-x-1 truncate transition-colors ${isLast
+                          ? 'text-[14px] font-semibold text-[#e9ebef] cursor-default'
+                          : 'text-[12.5px] font-medium text-[#71798a] hover:text-[#c8ccd4]'
+                          }`}
+                      >
+                        <span className="truncate max-w-[300px]">{session.title || (isRoot ? workflow?.name : 'Subgraph')}</span>
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <h1 className="text-[14px] font-semibold text-[#e9ebef] leading-[1.25] truncate">
+                {workflow?.name || t('workflow.newWorkflowName')}
+              </h1>
+            )}
+            <div className="flex items-center gap-1.5 font-mono text-[9px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-[3px]">
+              <span>{t('menu.graphView')}</span>
+              {typeof workflow?.nodeCount === 'number' && workflow.nodeCount > 0 && (
+                <>
+                  <span className="text-[#31363f]">·</span>
+                  <span className="text-[#5b8af5]">{workflow.nodeCount}N</span>
+                </>
               )}
-            </div>
-            <div className="text-[10px] text-white/40 font-medium uppercase tracking-widest mt-0.5">
-              {t('menu.graphView')}
             </div>
           </div>
 
           {/* Save Button Slot - Reserved space to prevent breadcrumb invasion */}
-          <div className="w-10 h-10 flex items-center justify-end flex-shrink-0">
+          <div className="w-9 h-9 flex items-center justify-end flex-shrink-0">
             <AnimatePresence>
               {(hasUnsavedChanges || showCheckmark) && (
                 <motion.div
@@ -185,24 +190,24 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                   exit={{ opacity: 0, scale: 0.8, transition: { duration: 0.4 } }}
                   transition={{ duration: 0.3, ease: "backOut" }}
                 >
-                  <Button
+                  <button
                     onClick={onSaveChanges}
                     disabled={isSaving || showCheckmark}
-                    size="sm"
-                    className={`text-white border border-white/20 backdrop-blur-sm shadow-lg transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg ${showCheckmark
-                      ? 'bg-emerald-500/80'
+                    className={`w-9 h-9 flex items-center justify-center rounded-[10px] text-white transition-all ${showCheckmark
+                      ? 'bg-[#34c77b]'
                       : isSaving
-                        ? 'bg-gray-500/80 cursor-not-allowed'
-                        : 'bg-green-500/80 hover:bg-green-600/90 hover:shadow-xl'
+                        ? 'bg-[#34c77b]/60 cursor-not-allowed'
+                        : 'bg-[#34c77b] hover:bg-[#3fd08a]'
                       }`}
+                    style={showCheckmark ? undefined : { boxShadow: '0 2px 10px rgba(52,199,123,0.35)' }}
                     title={showCheckmark ? t('common.saved') : isSaving ? t('common.saving') : t('workflow.saveChanges')}
                   >
                     <SaveToCheckIcon
                       isSaving={isSaving}
                       isSuccess={showCheckmark}
-                      size={24}
+                      size={16}
                     />
-                  </Button>
+                  </button>
                 </motion.div>
               )}
             </AnimatePresence>

@@ -229,7 +229,6 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
 
   if (!isOpen) return null;
 
-  const baseTitleSize = '1.875rem';
 
   return createPortal(
     <AnimatePresence>
@@ -247,66 +246,50 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.96, y: 15 }}
           transition={{ type: "spring", duration: 0.45, bounce: 0.15 }}
-          className="relative w-[90vw] h-[85vh] pointer-events-auto flex flex-col"
+          className="relative w-[92vw] max-w-md h-[72vh] pointer-events-auto flex flex-col"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Main Card */}
           <div
-            style={{ backgroundColor: '#374151' }}
-            className="relative w-full h-full rounded-[40px] shadow-2xl ring-1 ring-slate-100/10 overflow-hidden flex flex-col text-white"
+            style={{ backgroundColor: '#101217' }}
+            className="relative w-full h-full rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col text-white"
           >
             {/* Always Compact Sticky Header */}
             <div
-              className="absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] pt-2 pb-[13px] pl-4 pr-[44px] bg-black/50 backdrop-blur-xl border-white/10"
+              className="absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b h-11 pl-4 pr-[40px] bg-[#0f1116]/90 backdrop-blur-xl border-white/[0.08]"
             >
               {/* Floating Close Button */}
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 flex-shrink-0 scale-75">
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 flex-shrink-0">
                 <button
                   onClick={onClose}
-                  className="p-2 rounded-full bg-black/20 text-white hover:bg-black/40 transition-all pointer-events-auto"
+                  className="p-1.5 rounded-lg bg-white/[0.06] text-[#9aa3b2] hover:text-white hover:bg-white/[0.1] transition-all pointer-events-auto"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4" />
                 </button>
               </div>
 
-              <div className="flex flex-col justify-center flex-1 min-w-0 pointer-events-none">
-                <div className="flex items-center space-x-2 mb-1 scale-90 origin-left">
-                  <Badge variant="secondary" className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-black/20 text-white/80 border-transparent">
-                    LORAS
-                  </Badge>
-                  <span className="text-[10px] font-bold uppercase tracking-widest text-white/60">
-                    {t('menu.triggerWords')}
-                  </span>
-                </div>
-
-                <div className="flex items-center min-w-0 h-[13px]">
-                  <h2
-                    style={{
-                      fontSize: baseTitleSize,
-                      lineHeight: '1',
-                      transform: `scale(${0.8125 / 1.875})`,
-                      transformOrigin: 'left center',
-                    }}
-                    className="font-extrabold tracking-tight leading-tight text-white/95 transition-transform duration-300 will-change-transform truncate pr-4"
-                  >
-                    {t('menu.triggerWords')}
-                  </h2>
-                </div>
+              <div className="flex items-center gap-2 flex-1 min-w-0 pointer-events-none">
+                <h2 className="text-[14px] font-bold text-[#e9ebef] truncate">
+                  {t('menu.triggerWords')}
+                </h2>
+                <span className="font-mono text-[9px] font-semibold text-[#565d6b] tracking-[0.12em] px-1.5 py-0.5 rounded-md bg-black/20 shrink-0">
+                  LORAS
+                </span>
               </div>
             </div>
 
             {/* Persistent Search & Controls Bar - Slightly detached from header */}
             <div
-              className="absolute left-0 w-full z-20 px-4 sm:px-8 top-[68px]"
+              className="absolute left-0 w-full z-20 px-3 sm:px-6 top-[52px]"
             >
-              <div className="flex flex-col gap-3 bg-[#374151]/80 backdrop-blur-md p-3 rounded-2xl border border-white/5 shadow-lg">
+              <div className="flex flex-col gap-2 bg-[#101217]/90 backdrop-blur-md p-2 rounded-[10px] border border-white/[0.08]">
                 <div className="relative w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/30" />
                   <Input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder={t('menu.triggerWordsSearchPlaceholder')}
-                    className="w-full bg-black/20 border-white/10 text-xs text-white/90 placeholder:text-white/20 h-9 pl-9 pr-8 rounded-xl focus-visible:ring-1 focus-visible:ring-white/20 focus-visible:border-white/20 transition-all duration-300 border shadow-inner"
+                    className="w-full bg-white/[0.045] border-white/[0.08] text-[12px] text-[#e9ebef] placeholder:text-[#565d6b] h-8 pl-9 pr-8 rounded-lg focus-visible:ring-0 focus-visible:border-[#3069f0]/50 transition-all border"
                   />
                   {searchQuery && (
                     <button
@@ -322,7 +305,7 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                     onClick={expandAll}
                     variant="ghost"
                     size="sm"
-                    className="flex-1 h-8 text-[9px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-lg transition-all"
+                    className="flex-1 h-7 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] bg-white/[0.04] text-[#8a919e] hover:bg-white/[0.07] hover:text-[#c8ccd4] border border-white/[0.07] rounded-[7px] transition-all"
                   >
                     {t('menu.expandAll')}
                   </Button>
@@ -330,7 +313,7 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                     onClick={collapseAll}
                     variant="ghost"
                     size="sm"
-                    className="flex-1 h-8 text-[9px] font-bold uppercase tracking-wider bg-white/5 text-white/60 hover:bg-white/10 hover:text-white border border-white/5 rounded-lg transition-all"
+                    className="flex-1 h-7 font-mono text-[9px] font-semibold uppercase tracking-[0.12em] bg-white/[0.04] text-[#8a919e] hover:bg-white/[0.07] hover:text-[#c8ccd4] border border-white/[0.07] rounded-[7px] transition-all"
                   >
                     {t('menu.collapseAll')}
                   </Button>
@@ -341,21 +324,21 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
             {/* Content Area */}
             <div ref={scrollContainerRef} className="flex-1 overflow-y-auto overflow-x-hidden custom-scrollbar">
               {/* Static Top Bumper - Adjusted for fixed header + search bar + gap */}
-              <div className="h-[185px] relative pointer-events-none">
+              <div className="h-[150px] relative pointer-events-none">
                 <div ref={sentinelRef} className="absolute top-[10px] left-0 h-px w-full" />
               </div>
 
-              <div className="px-5 pb-6 sm:px-6">
+              <div className="px-3 pb-4 sm:px-4">
                 {isLoading ? (
                   <div className="flex flex-col items-center justify-center py-20 space-y-4">
                     <div className="relative">
-                      <Loader2 className="h-10 w-10 animate-spin text-white/20" />
-                      <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-violet-400/50 animate-pulse" />
+                      <Loader2 className="h-7 w-7 animate-spin text-white/20" />
+                      <Sparkles className="absolute -top-1 -right-1 h-4 w-4 text-[#5b8af5]/50 animate-pulse" />
                     </div>
                     <p className="text-xs font-medium tracking-wide text-white/40 uppercase">{t('menu.loadingTriggerWords')}</p>
                   </div>
                 ) : filteredGroups.length === 0 ? (
-                  <div className="text-center py-12 rounded-3xl bg-black/20 border border-dashed border-white/10">
+                  <div className="text-center py-12 rounded-xl bg-black/20 border border-dashed border-white/10">
                     <Hash className="h-10 w-10 text-white/10 mx-auto mb-3" />
                     <p className="text-white/40 text-sm font-medium">
                       {searchQuery ? t('menu.noTriggerWordsFound') : t('menu.noTriggerWordsAvailable')}
@@ -372,12 +355,12 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                     )}
                   </div>
                 ) : (
-                  <div className="space-y-6">
+                  <div className="space-y-2.5">
                     {/* Category Header */}
                     <div className="flex items-center justify-between mb-2 p-1">
                       <div className="flex items-center gap-2">
-                        <Layers className="w-4 h-4 text-white/50" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-white/50">
+                        <Layers className="w-3.5 h-3.5 text-white/50" />
+                        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-white/50">
                           {t('menu.lorasCount', { count: filteredGroups.length })}
                         </span>
                       </div>
@@ -386,23 +369,23 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                       </Badge>
                     </div>
 
-                    <div className="grid grid-cols-1 gap-4">
+                    <div className="grid grid-cols-1 gap-2">
                       {filteredGroups.map((group) => (
                         <div
                           key={group.loraName}
-                          className="group relative rounded-3xl bg-black/10 border border-white/5 hover:bg-black/20 hover:border-white/10 transition-all overflow-hidden"
+                          className="group relative rounded-[10px] bg-white/[0.03] border border-white/[0.07] hover:bg-white/[0.05] hover:border-white/[0.12] transition-all overflow-hidden"
                         >
                           {/* LoRA Header Card */}
                           <button
                             onClick={() => toggleLoraExpansion(group.loraName)}
-                            className="w-full px-5 py-3.5 flex items-center justify-between text-left transition-all"
+                            className="w-full px-3 py-2 flex items-center justify-between text-left transition-all"
                           >
-                            <div className="flex items-center space-x-4 min-w-0">
-                              <div className={`p-1.5 rounded-2xl bg-black/20 border border-white/5 transition-transform duration-300 ${group.isExpanded ? 'rotate-180 bg-violet-500/10 border-violet-500/20' : ''}`}>
-                                <ChevronDown className={`w-3.5 h-3.5 ${group.isExpanded ? 'text-violet-400' : 'text-white/40'}`} />
+                            <div className="flex items-center space-x-2.5 min-w-0">
+                              <div className={`p-1 rounded-lg bg-black/20 border border-white/[0.07] transition-transform duration-300 ${group.isExpanded ? 'rotate-180 bg-[#3069f0]/[0.12] border-[#3069f0]/25' : ''}`}>
+                                <ChevronDown className={`w-3.5 h-3.5 ${group.isExpanded ? 'text-[#7ba3f5]' : 'text-white/40'}`} />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="font-bold text-white/90 text-[12px] tracking-tight line-clamp-2 leading-snug" title={cleanLoraName(group.loraName)}>
+                                <span className="font-bold text-white/90 text-[11.5px] tracking-tight line-clamp-2 leading-snug" title={cleanLoraName(group.loraName)}>
                                   {cleanLoraName(group.loraName)}
                                 </span>
                                 <span className="text-[9px] font-medium text-white/30 uppercase tracking-wider mt-0.5">
@@ -410,8 +393,8 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                                 </span>
                               </div>
                             </div>
-                            <div className="flex-shrink-0 ml-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                              <div className="w-7 h-7 rounded-full bg-black/20 flex items-center justify-center border border-white/10">
+                            <div className="flex-shrink-0 ml-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="w-6 h-6 rounded-md bg-black/20 flex items-center justify-center border border-white/10">
                                 <ChevronRight className="h-3.5 w-3.5 text-white/40" />
                               </div>
                             </div>
@@ -426,20 +409,20 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                                 exit={{ height: 0, opacity: 0 }}
                                 transition={{ duration: 0.3, ease: [0.23, 1, 0.32, 1] }}
                               >
-                                <div className="px-5 pb-5 pt-1 space-y-2">
+                                <div className="px-3 pb-3 pt-1 space-y-2">
                                   <div className="grid grid-cols-1 gap-2">
                                     {group.triggerWords.map((word, index) => {
                                       const isCopied = copiedWord === word;
                                       return (
                                         <motion.div
                                           key={`${group.loraName}-${index}`}
-                                          className={`w-full p-4 rounded-2xl transition-all duration-300 relative overflow-hidden group/word flex items-center justify-between border ${isCopied
-                                            ? 'bg-green-500/10 border-green-500/30 text-green-300 shadow-[0_0_20px_rgba(34,197,94,0.1)]'
-                                            : 'bg-black/20 border-white/5 hover:border-white/10 text-white/60 hover:text-white/90'
+                                          className={`w-full px-2.5 py-2 rounded-lg transition-all duration-300 relative overflow-hidden group/word flex items-center justify-between border ${isCopied
+                                            ? 'bg-[#34c77b]/[0.12] border-[#34c77b]/30 text-[#4ade80]'
+                                            : 'bg-black/20 border-white/[0.06] hover:border-white/[0.12] text-[#9aa3b2] hover:text-[#e9ebef]'
                                             }`}
                                         >
                                           <div className="flex flex-col items-start min-w-0 select-text cursor-text">
-                                            <span className="text-xs font-mono break-all leading-normal text-left pr-4">
+                                            <span className="font-mono text-[10.5px] break-all leading-normal text-left pr-3">
                                               {word}
                                             </span>
                                           </div>
@@ -456,14 +439,14 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                                             }}
                                             className={`flex-shrink-0 p-2 rounded-xl transition-all duration-300 relative z-10 
                                             ${isCopied
-                                                ? 'bg-green-500/20 scale-110'
+                                                ? 'bg-[#34c77b]/20 scale-110'
                                                 : 'bg-white/5 hover:bg-white/10 opacity-40 group-hover/word:opacity-100 hover:scale-110 active:scale-90'
                                               }`}
                                           >
                                             {isCopied ? (
-                                              <Sparkles className="h-4 w-4 text-green-400" />
+                                              <Sparkles className="h-3.5 w-3.5 text-[#4ade80]" />
                                             ) : (
-                                              <Copy className="h-4 w-4" />
+                                              <Copy className="h-3.5 w-3.5" />
                                             )}
                                           </button>
 
@@ -474,7 +457,7 @@ const TriggerWordSelector: React.FC<TriggerWordSelectorProps> = ({
                                                 initial={{ opacity: 0, scale: 0.8 }}
                                                 animate={{ opacity: 1, scale: 1.5 }}
                                                 exit={{ opacity: 0 }}
-                                                className="absolute inset-0 bg-green-500/10 pointer-events-none blur-xl"
+                                                className="absolute inset-0 bg-[#34c77b]/10 pointer-events-none blur-xl"
                                               />
                                             )}
                                           </AnimatePresence>

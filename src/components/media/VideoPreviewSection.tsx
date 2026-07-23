@@ -171,10 +171,10 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
 
   if (loading) {
     return (
-      <div className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg border border-slate-200 dark:border-slate-700">
+      <div className="p-4 bg-white/[0.06] rounded-lg border border-white/[0.08]">
         <div className="flex items-center space-x-3">
           <div className="animate-spin w-5 h-5 border-2 border-blue-500 border-t-transparent rounded-full"></div>
-          <span className="text-slate-600 dark:text-slate-400">{t('media.loading')} preview...</span>
+          <span className="text-[#8a919e]">{t('media.loading')} preview...</span>
         </div>
       </div>
     );
@@ -192,7 +192,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               variant="outline"
               size="sm"
               onClick={loadVideo}
-              className="mt-2 text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950/10"
+ className="mt-2 text-red-600 border-red-300 hover:bg-red-50 dark:text-red-400 dark:border-red-700 dark:hover:bg-red-950/10"
             >
               {t('media.retry')}
             </Button>
@@ -208,21 +208,21 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
 
   return (
     <div className="space-y-3">
-      <h4 className={`text-md font-medium flex items-center space-x-2 ${themeOverride?.text || 'text-slate-700 dark:text-slate-300'}`}>
+      <h4 className={`text-md font-medium flex items-center space-x-2 ${themeOverride?.text || 'text-[#c8ccd4]'}`}>
         <span>🎥</span>
         <span>{t('media.videoPreview')}</span>
         {nodeTitle && (
-          <span className="text-sm text-slate-500 dark:text-slate-400">({nodeTitle})</span>
+          <span className="text-sm text-[#71798a]">({nodeTitle})</span>
         )}
       </h4>
 
-      <div className={`rounded-lg overflow-hidden border ${themeOverride ? (themeOverride.container || 'bg-black/10 border-white/10') : 'bg-slate-100 dark:bg-slate-800 border-slate-200 dark:border-slate-700'}`}>
+      <div className={`rounded-lg overflow-hidden border ${themeOverride ? (themeOverride.container || 'bg-black/10 border-white/10') : 'bg-white/[0.06]  border-white/[0.08]'}`}>
         {/* Video Player */}
         <div className="relative bg-black">
           <video
             ref={videoRef}
             src={videoUrl}
-            className="w-full max-h-64 object-contain"
+ className="w-full max-h-64 object-contain"
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => setIsPlaying(false)}
@@ -235,7 +235,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               <Button
                 size="lg"
                 onClick={handlePlayPause}
-                className="bg-white bg-opacity-90 hover:bg-opacity-100 text-black rounded-full p-4"
+ className="bg-white bg-opacity-90 hover:bg-opacity-100 text-black rounded-full p-4"
               >
                 <Play className="w-8 h-8" />
               </Button>
@@ -252,9 +252,9 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               max={duration || 100}
               step={0.1}
               onValueChange={handleSeek}
-              className="w-full"
+ className="w-full"
             />
-            <div className="flex justify-between text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex justify-between text-xs text-[#71798a]">
               <span>{formatTime(currentTime)}</span>
               <span>{formatTime(duration)}</span>
             </div>
@@ -267,7 +267,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={handlePlayPause}
-                className={themeOverride?.secondaryText || "text-slate-600 dark:text-slate-400"}
+ className={themeOverride?.secondaryText || "text-[#8a919e]"}
               >
                 {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
               </Button>
@@ -276,7 +276,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
                 variant="ghost"
                 size="sm"
                 onClick={resetVideo}
-                className={themeOverride?.secondaryText || "text-slate-600 dark:text-slate-400"}
+ className={themeOverride?.secondaryText || "text-[#8a919e]"}
               >
                 <RotateCcw className="w-4 h-4" />
               </Button>
@@ -286,7 +286,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
                   variant="ghost"
                   size="sm"
                   onClick={toggleMute}
-                  className={themeOverride?.secondaryText || "text-slate-600 dark:text-slate-400"}
+ className={themeOverride?.secondaryText || "text-[#8a919e]"}
                 >
                   {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
                 </Button>
@@ -297,7 +297,7 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
                     max={1}
                     step={0.1}
                     onValueChange={handleVolumeChange}
-                    className="w-full"
+ className="w-full"
                   />
                 </div>
               </div>
@@ -307,14 +307,14 @@ export const VideoPreviewSection: React.FC<VideoPreviewSectionProps> = ({
               variant="ghost"
               size="sm"
               onClick={toggleFullscreen}
-              className={themeOverride?.secondaryText || "text-slate-600 dark:text-slate-400"}
+ className={themeOverride?.secondaryText || "text-[#8a919e]"}
             >
               <Maximize2 className="w-4 h-4" />
             </Button>
           </div>
 
           {/* Video Info */}
-          <div className={`text-xs pt-2 border-t ${themeOverride ? `border-white/10 ${themeOverride.text || ''}` : 'text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-600'}`}>
+          <div className={`text-xs pt-2 border-t ${themeOverride ? `border-white/10 ${themeOverride.text || ''}` : 'text-[#71798a] border-white/[0.08] '}`}>
             <div className="flex justify-between items-center">
               <span className="truncate max-w-[200px] md:max-w-[300px]" title={videoPreview.filename}>
                 {t('media.file')}: {videoPreview.filename}

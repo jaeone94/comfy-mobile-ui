@@ -234,7 +234,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 pwa-modal"
+ className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-md p-4 pwa-modal"
           onClick={handleBackdropClick}
         >
           <motion.div
@@ -242,16 +242,16 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="w-full max-w-4xl max-h-[90vh] bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 dark:border-slate-700/40 flex flex-col"
+ className="w-full max-w-4xl max-h-[90vh] bg-white/80 /80 backdrop-blur-xl rounded-xl shadow-2xl border border-white/30 flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
-            <div className="p-6 border-b border-slate-200/50 dark:border-slate-700/50 flex items-center justify-between backdrop-blur-sm">
+            <div className="p-6 border-b border-white/[0.08] flex items-center justify-between backdrop-blur-sm">
               <div>
-                <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                <h2 className="text-xl font-semibold text-[#e9ebef]">
                   {editingWidgetType ? t('widgetType.editTitle') : t('widgetType.createTitle')}
                 </h2>
-                <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                <p className="text-sm text-[#8a919e] mt-1">
                   {t('widgetType.subtitle')}
                 </p>
               </div>
@@ -259,7 +259,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                 onClick={onClose}
                 variant="ghost"
                 size="sm"
-                className="h-8 w-8 p-0"
+ className="h-8 w-8 p-0"
               >
                 <X className="h-4 w-4" />
               </Button>
@@ -268,10 +268,10 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
             {/* Content */}
             <div className="flex-1 overflow-auto p-6 space-y-6">
               {/* Basic Information */}
-              <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white/30 dark:border-slate-700/40 rounded-xl shadow-lg">
-                <div className="p-6 border-b border-slate-200/30 dark:border-slate-700/30">
-                  <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('widgetType.basicInfo')}</h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+              <div className="bg-white/60 backdrop-blur-md border border-white/30 rounded-xl shadow-lg">
+                <div className="p-6 border-b border-white/[0.07]">
+                  <h3 className="text-lg font-semibold text-[#e9ebef]">{t('widgetType.basicInfo')}</h3>
+                  <p className="text-sm text-[#8a919e] mt-1">
                     {t('widgetType.basicInfoDesc')}
                   </p>
                 </div>
@@ -284,12 +284,12 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                         value={formData.id}
                         onChange={(e) => setFormData(prev => ({ ...prev, id: e.target.value }))}
                         placeholder={t('widgetType.idPlaceholder')}
-                        className="font-mono bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/30 dark:border-slate-700/30"
+ className="font-mono bg-white/[0.04] backdrop-blur-sm border-white/30"
                         readOnly={!!editingWidgetType}
                         disabled={!!editingWidgetType}
                       />
                       {editingWidgetType && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400">
+                        <p className="text-xs text-[#71798a]">
                           {t('widgetType.idImmutable')}
                         </p>
                       )}
@@ -301,7 +301,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                         value={formData.tooltip}
                         onChange={(e) => setFormData(prev => ({ ...prev, tooltip: e.target.value }))}
                         placeholder={t('widgetType.tooltipPlaceholder')}
-                        className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/30 dark:border-slate-700/30"
+ className="bg-white/[0.04] backdrop-blur-sm border-white/30"
                       />
                     </div>
                   </div>
@@ -313,26 +313,26 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                       onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                       placeholder={t('widgetType.descriptionPlaceholder')}
                       rows={3}
-                      className="bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm border-white/30 dark:border-slate-700/30"
+ className="bg-white/[0.04] backdrop-blur-sm border-white/30"
                     />
                   </div>
                 </div>
               </div>
 
               {/* Field Definitions */}
-              <div className="bg-white/60 dark:bg-slate-900/60 backdrop-blur-md border border-white/30 dark:border-slate-700/40 rounded-xl shadow-lg">
-                <div className="p-6 border-b border-slate-200/30 dark:border-slate-700/30">
+              <div className="bg-white/60 backdrop-blur-md border border-white/30 rounded-xl shadow-lg">
+                <div className="p-6 border-b border-white/[0.07]">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('widgetType.fieldDefinitions')}</h3>
-                      <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+                      <h3 className="text-lg font-semibold text-[#e9ebef]">{t('widgetType.fieldDefinitions')}</h3>
+                      <p className="text-sm text-[#8a919e] mt-1">
                         {t('widgetType.fieldDefinitionsDesc')}
                       </p>
                     </div>
                     <Button
                       onClick={addField}
                       size="sm"
-                      className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white backdrop-blur-sm"
+ className="gap-2 bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white backdrop-blur-sm"
                     >
                       <Plus className="h-4 w-4" />
                       {t('widgetType.addField')}
@@ -341,21 +341,21 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                 </div>
                 <div className="p-6 space-y-4">
                   {formData.fields.length === 0 ? (
-                    <div className="text-center py-8 text-slate-500 dark:text-slate-400">
+                    <div className="text-center py-8 text-[#71798a]">
                       {t('widgetType.noFields')}
                     </div>
                   ) : (
                     <div className="space-y-4">
                       {formData.fields.map((field, index) => (
-                        <div key={field.id} className="bg-white/40 dark:bg-slate-900/40 backdrop-blur-sm border border-dashed border-slate-300/60 dark:border-slate-600/60 rounded-lg shadow-sm">
-                          <div className="p-4 pb-3 border-b border-slate-200/30 dark:border-slate-700/30">
+                        <div key={field.id} className="bg-white/40 /40 backdrop-blur-sm border border-dashed border-white/[0.1]/60 /60 rounded-lg shadow-sm">
+                          <div className="p-4 pb-3 border-b border-white/[0.07]">
                             <div className="flex items-center justify-between">
-                              <h4 className="text-base font-medium text-slate-900 dark:text-slate-100">{t('widgetType.field', { index: index + 1 })}</h4>
+                              <h4 className="text-base font-medium text-[#e9ebef]">{t('widgetType.field', { index: index + 1 })}</h4>
                               <Button
                                 onClick={() => removeField(field.id)}
                                 variant="ghost"
                                 size="sm"
-                                className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50/50 dark:hover:bg-red-900/30"
+ className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50/50 dark:hover:bg-red-900/30"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </Button>
@@ -370,7 +370,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                   value={field.name}
                                   onChange={(e) => updateField(field.id, { name: e.target.value })}
                                   placeholder={t('widgetType.fieldNamePlaceholder')}
-                                  className="font-mono bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="font-mono bg-white/60 backdrop-blur-sm border-white/40"
                                 />
                               </div>
                               <div className="space-y-2">
@@ -379,7 +379,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                   value={field.config.label}
                                   onChange={(e) => updateFieldConfig(field.id, { label: e.target.value })}
                                   placeholder={t('widgetType.displayLabelPlaceholder')}
-                                  className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                                 />
                               </div>
                             </div>
@@ -399,7 +399,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                     <SelectItem key={option.value} value={option.value}>
                                       <div>
                                         <div className="font-medium">{option.label}</div>
-                                        <div className="text-sm text-slate-500">{option.description}</div>
+                                        <div className="text-sm text-[#71798a]">{option.description}</div>
                                       </div>
                                     </SelectItem>
                                   ))}
@@ -420,7 +420,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                 onChange={(e) => updateFieldConfig(field.id, { description: e.target.value })}
                                 placeholder={t('widgetType.fieldDescPlaceholder')}
                                 rows={2}
-                                className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                               />
                             </div>
 
@@ -447,7 +447,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             ) : undefined
                                           })}
                                           placeholder={t('node.min')}
-                                          className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                                         />
                                       </div>
                                       <div className="space-y-2">
@@ -464,7 +464,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             ) : undefined
                                           })}
                                           placeholder="No limit"
-                                          className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                                         />
                                       </div>
                                       <div className="space-y-2">
@@ -481,7 +481,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             ) : undefined
                                           })}
                                           placeholder={field.config.type === 'int' ? "1" : "0.1"}
-                                          className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                                         />
                                       </div>
                                     </div>
@@ -493,11 +493,11 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                       <Label>{t('widgetType.options')}</Label>
                                       <div className="space-y-3">
                                         {/* Options List */}
-                                        <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-white/40 dark:border-slate-700/40 rounded-md">
+                                        <div className="flex flex-wrap gap-2 min-h-[40px] p-3 bg-white/60 backdrop-blur-sm border border-white/40 rounded-md">
                                           {(field.config.options || []).map((option: string, index: number) => (
                                             <div
                                               key={index}
-                                              className="flex items-center gap-1 bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-200 px-2 py-1 rounded text-sm border border-violet-200/50 dark:border-violet-700/50"
+ className="flex items-center gap-1 bg-violet-100 dark:bg-violet-900/30 text-violet-800 dark:text-violet-200 px-2 py-1 rounded text-sm border border-violet-200/50 dark:border-violet-700/50"
                                             >
                                               <span>{option}</span>
                                               <button
@@ -506,7 +506,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                                   const newOptions = (field.config.options || []).filter((_: string, i: number) => i !== index);
                                                   updateFieldConfig(field.id, { options: newOptions });
                                                 }}
-                                                className="ml-1 text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200"
+ className="ml-1 text-violet-600 dark:text-violet-400 hover:text-violet-800 dark:hover:text-violet-200"
                                               >
                                                 <X className="h-3 w-3" />
                                               </button>
@@ -518,7 +518,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                         <div className="flex gap-2">
                                           <Input
                                             placeholder={t('widgetType.addOption')}
-                                            className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                                             onKeyDown={(e) => {
                                               if (e.key === 'Enter') {
                                                 e.preventDefault();
@@ -546,7 +546,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                                 }
                                               }
                                             }}
-                                            className="bg-violet-600 hover:bg-violet-700 text-white backdrop-blur-sm"
+ className="bg-violet-600 hover:bg-violet-700 text-white backdrop-blur-sm"
                                           >
                                             <Plus className="h-4 w-4" />
                                           </Button>
@@ -554,7 +554,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
 
                                         {/* Fallback Textarea for Advanced Users */}
                                         <details className="text-sm">
-                                          <summary className="cursor-pointer text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-slate-200">
+                                          <summary className="cursor-pointer text-[#8a919e] hover:text-[#d5d9e0]">
                                             {t('widgetType.advancedBulk')}
                                           </summary>
                                           <div className="mt-2">
@@ -565,7 +565,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                               })}
                                               placeholder="option1&#10;option2&#10;option3"
                                               rows={4}
-                                              className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                                               style={{
                                                 resize: 'vertical',
                                                 minHeight: '80px'
@@ -591,7 +591,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             updateFieldConfig(field.id, { default: value === 'true' });
                                           }}
                                         >
-                                          <SelectTrigger className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40">
+                                          <SelectTrigger className="bg-white/60 backdrop-blur-sm border-white/40">
                                             <SelectValue placeholder="Select default value" />
                                           </SelectTrigger>
                                           <SelectContent>
@@ -625,7 +625,7 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
                                             updateFieldConfig(field.id, { default: defaultValue });
                                           }}
                                           placeholder={`Default ${field.config.type} value`}
-                                          className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border-white/40 dark:border-slate-700/40"
+ className="bg-white/60 backdrop-blur-sm border-white/40"
                                         />
                                       )}
                                     </div>
@@ -643,11 +643,11 @@ export const WidgetTypeDefinitionModal: React.FC<WidgetTypeDefinitionModalProps>
             </div>
 
             {/* Footer */}
-            <div className="p-6 border-t border-slate-200/50 dark:border-slate-700/50 flex items-center justify-end gap-3 backdrop-blur-sm">
+            <div className="p-6 border-t border-white/[0.08] flex items-center justify-end gap-3 backdrop-blur-sm">
               <Button
                 onClick={onClose}
                 disabled={isSaving}
-                className="bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm hover:bg-white/80 dark:hover:bg-slate-800/80 border border-slate-200/50 dark:border-slate-700/50 text-slate-700 dark:text-slate-300 hover:text-slate-900 dark:hover:text-slate-100"
+ className="bg-white/60 backdrop-blur-sm hover:bg-white/80 border border-white/[0.08] text-[#c8ccd4] hover:text-[#e9ebef]"
               >
                 {t('widgetType.cancel')}
               </Button>
