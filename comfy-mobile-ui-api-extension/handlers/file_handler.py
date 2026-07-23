@@ -128,6 +128,22 @@ async def list_files_by_type(request):
 
 
 
+def purge_thumbnail_cache(file_path: str):
+    """Best-effort removal of cached thumbnails for a source file.
+    Privacy: when a user explicitly deletes an image, its low-res copy
+    should not linger in the (restart-volatile) cache either."""
+    try:
+        cache_dir = os.path.join(folder_paths.get_temp_directory(), ".mobile_thumbnails")
+        if not os.path.isdir(cache_dir):
+            return
+        for width in (128, 256, 384, 512):
+            key = hashlib.md5(f"{file_path}_{width}".encode()).hexdigest()
+            cached = os.path.join(cache_dir, f"{key}.jpg")
+            if os.path.exists(cached):
+                os.remove(cached)
+    except Exception:
+        pass
+
 async def delete_files(request):
     """Delete one or multiple files"""
     try:
@@ -189,8 +205,9 @@ async def delete_files(request):
                     })
                     continue
                 
-                # Delete file
+                # Delete file (and any cached thumbnails of it)
                 os.remove(file_path)
+                purge_thumbnail_cache(file_path)
                 deleted_count += 1
                 
                 results.append({
@@ -555,8 +572,16 @@ async def view_thumbnail(request):
             if cache_stat.st_mtime >= mtime:
                 use_cache = True
                 
+        # Browser cache policy: gallery URLs carry t=<mtime>, so the URL is
+        # content-versioned and safe to cache forever; without t, keep it
+        # short so replaced files (same name) refresh promptly.
+        if request.query.get('t'):
+            cache_headers = {"Cache-Control": "public, max-age=31536000, immutable"}
+        else:
+            cache_headers = {"Cache-Control": "public, max-age=60"}
+
         if use_cache:
-            return web.FileResponse(cache_path)
+            return web.FileResponse(cache_path, headers=cache_headers)
             
         # Create thumbnail
         try:
@@ -580,12 +605,12 @@ async def view_thumbnail(request):
                 # We use JPG for thumbnails to minimize transfer size
                 img.save(cache_path, "JPEG", quality=80, optimize=True)
                 
-            return web.FileResponse(cache_path)
+            return web.FileResponse(cache_path, headers=cache_headers)
             
         except Exception as img_err:
             print(f"❌ Thumbnail generation failed: {img_err}")
             # Fallback to original file if resizing fails
-            return web.FileResponse(file_path)
+            return web.FileResponse(file_path, headers=cache_headers)
             
     except Exception as e:
         print(f"❌ Error in view_thumbnail: {e}")

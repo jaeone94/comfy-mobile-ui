@@ -550,20 +550,37 @@ const submitPromptWithId = async (apiWorkflow: any, promptId: string): Promise<v
  */
 const getAllHistory = async (maxItems?: number): Promise<Record<string, any>> => {
   initializeService();
+  const params = new URLSearchParams();
+  if (maxItems) {
+    params.append('max_items', maxItems.toString());
+  }
+  const qs = params.toString() ? '?' + params.toString() : '';
+
+  // Prefer the mobile extension's lightweight list — it strips each entry's
+  // workflow JSON server-side, so the payload stays small even when history
+  // holds large (base64-embedding) workflows. Fall back to native /history
+  // only when the route is absent (older extension build).
   try {
-    const params = new URLSearchParams();
-    if (maxItems) {
-      params.append('max_items', maxItems.toString());
+    const response = await axios.get<Record<string, any>>(
+      `${serverUrl}/comfymobile/api/history/list${qs}`,
+      { timeout: 15000 }
+    );
+    return response.data || {};
+  } catch (error: any) {
+    if (error?.response?.status !== 404) {
+      console.error('Failed to fetch history:', error);
+      return {};
     }
+  }
 
-    const url = `${serverUrl}/history${params.toString() ? '?' + params.toString() : ''}`;
-    const response = await axios.get<Record<string, any>>(url, {
-      timeout: 15000
-    });
-
+  try {
+    const response = await axios.get<Record<string, any>>(
+      `${serverUrl}/history${qs}`,
+      { timeout: 15000 }
+    );
     return response.data || {};
   } catch (error) {
-    console.error('Failed to fetch history:', error);
+    console.error('Failed to fetch history (native fallback):', error);
     return {};
   }
 };
@@ -594,16 +611,31 @@ const getQueueStatus = async (): Promise<{
   queue_pending: any[]
 }> => {
   initializeService();
+  const parse = (data: any) => ({
+    running: data?.exec_info?.queue_running || 0,
+    pending: data?.exec_info?.queue_remaining || 0,
+    queue_running: data?.queue_running || [],
+    queue_pending: data?.queue_pending || []
+  });
+
+  // Prefer the mobile extension's lightweight queue — native /queue inlines
+  // every item's prompt graph + workflow, which balloons the payload when
+  // heavy workflows are queued. Fall back to native only on 404.
+  try {
+    const response = await axios.get(`${serverUrl}/comfymobile/api/queue/list`);
+    return parse(response.data);
+  } catch (error: any) {
+    if (error?.response?.status !== 404) {
+      console.error('Failed to fetch queue status:', error);
+      return { running: 0, pending: 0, queue_running: [], queue_pending: [] };
+    }
+  }
+
   try {
     const response = await axios.get(`${serverUrl}/queue`);
-    return {
-      running: response.data?.exec_info?.queue_running || 0,
-      pending: response.data?.exec_info?.queue_remaining || 0,
-      queue_running: response.data?.queue_running || [],
-      queue_pending: response.data?.queue_pending || []
-    };
+    return parse(response.data);
   } catch (error) {
-    console.error('Failed to fetch queue status:', error);
+    console.error('Failed to fetch queue status (native fallback):', error);
     return { running: 0, pending: 0, queue_running: [], queue_pending: [] };
   }
 };
