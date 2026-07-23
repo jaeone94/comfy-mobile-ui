@@ -68,8 +68,19 @@ export class ComfyFileService {
    */
   async getHistory(limit?: number): Promise<IComfyHistoryEntry[]> {
     try {
-      const response = await axios.get(`${this.serverUrl}/history`);
-      const historyData = response.data;
+      // Lightweight list (metadata + outputs, no per-entry workflow). Passing
+      // the limit as max_items keeps the payload bounded; fall back to native
+      // /history when the extension route is missing (older build).
+      const qs = limit ? `?max_items=${limit}` : '';
+      let historyData: any;
+      try {
+        const response = await axios.get(`${this.serverUrl}/comfymobile/api/history/list${qs}`);
+        historyData = response.data;
+      } catch (err: any) {
+        if (err?.response?.status !== 404) throw err;
+        const response = await axios.get(`${this.serverUrl}/history${qs}`);
+        historyData = response.data;
+      }
 
       if (typeof historyData !== 'object') {
         return [];
