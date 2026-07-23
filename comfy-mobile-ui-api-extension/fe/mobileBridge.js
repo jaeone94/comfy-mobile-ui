@@ -301,12 +301,64 @@ async function applySetting({ id, value }) {
   }
 }
 
-function fitView() {
-  try {
+// Fit all nodes into view. We do the math ourselves instead of the official
+// "Canvas.FitView" command: in this iframe embed that command double-applies
+// devicePixelRatio, so on a DPR-3 phone it zooms out ~3x (nodes tiny, pushed
+// to a corner). Working in CSS pixels against ds.scale/offset is DPR-safe —
+// the canvas transform is ctx.scale(dpr) · ds.scale · (p + ds.offset), so the
+// dpr factor cancels out of both the scale and the centering below.
+function fitViewOnce() {
+  const canvas = app.canvas;
+  const graph = app.graph;
+  const el = canvas?.canvas;
+  const nodes = graph?._nodes;
+  if (!canvas?.ds || !el || !nodes || !nodes.length) {
+    // Fallback for unexpected shapes (empty graph, missing ds, ...).
     app.extensionManager?.command?.execute?.("Canvas.FitView");
-  } catch (e) {
-    console.warn("[MobileBridge] fit view failed", e);
+    return;
   }
+
+  const TITLE = (window.LiteGraph && window.LiteGraph.NODE_TITLE_HEIGHT) || 30;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const n of nodes) {
+    if (!n.pos || !n.size) continue;
+    const w = n.flags?.collapsed ? (n._collapsed_width || 80) : n.size[0];
+    const h = n.flags?.collapsed ? 0 : n.size[1];
+    const x = n.pos[0];
+    const y = n.pos[1] - TITLE;
+    if (x < minX) minX = x;
+    if (y < minY) minY = y;
+    if (x + w > maxX) maxX = x + w;
+    if (y + TITLE + h > maxY) maxY = y + TITLE + h;
+  }
+  if (!isFinite(minX)) {
+    app.extensionManager?.command?.execute?.("Canvas.FitView");
+    return;
+  }
+
+  const bw = Math.max(1, maxX - minX);
+  const bh = Math.max(1, maxY - minY);
+  const vw = el.clientWidth || el.width || 1;
+  const vh = el.clientHeight || el.height || 1;
+  const margin = 0.88; // breathing room around the graph
+  let scale = Math.min(vw / bw, vh / bh) * margin;
+  scale = Math.max(0.1, Math.min(scale, 1.4)); // don't over-zoom tiny graphs
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  canvas.ds.scale = scale;
+  canvas.ds.offset = [vw / (2 * scale) - cx, vh / (2 * scale) - cy];
+  canvas.setDirty?.(true, true);
+}
+
+function fitView() {
+  const doFit = () => {
+    try { fitViewOnce(); } catch (e) { console.warn("[MobileBridge] fit view failed", e); }
+  };
+  // The canvas keeps resizing for a few frames after the embed becomes visible,
+  // so run once now and once after it settles.
+  requestAnimationFrame(doFit);
+  setTimeout(doFit, 250);
 }
 
 // Hide the desktop chrome so only the litegraph canvas remains visible.

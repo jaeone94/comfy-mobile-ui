@@ -3638,7 +3638,7 @@ const WorkflowEditor: React.FC = () => {
           )}
           title="Switch to the official canvas (beta)"
         >
-          Official β
+          Official <span className="normal-case">β</span>
         </button>
       </div>
 
