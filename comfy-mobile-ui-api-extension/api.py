@@ -32,7 +32,7 @@ try:
     from .handlers.chain_handler import *
     from .handlers.chain_progress_handler import *
     from .handlers.global_websocket_handler import *
-    from .handlers.history_handler import get_history_list
+    from .handlers.history_handler import get_history_list, get_queue_list
     from .utils.global_websocket_manager import global_websocket_manager
 except ImportError as e:
     print(f"\n[ComfyMobileUI] ❌ ERROR: Missing dependency - {e}")
@@ -98,6 +98,8 @@ def setup_routes():
 
                 # Lightweight execution-history list (strips per-entry workflow)
                 app.router.add_get('/comfymobile/api/history/list', get_history_list)
+                # Lightweight queue snapshot (strips per-item workflow)
+                app.router.add_get('/comfymobile/api/queue/list', get_queue_list)
                 app.router.add_delete('/comfymobile/api/files/delete', delete_files)
                 app.router.add_post('/comfymobile/api/files/move', move_files)
                 app.router.add_post('/comfymobile/api/files/copy', copy_files)

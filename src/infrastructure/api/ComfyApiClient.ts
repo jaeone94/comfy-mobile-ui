@@ -611,16 +611,31 @@ const getQueueStatus = async (): Promise<{
   queue_pending: any[]
 }> => {
   initializeService();
+  const parse = (data: any) => ({
+    running: data?.exec_info?.queue_running || 0,
+    pending: data?.exec_info?.queue_remaining || 0,
+    queue_running: data?.queue_running || [],
+    queue_pending: data?.queue_pending || []
+  });
+
+  // Prefer the mobile extension's lightweight queue — native /queue inlines
+  // every item's prompt graph + workflow, which balloons the payload when
+  // heavy workflows are queued. Fall back to native only on 404.
+  try {
+    const response = await axios.get(`${serverUrl}/comfymobile/api/queue/list`);
+    return parse(response.data);
+  } catch (error: any) {
+    if (error?.response?.status !== 404) {
+      console.error('Failed to fetch queue status:', error);
+      return { running: 0, pending: 0, queue_running: [], queue_pending: [] };
+    }
+  }
+
   try {
     const response = await axios.get(`${serverUrl}/queue`);
-    return {
-      running: response.data?.exec_info?.queue_running || 0,
-      pending: response.data?.exec_info?.queue_remaining || 0,
-      queue_running: response.data?.queue_running || [],
-      queue_pending: response.data?.queue_pending || []
-    };
+    return parse(response.data);
   } catch (error) {
-    console.error('Failed to fetch queue status:', error);
+    console.error('Failed to fetch queue status (native fallback):', error);
     return { running: 0, pending: 0, queue_running: [], queue_pending: [] };
   }
 };
