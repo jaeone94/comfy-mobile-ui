@@ -8,6 +8,7 @@ import { NodeMode } from '@/shared/types/app/base';
 import { Eye, EyeOff, Play, Square, Trash2, X, MousePointer2, VolumeX, Shuffle } from 'lucide-react';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import { SimpleConfirmDialog } from '@/components/ui/SimpleConfirmDialog';
+import { darkenColor } from '@/shared/utils/rendering/CanvasRendererService';
 
 interface GroupInspectorProps {
   selectedNode: any;
@@ -204,15 +205,16 @@ export const GroupInspector: React.FC<GroupInspectorProps> = ({
 
           {/* Main Card */}
           <div
-            style={{ backgroundColor: '#101217' }}
+            style={{ backgroundColor: '#1c212c' }}
             className="relative w-full h-full rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col text-white"
           >
-            {/* Dynamic Sticky Header */}
+            {/* Dynamic Sticky Header - solid fill matching the canvas node title bar */}
             <div
-              className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] transition-all duration-300 ease-in-out
+              style={{ backgroundColor: darkenColor('#1c212c', 0.25) }}
+              className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b border-white/[0.06] min-h-[32px] transition-all duration-300 ease-in-out
                 ${isHeaderCompact
-                  ? 'pt-1.5 pb-[11px] pl-4 pr-[40px] bg-[#0f1116]/90 backdrop-blur-xl border-white/[0.08]'
-                  : 'pt-4 pb-3.5 pl-4 pr-12 border-transparent bg-black/20 backdrop-blur-0'
+                  ? 'pt-1.5 pb-[11px] pl-4 pr-[40px]'
+                  : 'pt-4 pb-3.5 pl-4 pr-12'
                 }`}
             >
               {/* Floating Close Button */}

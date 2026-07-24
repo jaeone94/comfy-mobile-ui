@@ -12,6 +12,7 @@ import {
 import { INodeWithMetadata, IProcessedParameter } from '@/shared/types/comfy/IComfyObjectInfo';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 import { GroupInspector } from '@/components/canvas/GroupInspector';
+import { darkenColor } from '@/shared/utils/rendering/CanvasRendererService';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 
 import { toast } from 'sonner';
@@ -169,9 +170,13 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
     const isBypassed = currentMode === 4;
     const isAlways = currentMode === 0;
 
-    const baseColor = (selectedNode.bgcolor || selectedNode.color || (selectedNode.properties?.['Node Color'])) || '#14171e';
+    const baseColor = (selectedNode.bgcolor || selectedNode.color || (selectedNode.properties?.['Node Color'])) || '#1c212c';
     const effectiveBgColor = isMuted ? '#3b82f6' : (isBypassed ? '#9333ea' : baseColor);
     const effectiveOpacity = (isMuted || isBypassed) ? 0.5 : 1;
+    // Match the canvas node title bar exactly: a hue-preserving 25% darken of the
+    // body color (canvas draws the title as body*0.75), instead of a black/20
+    // overlay (body*0.8) which reads as a different, muddier tone than the node.
+    const headerColor = darkenColor(effectiveBgColor, 0.25);
 
     const NODE_COLORS = [
         { name: 'Brown', key: 'circularMenu.colors.brown', value: '#593930' },
@@ -991,7 +996,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                                                         onNodeColorChange?.(nodeId, c.value);
                                                         setShowColorPicker(false);
                                                     }}
-                                                    style={{ backgroundColor: c.value || '#14171e' }}
+                                                    style={{ backgroundColor: c.value || '#1c212c' }}
                                                     className="w-8 h-8 rounded-[7px] border border-white/20 shadow-sm active:scale-90 transition-transform flex-shrink-0"
                                                     title={t(c.key)}
                                                 />
@@ -1011,12 +1016,13 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
                         }}
                         className={`relative w-full h-full bg-[#101217] rounded-xl shadow-2xl ring-1 ring-white/10 overflow-hidden flex flex-col ${hasCustomColor ? 'text-white' : ''}`}
                     >
-                        {/* Dynamic Sticky Header - Overlay Architecture */}
+                        {/* Dynamic Sticky Header - solid fill matching the canvas node title bar */}
                         <div
-                            className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b min-h-[32px] transition-all duration-300 ease-in-out
+                            style={{ backgroundColor: headerColor }}
+                            className={`absolute top-0 left-0 w-full z-30 flex items-center justify-between border-b border-white/[0.06] min-h-[32px] transition-all duration-300 ease-in-out
                                 ${isHeaderCompact
-                                    ? `pt-1.5 pb-[11px] pl-4 pr-[40px] backdrop-blur-xl border-white/[0.08] ${hasCustomColor ? 'bg-black/30' : 'bg-[#0f1116]/90'}`
-                                    : `pt-4 pb-3.5 pl-4 pr-12 border-transparent ${hasCustomColor ? 'bg-black/20' : 'bg-transparent'} backdrop-blur-0`
+                                    ? 'pt-1.5 pb-[11px] pl-4 pr-[40px]'
+                                    : 'pt-4 pb-3.5 pl-4 pr-12'
                                 }`}
                         >
                             {/* Minimalist Floating Close Button */}
