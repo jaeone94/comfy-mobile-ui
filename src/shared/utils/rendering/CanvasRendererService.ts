@@ -956,7 +956,7 @@ export function renderNodes(
       if (node.bgcolor) {
         backgroundColor = node.bgcolor;
       } else {
-        backgroundColor = '#1c212c';
+        backgroundColor = config.defaultNodeColor;
       }
 
       // Simple state modifications without complex color enhancement
@@ -1844,7 +1844,7 @@ export function drawGridPattern(
   const offsetY = viewport.y % (gridSize * viewport.scale);
 
   // Grid color (subtle dots)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.06)'; // Hairline white dots
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.075)'; // Hairline white dots
 
   // Draw grid dots
   const scaledGridSize = gridSize * viewport.scale;

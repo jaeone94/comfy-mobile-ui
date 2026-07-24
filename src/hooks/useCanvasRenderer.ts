@@ -276,7 +276,7 @@ export const useCanvasRenderer = ({
     const draw = () => {
       // Clear canvas - use darker background color in repositioning mode
       const backgroundColor = repositionMode?.isActive
-        ? '#14171e' // Elevated surface tone for repositioning mode
+        ? '#1a1f28' // Elevated surface tone for repositioning mode
         : config.backgroundColor;
 
       ctx.fillStyle = backgroundColor;
