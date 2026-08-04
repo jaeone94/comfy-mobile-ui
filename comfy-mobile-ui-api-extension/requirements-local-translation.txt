@@ -1,0 +1,5 @@
+# Optional offline translation dependencies. These are intentionally separate
+# from requirements.txt because they add a sizeable NLP runtime to ComfyUI.
+argostranslate==1.11.0
+lingua-language-detector==2.2.0
+opencc>=1.1.9,<2

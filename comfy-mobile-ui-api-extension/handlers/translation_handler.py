@@ -1,9 +1,17 @@
-"""Translation proxy handlers for browser-stored Groq and DeepL API keys."""
+"""Cloud and optional offline translation handlers."""
 
 import json
 
 import aiohttp
 from aiohttp import web
+
+from ..utils.local_translation_service import (
+    LocalTranslationError,
+    get_local_translation_status,
+    install_local_translation_pairs,
+    start_local_translation_engine_install,
+    translate_locally,
+)
 
 
 LANGUAGE_NAMES = {
@@ -21,7 +29,7 @@ LANGUAGE_NAMES = {
 }
 
 SUPPORTED_SOURCES = {"auto", "EN", "KO", "JA", "ZH", "DE", "FR", "ES", "IT", "PT", "RU"}
-SUPPORTED_TARGETS = {"EN", "ZH-HANS"}
+SUPPORTED_TARGETS = {"EN", "ZH-HANS", "KO", "JA", "DE", "FR", "ES", "IT", "PT", "RU"}
 MAX_TEXT_LENGTH = 30_000
 
 
@@ -44,7 +52,7 @@ async def _translate_with_deepl(session, api_key, text, source_language, target_
     endpoint = "https://api-free.deepl.com/v2/translate" if api_key.endswith(":fx") else "https://api.deepl.com/v2/translate"
     body = {
         "text": [text],
-        "target_lang": target_language,
+        "target_lang": "PT-PT" if target_language == "PT" else target_language,
         "preserve_formatting": True,
     }
     if source_language != "auto":
@@ -129,9 +137,9 @@ async def translate_text(request):
         source_language = "auto"
     target_language = str(body.get("target_language", "EN")).upper()
 
-    if provider not in {"groq", "deepl"}:
+    if provider not in {"groq", "deepl", "argos"}:
         return web.json_response({"error": "Unsupported translation provider."}, status=400)
-    if not api_key:
+    if provider != "argos" and not api_key:
         return web.json_response({"error": "An API key is required."}, status=400)
     if not text.strip():
         return web.json_response({"error": "Text is required."}, status=400)
@@ -141,6 +149,23 @@ async def translate_text(request):
         return web.json_response({"error": "Unsupported source language."}, status=400)
     if target_language not in SUPPORTED_TARGETS:
         return web.json_response({"error": "Unsupported target language."}, status=400)
+
+    if provider == "argos":
+        try:
+            translated_text, detected_source = await translate_locally(
+                text, source_language, target_language
+            )
+            return web.json_response({
+                "text": translated_text,
+                "detected_source_language": detected_source,
+            })
+        except LocalTranslationError as error:
+            return web.json_response({
+                "error": str(error),
+                "code": error.code,
+                "required_pairs": error.required_pairs,
+                "detected_source_language": error.detected_source_language,
+            }, status=409 if error.code == "LANGUAGE_PACK_MISSING" else 503)
 
     timeout = aiohttp.ClientTimeout(total=40, connect=10)
     try:
@@ -156,3 +181,41 @@ async def translate_text(request):
         return web.json_response({"error": "Could not reach the translation provider."}, status=502)
     except TimeoutError:
         return web.json_response({"error": "The translation provider timed out."}, status=504)
+
+
+async def local_translation_status(_request):
+    return web.json_response(await get_local_translation_status())
+
+
+async def install_local_translation_engine(_request):
+    started, state = await start_local_translation_engine_install()
+    return web.json_response({
+        "started": started,
+        "engine_install": state,
+    }, status=202 if started else 200)
+
+
+async def install_local_translation_packages(request):
+    try:
+        body = await request.json()
+        pairs = body.get("pairs", [])
+        if not isinstance(pairs, list):
+            raise ValueError
+    except (json.JSONDecodeError, ValueError):
+        return web.json_response({"error": "Invalid JSON request."}, status=400)
+
+    try:
+        installed_now, installed_pairs = await install_local_translation_pairs(pairs)
+        return web.json_response({
+            "installed_now": installed_now,
+            "installed_pairs": installed_pairs,
+        })
+    except LocalTranslationError as error:
+        return web.json_response({
+            "error": str(error),
+            "code": error.code,
+            "required_pairs": error.required_pairs,
+        }, status=503 if error.code == "LOCAL_ENGINE_MISSING" else 400)
+    except Exception as error:
+        print(f"[ComfyMobileUI] Argos package installation failed: {error}")
+        return web.json_response({"error": "Could not install the local language pack."}, status=500)

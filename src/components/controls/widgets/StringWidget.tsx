@@ -7,17 +7,22 @@
 import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, ClipboardPaste, Copy, KeyRound, Languages, Loader2, X } from 'lucide-react';
+import { ChevronDown, ClipboardPaste, Copy, Download, HardDrive, KeyRound, Languages, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { getAllApiKeys } from '@/infrastructure/storage/ApiKeyStorageService';
 import {
+  getLocalTranslationStatus,
+  installLocalTranslationPairs,
   loadTranslationPreferences,
+  requiredLocalTranslationPairs,
   saveTranslationPreferences,
+  startLocalTranslationEngineInstall,
   translateText,
   TranslationServiceError,
+  type LocalTranslationStatus,
   type TranslationPreferences,
   type TranslationProvider,
   type TranslationSourceLanguage,
@@ -33,7 +38,9 @@ const SOURCE_LANGUAGES: TranslationSourceLanguage[] = [
   'auto', 'EN', 'KO', 'JA', 'ZH', 'DE', 'FR', 'ES', 'IT', 'PT', 'RU'
 ];
 
-const TARGET_LANGUAGES: TranslationTargetLanguage[] = ['EN', 'ZH-HANS'];
+const TARGET_LANGUAGES: TranslationTargetLanguage[] = [
+  'EN', 'ZH-HANS', 'KO', 'JA', 'DE', 'FR', 'ES', 'IT', 'PT', 'RU'
+];
 
 export const StringWidget: React.FC<StringWidgetProps> = ({
   param,
@@ -47,28 +54,65 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
   const serverUrl = useConnectionStore((state) => state.url);
   const [showTranslationPanel, setShowTranslationPanel] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
+  const [isInstallingLocalPacks, setIsInstallingLocalPacks] = useState(false);
+  const [localStatus, setLocalStatus] = useState<LocalTranslationStatus | null>(null);
+  const [pendingRequiredPairs, setPendingRequiredPairs] = useState<string[]>([]);
   const [translationPreferences, setTranslationPreferences] = useState<TranslationPreferences>(loadTranslationPreferences);
   const [availableProviders, setAvailableProviders] = useState<Record<TranslationProvider, boolean>>({
     groq: false,
-    deepl: false
+    deepl: false,
+    argos: false
   });
 
   useEffect(() => {
     let cancelled = false;
-    getAllApiKeys().then((keys) => {
+    Promise.allSettled([
+      getAllApiKeys(),
+      getLocalTranslationStatus(serverUrl)
+    ]).then(([keysResult, localStatusResult]) => {
       if (cancelled) return;
+      const keys = keysResult.status === 'fulfilled' ? keysResult.value : [];
+      const status = localStatusResult.status === 'fulfilled' ? localStatusResult.value : null;
+      setLocalStatus(status);
       setAvailableProviders({
         groq: keys.some((key) => key.provider === 'groq' && key.isActive),
-        deepl: keys.some((key) => key.provider === 'deepl' && key.isActive)
+        deepl: keys.some((key) => key.provider === 'deepl' && key.isActive),
+        argos: status?.engine_available || false
       });
     });
 
     return () => {
       cancelled = true;
     };
-  }, [showTranslationPanel]);
+  }, [serverUrl, showTranslationPanel]);
+
+  useEffect(() => {
+    if (localStatus?.engine_install?.state !== 'running') return;
+
+    let cancelled = false;
+    const interval = window.setInterval(() => {
+      getLocalTranslationStatus(serverUrl).then((status) => {
+        if (cancelled) return;
+        setLocalStatus(status);
+        setAvailableProviders((current) => ({
+          ...current,
+          argos: status.engine_available
+        }));
+      }).catch((error) => {
+        console.error('Failed to poll local translation installation:', error);
+      });
+    }, 1500);
+
+    return () => {
+      cancelled = true;
+      window.clearInterval(interval);
+    };
+  }, [localStatus?.engine_install?.state, serverUrl]);
 
   const updateTranslationPreferences = (next: Partial<TranslationPreferences>) => {
+    if (next.sourceLanguage || next.targetLanguage) {
+      setPendingRequiredPairs([]);
+    }
     setTranslationPreferences((current) => {
       const updated = { ...current, ...next };
       saveTranslationPreferences(updated);
@@ -170,6 +214,21 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
         setShowTranslationPanel(true);
       } else if (error instanceof TranslationServiceError && error.code === 'missing-server') {
         toast.error(t('translationWidget.messages.missingServer'));
+      } else if (error instanceof TranslationServiceError && error.providerCode === 'LANGUAGE_PACK_MISSING') {
+        setShowTranslationPanel(true);
+        if (translationPreferences.sourceLanguage === 'auto') {
+          setPendingRequiredPairs([]);
+          toast.error(t('translationWidget.messages.selectSourceForLanguagePack'));
+        } else {
+          setPendingRequiredPairs(error.requiredPairs);
+          toast.error(t('translationWidget.messages.missingLanguagePack'));
+        }
+      } else if (error instanceof TranslationServiceError && error.providerCode === 'LANGUAGE_UNCERTAIN') {
+        setShowTranslationPanel(true);
+        toast.error(t('translationWidget.messages.languageUncertain'));
+      } else if (error instanceof TranslationServiceError && error.providerCode === 'LOCAL_ENGINE_MISSING') {
+        setShowTranslationPanel(true);
+        toast.error(t('translationWidget.messages.localEngineMissing'));
       } else {
         console.error('Translation failed:', error);
         toast.error(t('translationWidget.messages.failed'));
@@ -179,10 +238,55 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
     }
   };
 
+  const configuredLocalPairs = requiredLocalTranslationPairs(
+    translationPreferences.sourceLanguage,
+    translationPreferences.targetLanguage
+  );
+  const localPairsToCheck = translationPreferences.sourceLanguage === 'auto'
+    ? []
+    : pendingRequiredPairs.length > 0 ? pendingRequiredPairs : configuredLocalPairs;
+  const missingLocalPairs = localPairsToCheck.filter(
+    (pair) => !localStatus?.installed_pairs.includes(pair)
+  );
+
+  const handleInstallLocalPacks = async () => {
+    if (missingLocalPairs.length === 0) return;
+    setIsInstallingLocalPacks(true);
+    try {
+      const installedPairs = await installLocalTranslationPairs(serverUrl, missingLocalPairs);
+      setLocalStatus((current) => current ? { ...current, installed_pairs: installedPairs } : current);
+      setPendingRequiredPairs([]);
+      toast.success(t('translationWidget.messages.languagePackInstalled'));
+    } catch (error) {
+      console.error('Local language-pack installation failed:', error);
+      toast.error(t('translationWidget.messages.languagePackInstallFailed'));
+    } finally {
+      setIsInstallingLocalPacks(false);
+    }
+  };
+
+  const handleInstallLocalEngine = async () => {
+    try {
+      const engineInstall = await startLocalTranslationEngineInstall(serverUrl);
+      setLocalStatus((current) => current ? { ...current, engine_install: engineInstall } : current);
+      toast.info(t('translationWidget.messages.engineInstallStarted'));
+    } catch (error) {
+      console.error('Local translation engine installation failed to start:', error);
+      toast.error(t('translationWidget.messages.engineInstallFailed'));
+    }
+  };
+
   const isSecureContext = window.isSecureContext && navigator.clipboard;
-  const providerName = translationPreferences.provider === 'groq' ? 'Groq' : 'DeepL';
-  const targetShortName = translationPreferences.targetLanguage === 'EN' ? 'EN' : '简中';
+  const providerName = translationPreferences.provider === 'groq'
+    ? 'Groq'
+    : translationPreferences.provider === 'deepl' ? 'DeepL' : 'Argos';
+  const targetShortName = translationPreferences.targetLanguage === 'ZH-HANS'
+    ? '简中'
+    : translationPreferences.targetLanguage;
   const selectedProviderAvailable = availableProviders[translationPreferences.provider];
+  const engineInstallState = localStatus?.engine_install?.state || 'idle';
+  const isInstallingLocalEngine = engineInstallState === 'running';
+  const localEngineNeedsRestart = engineInstallState === 'restart_required';
 
   return (
     <div className="space-y-3">
@@ -272,6 +376,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
               >
                 <option value="groq">Groq{availableProviders.groq ? '' : ` · ${t('translationWidget.noKey')}`}</option>
                 <option value="deepl">DeepL{availableProviders.deepl ? '' : ` · ${t('translationWidget.noKey')}`}</option>
+                <option value="argos">Local · Argos{availableProviders.argos ? '' : ` · ${t('translationWidget.engineMissing')}`}</option>
               </select>
             </label>
 
@@ -306,11 +411,61 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
             </label>
           </div>
 
+          {translationPreferences.provider === 'argos' && !selectedProviderAvailable && (
+            <p className="mt-2.5 rounded-lg border border-[#f2a65a]/15 bg-[#f2a65a]/[0.06] px-2.5 py-2 text-[10px] leading-relaxed text-[#c79361]">
+              {localEngineNeedsRestart
+                ? t('translationWidget.localRestartHint')
+                : engineInstallState === 'failed'
+                  ? t('translationWidget.localInstallFailedHint')
+                  : t('translationWidget.localInstallHint')}
+            </p>
+          )}
+
           <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/[0.06] pt-3">
-            {selectedProviderAvailable ? (
+            {translationPreferences.provider === 'argos' && !selectedProviderAvailable ? (
+              <button
+                type="button"
+                onClick={handleInstallLocalEngine}
+                disabled={isInstallingLocalEngine || localEngineNeedsRestart}
+                className="flex min-w-0 items-center gap-1.5 text-left text-[10.5px] text-[#f2a65a] hover:text-[#ffc17d] disabled:opacity-60"
+              >
+                {isInstallingLocalEngine
+                  ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                  : <Download className="h-3 w-3 shrink-0" />}
+                <span className="truncate">
+                  {isInstallingLocalEngine
+                    ? t('translationWidget.installingLocalEngine')
+                    : localEngineNeedsRestart
+                      ? t('translationWidget.restartRequired')
+                      : t('translationWidget.installLocalEngine')}
+                </span>
+              </button>
+            ) : translationPreferences.provider === 'argos' && missingLocalPairs.length > 0 ? (
+              <button
+                type="button"
+                onClick={handleInstallLocalPacks}
+                disabled={isInstallingLocalPacks}
+                className="flex min-w-0 items-center gap-1.5 text-left text-[10.5px] text-[#7ba3f5] hover:text-[#a8c1fa] disabled:opacity-50"
+              >
+                {isInstallingLocalPacks
+                  ? <Loader2 className="h-3 w-3 shrink-0 animate-spin" />
+                  : <Download className="h-3 w-3 shrink-0" />}
+                <span className="truncate">
+                  {isInstallingLocalPacks
+                    ? t('translationWidget.installingLanguagePack')
+                    : t('translationWidget.installLanguagePack', { count: missingLocalPairs.length })}
+                </span>
+              </button>
+            ) : selectedProviderAvailable ? (
               <span className="flex min-w-0 items-center gap-1.5 text-[10.5px] text-[#65b887]">
-                <KeyRound className="h-3 w-3 shrink-0" />
-                <span className="truncate">{t('translationWidget.keyReady', { provider: providerName })}</span>
+                {translationPreferences.provider === 'argos'
+                  ? <HardDrive className="h-3 w-3 shrink-0" />
+                  : <KeyRound className="h-3 w-3 shrink-0" />}
+                <span className="truncate">
+                  {translationPreferences.provider === 'argos'
+                    ? t('translationWidget.localReady')
+                    : t('translationWidget.keyReady', { provider: providerName })}
+                </span>
               </span>
             ) : (
               <button
@@ -326,7 +481,7 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
               type="button"
               size="sm"
               onClick={handleTranslate}
-              disabled={isTranslating || !selectedProviderAvailable}
+              disabled={isTranslating || isInstallingLocalPacks || isInstallingLocalEngine || !selectedProviderAvailable || (translationPreferences.provider === 'argos' && missingLocalPairs.length > 0)}
               className="h-8 shrink-0 rounded-lg bg-[#3069f0] px-3 text-[11.5px] text-white hover:bg-[#3f78f5] disabled:opacity-45"
             >
               {isTranslating ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Languages className="mr-1.5 h-3.5 w-3.5" />}
