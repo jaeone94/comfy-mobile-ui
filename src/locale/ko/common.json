@@ -1213,6 +1213,15 @@
         "installingLanguagePack": "언어팩 설치 중...",
         "translate": "번역",
         "translating": "번역 중...",
+        "retranslateSource": "원문 다시 번역",
+        "restoreSource": "원문 복구",
+        "showTranslation": "번역본 보기",
+        "deleteSource": "저장된 원문 삭제",
+        "confirmDeleteSource": "이 기기에 저장된 원문을 삭제할까요? 삭제한 원문은 복구할 수 없습니다.",
+        "sourceEditing": "원문 편집 중",
+        "translationShown": "번역본 표시 중",
+        "sourceAvailable": "저장된 원문 있음",
+        "localOnlyHint": "이 기기에만 저장됨",
         "languages": {
             "auto": "자동 감지",
             "EN": "영어",
@@ -1240,6 +1249,9 @@
             "languagePackInstalled": "로컬 언어팩 설치가 완료되었습니다",
             "languagePackInstallFailed": "로컬 언어팩 설치에 실패했습니다",
             "complete": "번역이 완료되었습니다",
+            "sourceDeleted": "저장된 원문을 삭제했습니다",
+            "sourceDeleteFailed": "저장된 원문을 삭제하지 못했습니다",
+            "sourceSaveFailed": "이 기기에 원문을 저장하지 못해 번역을 중단했습니다",
             "failed": "번역에 실패했습니다. API 키와 서버 연결을 확인해주세요"
         }
     },
@@ -1462,6 +1474,7 @@
             "folders": "워크플로우 폴더 구조 (localStorage: comfy-workflow-folders)",
             "apiKeys": "API 키 정보 (IndexedDB: apiKeys)",
             "storage": "워크플로우 상세 데이터 (IndexedDB: workflows)",
+            "translationDrafts": "번역 원문 초안 (IndexedDB: translationDrafts)",
             "settings": "사용자 인터페이스 및 언어 설정",
             "note": "참고: 하나의 백업 파일만 유지되며, 새 백업은 기존 백업을 덮어씁니다."
         },

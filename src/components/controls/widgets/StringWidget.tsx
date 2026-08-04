@@ -4,15 +4,22 @@
  * Handles STRING type parameters with multi-line text input control
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
-import { ChevronDown, ClipboardPaste, Copy, Download, HardDrive, KeyRound, Languages, Loader2, X } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { ChevronDown, ClipboardPaste, Copy, Download, HardDrive, KeyRound, Languages, Loader2, RotateCcw, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { getAllApiKeys } from '@/infrastructure/storage/ApiKeyStorageService';
+import {
+  createTranslationDraftId,
+  deleteTranslationDraft,
+  getTranslationDraft,
+  saveTranslationDraft,
+  type TranslationDraft
+} from '@/infrastructure/storage/TranslationDraftStorageService';
 import {
   getLocalTranslationStatus,
   installLocalTranslationPairs,
@@ -42,6 +49,8 @@ const TARGET_LANGUAGES: TranslationTargetLanguage[] = [
   'EN', 'ZH-HANS', 'KO', 'JA', 'DE', 'FR', 'ES', 'IT', 'PT', 'RU'
 ];
 
+type DraftMode = 'source' | 'translated' | null;
+
 export const StringWidget: React.FC<StringWidgetProps> = ({
   param,
   editingValue,
@@ -51,18 +60,65 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const location = useLocation();
   const serverUrl = useConnectionStore((state) => state.url);
   const [showTranslationPanel, setShowTranslationPanel] = useState(false);
   const [isTranslating, setIsTranslating] = useState(false);
   const [isInstallingLocalPacks, setIsInstallingLocalPacks] = useState(false);
   const [localStatus, setLocalStatus] = useState<LocalTranslationStatus | null>(null);
   const [pendingRequiredPairs, setPendingRequiredPairs] = useState<string[]>([]);
+  const [translationDraft, setTranslationDraft] = useState<TranslationDraft | null>(null);
+  const [draftMode, setDraftMode] = useState<DraftMode>(null);
+  const [isDraftLoading, setIsDraftLoading] = useState(true);
   const [translationPreferences, setTranslationPreferences] = useState<TranslationPreferences>(loadTranslationPreferences);
   const [availableProviders, setAvailableProviders] = useState<Record<TranslationProvider, boolean>>({
     groq: false,
     deepl: false,
     argos: false
   });
+  const editingValueRef = useRef(editingValue);
+  const storageScope = location.pathname || 'unknown-workflow';
+  const translationDraftId = useMemo(
+    () => node ? createTranslationDraftId(storageScope, node.id, param.name) : null,
+    [node, param.name, storageScope]
+  );
+
+  useEffect(() => {
+    editingValueRef.current = editingValue;
+  }, [editingValue]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTranslationDraft(null);
+    setDraftMode(null);
+
+    if (!translationDraftId) {
+      setIsDraftLoading(false);
+      return () => {
+        cancelled = true;
+      };
+    }
+
+    setIsDraftLoading(true);
+    getTranslationDraft(translationDraftId).then((draft) => {
+      if (cancelled) return;
+      setTranslationDraft(draft);
+      const currentValue = String(editingValueRef.current ?? '');
+      if (draft && currentValue === draft.sourceText) {
+        setDraftMode('source');
+      } else if (draft && currentValue === draft.translatedText) {
+        setDraftMode('translated');
+      }
+    }).catch((error) => {
+      console.error('Failed to load translation source draft:', error);
+    }).finally(() => {
+      if (!cancelled) setIsDraftLoading(false);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [translationDraftId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -169,9 +225,16 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
     }
   };
 
-  const handleValueChange = (newValue: string) => {
+  const applyValueChange = (newValue: string) => {
     onValueChange(newValue);
     executeWidgetCallback(newValue);
+  };
+
+  const handleValueChange = (newValue: string) => {
+    if (draftMode === 'translated' && newValue !== translationDraft?.translatedText) {
+      setDraftMode(null);
+    }
+    applyValueChange(newValue);
   };
 
   const handleCopy = async () => {
@@ -192,21 +255,63 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
   };
 
   const handleTranslate = async () => {
-    const sourceText = String(editingValue || '');
+    const sourceText = draftMode === 'translated' && translationDraft
+      ? translationDraft.sourceText
+      : String(editingValue || '');
     if (!sourceText.trim()) {
       toast.error(t('translationWidget.messages.emptyText'));
       return;
     }
 
+    if (!translationDraftId || !node) {
+      toast.error(t('translationWidget.messages.sourceSaveFailed'));
+      return;
+    }
+
     setIsTranslating(true);
+    const sourceDraft: TranslationDraft = {
+      id: translationDraftId,
+      scope: storageScope,
+      nodeId: node.id,
+      widgetName: param.name,
+      sourceText,
+      translatedText: translationDraft?.translatedText || '',
+      sourceLanguage: translationPreferences.sourceLanguage,
+      targetLanguage: translationPreferences.targetLanguage,
+      provider: translationPreferences.provider,
+      updatedAt: new Date().toISOString()
+    };
+
+    try {
+      await saveTranslationDraft(sourceDraft);
+      setTranslationDraft(sourceDraft);
+    } catch (error) {
+      console.error('Failed to preserve translation source text:', error);
+      toast.error(t('translationWidget.messages.sourceSaveFailed'));
+      setIsTranslating(false);
+      return;
+    }
+
     try {
       const result = await translateText({
         text: sourceText,
         serverUrl,
         ...translationPreferences
       });
-      handleValueChange(result.text);
-      toast.success(t('translationWidget.messages.complete'));
+
+      const completedDraft: TranslationDraft = {
+        ...sourceDraft,
+        translatedText: result.text,
+        updatedAt: new Date().toISOString()
+      };
+      try {
+        await saveTranslationDraft(completedDraft);
+      } catch (error) {
+        console.error('Failed to save the latest translated value:', error);
+      }
+      setTranslationDraft(completedDraft);
+      setDraftMode('translated');
+      applyValueChange(result.text);
       setShowTranslationPanel(false);
     } catch (error) {
       if (error instanceof TranslationServiceError && error.code === 'missing-key') {
@@ -235,6 +340,32 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
       }
     } finally {
       setIsTranslating(false);
+    }
+  };
+
+  const handleRestoreSource = () => {
+    if (!translationDraft) return;
+    setDraftMode('source');
+    applyValueChange(translationDraft.sourceText);
+  };
+
+  const handleShowTranslation = () => {
+    if (!translationDraft?.translatedText) return;
+    setDraftMode('translated');
+    applyValueChange(translationDraft.translatedText);
+  };
+
+  const handleDeleteSource = async () => {
+    if (!translationDraftId || !window.confirm(t('translationWidget.confirmDeleteSource'))) return;
+
+    try {
+      await deleteTranslationDraft(translationDraftId);
+      setTranslationDraft(null);
+      setDraftMode(null);
+      toast.success(t('translationWidget.messages.sourceDeleted'));
+    } catch (error) {
+      console.error('Failed to delete translation source text:', error);
+      toast.error(t('translationWidget.messages.sourceDeleteFailed'));
     }
   };
 
@@ -287,6 +418,14 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
   const engineInstallState = localStatus?.engine_install?.state || 'idle';
   const isInstallingLocalEngine = engineInstallState === 'running';
   const localEngineNeedsRestart = engineInstallState === 'restart_required';
+  const translateActionLabel = draftMode === 'translated'
+    ? t('translationWidget.retranslateSource')
+    : t('translationWidget.translate');
+  const draftStatusLabel = draftMode === 'source'
+    ? t('translationWidget.sourceEditing')
+    : draftMode === 'translated'
+      ? t('translationWidget.translationShown')
+      : t('translationWidget.sourceAvailable');
 
   return (
     <div className="space-y-3">
@@ -301,9 +440,9 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
               variant="outline"
               size="sm"
               onClick={handleTranslate}
-              disabled={isTranslating}
+              disabled={isTranslating || isDraftLoading}
               className="h-8 rounded-r-none border-r-0 border-white/[0.1] px-2 text-xs hover:bg-[#3069f0]/10 hover:text-[#7ba3f5]"
-              title={t('translationWidget.translate')}
+              title={translateActionLabel}
             >
               {isTranslating ? <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" /> : <Languages className="mr-1 h-3.5 w-3.5" />}
               <span>{providerName} · {targetShortName}</span>
@@ -481,20 +620,61 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
               type="button"
               size="sm"
               onClick={handleTranslate}
-              disabled={isTranslating || isInstallingLocalPacks || isInstallingLocalEngine || !selectedProviderAvailable || (translationPreferences.provider === 'argos' && missingLocalPairs.length > 0)}
+              disabled={isTranslating || isDraftLoading || isInstallingLocalPacks || isInstallingLocalEngine || !selectedProviderAvailable || (translationPreferences.provider === 'argos' && missingLocalPairs.length > 0)}
               className="h-8 shrink-0 rounded-lg bg-[#3069f0] px-3 text-[11.5px] text-white hover:bg-[#3f78f5] disabled:opacity-45"
             >
               {isTranslating ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Languages className="mr-1.5 h-3.5 w-3.5" />}
-              {isTranslating ? t('translationWidget.translating') : t('translationWidget.translate')}
+              {isTranslating ? t('translationWidget.translating') : translateActionLabel}
             </Button>
           </div>
+        </div>
+      )}
+
+      {!isDraftLoading && translationDraft && (
+        <div className="flex items-center gap-2 rounded-lg border border-[#3069f0]/20 bg-[#3069f0]/[0.07] px-2.5 py-2">
+          <HardDrive className="h-3.5 w-3.5 shrink-0 text-[#7ba3f5]" />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[10.5px] font-medium text-[#a8c1fa]">{draftStatusLabel}</p>
+            <p className="truncate text-[9.5px] text-[#66758a]">{t('translationWidget.localOnlyHint')}</p>
+          </div>
+          {draftMode === 'source' && translationDraft.translatedText ? (
+            <button
+              type="button"
+              onClick={handleShowTranslation}
+              disabled={isTranslating}
+              className="shrink-0 text-[10.5px] font-medium text-[#7ba3f5] hover:text-[#a8c1fa] disabled:opacity-50"
+            >
+              {t('translationWidget.showTranslation')}
+            </button>
+          ) : draftMode !== 'source' ? (
+            <button
+              type="button"
+              onClick={handleRestoreSource}
+              disabled={isTranslating}
+              className="flex shrink-0 items-center gap-1 text-[10.5px] font-medium text-[#7ba3f5] hover:text-[#a8c1fa] disabled:opacity-50"
+            >
+              <RotateCcw className="h-3 w-3" />
+              {t('translationWidget.restoreSource')}
+            </button>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleDeleteSource}
+            disabled={isTranslating}
+            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#66758a] hover:bg-white/[0.05] hover:text-[#e16f7a] disabled:opacity-50"
+            title={t('translationWidget.deleteSource')}
+            aria-label={t('translationWidget.deleteSource')}
+          >
+            <Trash2 className="h-3 w-3" />
+          </button>
         </div>
       )}
 
       <Textarea
         value={String(editingValue)}
         onChange={(event) => handleValueChange(event.target.value)}
-        className="text-[14px] resize-y"
+        disabled={isTranslating}
+        className="text-[14px] resize-y disabled:cursor-wait disabled:opacity-70"
         rows={6}
         placeholder={t('node.enterText')}
       />

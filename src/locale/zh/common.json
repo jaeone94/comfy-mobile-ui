@@ -1210,6 +1210,15 @@
         "installingLanguagePack": "正在安装语言包...",
         "translate": "翻译",
         "translating": "翻译中...",
+        "retranslateSource": "重新翻译原文",
+        "restoreSource": "恢复原文",
+        "showTranslation": "显示译文",
+        "deleteSource": "删除已保存的原文",
+        "confirmDeleteSource": "要删除保存在此设备上的原文吗？此操作无法撤销。",
+        "sourceEditing": "正在编辑原文",
+        "translationShown": "正在显示译文",
+        "sourceAvailable": "已保存原文",
+        "localOnlyHint": "仅保存在此设备上",
         "languages": {
             "auto": "自动检测",
             "EN": "英语",
@@ -1237,6 +1246,9 @@
             "languagePackInstalled": "本地语言包安装完成",
             "languagePackInstallFailed": "本地语言包安装失败",
             "complete": "翻译完成",
+            "sourceDeleted": "已删除本地保存的原文",
+            "sourceDeleteFailed": "无法删除本地保存的原文",
+            "sourceSaveFailed": "无法在此设备上保存原文，因此已停止翻译",
             "failed": "翻译失败，请检查 API 密钥和服务器连接"
         }
     },
@@ -1459,6 +1471,7 @@
             "folders": "工作流文件夹结构 (localStorage: comfy-workflow-folders)",
             "apiKeys": "API 密钥信息 (IndexedDB: apiKeys)",
             "storage": "工作流详细数据 (IndexedDB: workflows)",
+            "translationDrafts": "翻译原文草稿 (IndexedDB: translationDrafts)",
             "settings": "用户界面和语言设置",
             "note": "注意：仅保留一个备份文件。新备份将覆盖现有备份。"
         },

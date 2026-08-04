@@ -1213,6 +1213,15 @@
         "installingLanguagePack": "Installing language packs...",
         "translate": "Translate",
         "translating": "Translating...",
+        "retranslateSource": "Retranslate source",
+        "restoreSource": "Restore source",
+        "showTranslation": "Show translation",
+        "deleteSource": "Delete saved source",
+        "confirmDeleteSource": "Delete the source text saved on this device? This cannot be undone.",
+        "sourceEditing": "Editing source text",
+        "translationShown": "Showing translated text",
+        "sourceAvailable": "Saved source text available",
+        "localOnlyHint": "Saved only on this device",
         "languages": {
             "auto": "Detect automatically",
             "EN": "English",
@@ -1240,6 +1249,9 @@
             "languagePackInstalled": "Local language packs installed",
             "languagePackInstallFailed": "Failed to install local language packs",
             "complete": "Translation complete",
+            "sourceDeleted": "Saved source text deleted",
+            "sourceDeleteFailed": "Failed to delete the saved source text",
+            "sourceSaveFailed": "The source text could not be saved on this device, so translation was stopped",
             "failed": "Translation failed. Check the API key and server connection"
         }
     },
@@ -1462,6 +1474,7 @@
             "folders": "Workflow folder structure (localStorage: comfy-workflow-folders)",
             "apiKeys": "API keys (IndexedDB: apiKeys)",
             "storage": "Workflow detailed data (IndexedDB: workflows)",
+            "translationDrafts": "Translation source drafts (IndexedDB: translationDrafts)",
             "settings": "User interface & language preferences",
             "note": "Note: Only one backup file is maintained. New backups overwrite the existing one."
         },
