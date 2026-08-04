@@ -215,10 +215,15 @@ class ApiKeyStorageService {
         request.onsuccess = () => {
           const keys = request.result as StoredApiKey[];
           // Remove actual key values for security
-          const safeKeys = keys.map(({ keyValue, ...rest }) => ({
-            ...rest,
-            maskedKey: `${keyValue.substring(0, 8)}...${keyValue.substring(keyValue.length - 4)}`
-          }));
+          const safeKeys = keys.map(({ keyValue, ...rest }) => {
+            const actualKey = this.deobfuscate(keyValue);
+            return {
+              ...rest,
+              maskedKey: actualKey.length > 8
+                ? `${actualKey.substring(0, 4)}••••${actualKey.substring(actualKey.length - 4)}`
+                : '••••••••'
+            };
+          });
           resolve(safeKeys);
         };
         
@@ -341,6 +346,12 @@ class ApiKeyStorageService {
       case 'huggingface':
         // HuggingFace tokens start with 'hf_'
         return keyValue.startsWith('hf_') && keyValue.length > 10;
+      case 'groq':
+        // Groq secret keys start with 'gsk_'
+        return /^gsk_[A-Za-z0-9_-]{16,}$/.test(keyValue);
+      case 'deepl':
+        // DeepL Free keys end in ':fx'; Pro keys use the same base format without it.
+        return /^[A-Za-z0-9_-]{20,}(?::fx)?$/.test(keyValue);
       default:
         // Generic validation - at least 8 characters
         return keyValue.length >= 8;

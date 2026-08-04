@@ -346,6 +346,8 @@
         "serverMgmt": "서버 관리",
         "settings": "서버 설정",
         "settingsSub": "연결 구성",
+        "apiKeys": "API 키",
+        "apiKeysSub": "외부 서비스 연결",
         "reboot": "서버 재부팅",
         "rebootSub": "ComfyUI 다시 시작",
         "workflowSync": "워크플로우 동기화",
@@ -1115,11 +1117,30 @@
     },
     "apiKeyManagement": {
         "title": "API 키 관리",
+        "subtitle": "외부 서비스 인증 정보",
         "addKey": "API 키 추가",
+        "providers": {
+            "civitai": {
+                "description": "Civitai 모델 다운로드",
+                "placeholder": "Civitai API 키 입력 (32자 이상의 16진수)"
+            },
+            "huggingface": {
+                "description": "Hugging Face Hub 모델 다운로드",
+                "placeholder": "Hugging Face 토큰 입력 (hf_로 시작)"
+            },
+            "groq": {
+                "description": "문자열 위젯 자동 번역",
+                "placeholder": "Groq API 키 입력 (gsk_로 시작)"
+            },
+            "deepl": {
+                "description": "DeepL 문자열 위젯 번역",
+                "placeholder": "DeepL API 키 입력 (Free 키는 :fx로 끝남)"
+            }
+        },
         "privacy": {
             "title": "개인정보 보호 및 보안",
             "localOnly": "API 키는 로컬에만 저장됩니다",
-            "localOnlyDesc": "모든 API 키는 브라우저의 로컬 데이터베이스(IndexedDB)에만 저장되며 외부 서버나 제3자에게 전송되지 않습니다.",
+            "localOnlyDesc": "API 키는 브라우저의 로컬 데이터베이스(IndexedDB)에 저장되며, 기능 사용 시 선택한 제공업체의 API로만 전송됩니다.",
             "secure": "API 키를 안전하게 보관하세요",
             "secureDesc": "신뢰할 수 있는 출처의 API 키만 입력하세요. 언제든지 해당 제공 업체의 웹사이트에서 액세스 권한을 취소할 수 있습니다."
         },
@@ -1129,6 +1150,8 @@
             "displayName": "표시 이름 (선택 사항)",
             "displayNamePlaceholder": "내 API 키",
             "apiKey": "API 키",
+            "showKey": "API 키 표시",
+            "hideKey": "API 키 숨기기",
             "getKey": "API 키 발급처:",
             "settings": "{{name}} 설정",
             "cancel": "취소",
@@ -1139,10 +1162,12 @@
             "title": "저장된 API 키",
             "loading": "API 키 로딩 중...",
             "noKeys": "저장된 API 키 없음",
-            "noKeysDesc": "모델 다운로드를 시작하려면 첫 번째 API 키를 추가하세요",
+            "noKeysDesc": "외부 서비스 연결을 위해 첫 번째 API 키를 추가하세요",
             "active": "활성",
             "valid": "유효함",
             "invalid": "유효하지 않음",
+            "test": "API 키 형식 확인",
+            "delete": "API 키 삭제",
             "created": "생성일: {{date}}",
             "lastUsed": "최근 사용: {{date}}"
         },
@@ -1162,6 +1187,60 @@
             "invalid": "{{provider}} API 키 형식이 유효하지 않습니다",
             "testFailed": "API 키 테스트 실패",
             "loadFailed": "API 키 로드 실패"
+        }
+    },
+    "translationWidget": {
+        "title": "문자열 번역",
+        "description": "번역 제공자와 언어를 선택하세요",
+        "openSettings": "번역 설정 열기",
+        "close": "번역 설정 닫기",
+        "provider": "번역 서비스",
+        "sourceLanguage": "원문 언어",
+        "targetLanguage": "목적지 언어",
+        "noKey": "키 없음",
+        "engineMissing": "엔진 없음",
+        "keyReady": "{{provider}} 키 연결됨",
+        "addKey": "{{provider}} API 키 추가",
+        "localReady": "로컬 번역 준비됨",
+        "localEngineMissing": "Argos 로컬 엔진 설치 필요",
+        "installLocalEngine": "Argos 엔진 설치",
+        "installingLocalEngine": "Argos 설치 중...",
+        "restartRequired": "ComfyUI 재시작 필요",
+        "localInstallHint": "Argos와 자동 언어 감지 모듈을 ComfyUI Python에 설치합니다. 다운로드에 수 분이 걸릴 수 있습니다.",
+        "localRestartHint": "설치는 완료되었지만 네이티브 모듈을 로드하려면 ComfyUI를 한 번 재시작해야 합니다.",
+        "localInstallFailedHint": "Argos 설치에 실패했습니다. ComfyUI 로그를 확인한 뒤 다시 시도해주세요.",
+        "installLanguagePack": "언어팩 {{count}}개 설치",
+        "installingLanguagePack": "언어팩 설치 중...",
+        "translate": "번역",
+        "translating": "번역 중...",
+        "languages": {
+            "auto": "자동 감지",
+            "EN": "영어",
+            "KO": "한국어",
+            "JA": "일본어",
+            "ZH": "중국어",
+            "ZH-HANS": "중국어 간체",
+            "DE": "독일어",
+            "FR": "프랑스어",
+            "ES": "스페인어",
+            "IT": "이탈리아어",
+            "PT": "포르투갈어",
+            "RU": "러시아어"
+        },
+        "messages": {
+            "emptyText": "번역할 문자열을 입력해주세요",
+            "missingKey": "{{provider}} API 키를 먼저 추가해주세요",
+            "missingServer": "ComfyUI 서버 연결을 먼저 설정해주세요",
+            "missingLanguagePack": "필요한 로컬 언어팩을 설치해주세요",
+            "selectSourceForLanguagePack": "언어팩을 설치하려면 원문 언어를 수동으로 선택해주세요",
+            "languageUncertain": "원문 언어를 확실하게 감지하지 못했습니다. 수동으로 선택해주세요",
+            "localEngineMissing": "ComfyUI에 Argos 로컬 번역 엔진을 먼저 설치해주세요",
+            "engineInstallStarted": "Argos 로컬 번역 엔진 설치를 시작했습니다",
+            "engineInstallFailed": "Argos 설치를 시작하지 못했습니다",
+            "languagePackInstalled": "로컬 언어팩 설치가 완료되었습니다",
+            "languagePackInstallFailed": "로컬 언어팩 설치에 실패했습니다",
+            "complete": "번역이 완료되었습니다",
+            "failed": "번역에 실패했습니다. API 키와 서버 연결을 확인해주세요"
         }
     },
     "videoDownloader": {

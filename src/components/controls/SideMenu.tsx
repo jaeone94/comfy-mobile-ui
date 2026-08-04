@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReactDOM from 'react-dom';
-import { X, Settings, Server, Download, Upload, RotateCcw, Package, Trash2, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image, ChevronRight, ChevronDown, Check } from 'lucide-react';
+import { X, Settings, Download, Upload, RotateCcw, Package, Trash2, FolderOpen, Database, Layers, Video, Link as LinkIcon, Image, ChevronRight, ChevronDown, Check, KeyRound } from 'lucide-react';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { CacheService, CacheClearResult, BrowserCapabilities } from '@/services/cacheService';
 import { useNavigate } from 'react-router-dom';
@@ -18,6 +18,7 @@ interface SideMenuProps {
   isOpen: boolean;
   onClose: () => void;
   onServerSettingsClick: () => void;
+  onApiKeysClick: () => void;
   onImportWorkflowsClick: () => void;
   onUploadWorkflowsClick: () => void;
   onServerRebootClick: () => void;
@@ -91,6 +92,7 @@ const SideMenu: React.FC<SideMenuProps> = ({
   isOpen,
   onClose,
   onServerSettingsClick,
+  onApiKeysClick,
   onImportWorkflowsClick,
   onUploadWorkflowsClick,
   onServerRebootClick,
@@ -256,6 +258,13 @@ const SideMenu: React.FC<SideMenuProps> = ({
                   label={t('menu.settings')}
                   sub={t('menu.settingsSub')}
                   onClick={onServerSettingsClick}
+                />
+                <MenuRow
+                  icon={<KeyRound className="w-4 h-4" strokeWidth={1.8} />}
+                  tint={TINT.mgmt}
+                  label={t('menu.apiKeys')}
+                  sub={t('menu.apiKeysSub')}
+                  onClick={onApiKeysClick}
                 />
                 <MenuRow
                   icon={<RotateCcw className="w-4 h-4" strokeWidth={1.8} />}

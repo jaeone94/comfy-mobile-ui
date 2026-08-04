@@ -1,11 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Key, Plus, Trash2, Eye, EyeOff, Shield, Lock, AlertTriangle, CheckCircle, ExternalLink } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ArrowLeft, KeyRound, Plus, Trash2, Eye, EyeOff, ShieldCheck, AlertTriangle, CheckCircle, ExternalLink, Loader2 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import {
   storeApiKey,
   getAllApiKeys,
@@ -14,7 +11,7 @@ import {
   getApiKey
 } from '@/infrastructure/storage/ApiKeyStorageService';
 import { toast } from 'sonner';
-import { useTranslation, Trans } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 
 interface ApiKeyInfo {
   id: string;
@@ -30,21 +27,35 @@ const SUPPORTED_PROVIDERS = [
   {
     id: 'civitai',
     name: 'Civitai',
-    description: 'For downloading models from Civitai',
+    descriptionKey: 'apiKeyManagement.providers.civitai.description',
     helpUrl: 'https://civitai.com/user/account',
-    placeholder: 'Enter your Civitai API key (32+ hex characters)'
+    placeholderKey: 'apiKeyManagement.providers.civitai.placeholder'
   },
   {
     id: 'huggingface',
     name: 'HuggingFace',
-    description: 'For downloading models from HuggingFace Hub',
+    descriptionKey: 'apiKeyManagement.providers.huggingface.description',
     helpUrl: 'https://huggingface.co/settings/tokens',
-    placeholder: 'Enter your HuggingFace token (starts with hf_)'
+    placeholderKey: 'apiKeyManagement.providers.huggingface.placeholder'
+  },
+  {
+    id: 'groq',
+    name: 'Groq',
+    descriptionKey: 'apiKeyManagement.providers.groq.description',
+    helpUrl: 'https://console.groq.com/keys',
+    placeholderKey: 'apiKeyManagement.providers.groq.placeholder'
+  },
+  {
+    id: 'deepl',
+    name: 'DeepL',
+    descriptionKey: 'apiKeyManagement.providers.deepl.description',
+    helpUrl: 'https://www.deepl.com/your-account/keys',
+    placeholderKey: 'apiKeyManagement.providers.deepl.placeholder'
   }
 ];
 
 export const ApiKeyManagement: React.FC = () => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const [apiKeys, setApiKeys] = useState<ApiKeyInfo[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -56,11 +67,7 @@ export const ApiKeyManagement: React.FC = () => {
   const [isAdding, setIsAdding] = useState(false);
   const [testResults, setTestResults] = useState<Record<string, boolean>>({});
 
-  useEffect(() => {
-    loadApiKeys();
-  }, []);
-
-  const loadApiKeys = async () => {
+  const loadApiKeys = useCallback(async () => {
     try {
       setIsLoading(true);
       const keys = await getAllApiKeys();
@@ -71,7 +78,11 @@ export const ApiKeyManagement: React.FC = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    loadApiKeys();
+  }, [loadApiKeys]);
 
   const handleAddKey = async () => {
     if (!newKeyValue.trim()) {
@@ -88,7 +99,7 @@ export const ApiKeyManagement: React.FC = () => {
     try {
       const success = await storeApiKey(
         newKeyProvider,
-        newKeyValue,
+        newKeyValue.trim(),
         newKeyName.trim() || undefined
       );
 
@@ -145,7 +156,7 @@ export const ApiKeyManagement: React.FC = () => {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-US', {
+    return new Date(dateString).toLocaleDateString(i18n.language, {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
@@ -158,326 +169,266 @@ export const ApiKeyManagement: React.FC = () => {
     return SUPPORTED_PROVIDERS.find(p => p.id === providerId);
   };
 
+  const handleBack = () => {
+    sessionStorage.setItem('app-navigation', 'true');
+    navigate('/', { replace: true });
+  };
+
   return (
-    <div className="pwa-container flex flex-col overflow-hidden bg-[#374151] text-white">
-      {/* Header */}
-      <header className="shrink-0 z-50 bg-[#1e293b] border-b border-white/10 shadow-xl relative overflow-hidden">
-        <div className="relative z-10 flex items-center justify-between p-4">
-          <div className="flex items-center space-x-3">
-            <Button
-              onClick={() => navigate(-1)}
-              variant="ghost"
-              size="sm"
-              className="bg-white/10 backdrop-blur-sm border border-white/10 shadow-lg hover:bg-white/20 transition-all duration-300 h-9 w-9 p-0 flex-shrink-0 rounded-lg text-white"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div className="flex items-center space-x-2">
-              <Key className="h-5 w-5 text-blue-400" />
-              <div>
-                <h1 className="text-lg font-bold text-white/95 leading-none">
-                  {t('apiKeyManagement.title')}
-                </h1>
-                <p className="text-[11px] text-white/40 mt-1">
-                  Manage your secure API keys
+    <div className="pwa-container bg-[#0b0c0f] text-white overflow-hidden">
+      <div className="absolute inset-0 bg-[#0b0c0f]" />
+      <div className="absolute inset-0 overflow-y-auto overflow-x-hidden custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch' }}>
+        <header className="sticky top-0 z-50 pwa-header bg-[#0b0c0f]/95 backdrop-blur-xl border-b border-white/[0.08]">
+          <div className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-3 min-w-0">
+              <Button
+                onClick={handleBack}
+                variant="ghost"
+                size="sm"
+                className="h-9 w-9 p-0 shrink-0 rounded-[10px] bg-white/[0.045] border border-white/[0.08] text-[#c8ccd4] hover:bg-white/[0.08] hover:text-white"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="min-w-0">
+                <h1 className="text-[15px] font-bold text-[#e9ebef] leading-none truncate">{t('apiKeyManagement.title')}</h1>
+                <p className="font-mono text-[9px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mt-1 truncate">
+                  {t('apiKeyManagement.subtitle')}
                 </p>
               </div>
             </div>
+            <Button
+              onClick={() => setShowAddForm((current) => !current)}
+              className="h-9 w-9 p-0 shrink-0 rounded-[10px] bg-[#3069f0] hover:bg-[#3f78f5] text-white active:scale-95"
+              title={t('apiKeyManagement.addKey')}
+            >
+              <Plus className={`h-4 w-4 transition-transform ${showAddForm ? 'rotate-45' : ''}`} strokeWidth={2} />
+            </Button>
           </div>
-          <Button
-            onClick={() => setShowAddForm(!showAddForm)}
-            className="bg-indigo-600 hover:bg-indigo-700 h-9 w-9 p-0 rounded-lg flex items-center justify-center transition-transform active:scale-95 text-white shadow-lg"
-            title={t('apiKeyManagement.addKey')}
-          >
-            <Plus className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
+        </header>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-y-auto custom-scrollbar">
-        <div className="container mx-auto px-6 py-8 max-w-4xl space-y-6">
-          {/* Security Notice */}
-          <Card className="border border-green-500/20 bg-green-500/10 backdrop-blur-sm shadow-lg">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-green-400">
-                <Shield className="h-5 w-5" />
-                <span>{t('apiKeyManagement.privacy.title')}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3 text-green-300/80">
-              <div className="flex items-start space-x-3">
-                <Lock className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium">{t('apiKeyManagement.privacy.localOnly')}</p>
-                  <p className="text-sm text-green-400/70 mt-1">
-                    {t('apiKeyManagement.privacy.localOnlyDesc')}
-                  </p>
-                </div>
-              </div>
-              <div className="flex items-start space-x-3">
-                <AlertTriangle className="h-5 w-5 text-green-400 flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium">{t('apiKeyManagement.privacy.secure')}</p>
-                  <p className="text-sm text-green-400/70 mt-1">
-                    {t('apiKeyManagement.privacy.secureDesc')}
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
+        <main className="container mx-auto max-w-xl px-4 py-4 space-y-3">
+          <section className="rounded-xl border border-[#34c77b]/20 p-3.5" style={{ background: 'rgba(52,199,123,.07)' }}>
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck className="h-4 w-4 text-[#4ade80]" strokeWidth={1.8} />
+              <h2 className="text-[13px] font-semibold text-[#d9fbe8]">{t('apiKeyManagement.privacy.title')}</h2>
+            </div>
+            <p className="text-[11.5px] leading-[1.55] text-[#75a98a]">{t('apiKeyManagement.privacy.localOnlyDesc')}</p>
+            <div className="flex items-start gap-2 mt-2 pt-2 border-t border-[#34c77b]/15">
+              <AlertTriangle className="h-3.5 w-3.5 text-[#72c994] shrink-0 mt-0.5" strokeWidth={1.8} />
+              <p className="text-[11px] leading-[1.5] text-[#75a98a]">{t('apiKeyManagement.privacy.secureDesc')}</p>
+            </div>
+          </section>
 
-          {/* Add API Key Form */}
           {showAddForm && (
-            <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2 text-white/90">
-                  <Plus className="h-5 w-5 text-blue-500" />
-                  <span>{t('apiKeyManagement.addForm.title')}</span>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="provider">{t('apiKeyManagement.addForm.provider')}</Label>
+            <section className="rounded-xl border border-white/[0.08] p-3.5" style={{ background: 'rgba(255,255,255,.025)' }}>
+              <div className="flex items-center gap-2 mb-3.5">
+                <Plus className="h-4 w-4 text-[#5b8af5]" strokeWidth={1.8} />
+                <h2 className="text-[13px] font-semibold text-[#e9ebef]">{t('apiKeyManagement.addForm.title')}</h2>
+              </div>
+
+              <div className="space-y-3.5">
+                <div>
+                  <label htmlFor="provider" className="block font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mb-[7px]">
+                    {t('apiKeyManagement.addForm.provider')}
+                  </label>
                   <select
                     id="provider"
                     value={newKeyProvider}
-                    onChange={(e) => setNewKeyProvider(e.target.value)}
-                    className="w-full px-3 py-2 border border-white/10 rounded-xl bg-black/20 text-white/90 focus:ring-1 focus:ring-white/20 outline-none transition-all"
+                    onChange={(event) => setNewKeyProvider(event.target.value)}
+                    className="w-full h-[42px] px-3 rounded-[10px] border border-white/[0.08] bg-[#15171c] text-[13px] text-[#e9ebef] outline-none focus:border-[#5b8af5]/40 focus:shadow-[0_0_0_3px_rgba(48,105,240,0.1)]"
                   >
-                    {SUPPORTED_PROVIDERS.map(provider => (
-                      <option key={provider.id} value={provider.id}>
-                        {provider.name} - {provider.description}
-                      </option>
+                    {SUPPORTED_PROVIDERS.map((provider) => (
+                      <option key={provider.id} value={provider.id}>{provider.name} · {t(provider.descriptionKey)}</option>
                     ))}
                   </select>
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="displayName">{t('apiKeyManagement.addForm.displayName')}</Label>
+                <div>
+                  <label htmlFor="displayName" className="block font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase mb-[7px]">
+                    {t('apiKeyManagement.addForm.displayName')}
+                  </label>
                   <Input
                     id="displayName"
                     placeholder={t('apiKeyManagement.addForm.displayNamePlaceholder')}
                     value={newKeyName}
-                    onChange={(e) => setNewKeyName(e.target.value)}
-                    className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 rounded-xl"
+                    onChange={(event) => setNewKeyName(event.target.value)}
+                    className="h-[42px] px-3 bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[13px] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#5b8af5]/40"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="apiKey">{t('apiKeyManagement.addForm.apiKey')}</Label>
-                    <div className="flex items-center space-x-2">
-                      <Button
+                <div>
+                  <div className="flex items-center justify-between mb-[7px]">
+                    <label htmlFor="apiKey" className="font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase">
+                      {t('apiKeyManagement.addForm.apiKey')}
+                    </label>
+                    <div className="flex items-center gap-1">
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setShowKeyValue(!showKeyValue)}
-                        className="h-6 w-6 p-0 text-white/40 hover:text-white/90 hover:bg-white/10"
+                        onClick={() => setShowKeyValue((current) => !current)}
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-[#66758a] hover:text-[#c8ccd4] hover:bg-white/[0.05]"
+                        title={showKeyValue ? t('apiKeyManagement.addForm.hideKey') : t('apiKeyManagement.addForm.showKey')}
                       >
-                        {showKeyValue ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </Button>
-                      <Button
+                        {showKeyValue ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
                         type="button"
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          const provider = getProviderInfo(newKeyProvider);
-                          if (provider?.helpUrl) {
-                            window.open(provider.helpUrl, '_blank');
-                          }
-                        }}
-                        className="h-6 w-6 p-0 text-white/40 hover:text-white/90 hover:bg-white/10"
+                        onClick={() => window.open(getProviderInfo(newKeyProvider)?.helpUrl, '_blank', 'noopener,noreferrer')}
+                        className="h-7 w-7 rounded-lg flex items-center justify-center text-[#66758a] hover:text-[#7ba3f5] hover:bg-white/[0.05]"
+                        title={t('apiKeyManagement.addForm.getKey')}
                       >
-                        <ExternalLink className="h-4 w-4" />
-                      </Button>
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </button>
                     </div>
                   </div>
                   <Input
                     id="apiKey"
-                    type={showKeyValue ? "text" : "password"}
-                    placeholder={getProviderInfo(newKeyProvider)?.placeholder || "Enter your API key"}
+                    type={showKeyValue ? 'text' : 'password'}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={getProviderInfo(newKeyProvider) ? t(getProviderInfo(newKeyProvider)!.placeholderKey) : t('apiKeyManagement.addForm.apiKey')}
                     value={newKeyValue}
-                    onChange={(e) => setNewKeyValue(e.target.value)}
-                    className="bg-black/20 border-white/10 text-white/90 placeholder:text-white/20 font-mono rounded-xl"
+                    onChange={(event) => setNewKeyValue(event.target.value)}
+                    className="h-[42px] px-3 font-mono text-[12px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#5b8af5]/40"
                   />
-                  <p className="text-xs text-white/40">
-                    {t('apiKeyManagement.addForm.getKey')} {' '}
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const provider = getProviderInfo(newKeyProvider);
-                        if (provider?.helpUrl) {
-                          window.open(provider.helpUrl, '_blank');
-                        }
-                      }}
-                      className="text-blue-400 hover:text-blue-300 underline"
-                    >
-                      {t('apiKeyManagement.addForm.settings', { name: getProviderInfo(newKeyProvider)?.name })}
-                    </button>
-                  </p>
+                  <button
+                    type="button"
+                    onClick={() => window.open(getProviderInfo(newKeyProvider)?.helpUrl, '_blank', 'noopener,noreferrer')}
+                    className="mt-[7px] inline-flex items-center gap-1.5 text-[11px] text-[#5b8af5] hover:text-[#7ba3f5]"
+                  >
+                    {t('apiKeyManagement.addForm.settings', { name: getProviderInfo(newKeyProvider)?.name })}
+                    <ExternalLink className="h-3 w-3" />
+                  </button>
                 </div>
 
-                <div className="flex justify-end space-x-2">
-                  <Button
+                <div className="grid grid-cols-2 gap-2 pt-0.5">
+                  <button
                     type="button"
-                    variant="outline"
                     onClick={() => {
                       setShowAddForm(false);
                       setNewKeyValue('');
                       setNewKeyName('');
                     }}
-                    className="border-white/10 text-white/60 hover:bg-white/5 hover:text-white"
+                    className="h-10 rounded-[10px] border border-white/[0.08] bg-white/[0.035] text-[12.5px] font-semibold text-[#9aa3b2] hover:text-[#c8ccd4]"
                   >
                     {t('apiKeyManagement.addForm.cancel')}
-                  </Button>
-                  <Button
+                  </button>
+                  <button
+                    type="button"
                     onClick={handleAddKey}
                     disabled={isAdding || !newKeyValue.trim()}
-                    className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                    className="h-10 rounded-[10px] bg-[#3069f0] hover:bg-[#3f78f5] text-[12.5px] font-semibold text-white disabled:opacity-45 flex items-center justify-center gap-2"
                   >
+                    {isAdding && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
                     {isAdding ? t('apiKeyManagement.addForm.adding') : t('apiKeyManagement.addForm.add')}
-                  </Button>
+                  </button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </section>
           )}
 
-          {/* API Keys List */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center justify-between text-white/90">
-                <div className="flex items-center space-x-2">
-                  <Key className="h-5 w-5 text-purple-400" />
-                  <span>{t('apiKeyManagement.storedKeys.title')}</span>
-                </div>
-                <Badge variant="secondary" className="bg-white/5 text-white/60 border-white/5">
-                  {apiKeys.length} {apiKeys.length === 1 ? 'key' : 'keys'}
-                </Badge>
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {isLoading ? (
-                <div className="text-center py-8">
-                  <div className="animate-spin h-8 w-8 border-b-2 border-blue-600 rounded-full mx-auto"></div>
-                  <p className="text-slate-500 mt-2">{t('apiKeyManagement.storedKeys.loading')}</p>
-                </div>
-              ) : apiKeys.length === 0 ? (
-                <div className="text-center py-8">
-                  <Key className="h-16 w-16 text-slate-400 mx-auto mb-4" />
-                  <p className="text-slate-600 dark:text-slate-400">{t('apiKeyManagement.storedKeys.noKeys')}</p>
-                  <p className="text-sm text-slate-500 dark:text-slate-500 mt-1">
-                    {t('apiKeyManagement.storedKeys.noKeysDesc')}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {apiKeys.map((apiKey) => {
-                    const provider = getProviderInfo(apiKey.provider);
-                    const testResult = testResults[apiKey.provider];
+          <section className="rounded-xl border border-white/[0.08] overflow-hidden" style={{ background: 'rgba(255,255,255,.025)' }}>
+            <div className="h-12 px-3.5 flex items-center justify-between border-b border-white/[0.06]">
+              <div className="flex items-center gap-2">
+                <KeyRound className="h-4 w-4 text-[#9a8af0]" strokeWidth={1.8} />
+                <h2 className="text-[13px] font-semibold text-[#e9ebef]">{t('apiKeyManagement.storedKeys.title')}</h2>
+              </div>
+              <span className="min-w-7 h-6 px-2 rounded-lg border border-white/[0.07] bg-white/[0.035] flex items-center justify-center font-mono text-[10.5px] text-[#8a919e]">
+                {apiKeys.length}
+              </span>
+            </div>
 
-                    return (
-                      <div
-                        key={apiKey.id}
-                        className="p-4 bg-black/20 rounded-2xl border border-white/5 hover:border-white/10 transition-all"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center space-x-2 mb-2">
-                              <Badge variant="outline" className="capitalize border-white/10 text-white/60">
-                                {provider?.name || apiKey.provider}
-                              </Badge>
-                              {apiKey.isActive && (
-                                <Badge className="bg-green-500/10 text-green-400 border-green-500/20">
-                                  <CheckCircle className="w-3 h-3 mr-1" />
-                                  {t('apiKeyManagement.storedKeys.active')}
-                                </Badge>
-                              )}
-                              {testResult !== undefined && (
-                                <Badge variant={testResult ? "default" : "destructive"} className={testResult ? "bg-blue-500/20 text-blue-300 border-blue-500/30" : "bg-red-500/20 text-red-300 border-red-500/30"}>
-                                  {testResult ? "Valid" : "Invalid"}
-                                </Badge>
-                              )}
-                            </div>
-                            <p className="font-medium text-white/90">
-                              {apiKey.displayName}
-                            </p>
-                            <p className="text-sm text-white/40 font-mono">
-                              {apiKey.maskedKey}
-                            </p>
-                            <div className="text-xs text-white/30 mt-1">
-                              {t('apiKeyManagement.storedKeys.created', { date: formatDate(apiKey.createdAt) })}
-                              {apiKey.lastUsed && (
-                                <span className="ml-4">
-                                  {t('apiKeyManagement.storedKeys.lastUsed', { date: formatDate(apiKey.lastUsed) })}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                          <div className="flex items-center space-x-2 ml-4">
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleTestKey(apiKey.provider)}
-                              className="h-8 w-8 p-0 border-white/10 text-white/40 hover:text-white/90 hover:bg-white/10 transition-all"
-                              title="Test API key"
-                            >
-                              <CheckCircle className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleDeleteKey(apiKey.id, apiKey.provider)}
-                              className="h-8 w-8 p-0 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-all"
-                              title="Delete API key"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </div>
+            {isLoading ? (
+              <div className="py-10 flex flex-col items-center gap-2 text-[#66758a]">
+                <Loader2 className="h-5 w-5 animate-spin text-[#5b8af5]" />
+                <p className="text-[11.5px]">{t('apiKeyManagement.storedKeys.loading')}</p>
+              </div>
+            ) : apiKeys.length === 0 ? (
+              <div className="py-10 px-6 text-center">
+                <div className="h-10 w-10 mx-auto rounded-xl border border-white/[0.07] bg-white/[0.035] flex items-center justify-center mb-3">
+                  <KeyRound className="h-4 w-4 text-[#66758a]" strokeWidth={1.8} />
+                </div>
+                <p className="text-[12.5px] font-semibold text-[#9aa3b2]">{t('apiKeyManagement.storedKeys.noKeys')}</p>
+                <p className="text-[11px] leading-relaxed text-[#565d6b] mt-1">{t('apiKeyManagement.storedKeys.noKeysDesc')}</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-white/[0.06]">
+                {apiKeys.map((apiKey) => {
+                  const provider = getProviderInfo(apiKey.provider);
+                  const testResult = testResults[apiKey.provider];
+                  return (
+                    <div key={apiKey.id} className="p-3.5 flex items-center gap-3">
+                      <div className="h-9 w-9 shrink-0 rounded-[10px] border border-white/[0.07] bg-white/[0.035] flex items-center justify-center font-mono text-[10px] font-bold text-[#9a8af0] uppercase">
+                        {(provider?.name || apiKey.provider).slice(0, 2)}
                       </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="text-[12.5px] font-semibold text-[#e9ebef] truncate">{apiKey.displayName}</span>
+                          {apiKey.isActive && (
+                            <span className="shrink-0 px-1.5 py-0.5 rounded-md border border-[#34c77b]/20 bg-[#34c77b]/10 text-[9.5px] font-semibold text-[#4ade80]">
+                              {t('apiKeyManagement.storedKeys.active')}
+                            </span>
+                          )}
+                          {testResult !== undefined && (
+                            <span className={`shrink-0 px-1.5 py-0.5 rounded-md border text-[9.5px] font-semibold ${testResult ? 'border-[#3069f0]/25 bg-[#3069f0]/10 text-[#7ba3f5]' : 'border-[#f25555]/25 bg-[#f25555]/10 text-[#f87c7c]'}`}>
+                              {testResult ? t('apiKeyManagement.storedKeys.valid') : t('apiKeyManagement.storedKeys.invalid')}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 mt-1 min-w-0">
+                          <span className="font-mono text-[10.5px] text-[#66758a] truncate">{apiKey.maskedKey}</span>
+                          <span className="text-[#3f4652]">·</span>
+                          <span className="text-[10px] text-[#565d6b] truncate">{provider?.name || apiKey.provider}</span>
+                        </div>
+                        <p className="text-[9.5px] text-[#454b57] mt-1 truncate">
+                          {t('apiKeyManagement.storedKeys.created', { date: formatDate(apiKey.createdAt) })}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => handleTestKey(apiKey.provider)}
+                          className="h-8 w-8 rounded-lg border border-white/[0.07] text-[#66758a] hover:text-[#7ba3f5] hover:bg-white/[0.04] flex items-center justify-center"
+                          title={t('apiKeyManagement.storedKeys.test')}
+                        >
+                          <CheckCircle className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteKey(apiKey.id, apiKey.provider)}
+                          className="h-8 w-8 rounded-lg text-[#8f5960] hover:text-[#f87c7c] hover:bg-[#f25555]/10 flex items-center justify-center"
+                          title={t('apiKeyManagement.storedKeys.delete')}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" strokeWidth={1.8} />
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
 
-          {/* Help Section */}
-          <Card className="border border-white/5 bg-black/20 backdrop-blur-sm shadow-xl">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2 text-white/90">
-                <AlertTriangle className="h-5 w-5 text-amber-400" />
-                <span>{t('apiKeyManagement.help.title')}</span>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {SUPPORTED_PROVIDERS.map(provider => (
-                <div key={provider.id} className="flex items-start space-x-3">
-                  <div className="flex-shrink-0">
-                    <Badge variant="outline" className="capitalize border-white/10 text-white/60">
-                      {provider.name}
-                    </Badge>
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-white/60">
-                      {provider.description}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open(provider.helpUrl, '_blank')}
-                      className="h-auto p-0 mt-1 text-blue-400 hover:text-blue-300"
-                    >
-                      <ExternalLink className="h-3 w-3 mr-1" />
-                      {t('apiKeyManagement.help.getBtn', { name: provider.name })}
-                    </Button>
-                  </div>
-                </div>
+          <section className="rounded-xl border border-white/[0.08] overflow-hidden" style={{ background: 'rgba(255,255,255,.025)' }}>
+            <div className="h-12 px-3.5 flex items-center gap-2 border-b border-white/[0.06]">
+              <ExternalLink className="h-3.5 w-3.5 text-[#5b8af5]" strokeWidth={1.8} />
+              <h2 className="text-[13px] font-semibold text-[#e9ebef]">{t('apiKeyManagement.help.title')}</h2>
+            </div>
+            <div className="divide-y divide-white/[0.06]">
+              {SUPPORTED_PROVIDERS.map((provider) => (
+                <button
+                  key={provider.id}
+                  type="button"
+                  onClick={() => window.open(provider.helpUrl, '_blank', 'noopener,noreferrer')}
+                  className="w-full min-h-[58px] px-3.5 py-2.5 flex items-center gap-3 text-left hover:bg-white/[0.025]"
+                >
+                  <span className="w-[82px] shrink-0 text-[11.5px] font-semibold text-[#c8ccd4]">{provider.name}</span>
+                  <span className="flex-1 text-[10.5px] leading-relaxed text-[#66758a]">{t(provider.descriptionKey)}</span>
+                  <ExternalLink className="h-3.5 w-3.5 shrink-0 text-[#4a5261]" strokeWidth={1.8} />
+                </button>
               ))}
-            </CardContent>
-          </Card>
-        </div>
+            </div>
+          </section>
+        </main>
       </div>
     </div>
   );

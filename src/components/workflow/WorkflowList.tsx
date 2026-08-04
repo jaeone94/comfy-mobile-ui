@@ -724,6 +724,7 @@ const WorkflowList: React.FC = () => {
         isOpen={isSideMenuOpen}
         onClose={handleSideMenuClose}
         onServerSettingsClick={() => handleNavigation('/settings/server')}
+        onApiKeysClick={() => handleNavigation('/settings/api-keys')}
         onImportWorkflowsClick={() => handleNavigation('/import/server')}
         onUploadWorkflowsClick={() => handleNavigation('/upload/server')}
         onServerRebootClick={() => handleNavigation('/reboot')}
