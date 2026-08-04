@@ -661,11 +661,11 @@ export const StringWidget: React.FC<StringWidgetProps> = ({
             type="button"
             onClick={handleDeleteSource}
             disabled={isTranslating}
-            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-[#66758a] hover:bg-white/[0.05] hover:text-[#e16f7a] disabled:opacity-50"
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-[#e16f7a] hover:bg-[#e16f7a]/[0.1] hover:text-[#f28a94] active:bg-[#e16f7a]/[0.16] disabled:cursor-not-allowed disabled:bg-transparent disabled:text-[#66758a] disabled:opacity-60"
             title={t('translationWidget.deleteSource')}
             aria-label={t('translationWidget.deleteSource')}
           >
-            <Trash2 className="h-3 w-3" />
+            <Trash2 className="h-3.5 w-3.5" />
           </button>
         </div>
       )}
