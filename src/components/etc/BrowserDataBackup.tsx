@@ -24,6 +24,11 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import {
+  getAllTranslationDrafts,
+  replaceTranslationDrafts,
+  type TranslationDraft
+} from '@/infrastructure/storage/TranslationDraftStorageService';
 
 interface BackupInfo {
   hasBackup: boolean;
@@ -124,6 +129,7 @@ export const BrowserDataBackup: React.FC = () => {
       indexedDB: {
         apiKeys?: any[];
         workflows?: any[];
+        translationDrafts?: TranslationDraft[];
       };
     } = {
       localStorage: {},
@@ -210,6 +216,13 @@ export const BrowserDataBackup: React.FC = () => {
       });
     } catch (error) {
       console.error('Error collecting IndexedDB data:', error);
+    }
+
+    try {
+      data.indexedDB.translationDrafts = await getAllTranslationDrafts();
+      console.log(`Collected ${data.indexedDB.translationDrafts.length} translation source drafts`);
+    } catch (error) {
+      console.error('Error collecting translation source drafts:', error);
     }
 
     return data;
@@ -314,6 +327,9 @@ export const BrowserDataBackup: React.FC = () => {
         // Restore IndexedDB
         if (backupData.indexedDB) {
           await restoreIndexedDBData(backupData.indexedDB);
+          if (Array.isArray(backupData.indexedDB.translationDrafts)) {
+            await replaceTranslationDrafts(backupData.indexedDB.translationDrafts);
+          }
         }
 
         toast.success(t('backup.toast.restoreSuccess'));
@@ -729,6 +745,14 @@ export const BrowserDataBackup: React.FC = () => {
                   <div className="flex items-start">
                     <span className="text-[#5b8af5] mr-2 mt-0.5">•</span>
                     <span>{t('backup.info.storage')}</span>
+                  </div>
+                  <Badge variant="secondary" className="bg-white/[0.08] font-mono text-[9px] py-0 h-4 opacity-60">CORE</Badge>
+                </li>
+
+                <li className="flex items-center justify-between">
+                  <div className="flex items-start">
+                    <span className="text-[#5b8af5] mr-2 mt-0.5">•</span>
+                    <span>{t('backup.info.translationDrafts')}</span>
                   </div>
                   <Badge variant="secondary" className="bg-white/[0.08] font-mono text-[9px] py-0 h-4 opacity-60">CORE</Badge>
                 </li>

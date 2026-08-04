@@ -1209,6 +1209,15 @@
         "installingLanguagePack": "言語パックをインストール中...",
         "translate": "翻訳",
         "translating": "翻訳中...",
+        "retranslateSource": "原文を再翻訳",
+        "restoreSource": "原文を復元",
+        "showTranslation": "翻訳文を表示",
+        "deleteSource": "保存した原文を削除",
+        "confirmDeleteSource": "このデバイスに保存された原文を削除しますか？この操作は元に戻せません。",
+        "sourceEditing": "原文を編集中",
+        "translationShown": "翻訳文を表示中",
+        "sourceAvailable": "保存された原文があります",
+        "localOnlyHint": "このデバイスにのみ保存",
         "languages": {
             "auto": "自動検出",
             "EN": "英語",
@@ -1236,6 +1245,9 @@
             "languagePackInstalled": "ローカル言語パックのインストールが完了しました",
             "languagePackInstallFailed": "ローカル言語パックのインストールに失敗しました",
             "complete": "翻訳が完了しました",
+            "sourceDeleted": "保存された原文を削除しました",
+            "sourceDeleteFailed": "保存された原文を削除できませんでした",
+            "sourceSaveFailed": "このデバイスに原文を保存できなかったため、翻訳を中止しました",
             "failed": "翻訳に失敗しました。APIキーとサーバー接続を確認してください"
         }
     },
@@ -1458,6 +1470,7 @@
             "folders": "ワークフローフォルダ構造 (localStorage: comfy-workflow-folders)",
             "apiKeys": "APIキー情報 (IndexedDB: apiKeys)",
             "storage": "ワークフロー詳細データ (IndexedDB: workflows)",
+            "translationDrafts": "翻訳用の原文下書き (IndexedDB: translationDrafts)",
             "settings": "ユーザーインターフェースと言語設定",
             "note": "注意：1つのバックアップファイルのみが保持されます。新しいバックアップは既存のものを上書きします。"
         },
