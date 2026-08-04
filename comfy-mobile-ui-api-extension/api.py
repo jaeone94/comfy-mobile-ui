@@ -33,6 +33,7 @@ try:
     from .handlers.chain_progress_handler import *
     from .handlers.global_websocket_handler import *
     from .handlers.history_handler import get_history_list, get_queue_list
+    from .handlers.translation_handler import translate_text
     from .utils.global_websocket_manager import global_websocket_manager
 except ImportError as e:
     print(f"\n[ComfyMobileUI] ❌ ERROR: Missing dependency - {e}")
@@ -84,6 +85,7 @@ def setup_routes():
                 # System routes
                 app.router.add_get('/comfymobile/api/status', api_status)
                 app.router.add_post('/comfymobile/api/reboot', reboot_server)
+                app.router.add_post('/comfymobile/api/translate', translate_text)
                 
                 # Workflow routes
                 app.router.add_get('/comfymobile/api/workflows/list', list_workflows)
@@ -208,6 +210,7 @@ def setup_routes():
             # System routes
             routes.get('/comfymobile/api/status')(api_status)
             routes.post('/comfymobile/api/reboot')(reboot_server)
+            routes.post('/comfymobile/api/translate')(translate_text)
             
             # Basic workflow routes for compatibility
             routes.get('/comfymobile/api/workflows/list')(list_workflows)
@@ -248,6 +251,7 @@ def setup_routes():
                 attr.router.add_get('/comfymobile/api/status', api_status)
                 attr.router.add_get('/comfymobile/api/workflows/list', list_workflows)
                 attr.router.add_post('/comfymobile/api/reboot', reboot_server)
+                attr.router.add_post('/comfymobile/api/translate', translate_text)
                 
                 print(f"✅ ComfyMobileUI API routes registered via {attr_name} (minimal mode)")
                 return True

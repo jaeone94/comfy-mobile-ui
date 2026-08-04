@@ -346,6 +346,8 @@
         "serverMgmt": "Server Management",
         "settings": "Server Settings",
         "settingsSub": "Configure Connection",
+        "apiKeys": "API Keys",
+        "apiKeysSub": "Connect External Services",
         "reboot": "Reboot Server",
         "rebootSub": "Restart ComfyUI",
         "workflowSync": "Workflow Sync",
@@ -1115,11 +1117,30 @@
     },
     "apiKeyManagement": {
         "title": "API Key Management",
+        "subtitle": "External Service Credentials",
         "addKey": "Add API Key",
+        "providers": {
+            "civitai": {
+                "description": "Download models from Civitai",
+                "placeholder": "Enter a Civitai API key (32+ hex characters)"
+            },
+            "huggingface": {
+                "description": "Download models from Hugging Face Hub",
+                "placeholder": "Enter a Hugging Face token (starts with hf_)"
+            },
+            "groq": {
+                "description": "Automatic translation for string widgets",
+                "placeholder": "Enter a Groq API key (starts with gsk_)"
+            },
+            "deepl": {
+                "description": "DeepL translation for string widgets",
+                "placeholder": "Enter a DeepL API key (Free keys end in :fx)"
+            }
+        },
         "privacy": {
             "title": "Privacy & Security",
             "localOnly": "Your API keys are stored locally only",
-            "localOnlyDesc": "All API keys are stored exclusively in your browser's local database (IndexedDB) and are never transmitted to any external servers or third parties.",
+            "localOnlyDesc": "API keys are stored in your browser's local database (IndexedDB) and are sent only to the selected provider when you use its features.",
             "secure": "Keep your API keys secure",
             "secureDesc": "Only enter API keys from trusted sources. You can revoke access at any time from the respective provider's website."
         },
@@ -1129,6 +1150,8 @@
             "displayName": "Display Name (Optional)",
             "displayNamePlaceholder": "My API Key",
             "apiKey": "API Key",
+            "showKey": "Show API key",
+            "hideKey": "Hide API key",
             "getKey": "Get your API key from:",
             "settings": "{{name}} Settings",
             "cancel": "Cancel",
@@ -1139,10 +1162,12 @@
             "title": "Stored API Keys",
             "loading": "Loading API keys...",
             "noKeys": "No API keys stored",
-            "noKeysDesc": "Add your first API key to start downloading models",
+            "noKeysDesc": "Add your first API key to connect an external service",
             "active": "Active",
             "valid": "Valid",
             "invalid": "Invalid",
+            "test": "Check API key format",
+            "delete": "Delete API key",
             "created": "Created: {{date}}",
             "lastUsed": "Last used: {{date}}"
         },
@@ -1162,6 +1187,41 @@
             "invalid": "{{provider}} API key format is invalid",
             "testFailed": "Failed to test API key",
             "loadFailed": "Failed to load API keys"
+        }
+    },
+    "translationWidget": {
+        "title": "String translation",
+        "description": "Choose a translation provider and languages",
+        "openSettings": "Open translation settings",
+        "close": "Close translation settings",
+        "provider": "Provider",
+        "sourceLanguage": "Source language",
+        "targetLanguage": "Target language",
+        "noKey": "No key",
+        "keyReady": "{{provider}} key connected",
+        "addKey": "Add {{provider}} API key",
+        "translate": "Translate",
+        "translating": "Translating...",
+        "languages": {
+            "auto": "Detect automatically",
+            "EN": "English",
+            "KO": "Korean",
+            "JA": "Japanese",
+            "ZH": "Chinese",
+            "ZH-HANS": "Simplified Chinese",
+            "DE": "German",
+            "FR": "French",
+            "ES": "Spanish",
+            "IT": "Italian",
+            "PT": "Portuguese",
+            "RU": "Russian"
+        },
+        "messages": {
+            "emptyText": "Enter text to translate",
+            "missingKey": "Add a {{provider}} API key first",
+            "missingServer": "Configure a ComfyUI server connection first",
+            "complete": "Translation complete",
+            "failed": "Translation failed. Check the API key and server connection"
         }
     },
     "videoDownloader": {
