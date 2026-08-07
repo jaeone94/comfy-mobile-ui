@@ -4046,7 +4046,7 @@ const WorkflowEditor: React.FC = () => {
       )}
 
       {/* Workflow Controls Panel (Right Top) - Hidden during repositioning, connection mode, full-screen preview, and official canvas mode */}
-      {(!officialCanvasEnabled && !canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && !isLatentPreviewFullscreen) && (
+      {(!officialCanvasEnabled && !historyWorkflowSession && !canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && !isLatentPreviewFullscreen) && (
         <FloatingControlsPanel
           onRandomizeSeeds={handleRandomizeSeeds}
           onShowGroupModer={() => setIsGroupModeModalOpen(true)}
