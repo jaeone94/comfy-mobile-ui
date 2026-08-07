@@ -637,12 +637,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       )}
                     </button>
 
-                    <div
-                      className="pointer-events-none absolute bottom-5 left-1/2 z-[100006] -translate-x-1/2 rounded-full border border-white/10 bg-black/35 px-3 py-1 font-mono text-[10px] font-semibold text-white/75 backdrop-blur-md"
-                      aria-live="polite"
-                    >
-                      {currentIndex + 1} / {files.length}
-                    </div>
                   </>
                 )}
               </div>
