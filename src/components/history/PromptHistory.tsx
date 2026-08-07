@@ -280,6 +280,14 @@ export const PromptHistoryContent: React.FC<{
   };
 
   const previewInfo = getPreviewFileInfo();
+  const previewFiles = useMemo(() => outputFiles.slice(0, 20), [outputFiles]);
+  const previewIndex = previewFile
+    ? previewFiles.findIndex((file) =>
+      file.filename === previewFile.filename &&
+      file.subfolder === previewFile.subfolder &&
+      file.type === previewFile.type
+    )
+    : -1;
 
   useEffect(() => {
     if (activeTab === 'queues') {
@@ -973,7 +981,7 @@ export const PromptHistoryContent: React.FC<{
 
                 {!outputsLoading && !outputsError && outputFiles.length > 0 && (
                   <div className={`${isEmbedded ? 'p-1' : 'p-6'} space-y-3`}>
-                    {outputFiles.slice(0, 20).map((file, index) => (
+                    {previewFiles.map((file, index) => (
                       <LazyThumbnail
                         key={`${file.filename}-${index}`}
                         file={file}
@@ -1014,6 +1022,9 @@ export const PromptHistoryContent: React.FC<{
             onClose={handlePreviewClose}
             onRetry={handlePreviewRetry}
             isCompact={false}
+            files={previewFiles}
+            initialIndex={previewIndex}
+            comfyFileService={comfyFileService}
             onOpenWorkflow={onOpenWorkflow ? async (workflowJson, filename) => {
               await onOpenWorkflow(workflowJson, filename);
               handlePreviewClose();

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
 import { X, Image, Video, Download, ExternalLink, Info, ChevronLeft, ChevronRight, Workflow, Loader2 } from 'lucide-react';
@@ -62,13 +62,13 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const [embeddedWorkflow, setEmbeddedWorkflow] = useState<IComfyJson | null>(null);
   const [isCheckingWorkflow, setIsCheckingWorkflow] = useState(false);
   const [isOpeningWorkflow, setIsOpeningWorkflow] = useState(false);
+  const [slideDirection, setSlideDirection] = useState(0);
   const canOpenWorkflow = Boolean(onOpenWorkflow);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const isImageZoomedRef = useRef(false);
 
   // Internal navigation state
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [currentFile, setCurrentFile] = useState<IComfyFileInfo | null>(
-    initialIndex >= 0 && files?.[initialIndex] ? files[initialIndex] : null
-  );
 
   // Current file derived states
   const [filename, setFilename] = useState(initialFilename);
@@ -95,6 +95,8 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       setDimensions(initialDimensions);
       setDuration(initialDuration);
       setShowInfo(false);
+      setSlideDirection(0);
+      isImageZoomedRef.current = false;
     }
   }, [isOpen, initialIndex, initialFilename, initialIsImage, initialUrl, initialLoading, initialError, initialFileSize, initialFileType, initialDimensions, initialDuration]);
 
@@ -137,6 +139,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     if (index < 0 || index >= files.length || !comfyFileService) return;
 
     const file = files[index];
+    setSlideDirection(index > currentIndex ? 1 : -1);
     setCurrentIndex(index);
     setFilename(file.filename);
     setIsImage(isImageFile(file.filename));
@@ -160,24 +163,48 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     // But for now we just clear them or use what's there
     setDimensions(undefined);
     setDuration(undefined);
+    isImageZoomedRef.current = false;
 
     // Simulate small loading delay for better UX transition
     setTimeout(() => {
       setLoading(false);
     }, 100);
-  }, [files, comfyFileService]);
+  }, [files, comfyFileService, currentIndex]);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
       navigateToFile(currentIndex - 1);
     }
-  };
+  }, [currentIndex, navigateToFile]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < files.length - 1) {
       navigateToFile(currentIndex + 1);
     }
-  };
+  }, [currentIndex, files.length, navigateToFile]);
+
+  const handleCarouselTouchStart = useCallback((event: React.TouchEvent) => {
+    if (files.length <= 1 || event.touches.length !== 1 || isImageZoomedRef.current) {
+      touchStartRef.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, [files.length]);
+
+  const handleCarouselTouchEnd = useCallback((event: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || event.changedTouches.length !== 1 || isImageZoomedRef.current) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 55 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
+
+    if (deltaX > 0) handlePrevious();
+    else handleNext();
+  }, [handleNext, handlePrevious]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -302,6 +329,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
  className={`${isCompact ? 'absolute h-full' : 'fixed h-[100dvh]'} top-0 left-0 right-0 bottom-0 z-[99999] bg-[#101217] flex flex-col ${isCompact ? 'px-0 pt-0 pb-0' : ''} overflow-hidden`}
+          data-file-preview-modal
         >
           {/* Header (Always Visible unless Compact) */}
           {!isCompact && (
@@ -501,40 +529,60 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
             {/* Media Content */}
             {url && !error && (
-              <div className="flex-1 flex items-center justify-center min-h-0">
-                <div className="w-full h-full flex items-center justify-center max-w-full max-h-full">
-                  {isImage ? (
-                    <TransformWrapper
-                      initialScale={1}
-                      minScale={0.5}
-                      maxScale={8}
-                      centerOnInit
-                    >
-                      <TransformComponent
-                        wrapperStyle={{ width: "100%", height: "100%" }}
-                        contentStyle={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+              <div
+                className="flex-1 flex items-center justify-center min-h-0"
+                onTouchStartCapture={handleCarouselTouchStart}
+                onTouchEndCapture={handleCarouselTouchEnd}
+                onTouchCancelCapture={() => {
+                  touchStartRef.current = null;
+                }}
+              >
+                <AnimatePresence initial={false} mode="popLayout" custom={slideDirection}>
+                  <motion.div
+                    key={url}
+                    custom={slideDirection}
+                    initial={{ opacity: 0, x: slideDirection * 90 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: slideDirection * -90 }}
+                    transition={{ duration: 0.22, ease: 'easeOut' }}
+                    className="absolute inset-0 flex h-full w-full items-center justify-center"
+                  >
+                    {isImage ? (
+                      <TransformWrapper
+                        initialScale={1}
+                        minScale={0.5}
+                        maxScale={8}
+                        centerOnInit
+                        onTransformed={(_, state) => {
+                          isImageZoomedRef.current = state.scale > 1.02;
+                        }}
                       >
-                        <img
-                          src={url}
-                          alt={filename}
- className="max-w-full max-h-full object-contain"
-                          onError={handleImageError}
-                        />
-                      </TransformComponent>
-                    </TransformWrapper>
-                  ) : (
-                    <video
-                      src={`${url}#t=0.001`}
-                      controls
-                      preload="auto"
- className="max-w-full max-h-full object-contain"
-                      onError={handleVideoError}
-                      {...(isCompact ? { playsInline: true, "webkit-playsinline": "true" } : {})}
-                    >
-                      {t('media.videoNotSupported')}
-                    </video>
-                  )}
-                </div>
+                        <TransformComponent
+                          wrapperStyle={{ width: "100%", height: "100%" }}
+                          contentStyle={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
+                        >
+                          <img
+                            src={url}
+                            alt={filename}
+                            className="max-w-full max-h-full object-contain"
+                            onError={handleImageError}
+                          />
+                        </TransformComponent>
+                      </TransformWrapper>
+                    ) : (
+                      <video
+                        src={`${url}#t=0.001`}
+                        controls
+                        preload="auto"
+                        className="max-w-full max-h-full object-contain"
+                        onError={handleVideoError}
+                        {...(isCompact ? { playsInline: true, "webkit-playsinline": "true" } : {})}
+                      >
+                        {t('media.videoNotSupported')}
+                      </video>
+                    )}
+                  </motion.div>
+                </AnimatePresence>
 
                 {/* Navigation Arrows - Static Mounting to avoid re-animation on file shift */}
                 {!isCompact && files.length > 1 && (
@@ -564,6 +612,13 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                     >
                       <ChevronRight className="w-8 h-8 md:w-12 md:h-10 group-active:translate-x-1 transition-transform" />
                     </button>
+
+                    <div
+                      className="pointer-events-none absolute bottom-5 left-1/2 z-[100006] -translate-x-1/2 rounded-full border border-white/10 bg-black/35 px-3 py-1 font-mono text-[10px] font-semibold text-white/75 backdrop-blur-md"
+                      aria-live="polite"
+                    >
+                      {currentIndex + 1} / {files.length}
+                    </div>
                   </>
                 )}
               </div>

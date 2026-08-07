@@ -269,7 +269,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
       const isOutsideDropdown = settingsDropdownRef.current && !settingsDropdownRef.current.contains(target);
 
       // Check for PWA modals or overlays to prevent closing panels when interacting with child modals
-      const modalElement = (target as HTMLElement).closest('.pwa-modal, [data-radix-portal], .radix-portal');
+      const modalElement = (target as HTMLElement).closest('.pwa-modal, [data-file-preview-modal], [data-radix-portal], .radix-portal');
       if (modalElement) return;
 
       if (isOutsideSettings && isOutsideDropdown) {
