@@ -691,7 +691,10 @@ export class ComfyFileService {
   /**
    * Get files from execution history (already sorted by execution time - newest first)
    */
-  async getFilesFromHistory(limit: number = 10): Promise<IComfyFileInfo[]> {
+  async getFilesFromHistoryWithCount(limit: number = 10): Promise<{
+    files: IComfyFileInfo[];
+    historyEntryCount: number;
+  }> {
     const history = await this.getHistory(limit);
     const files: IComfyFileInfo[] = [];
 
@@ -734,7 +737,12 @@ export class ComfyFileService {
       });
     });
 
-    return files;
+    return { files, historyEntryCount: history.length };
+  }
+
+  async getFilesFromHistory(limit: number = 10): Promise<IComfyFileInfo[]> {
+    const result = await this.getFilesFromHistoryWithCount(limit);
+    return result.files;
   }
 
   /**

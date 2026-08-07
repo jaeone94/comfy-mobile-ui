@@ -32,6 +32,9 @@ interface FilePreviewModalProps {
   files?: IComfyFileInfo[];
   initialIndex?: number;
   comfyFileService?: ComfyFileService;
+  hasMoreFiles?: boolean;
+  isLoadingMoreFiles?: boolean;
+  onLoadMoreFiles?: () => void | Promise<void>;
   /** Shown only when the current PNG contains complete ComfyUI workflow metadata. */
   onOpenWorkflow?: (workflow: IComfyJson, filename: string) => void | Promise<void>;
 }
@@ -54,6 +57,9 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   files = [],
   initialIndex = -1,
   comfyFileService,
+  hasMoreFiles = false,
+  isLoadingMoreFiles = false,
+  onLoadMoreFiles,
   onOpenWorkflow
 }) => {
   const { t } = useTranslation();
@@ -66,6 +72,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const canOpenWorkflow = Boolean(onOpenWorkflow);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isImageZoomedRef = useRef(false);
+  const loadMoreRequestedAtRef = useRef(-1);
 
   // Internal navigation state
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -99,6 +106,17 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       isImageZoomedRef.current = false;
     }
   }, [isOpen, initialIndex, initialFilename, initialIsImage, initialUrl, initialLoading, initialError, initialFileSize, initialFileType, initialDimensions, initialDuration]);
+
+  useEffect(() => {
+    if (!isOpen || !onLoadMoreFiles || !hasMoreFiles || isLoadingMoreFiles || files.length === 0) return;
+    if (currentIndex < files.length - 3 || loadMoreRequestedAtRef.current === files.length) return;
+
+    loadMoreRequestedAtRef.current = files.length;
+    Promise.resolve(onLoadMoreFiles()).catch((loadError) => {
+      console.error('[FilePreviewModal] Failed to load more history files:', loadError);
+      loadMoreRequestedAtRef.current = -1;
+    });
+  }, [currentIndex, files.length, hasMoreFiles, isLoadingMoreFiles, isOpen, onLoadMoreFiles]);
 
   useEffect(() => {
     let cancelled = false;
@@ -180,8 +198,10 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const handleNext = useCallback(() => {
     if (currentIndex < files.length - 1) {
       navigateToFile(currentIndex + 1);
+    } else if (hasMoreFiles && !isLoadingMoreFiles) {
+      void onLoadMoreFiles?.();
     }
-  }, [currentIndex, files.length, navigateToFile]);
+  }, [currentIndex, files.length, hasMoreFiles, isLoadingMoreFiles, navigateToFile, onLoadMoreFiles]);
 
   const handleCarouselTouchStart = useCallback((event: React.TouchEvent) => {
     if (files.length <= 1 || event.touches.length !== 1 || isImageZoomedRef.current) {
@@ -606,11 +626,15 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                         e.stopPropagation();
                         handleNext();
                       }}
-                      disabled={currentIndex >= files.length - 1}
+                      disabled={currentIndex >= files.length - 1 && (!hasMoreFiles || isLoadingMoreFiles)}
  className={`absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-[100006] w-14 h-10 md:w-20 md:h-20 flex items-center justify-center rounded-xl bg-black/10 hover:bg-black/20 text-white backdrop-blur-xl border border-white/10 transition-all active:scale-90 shadow-2xl group disabled:opacity-0 disabled:pointer-events-none`}
                       title={t('common.next')}
                     >
-                      <ChevronRight className="w-8 h-8 md:w-12 md:h-10 group-active:translate-x-1 transition-transform" />
+                      {isLoadingMoreFiles && currentIndex >= files.length - 1 ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        <ChevronRight className="w-8 h-8 md:w-12 md:h-10 group-active:translate-x-1 transition-transform" />
+                      )}
                     </button>
 
                     <div
