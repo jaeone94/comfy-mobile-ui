@@ -419,27 +419,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   </>
                 )}
 
-                {(isCheckingWorkflow || embeddedWorkflow) && (
-                  <Button
-                    onClick={handleOpenWorkflow}
-                    disabled={!embeddedWorkflow || isOpeningWorkflow}
-                    variant="ghost"
-                    size="sm"
-                    className="h-10 px-3 md:px-4 rounded-xl bg-[#3069f0]/15 text-[#7ba3f5] hover:bg-[#3069f0]/25 font-semibold disabled:opacity-50"
-                    aria-label={t('promptHistory.workflowRecovery.open')}
-                    title={isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
-                  >
-                    {isCheckingWorkflow || isOpeningWorkflow ? (
-                      <Loader2 className="w-5 h-5 animate-spin md:mr-2" />
-                    ) : (
-                      <Workflow className="w-5 h-5 md:mr-2" />
-                    )}
-                    <span className="hidden md:inline">
-                      {isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
-                    </span>
-                  </Button>
-                )}
-
                 <Button
                   onClick={onClose}
                   variant="ghost"
@@ -590,6 +569,26 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                     </video>
                   )}
                 </div>
+
+                {(isCheckingWorkflow || embeddedWorkflow) && (
+                  <Button
+                    onClick={handleOpenWorkflow}
+                    disabled={!embeddedWorkflow || isOpeningWorkflow}
+                    size="sm"
+                    className="absolute right-4 top-4 z-[100006] h-10 gap-2 rounded-xl border border-white/15 bg-[#3069f0] px-3.5 text-[11px] font-bold text-white shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur-md hover:bg-[#3f78f5] disabled:opacity-70 md:right-6 md:top-6 md:px-4 md:text-[12px]"
+                    aria-label={t('promptHistory.workflowRecovery.open')}
+                    title={isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
+                  >
+                    {isCheckingWorkflow || isOpeningWorkflow ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Workflow className="h-4 w-4" />
+                    )}
+                    <span>
+                      {isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
+                    </span>
+                  </Button>
+                )}
 
                 {/* Navigation Arrows - Static Mounting to avoid re-animation on file shift */}
                 {!isCompact && files.length > 1 && (
