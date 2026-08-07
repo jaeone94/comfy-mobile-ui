@@ -11,9 +11,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { IComfyJson } from '@/shared/types/app/IComfyJson';
 import type { NodeWidgetModifications } from '@/shared/types/widgets/widgetModifications';
+import type { PreparedWorkflowExecution } from '@/shared/types/comfy/IComfyAPI';
 
 // Core Services
 import { WorkflowGraphService, serializeGraph, loadWorkflowToGraph, addNodeToWorkflow, removeNodeWithLinks, removeGroup, createInputSlots, createOutputSlots } from '@/core/services/WorkflowGraphService';
+import { createExecutionGraph } from '@/core/services/WorkflowExecutionService';
 import { SubgraphExtractService } from '@/core/services/SubgraphExtractService';
 import { ConnectionService } from '@/services/ConnectionService';
 import { detectMissingWorkflowNodes, MissingWorkflowNode, resolveMissingNodePackages } from '@/services/MissingNodesService';
@@ -1417,10 +1419,6 @@ const WorkflowEditor: React.FC = () => {
       setIsExecuting(true);
 
 
-      // Step 1: Get connection info and modified values
-      const { url: serverUrl } = useConnectionStore.getState();
-      const modifiedValues = widgetEditor.modifiedWidgetValues;
-
       // Canvas v2: seed handling (control_after_generate) runs inside the
       // bridge right before graphToPrompt — the legacy-model path would
       // double-randomize and desync, so skip it when executing via bridge.
@@ -1454,19 +1452,28 @@ const WorkflowEditor: React.FC = () => {
       // custom-node semantics match ComfyUI exactly. Widget edits and seed
       // changes were already mirrored into the official graph (postMessage
       // ordering guarantees they land before this request).
-      let apiWorkflow: Record<string, any>;
+      let execution: PreparedWorkflowExecution;
       if (useOfficialPrompt && v2Bridge) {
         const promptData = await v2Bridge.getPrompt();
-        apiWorkflow = (promptData.output ?? {}) as Record<string, any>;
+        execution = {
+          prompt: promptData.output ?? {},
+          workflow: promptData.workflow,
+        };
       } else {
         const originalGraph = comfyGraphRef.current;
-        const tempGraph = createModifiedGraph(originalGraph, widgetEditor.modifiedWidgetValues);
-        const converted = convertGraphToAPI(tempGraph);
-        apiWorkflow = converted.apiWorkflow;
+        const executionGraph = createExecutionGraph(
+          originalGraph,
+          widgetEditor.modifiedWidgetValues,
+        );
+        const converted = convertGraphToAPI(executionGraph);
+        execution = {
+          prompt: converted.apiWorkflow,
+          workflow: serializeGraph(executionGraph),
+        };
       }
 
       // Step 5: Submit to server with workflow tracking information
-      const promptId = await ComfyUIService.executeWorkflow(apiWorkflow, {
+      const promptId = await ComfyUIService.executeWorkflow(execution, {
         workflowId: id, // Use the workflow ID from URL params
         workflowName: workflow?.name || t('workflow.newWorkflowName')
       });
@@ -1479,85 +1486,6 @@ const WorkflowEditor: React.FC = () => {
       setIsExecuting(false);
     }
   };
-
-  // Create modified graph with current changes (including new seed values)
-  const createModifiedGraph = useCallback((originalGraph: any, modifications: Map<number, Record<string, any>>) => {
-
-    // 1. Graph runtime copy (object structure preserved without serialization)
-    const modifiedGraph = {
-      _nodes: originalGraph._nodes.map((node: any) => ({
-        ...node,
-        // widgets array copy (runtime object preservation)
-        widgets: node.widgets ? [...node.widgets] : undefined,
-        _widgets: node._widgets ? [...node._widgets] : undefined,
-        // widgets_values array copy
-        widgets_values: Array.isArray(node.widgets_values)
-          ? [...node.widgets_values]
-          : node.widgets_values ? { ...node.widgets_values } : undefined
-      })),
-      _links: { ...originalGraph._links },
-      _groups: originalGraph._groups ? [...originalGraph._groups] : [],
-      last_node_id: originalGraph.last_node_id || 0,
-      last_link_id: originalGraph.last_link_id || 0
-    };
-
-    // 2. Apply modifications
-    if (modifications.size > 0) {
-
-      modifications.forEach((nodeModifications, nodeId) => {
-        const graphNode = modifiedGraph._nodes?.find((n: any) => Number(n.id) === nodeId);
-        if (graphNode) {
-          Object.entries(nodeModifications).forEach(([paramName, newValue]) => {
-            let modified = false;
-
-            // Method 1: Update widgets array (for runtime display)
-            if (graphNode.widgets) {
-              const widget = graphNode.widgets.find((w: any) => w.name === paramName);
-              if (widget) {
-                widget.value = newValue;
-                modified = true;
-              }
-            }
-
-            // Method 2: Update _widgets array (alternative location)
-            if (graphNode._widgets) {
-              const _widget = graphNode._widgets.find((w: any) => w.name === paramName);
-              if (_widget) {
-                _widget.value = newValue;
-                modified = true;
-              }
-            }
-
-            // Method 3: Update widgets_values object (discovered structure)
-            if (graphNode.widgets_values && typeof graphNode.widgets_values === 'object' && !Array.isArray(graphNode.widgets_values)) {
-              if (paramName in graphNode.widgets_values) {
-                graphNode.widgets_values[paramName] = newValue;
-                modified = true;
-              }
-            }
-
-            // Method 4: Update widgets_values array (traditional structure)
-            if (graphNode.widgets_values && Array.isArray(graphNode.widgets_values)) {
-              const widgetIndex = graphNode.widgets?.findIndex((w: any) => w.name === paramName);
-              if (widgetIndex !== -1 && widgetIndex < graphNode.widgets_values.length) {
-                graphNode.widgets_values[widgetIndex] = newValue;
-                modified = true;
-              }
-            }
-
-            if (!modified) {
-              console.warn(`Could not update widget "${paramName}" in any location for node ${nodeId}`);
-            }
-          });
-        } else {
-          console.warn(`Graph node ${nodeId} not found`);
-        }
-      });
-
-    }
-
-    return modifiedGraph;
-  }, []);
 
   // Handle interrupt
   const handleInterrupt = useCallback(async () => {

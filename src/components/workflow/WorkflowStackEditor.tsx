@@ -19,6 +19,8 @@ import { createPortal } from 'react-dom';
 import { updateWorkflow, getWorkflow } from '@/infrastructure/storage/IndexedDBWorkflowService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ComfyGraph } from '@/core/domain/ComfyGraph';
+import { serializeGraph } from '@/core/services/WorkflowGraphService';
+import { createExecutionGraph } from '@/core/services/WorkflowExecutionService';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { WorkflowStackFooter } from './WorkflowStackFooter';
 import { WorkflowHeaderProgressBar as ExecutionProgressBar } from '@/components/execution/ExecutionProgressBar';
@@ -533,53 +535,6 @@ export const WorkflowStackEditor: React.FC<WorkflowStackEditorProps> = ({ graph,
         processor
     });
 
-    const createModifiedGraph = useCallback((originalGraph: any, modifications: Map<number, Record<string, any>>) => {
-        const modifiedGraph = {
-            _nodes: originalGraph._nodes.map((node: any) => ({
-                ...node,
-                widgets: node.widgets ? [...node.widgets] : undefined,
-                _widgets: node._widgets ? [...node._widgets] : undefined,
-                widgets_values: Array.isArray(node.widgets_values)
-                    ? [...node.widgets_values]
-                    : node.widgets_values ? { ...node.widgets_values } : undefined
-            })),
-            _links: { ...originalGraph._links },
-            _groups: originalGraph._groups ? [...originalGraph._groups] : [],
-            last_node_id: originalGraph.last_node_id || 0,
-            last_link_id: originalGraph.last_link_id || 0
-        };
-
-        if (modifications.size > 0) {
-            modifications.forEach((nodeModifications, nodeId) => {
-                const graphNode = modifiedGraph._nodes?.find((n: any) => Number(n.id) === nodeId);
-                if (graphNode) {
-                    Object.entries(nodeModifications).forEach(([paramName, newValue]) => {
-                        let modified = false;
-                        if (graphNode.widgets) {
-                            const widget = graphNode.widgets.find((w: any) => w.name === paramName);
-                            if (widget) { widget.value = newValue; modified = true; }
-                        }
-                        if (graphNode._widgets) {
-                            const _widget = graphNode._widgets.find((w: any) => w.name === paramName);
-                            if (_widget) { _widget.value = newValue; modified = true; }
-                        }
-                        if (graphNode.widgets_values && typeof graphNode.widgets_values === 'object' && !Array.isArray(graphNode.widgets_values)) {
-                            if (paramName in graphNode.widgets_values) { graphNode.widgets_values[paramName] = newValue; modified = true; }
-                        }
-                        if (graphNode.widgets_values && Array.isArray(graphNode.widgets_values)) {
-                            const widgetIndex = (graphNode.widgets || []).findIndex((w: any) => w.name === paramName);
-                            if (widgetIndex !== -1 && widgetIndex < graphNode.widgets_values.length) {
-                                graphNode.widgets_values[widgetIndex] = newValue;
-                                modified = true;
-                            }
-                        }
-                    });
-                }
-            });
-        }
-        return modifiedGraph;
-    }, []);
-
     const handleExecute = async () => {
         if (!graph || !isConnected) {
             toast.error(t('workflow.submitFailed'));
@@ -631,10 +586,13 @@ export const WorkflowStackEditor: React.FC<WorkflowStackEditorProps> = ({ graph,
             }
 
             // Create modified graph using the combined modifications (manual changes + seed changes)
-            const tempGraph = createModifiedGraph(graph, currentModifications);
-            const { apiWorkflow } = convertGraphToAPI(tempGraph);
+            const executionGraph = createExecutionGraph(graph, currentModifications);
+            const { apiWorkflow } = convertGraphToAPI(executionGraph);
 
-            const promptId = await ComfyUIService.executeWorkflow(apiWorkflow, {
+            const promptId = await ComfyUIService.executeWorkflow({
+                prompt: apiWorkflow,
+                workflow: serializeGraph(executionGraph),
+            }, {
                 workflowId: id || 'stack-editor',
                 workflowName: workflowName || t('workflow.newWorkflowName')
             });
