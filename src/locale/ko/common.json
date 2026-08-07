@@ -1388,6 +1388,20 @@
         "tryAgain": "다시 시도",
         "noOutputHistory": "출력 기록 없음",
         "noOutputFiles": "현재 세션에서 출력 파일을 찾을 수 없습니다",
+        "workflowRecovery": {
+            "open": "워크플로우로 열기",
+            "checking": "워크플로우 확인 중...",
+            "previewTitle": "히스토리의 워크플로우를 보는 중",
+            "appliedTitle": "저장되지 않은 변경 사항으로 적용됨",
+            "nodeCount": "노드 {{count}}개",
+            "restore": "이전 작업 복구",
+            "apply": "현재 워크플로우에 적용",
+            "saveAsNew": "새 워크플로우로 저장",
+            "defaultName": "복구한 워크플로우",
+            "openFailed": "이 파일의 워크플로우를 열 수 없습니다.",
+            "restoreFailed": "이전 워크플로우를 복구할 수 없습니다.",
+            "saveFailed": "새 워크플로우로 저장할 수 없습니다."
+        },
         "status": {
             "pending": "대기 중",
             "executing": "실행 중",

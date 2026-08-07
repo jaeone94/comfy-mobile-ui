@@ -10,6 +10,7 @@ import TriggerWordSelector from './TriggerWordSelector';
 import { SettingsDropdownContent } from './SettingsDropdown';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { PromptHistoryContent } from '@/components/history/PromptHistory';
+import type { IComfyJson } from '@/shared/types/app/IComfyJson';
 import type { LogEntry, LogsWsMessage } from '@/core/domain';
 import type { MissingModelInfo } from '@/services/MissingModelsService';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -53,6 +54,7 @@ interface FloatingControlsPanelProps {
   onToggleConnectionMode?: () => void;
   onExtractSubgraphs?: () => void;
   hasSubgraphs?: boolean;
+  onOpenHistoryWorkflow?: (workflow: IComfyJson, filename: string) => void | Promise<void>;
 }
 
 export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
@@ -80,6 +82,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
   onToggleConnectionMode,
   onExtractSubgraphs,
   hasSubgraphs,
+  onOpenHistoryWorkflow,
 }) => {
   const [isClearingVRAM, setIsClearingVRAM] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
@@ -962,6 +965,7 @@ export const FloatingControlsPanel: React.FC<FloatingControlsPanelProps> = ({
               <PromptHistoryContent
                 isEmbedded={true}
                 onClose={() => setIsHistoryOpen(false)}
+                onOpenWorkflow={onOpenHistoryWorkflow}
               />
             </div>
           </motion.div>

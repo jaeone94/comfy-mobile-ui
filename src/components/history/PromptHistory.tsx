@@ -13,6 +13,7 @@ import { PromptTracker } from '@/utils/promptTracker';
 import { IComfyFileInfo } from '@/shared/types/comfy/IComfyFile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import type { IComfyJson } from '@/shared/types/app/IComfyJson';
 
 const isImageFile = (filename: string): boolean => {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -180,7 +181,7 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick, imageL
     >
       <div
         ref={thumbnailRef}
-        className="flex-shrink-0 w-9 h-9 bg-white/[0.05] border border-white/[0.08] rounded-md overflow-hidden relative"
+        className="flex-shrink-0 w-[52px] h-[52px] bg-white/[0.05] border border-white/[0.08] rounded-lg overflow-hidden relative"
       >
         <div className="absolute inset-0 flex items-center justify-center">
           {!isInView || hasError ? (
@@ -227,7 +228,8 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick, imageL
 export const PromptHistoryContent: React.FC<{
   onClose?: () => void;
   isEmbedded?: boolean;
-}> = ({ onClose, isEmbedded = false }) => {
+  onOpenWorkflow?: (workflow: IComfyJson, filename: string) => void | Promise<void>;
+}> = ({ onClose, isEmbedded = false, onOpenWorkflow }) => {
   const { t } = useTranslation();
   const { url: serverUrl } = useConnectionStore();
   const [activeTab, setActiveTab] = useState<'queues' | 'outputs'>('queues');
@@ -1011,7 +1013,12 @@ export const PromptHistoryContent: React.FC<{
             url={previewUrl || undefined}
             onClose={handlePreviewClose}
             onRetry={handlePreviewRetry}
-            isCompact={isEmbedded}
+            isCompact={false}
+            onOpenWorkflow={onOpenWorkflow ? async (workflowJson, filename) => {
+              await onOpenWorkflow(workflowJson, filename);
+              handlePreviewClose();
+              onClose?.();
+            } : undefined}
           />
         </div>
       )}

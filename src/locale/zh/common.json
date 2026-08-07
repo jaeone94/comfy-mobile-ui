@@ -1385,6 +1385,20 @@
         "tryAgain": "重试",
         "noOutputHistory": "无输出历史",
         "noOutputFiles": "当前会话中未找到输出文件",
+        "workflowRecovery": {
+            "open": "作为工作流打开",
+            "checking": "正在检查工作流...",
+            "previewTitle": "正在查看历史工作流",
+            "appliedTitle": "已作为未保存的更改应用",
+            "nodeCount": "{{count}} 个节点",
+            "restore": "恢复之前的工作",
+            "apply": "应用到当前工作流",
+            "saveAsNew": "另存为新工作流",
+            "defaultName": "已恢复的工作流",
+            "openFailed": "无法打开此文件中的工作流。",
+            "restoreFailed": "无法恢复之前的工作流。",
+            "saveFailed": "无法另存为新工作流。"
+        },
         "status": {
             "pending": "等待中",
             "executing": "执行中",

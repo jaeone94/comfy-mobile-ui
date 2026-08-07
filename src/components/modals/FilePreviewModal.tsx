@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { X, Image, Video, Download, ExternalLink, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Image, Video, Download, ExternalLink, Info, ChevronLeft, ChevronRight, Workflow, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { IComfyFileInfo } from '@/shared/types/comfy/IComfyFile';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { isImageFile } from '@/shared/utils/ComfyFileUtils';
+import { extractWorkflowFromPng } from '@/utils/pngMetadataExtractor';
+import type { IComfyJson } from '@/shared/types/app/IComfyJson';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -30,6 +32,8 @@ interface FilePreviewModalProps {
   files?: IComfyFileInfo[];
   initialIndex?: number;
   comfyFileService?: ComfyFileService;
+  /** Shown only when the current PNG contains complete ComfyUI workflow metadata. */
+  onOpenWorkflow?: (workflow: IComfyJson, filename: string) => void | Promise<void>;
 }
 
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
@@ -49,11 +53,16 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   isCompact = false,
   files = [],
   initialIndex = -1,
-  comfyFileService
+  comfyFileService,
+  onOpenWorkflow
 }) => {
   const { t } = useTranslation();
   const [showInfo, setShowInfo] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [embeddedWorkflow, setEmbeddedWorkflow] = useState<IComfyJson | null>(null);
+  const [isCheckingWorkflow, setIsCheckingWorkflow] = useState(false);
+  const [isOpeningWorkflow, setIsOpeningWorkflow] = useState(false);
+  const canOpenWorkflow = Boolean(onOpenWorkflow);
 
   // Internal navigation state
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
@@ -88,6 +97,40 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       setShowInfo(false);
     }
   }, [isOpen, initialIndex, initialFilename, initialIsImage, initialUrl, initialLoading, initialError, initialFileSize, initialFileType, initialDimensions, initialDuration]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const inspectWorkflowMetadata = async () => {
+      setEmbeddedWorkflow(null);
+      if (!isOpen || !canOpenWorkflow || !url || !filename.toLowerCase().endsWith('.png')) {
+        setIsCheckingWorkflow(false);
+        return;
+      }
+
+      setIsCheckingWorkflow(true);
+      try {
+        const response = await fetch(url);
+        if (!response.ok) return;
+        const blob = await response.blob();
+        const pngFile = new File([blob], filename, { type: 'image/png' });
+        const result = await extractWorkflowFromPng(pngFile);
+        const workflow = result.success ? result.data?.workflow : undefined;
+        if (!cancelled && workflow && Array.isArray(workflow.nodes)) {
+          setEmbeddedWorkflow(workflow as IComfyJson);
+        }
+      } catch (metadataError) {
+        console.debug('[FilePreviewModal] No readable workflow metadata:', metadataError);
+      } finally {
+        if (!cancelled) setIsCheckingWorkflow(false);
+      }
+    };
+
+    inspectWorkflowMetadata();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, canOpenWorkflow, url, filename]);
 
   // Handle navigation
   const navigateToFile = useCallback((index: number) => {
@@ -236,6 +279,20 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     window.open(url, '_blank');
   };
 
+  const handleOpenWorkflow = async () => {
+    if (!embeddedWorkflow || !onOpenWorkflow || isOpeningWorkflow) return;
+    setIsOpeningWorkflow(true);
+    try {
+      await onOpenWorkflow(embeddedWorkflow, filename);
+    } catch (openError) {
+      // The caller owns the localized error UI. Keep this preview open so
+      // the user can retry or close it themselves.
+      console.error('[FilePreviewModal] Failed to open embedded workflow:', openError);
+    } finally {
+      setIsOpeningWorkflow(false);
+    }
+  };
+
   const content = (
     <AnimatePresence>
       {isOpen && (
@@ -315,6 +372,27 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       <span className="hidden md:inline">{isDownloading ? t('media.downloading') : t('media.download')}</span>
                     </Button>
                   </>
+                )}
+
+                {(isCheckingWorkflow || embeddedWorkflow) && (
+                  <Button
+                    onClick={handleOpenWorkflow}
+                    disabled={!embeddedWorkflow || isOpeningWorkflow}
+                    variant="ghost"
+                    size="sm"
+                    className="h-10 px-3 md:px-4 rounded-xl bg-[#3069f0]/15 text-[#7ba3f5] hover:bg-[#3069f0]/25 font-semibold disabled:opacity-50"
+                    aria-label={t('promptHistory.workflowRecovery.open')}
+                    title={isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
+                  >
+                    {isCheckingWorkflow || isOpeningWorkflow ? (
+                      <Loader2 className="w-5 h-5 animate-spin md:mr-2" />
+                    ) : (
+                      <Workflow className="w-5 h-5 md:mr-2" />
+                    )}
+                    <span className="hidden md:inline">
+                      {isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
+                    </span>
+                  </Button>
                 )}
 
                 <Button
