@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { graphChangeLogger } from '@/utils/GraphChangeLogger';
 import { getActiveCanvasBridge } from '@/services/bridge/CanvasBridgeClient';
 import type { NodeWidgetModifications } from '@/shared/types/widgets/widgetModifications';
+import { retainUnsavedWidgetModifications } from '@/shared/utils/widgetModifications';
 
 // Canvas v2: mirror widget edits into the official graph inside the iframe.
 // No-op when the official canvas is not mounted (bridge is null).
@@ -250,6 +251,14 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
 
   };
 
+  // Clear only the values that were part of a completed save. Values edited
+  // while the storage write was in flight must stay dirty for the next save.
+  const clearSavedModifications = (savedValues: Map<number, NodeWidgetModifications>) => {
+    setModifiedWidgetValues(currentValues => (
+      retainUnsavedWidgetModifications(currentValues, savedValues)
+    ));
+  };
+
   // Directly set a modified widget value without going through edit mode
   const setModifiedWidgetValue = (nodeId: number, paramName: string, value: any) => {
     setModifiedWidgetValues(prev => {
@@ -308,6 +317,7 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     // setNodeMode,
     // setNodeModeBatch,
     clearModifications,
+    clearSavedModifications,
     setModifiedWidgetValue,
     hasModifications,
 

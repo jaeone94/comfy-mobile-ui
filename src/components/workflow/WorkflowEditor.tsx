@@ -178,6 +178,8 @@ const WorkflowEditor: React.FC = () => {
   const [isExecuting, setIsExecuting] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [saveSucceeded, setSaveSucceeded] = useState(false);
+  const saveInFlightRef = useRef(false);
+  const saveSuccessTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [isJsonViewerOpen, setIsJsonViewerOpen] = useState<boolean>(false);
   const [jsonViewerData, setJsonViewerData] = useState<{ title: string; data: any } | null>(null);
   const [isExtractConfirmOpen, setIsExtractConfirmOpen] = useState(false);
@@ -196,6 +198,31 @@ const WorkflowEditor: React.FC = () => {
   const [queueRefreshTrigger, setQueueRefreshTrigger] = useState<number>(0);
   const [uploadState, setUploadState] = useState<any>({ isUploading: false });
   const [renderTrigger, setRenderTrigger] = useState(0); // State to force re-renders
+
+  const clearSaveSuccessFeedback = useCallback(() => {
+    if (saveSuccessTimerRef.current) {
+      clearTimeout(saveSuccessTimerRef.current);
+      saveSuccessTimerRef.current = null;
+    }
+    setSaveSucceeded(false);
+  }, []);
+
+  const showSaveSuccessFeedback = useCallback(() => {
+    if (saveSuccessTimerRef.current) {
+      clearTimeout(saveSuccessTimerRef.current);
+    }
+    setSaveSucceeded(true);
+    saveSuccessTimerRef.current = setTimeout(() => {
+      saveSuccessTimerRef.current = null;
+      setSaveSucceeded(false);
+    }, 1000);
+  }, []);
+
+  useEffect(() => () => {
+    if (saveSuccessTimerRef.current) {
+      clearTimeout(saveSuccessTimerRef.current);
+    }
+  }, []);
 
   // Force re-render utility (moved up for hoisting)
   const forceRender = useCallback(() => {
@@ -677,15 +704,18 @@ const WorkflowEditor: React.FC = () => {
   const officialCanvasEnabled = useCanvasV2Store((s) => s.officialCanvasEnabled);
   const setOfficialCanvasEnabled = useCanvasV2Store((s) => s.setOfficialCanvasEnabled);
   const [canvasDirty, setCanvasDirty] = useState(false);
+  const canvasRevisionRef = useRef(0);
   // In-flight official-canvas save. Mode switching reloads from storage, so
   // a toggle right after tapping Save must wait for this write to commit —
   // otherwise it rebuilds the legacy graph from the PREVIOUS json and the
   // node hints keep showing stale values until the next full reload.
   const pendingCanvasSaveRef = useRef<Promise<void> | null>(null);
   const handleBridgeGraphMutated = useCallback(() => {
+    canvasRevisionRef.current += 1;
     setCanvasDirty(true);
   }, []);
   useEffect(() => {
+    canvasRevisionRef.current = 0;
     setCanvasDirty(false);
   }, [id]);
   // Official node renderer (Nodes 2.0 vs Classic). Reported by the bridge on
@@ -1385,9 +1415,17 @@ const WorkflowEditor: React.FC = () => {
     // A history preview is intentionally read-only with respect to the
     // current workflow until the user explicitly applies it.
     if (historyWorkflowSession?.mode === 'preview') return;
+    // React state alone cannot prevent two buttons from entering this handler
+    // before the disabled state is rendered. Guard the async operation
+    // synchronously as well.
+    if (saveInFlightRef.current) return;
 
+    saveInFlightRef.current = true;
+    clearSaveSuccessFeedback();
     setIsSaving(true);
-    setSaveSucceeded(false);
+    const savedModifiedValues = new Map<number, NodeWidgetModifications>(
+      Array.from(widgetEditor.modifiedWidgetValues, ([nodeId, values]) => [nodeId, { ...values }])
+    );
 
     try {
       // Canvas v2: the official graph is the source of truth — serializing it
@@ -1395,6 +1433,7 @@ const WorkflowEditor: React.FC = () => {
       // and widget/mode edits were already mirrored into it.
       const v2Bridge = getActiveCanvasBridge();
       if (officialCanvasEnabled && v2Bridge?.isReady) {
+        const savedCanvasRevision = canvasRevisionRef.current;
         const saveTask = (async () => {
           const officialJson = (await v2Bridge.getWorkflow()) as IComfyJson;
           // Persist only — the legacy view rebuilds from storage on mode
@@ -1421,13 +1460,15 @@ const WorkflowEditor: React.FC = () => {
         } finally {
           if (pendingCanvasSaveRef.current === saveTask) pendingCanvasSaveRef.current = null;
         }
-        widgetEditor.clearModifications();
-        setCanvasDirty(false);
+        widgetEditor.clearSavedModifications(savedModifiedValues);
+        // A bridge mutation after this save started belongs to the next save.
+        // Do not erase that dirty signal when the older write completes.
+        if (canvasRevisionRef.current === savedCanvasRevision) {
+          setCanvasDirty(false);
+        }
         setHistoryWorkflowSession(null);
         setHistoryWorkflowDirty(false);
-        setIsSaving(false);
-        setSaveSucceeded(true);
-        setTimeout(() => setSaveSucceeded(false), 1500);
+        showSaveSuccessFeedback();
         return;
       }
 
@@ -1444,7 +1485,7 @@ const WorkflowEditor: React.FC = () => {
       // The changes made to the subgraph object will be reflected in the root graph 
       // because subgraphs are referenced within the root graph structure
       const currentGraph = comfyGraphRef.current;
-      const modifiedValues = widgetEditor.modifiedWidgetValues;
+      const modifiedValues = savedModifiedValues;
 
       // createModifiedGraph returns a copy, so we need to apply changes directly to the original Graph
       if (modifiedValues.size > 0 && currentGraph) {
@@ -1540,7 +1581,6 @@ const WorkflowEditor: React.FC = () => {
         await updateWorkflow(updatedWorkflow);
       } catch (error) {
         console.error('Failed to save workflow:', error);
-        setIsSaving(false);
         return;
       }
 
@@ -1548,7 +1588,7 @@ const WorkflowEditor: React.FC = () => {
       setWorkflow(updatedWorkflow);
 
       // Clear modifications
-      widgetEditor.clearModifications();
+      widgetEditor.clearSavedModifications(savedModifiedValues);
       setHistoryWorkflowSession(null);
       setHistoryWorkflowDirty(false);
 
@@ -1561,19 +1601,15 @@ const WorkflowEditor: React.FC = () => {
       }
 
       // Success animation
-      setIsSaving(false);
-      setSaveSucceeded(true);
-
-      // Reset success state after animation completes
-      setTimeout(() => {
-        setSaveSucceeded(false);
-      }, 1500); // Reset 0.5s after WorkflowHeader hides the checkmark
+      showSaveSuccessFeedback();
 
     } catch (error) {
       console.error('Failed to save workflow:', error);
+    } finally {
+      saveInFlightRef.current = false;
       setIsSaving(false);
     }
-  }, [workflow, widgetEditor, objectInfo, syncWorkflow, officialCanvasEnabled, historyWorkflowSession]);
+  }, [workflow, widgetEditor, objectInfo, syncWorkflow, officialCanvasEnabled, historyWorkflowSession, clearSaveSuccessFeedback, showSaveSuccessFeedback]);
 
   // Canvas v2: data-driven mode switch. The persisted workflow JSON is the
   // only boundary between the two canvases — no state carries over. Unsaved
@@ -3637,6 +3673,10 @@ const WorkflowEditor: React.FC = () => {
   }
 
   // Main render
+  const hasUnsavedWorkflowChanges = historyWorkflowDirty
+    || widgetEditor.hasModifications()
+    || (officialCanvasEnabled && canvasDirty);
+
   return (
     <div className="pwa-container relative w-full">
       {/* Header */}
@@ -3645,7 +3685,7 @@ const WorkflowEditor: React.FC = () => {
         selectedNode={selectedNode}
         hasUnsavedChanges={historyWorkflowSession?.mode === 'preview'
           ? false
-          : historyWorkflowDirty || (officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications())}
+          : hasUnsavedWorkflowChanges}
         isSaving={isSaving}
         saveSucceeded={saveSucceeded}
         sessionStack={sessionStack}
@@ -4038,7 +4078,7 @@ const WorkflowEditor: React.FC = () => {
       {/* Workflow Save Button - Floating separately */}
       {!isLatentPreviewFullscreen && historyWorkflowSession?.mode !== 'preview' && (
         <WorkflowSaveButton
-          hasUnsavedChanges={historyWorkflowDirty || (officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications())}
+          hasUnsavedChanges={hasUnsavedWorkflowChanges}
           isSaving={isSaving}
           saveSucceeded={saveSucceeded}
           onSaveChanges={handleSaveChanges}
