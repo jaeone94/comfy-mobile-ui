@@ -137,6 +137,16 @@ export interface ExecutionOptions {
   timeoutMs?: number;
 }
 
+/**
+ * The two representations ComfyUI needs for an editor-originated execution.
+ * `prompt` is executed by the server, while `workflow` is embedded in output
+ * metadata so the exact editor graph can be reopened later.
+ */
+export interface PreparedWorkflowExecution {
+  prompt: Record<string, unknown>;
+  workflow?: unknown;
+}
+
 export interface ExecutionStatus {
   promptId: string;
   isRunning: boolean;

@@ -1388,6 +1388,20 @@
         "tryAgain": "Try again",
         "noOutputHistory": "No Output History",
         "noOutputFiles": "No output files found in the current session",
+        "workflowRecovery": {
+            "open": "Open as workflow",
+            "checking": "Checking workflow...",
+            "previewTitle": "Viewing a workflow from history",
+            "appliedTitle": "Applied as unsaved changes",
+            "nodeCount": "{{count}} nodes",
+            "restore": "Restore previous work",
+            "apply": "Apply to current workflow",
+            "saveAsNew": "Save as new",
+            "defaultName": "Recovered workflow",
+            "openFailed": "Could not open the workflow from this file.",
+            "restoreFailed": "Could not restore the previous workflow.",
+            "saveFailed": "Could not save the workflow as a new item."
+        },
         "status": {
             "pending": "Pending",
             "executing": "Executing",

@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { TransformWrapper, TransformComponent } from "react-zoom-pan-pinch";
-import { X, Image, Video, Download, ExternalLink, Info, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Image, Video, Download, ExternalLink, Info, ChevronLeft, ChevronRight, Workflow, Loader2 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +10,8 @@ import { toast } from 'sonner';
 import { IComfyFileInfo } from '@/shared/types/comfy/IComfyFile';
 import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { isImageFile } from '@/shared/utils/ComfyFileUtils';
+import { extractWorkflowFromPng } from '@/utils/pngMetadataExtractor';
+import type { IComfyJson } from '@/shared/types/app/IComfyJson';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -30,6 +32,11 @@ interface FilePreviewModalProps {
   files?: IComfyFileInfo[];
   initialIndex?: number;
   comfyFileService?: ComfyFileService;
+  hasMoreFiles?: boolean;
+  isLoadingMoreFiles?: boolean;
+  onLoadMoreFiles?: () => void | Promise<void>;
+  /** Shown only when the current PNG contains complete ComfyUI workflow metadata. */
+  onOpenWorkflow?: (workflow: IComfyJson, filename: string) => void | Promise<void>;
 }
 
 export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
@@ -49,17 +56,25 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   isCompact = false,
   files = [],
   initialIndex = -1,
-  comfyFileService
+  comfyFileService,
+  hasMoreFiles = false,
+  isLoadingMoreFiles = false,
+  onLoadMoreFiles,
+  onOpenWorkflow
 }) => {
   const { t } = useTranslation();
   const [showInfo, setShowInfo] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
+  const [embeddedWorkflow, setEmbeddedWorkflow] = useState<IComfyJson | null>(null);
+  const [isCheckingWorkflow, setIsCheckingWorkflow] = useState(false);
+  const [isOpeningWorkflow, setIsOpeningWorkflow] = useState(false);
+  const canOpenWorkflow = Boolean(onOpenWorkflow);
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const isImageZoomedRef = useRef(false);
+  const loadMoreRequestedAtRef = useRef(-1);
 
   // Internal navigation state
   const [currentIndex, setCurrentIndex] = useState(initialIndex);
-  const [currentFile, setCurrentFile] = useState<IComfyFileInfo | null>(
-    initialIndex >= 0 && files?.[initialIndex] ? files[initialIndex] : null
-  );
 
   // Current file derived states
   const [filename, setFilename] = useState(initialFilename);
@@ -86,8 +101,54 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       setDimensions(initialDimensions);
       setDuration(initialDuration);
       setShowInfo(false);
+      isImageZoomedRef.current = false;
     }
   }, [isOpen, initialIndex, initialFilename, initialIsImage, initialUrl, initialLoading, initialError, initialFileSize, initialFileType, initialDimensions, initialDuration]);
+
+  useEffect(() => {
+    if (!isOpen || !onLoadMoreFiles || !hasMoreFiles || isLoadingMoreFiles || files.length === 0) return;
+    if (currentIndex < files.length - 3 || loadMoreRequestedAtRef.current === files.length) return;
+
+    loadMoreRequestedAtRef.current = files.length;
+    Promise.resolve(onLoadMoreFiles()).catch((loadError) => {
+      console.error('[FilePreviewModal] Failed to load more history files:', loadError);
+      loadMoreRequestedAtRef.current = -1;
+    });
+  }, [currentIndex, files.length, hasMoreFiles, isLoadingMoreFiles, isOpen, onLoadMoreFiles]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const inspectWorkflowMetadata = async () => {
+      setEmbeddedWorkflow(null);
+      if (!isOpen || !canOpenWorkflow || !url || !filename.toLowerCase().endsWith('.png')) {
+        setIsCheckingWorkflow(false);
+        return;
+      }
+
+      setIsCheckingWorkflow(true);
+      try {
+        const response = await fetch(url);
+        if (!response.ok) return;
+        const blob = await response.blob();
+        const pngFile = new File([blob], filename, { type: 'image/png' });
+        const result = await extractWorkflowFromPng(pngFile);
+        const workflow = result.success ? result.data?.workflow : undefined;
+        if (!cancelled && workflow && Array.isArray(workflow.nodes)) {
+          setEmbeddedWorkflow(workflow as IComfyJson);
+        }
+      } catch (metadataError) {
+        console.debug('[FilePreviewModal] No readable workflow metadata:', metadataError);
+      } finally {
+        if (!cancelled) setIsCheckingWorkflow(false);
+      }
+    };
+
+    inspectWorkflowMetadata();
+    return () => {
+      cancelled = true;
+    };
+  }, [isOpen, canOpenWorkflow, url, filename]);
 
   // Handle navigation
   const navigateToFile = useCallback((index: number) => {
@@ -117,6 +178,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     // But for now we just clear them or use what's there
     setDimensions(undefined);
     setDuration(undefined);
+    isImageZoomedRef.current = false;
 
     // Simulate small loading delay for better UX transition
     setTimeout(() => {
@@ -124,17 +186,42 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     }, 100);
   }, [files, comfyFileService]);
 
-  const handlePrevious = () => {
+  const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
       navigateToFile(currentIndex - 1);
     }
-  };
+  }, [currentIndex, navigateToFile]);
 
-  const handleNext = () => {
+  const handleNext = useCallback(() => {
     if (currentIndex < files.length - 1) {
       navigateToFile(currentIndex + 1);
+    } else if (hasMoreFiles && !isLoadingMoreFiles) {
+      void onLoadMoreFiles?.();
     }
-  };
+  }, [currentIndex, files.length, hasMoreFiles, isLoadingMoreFiles, navigateToFile, onLoadMoreFiles]);
+
+  const handleCarouselTouchStart = useCallback((event: React.TouchEvent) => {
+    if (files.length <= 1 || event.touches.length !== 1 || isImageZoomedRef.current) {
+      touchStartRef.current = null;
+      return;
+    }
+    const touch = event.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+  }, [files.length]);
+
+  const handleCarouselTouchEnd = useCallback((event: React.TouchEvent) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || event.changedTouches.length !== 1 || isImageZoomedRef.current) return;
+
+    const touch = event.changedTouches[0];
+    const deltaX = touch.clientX - start.x;
+    const deltaY = touch.clientY - start.y;
+    if (Math.abs(deltaX) < 55 || Math.abs(deltaX) <= Math.abs(deltaY) * 1.25) return;
+
+    if (deltaX > 0) handlePrevious();
+    else handleNext();
+  }, [handleNext, handlePrevious]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -236,6 +323,20 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     window.open(url, '_blank');
   };
 
+  const handleOpenWorkflow = async () => {
+    if (!embeddedWorkflow || !onOpenWorkflow || isOpeningWorkflow) return;
+    setIsOpeningWorkflow(true);
+    try {
+      await onOpenWorkflow(embeddedWorkflow, filename);
+    } catch (openError) {
+      // The caller owns the localized error UI. Keep this preview open so
+      // the user can retry or close it themselves.
+      console.error('[FilePreviewModal] Failed to open embedded workflow:', openError);
+    } finally {
+      setIsOpeningWorkflow(false);
+    }
+  };
+
   const content = (
     <AnimatePresence>
       {isOpen && (
@@ -245,6 +346,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
  className={`${isCompact ? 'absolute h-full' : 'fixed h-[100dvh]'} top-0 left-0 right-0 bottom-0 z-[99999] bg-[#101217] flex flex-col ${isCompact ? 'px-0 pt-0 pb-0' : ''} overflow-hidden`}
+          data-file-preview-modal
         >
           {/* Header (Always Visible unless Compact) */}
           {!isCompact && (
@@ -423,14 +525,24 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
             {/* Media Content */}
             {url && !error && (
-              <div className="flex-1 flex items-center justify-center min-h-0">
-                <div className="w-full h-full flex items-center justify-center max-w-full max-h-full">
+              <div
+                className="flex-1 flex items-center justify-center min-h-0"
+                onTouchStartCapture={handleCarouselTouchStart}
+                onTouchEndCapture={handleCarouselTouchEnd}
+                onTouchCancelCapture={() => {
+                  touchStartRef.current = null;
+                }}
+              >
+                <div className="absolute inset-0 flex h-full w-full items-center justify-center">
                   {isImage ? (
                     <TransformWrapper
                       initialScale={1}
                       minScale={0.5}
                       maxScale={8}
                       centerOnInit
+                      onTransformed={(_, state) => {
+                        isImageZoomedRef.current = state.scale > 1.02;
+                      }}
                     >
                       <TransformComponent
                         wrapperStyle={{ width: "100%", height: "100%" }}
@@ -439,7 +551,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                         <img
                           src={url}
                           alt={filename}
- className="max-w-full max-h-full object-contain"
+                          className="max-w-full max-h-full object-contain"
                           onError={handleImageError}
                         />
                       </TransformComponent>
@@ -449,7 +561,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                       src={`${url}#t=0.001`}
                       controls
                       preload="auto"
- className="max-w-full max-h-full object-contain"
+                      className="max-w-full max-h-full object-contain"
                       onError={handleVideoError}
                       {...(isCompact ? { playsInline: true, "webkit-playsinline": "true" } : {})}
                     >
@@ -457,6 +569,26 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                     </video>
                   )}
                 </div>
+
+                {(isCheckingWorkflow || embeddedWorkflow) && (
+                  <Button
+                    onClick={handleOpenWorkflow}
+                    disabled={!embeddedWorkflow || isOpeningWorkflow}
+                    size="sm"
+                    className="absolute right-4 top-4 z-[100006] h-10 gap-2 rounded-xl border border-white/15 bg-[#3069f0] px-3.5 text-[11px] font-bold text-white shadow-[0_10px_30px_rgba(0,0,0,0.45)] backdrop-blur-md hover:bg-[#3f78f5] disabled:opacity-70 md:right-6 md:top-6 md:px-4 md:text-[12px]"
+                    aria-label={t('promptHistory.workflowRecovery.open')}
+                    title={isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
+                  >
+                    {isCheckingWorkflow || isOpeningWorkflow ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Workflow className="h-4 w-4" />
+                    )}
+                    <span>
+                      {isCheckingWorkflow ? t('promptHistory.workflowRecovery.checking') : t('promptHistory.workflowRecovery.open')}
+                    </span>
+                  </Button>
+                )}
 
                 {/* Navigation Arrows - Static Mounting to avoid re-animation on file shift */}
                 {!isCompact && files.length > 1 && (
@@ -480,12 +612,17 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                         e.stopPropagation();
                         handleNext();
                       }}
-                      disabled={currentIndex >= files.length - 1}
+                      disabled={currentIndex >= files.length - 1 && (!hasMoreFiles || isLoadingMoreFiles)}
  className={`absolute right-4 md:right-8 top-1/2 -translate-y-1/2 z-[100006] w-14 h-10 md:w-20 md:h-20 flex items-center justify-center rounded-xl bg-black/10 hover:bg-black/20 text-white backdrop-blur-xl border border-white/10 transition-all active:scale-90 shadow-2xl group disabled:opacity-0 disabled:pointer-events-none`}
                       title={t('common.next')}
                     >
-                      <ChevronRight className="w-8 h-8 md:w-12 md:h-10 group-active:translate-x-1 transition-transform" />
+                      {isLoadingMoreFiles && currentIndex >= files.length - 1 ? (
+                        <Loader2 className="h-6 w-6 animate-spin" />
+                      ) : (
+                        <ChevronRight className="w-8 h-8 md:w-12 md:h-10 group-active:translate-x-1 transition-transform" />
+                      )}
                     </button>
+
                   </>
                 )}
               </div>

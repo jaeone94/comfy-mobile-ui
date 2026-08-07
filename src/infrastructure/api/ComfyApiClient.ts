@@ -6,8 +6,10 @@ import { useLatentPreviewStore } from '@/ui/store/latentPreviewStore';
 import type {
   IComfyPromptResponse,
   ExecutionOptions,
+  PreparedWorkflowExecution,
   ServerInfo,
 } from '@/shared/types/comfy/IComfyAPI';
+import { buildPromptExtraData } from './ComfyPromptPayload';
 import type {
   LogsRawResponse,
   LogSubscribeRequest
@@ -271,7 +273,7 @@ const queuePackageInstall = async (payload: {
   }
 };
 const executeWorkflow = async (
-  apiWorkflow: any,
+  execution: PreparedWorkflowExecution,
   options: ExecutionOptions & { workflowId?: string; workflowName?: string } = {}
 ): Promise<string> => {
   const {
@@ -286,14 +288,14 @@ const executeWorkflow = async (
   }
 
   console.log('[ComfyApiClient] Executing workflow via HTTP API:', {
-    nodeCount: Object.keys(apiWorkflow).length,
+    nodeCount: Object.keys(execution.prompt).length,
     workflowId,
     workflowName
   });
 
   // Generate unique prompt ID and submit to server
   const promptId = generatePromptId();
-  const serverPromptId = await submitPrompt(apiWorkflow, promptId, workflowId, workflowName);
+  const serverPromptId = await submitPrompt(execution, promptId, workflowId, workflowName);
 
   console.log('[ComfyApiClient] Workflow submitted successfully:', {
     promptId: serverPromptId.substring(0, 8) + '...',
@@ -308,19 +310,20 @@ const executeWorkflow = async (
  * Submit prompt to ComfyUI server via HTTP
  */
 const submitPrompt = async (
-  apiWorkflow: any,
+  execution: PreparedWorkflowExecution,
   promptId: string,
   workflowId?: string,
   workflowName?: string
 ): Promise<string> => {
   try {
     const payload = {
-      prompt: apiWorkflow,
+      prompt: execution.prompt,
       client_id: globalWebSocketService.getState().clientId, // Use GlobalWebSocketService's clientId
       prompt_id: promptId,
-      extra_data: {
-        preview_method: useLatentPreviewStore.getState().previewMethod
-      }
+      extra_data: buildPromptExtraData(
+        useLatentPreviewStore.getState().previewMethod,
+        execution.workflow,
+      ),
     };
 
     const response = await axios.post<IComfyPromptResponse>(

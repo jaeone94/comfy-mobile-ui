@@ -1384,6 +1384,20 @@
         "tryAgain": "もう一度試す",
         "noOutputHistory": "出力履歴はありません",
         "noOutputFiles": "現在のセッションで出力ファイルが見つかりません",
+        "workflowRecovery": {
+            "open": "ワークフローとして開く",
+            "checking": "ワークフローを確認中...",
+            "previewTitle": "履歴のワークフローを表示中",
+            "appliedTitle": "未保存の変更として適用済み",
+            "nodeCount": "{{count}}ノード",
+            "restore": "以前の作業を復元",
+            "apply": "現在のワークフローに適用",
+            "saveAsNew": "新規ワークフローとして保存",
+            "defaultName": "復元したワークフロー",
+            "openFailed": "このファイルのワークフローを開けませんでした。",
+            "restoreFailed": "以前のワークフローを復元できませんでした。",
+            "saveFailed": "新規ワークフローとして保存できませんでした。"
+        },
         "status": {
             "pending": "保留中",
             "executing": "実行中",

@@ -11,9 +11,11 @@ import { useTranslation } from 'react-i18next';
 import { toast } from 'sonner';
 import { IComfyJson } from '@/shared/types/app/IComfyJson';
 import type { NodeWidgetModifications } from '@/shared/types/widgets/widgetModifications';
+import type { PreparedWorkflowExecution } from '@/shared/types/comfy/IComfyAPI';
 
 // Core Services
 import { WorkflowGraphService, serializeGraph, loadWorkflowToGraph, addNodeToWorkflow, removeNodeWithLinks, removeGroup, createInputSlots, createOutputSlots } from '@/core/services/WorkflowGraphService';
+import { createExecutionGraph } from '@/core/services/WorkflowExecutionService';
 import { SubgraphExtractService } from '@/core/services/SubgraphExtractService';
 import { ConnectionService } from '@/services/ConnectionService';
 import { detectMissingWorkflowNodes, MissingWorkflowNode, resolveMissingNodePackages } from '@/services/MissingNodesService';
@@ -22,7 +24,7 @@ import { ComfyGraph } from '@/core/domain/ComfyGraph';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 
 // Infrastructure Services
-import { getWorkflow, updateWorkflow, loadAllWorkflows, saveAllWorkflows } from '@/infrastructure/storage/IndexedDBWorkflowService';
+import { addWorkflow, getWorkflow, updateWorkflow, loadAllWorkflows, saveAllWorkflows } from '@/infrastructure/storage/IndexedDBWorkflowService';
 import { ComfyNodeMetadataService } from '@/infrastructure/api/ComfyNodeMetadataService';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { convertGraphToAPI } from '@/infrastructure/api/ComfyApiFunctions';
@@ -48,6 +50,7 @@ import { WorkflowSnapshots } from '@/components/workflow/WorkflowSnapshots';
 import { QuickActionPanel } from '@/components/controls/QuickActionPanel';
 import { FloatingControlsPanel } from '@/components/controls/FloatingControlsPanel';
 import { WorkflowSaveButton } from '@/components/workflow/WorkflowSaveButton';
+import { HistoryWorkflowSessionBar } from '@/components/workflow/HistoryWorkflowSessionBar';
 import { RepositionActionBar } from '@/components/controls/RepositionActionBar';
 import { cn } from '@/lib/utils';
 import { CircularMenu, CircularMenuRef } from '@/components/canvas/CircularMenu';
@@ -89,9 +92,29 @@ import { IComfyGraphGroup } from '@/shared/types/app/base';
 import { SeedProcessingUtils, autoChangeSeed } from '@/shared/utils/seedProcessing';
 import { calculateAllBounds, ViewportTransform, NodeBounds, GroupBounds, clearNodeImageCache } from '@/shared/utils/rendering/CanvasRendererService';
 import { mapGroupsWithNodes, Group } from '@/utils/GroupNodeMapper';
+import { generateUUID } from '@/utils/uuid';
 
 // Constants
 import { VIRTUAL_NODES } from '@/shared/constants/virtualNodes';
+
+const convertLiteGraphGroups = (groups: IComfyGraphGroup[]): GroupBounds[] => {
+  if (!groups || !Array.isArray(groups)) return [];
+
+  return groups.map((group) => {
+    const bounding = group.bounding;
+    if (!bounding) return null;
+    const [x, y, width, height] = bounding;
+    return {
+      x,
+      y,
+      width,
+      height,
+      title: group.title || '',
+      color: group.color || '#444',
+      id: group.id,
+    };
+  }).filter(Boolean) as GroupBounds[];
+};
 
 const WorkflowEditor: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -158,6 +181,16 @@ const WorkflowEditor: React.FC = () => {
   const [isJsonViewerOpen, setIsJsonViewerOpen] = useState<boolean>(false);
   const [jsonViewerData, setJsonViewerData] = useState<{ title: string; data: any } | null>(null);
   const [isExtractConfirmOpen, setIsExtractConfirmOpen] = useState(false);
+  const [historyWorkflowSession, setHistoryWorkflowSession] = useState<{
+    checkpointJson: IComfyJson;
+    baseWorkflow: IComfyWorkflow;
+    filename: string;
+    mode: 'preview' | 'applied';
+    nodeCount: number;
+  } | null>(null);
+  const [isHistorySessionBusy, setIsHistorySessionBusy] = useState(false);
+  const [historyWorkflowDirty, setHistoryWorkflowDirty] = useState(false);
+  const [canvasWorkflowRevision, setCanvasWorkflowRevision] = useState(0);
 
   // Queue refresh trigger
   const [queueRefreshTrigger, setQueueRefreshTrigger] = useState<number>(0);
@@ -881,6 +914,8 @@ const WorkflowEditor: React.FC = () => {
   useEffect(() => {
     if (id) {
       setQueueRefreshTrigger(prev => prev + 1);
+      setHistoryWorkflowSession(null);
+      setHistoryWorkflowDirty(false);
     }
   }, [id]);
 
@@ -1127,6 +1162,162 @@ const WorkflowEditor: React.FC = () => {
     }
   };
 
+  const loadWorkflowJsonIntoSession = useCallback(async (
+    workflowJson: IComfyJson,
+    baseWorkflow: IComfyWorkflow
+  ) => {
+    const workflowObjectInfo = objectInfo || await ComfyNodeMetadataService.fetchObjectInfo();
+    if (!objectInfo) setObjectInfo(workflowObjectInfo);
+
+    const graph = await WorkflowGraphService.createGraphFromWorkflow(workflowJson, workflowObjectInfo);
+    if (!graph) throw new Error(t('promptHistory.workflowRecovery.openFailed'));
+
+    wrapGraphNodesForLogging(graph);
+    comfyGraphRef.current = graph;
+    const nodes = graph._nodes || [];
+    const groups = graph._groups || [];
+    const nextWorkflow: IComfyWorkflow = {
+      ...baseWorkflow,
+      workflow_json: workflowJson,
+      graph: graph as unknown as IComfyWorkflow['graph'],
+      nodeCount: nodes.length,
+      modifiedAt: new Date(),
+    };
+
+    setWorkflow(nextWorkflow);
+    setGlobalWorkflow(nextWorkflow, graph);
+    widgetEditor.clearModifications();
+    setCanvasDirty(false);
+    setSelectedNode(null);
+    setIsNodePanelVisible(false);
+    setMissingModels(detectMissingModels(nodes));
+
+    const missingNodes = detectMissingWorkflowNodes(workflowJson, workflowObjectInfo);
+    setMissingWorkflowNodes(missingNodes);
+    setMissingNodeIds(new Set(missingNodes.map((node) => Number(node.id))));
+
+    const nextNodeBounds = new Map<number, NodeBounds>();
+    nodes.forEach((node) => {
+      const collapsed = node.flags?.collapsed === true;
+      nextNodeBounds.set(Number(node.id), {
+        x: node.pos?.[0] || 0,
+        y: node.pos?.[1] || 0,
+        width: collapsed ? 80 : (node.size?.[0] || 200),
+        height: collapsed ? 30 : (node.size?.[1] || 100),
+        node,
+      });
+    });
+    setNodeBounds(nextNodeBounds);
+    setGroupBounds(convertLiteGraphGroups(groups));
+    setCanvasWorkflowRevision((revision) => revision + 1);
+
+    if (isConnected) loadNodeMetadata(nodes);
+  }, [isConnected, objectInfo, setGlobalWorkflow, t, widgetEditor]);
+
+  const captureVisibleWorkflowJson = useCallback(async (): Promise<IComfyJson> => {
+    const bridge = getActiveCanvasBridge();
+    if (officialCanvasEnabled && bridge?.isReady) {
+      return await bridge.getWorkflow() as IComfyJson;
+    }
+
+    const rootGraph = useGlobalStore.getState().sessionStack[0]?.graph || comfyGraphRef.current;
+    if (!rootGraph) throw new Error(t('workflow.noGraph'));
+    const graphWithWidgetChanges = createExecutionGraph(rootGraph, widgetEditor.modifiedWidgetValues);
+    return serializeGraph(graphWithWidgetChanges);
+  }, [officialCanvasEnabled, t, widgetEditor.modifiedWidgetValues]);
+
+  const handleOpenHistoryWorkflow = useCallback(async (workflowJson: IComfyJson, filename: string) => {
+    if (!workflow) return;
+    setIsHistorySessionBusy(true);
+    try {
+      const existingSession = historyWorkflowSession;
+      const checkpointJson = existingSession?.checkpointJson || await captureVisibleWorkflowJson();
+      const baseWorkflow = existingSession?.baseWorkflow || workflow;
+
+      await loadWorkflowJsonIntoSession(workflowJson, baseWorkflow);
+      setHistoryWorkflowSession({
+        checkpointJson,
+        baseWorkflow,
+        filename,
+        mode: 'preview',
+        nodeCount: workflowJson.nodes?.length || 0,
+      });
+      setHistoryWorkflowDirty(false);
+    } catch (openError) {
+      console.error('Failed to open history workflow:', openError);
+      toast.error(t('promptHistory.workflowRecovery.openFailed'));
+      throw openError;
+    } finally {
+      setIsHistorySessionBusy(false);
+    }
+  }, [captureVisibleWorkflowJson, historyWorkflowSession, loadWorkflowJsonIntoSession, t, workflow]);
+
+  const handleRestoreHistoryCheckpoint = useCallback(async () => {
+    if (!historyWorkflowSession) return;
+    setIsHistorySessionBusy(true);
+    try {
+      await loadWorkflowJsonIntoSession(
+        historyWorkflowSession.checkpointJson,
+        historyWorkflowSession.baseWorkflow
+      );
+      setHistoryWorkflowSession(null);
+      setHistoryWorkflowDirty(false);
+    } catch (restoreError) {
+      console.error('Failed to restore workflow checkpoint:', restoreError);
+      toast.error(t('promptHistory.workflowRecovery.restoreFailed'));
+    } finally {
+      setIsHistorySessionBusy(false);
+    }
+  }, [historyWorkflowSession, loadWorkflowJsonIntoSession, t]);
+
+  const handleApplyHistoryWorkflow = useCallback(() => {
+    setHistoryWorkflowSession((session) => session ? { ...session, mode: 'applied' } : null);
+    setHistoryWorkflowDirty(true);
+    if (officialCanvasEnabled) setCanvasDirty(true);
+  }, [officialCanvasEnabled]);
+
+  const handleSaveHistoryWorkflowAsNew = useCallback(async () => {
+    if (!historyWorkflowSession) return;
+    setIsHistorySessionBusy(true);
+    try {
+      const workflowJson = await captureVisibleWorkflowJson();
+      const allWorkflows = await loadAllWorkflows();
+      const fallbackName = t('promptHistory.workflowRecovery.defaultName');
+      const filenameBase = historyWorkflowSession.filename.replace(/\.[^.]+$/, '').trim() || fallbackName;
+      let name = filenameBase;
+      let suffix = 2;
+      const usedNames = new Set(allWorkflows.map((item) => item.name));
+      while (usedNames.has(name)) name = `${filenameBase}_${suffix++}`;
+
+      const baseWorkflow = { ...historyWorkflowSession.baseWorkflow };
+      delete baseWorkflow.graph;
+      delete baseWorkflow.parsedData;
+      const newWorkflow: IComfyWorkflow = {
+        ...baseWorkflow,
+        id: generateUUID(),
+        name,
+        description: undefined,
+        tags: [],
+        thumbnail: undefined,
+        workflow_json: workflowJson,
+        nodeCount: workflowJson.nodes?.length || 0,
+        createdAt: new Date(),
+        modifiedAt: new Date(),
+        isValid: true,
+        sortOrder: 0,
+      };
+      await addWorkflow(newWorkflow);
+      setHistoryWorkflowSession(null);
+      setHistoryWorkflowDirty(false);
+      navigate(`/workflow/${newWorkflow.id}`);
+    } catch (saveError) {
+      console.error('Failed to save history workflow as new:', saveError);
+      toast.error(t('promptHistory.workflowRecovery.saveFailed'));
+    } finally {
+      setIsHistorySessionBusy(false);
+    }
+  }, [captureVisibleWorkflowJson, historyWorkflowSession, navigate, t]);
+
   // Load node metadata
   const loadNodeMetadata = async (nodes: IComfyGraphNode[]) => {
     if (!nodes || nodes.length === 0) return;
@@ -1191,6 +1382,9 @@ const WorkflowEditor: React.FC = () => {
       console.error('No workflow to save');
       return;
     }
+    // A history preview is intentionally read-only with respect to the
+    // current workflow until the user explicitly applies it.
+    if (historyWorkflowSession?.mode === 'preview') return;
 
     setIsSaving(true);
     setSaveSucceeded(false);
@@ -1229,6 +1423,8 @@ const WorkflowEditor: React.FC = () => {
         }
         widgetEditor.clearModifications();
         setCanvasDirty(false);
+        setHistoryWorkflowSession(null);
+        setHistoryWorkflowDirty(false);
         setIsSaving(false);
         setSaveSucceeded(true);
         setTimeout(() => setSaveSucceeded(false), 1500);
@@ -1353,6 +1549,8 @@ const WorkflowEditor: React.FC = () => {
 
       // Clear modifications
       widgetEditor.clearModifications();
+      setHistoryWorkflowSession(null);
+      setHistoryWorkflowDirty(false);
 
       // Re-detect missing models after save - same as initial load
       if (comfyGraphRef.current) {
@@ -1375,7 +1573,7 @@ const WorkflowEditor: React.FC = () => {
       console.error('Failed to save workflow:', error);
       setIsSaving(false);
     }
-  }, [workflow, widgetEditor, objectInfo, syncWorkflow, officialCanvasEnabled]);
+  }, [workflow, widgetEditor, objectInfo, syncWorkflow, officialCanvasEnabled, historyWorkflowSession]);
 
   // Canvas v2: data-driven mode switch. The persisted workflow JSON is the
   // only boundary between the two canvases — no state carries over. Unsaved
@@ -1417,10 +1615,6 @@ const WorkflowEditor: React.FC = () => {
       setIsExecuting(true);
 
 
-      // Step 1: Get connection info and modified values
-      const { url: serverUrl } = useConnectionStore.getState();
-      const modifiedValues = widgetEditor.modifiedWidgetValues;
-
       // Canvas v2: seed handling (control_after_generate) runs inside the
       // bridge right before graphToPrompt — the legacy-model path would
       // double-randomize and desync, so skip it when executing via bridge.
@@ -1454,19 +1648,28 @@ const WorkflowEditor: React.FC = () => {
       // custom-node semantics match ComfyUI exactly. Widget edits and seed
       // changes were already mirrored into the official graph (postMessage
       // ordering guarantees they land before this request).
-      let apiWorkflow: Record<string, any>;
+      let execution: PreparedWorkflowExecution;
       if (useOfficialPrompt && v2Bridge) {
         const promptData = await v2Bridge.getPrompt();
-        apiWorkflow = (promptData.output ?? {}) as Record<string, any>;
+        execution = {
+          prompt: promptData.output ?? {},
+          workflow: promptData.workflow,
+        };
       } else {
         const originalGraph = comfyGraphRef.current;
-        const tempGraph = createModifiedGraph(originalGraph, widgetEditor.modifiedWidgetValues);
-        const converted = convertGraphToAPI(tempGraph);
-        apiWorkflow = converted.apiWorkflow;
+        const executionGraph = createExecutionGraph(
+          originalGraph,
+          widgetEditor.modifiedWidgetValues,
+        );
+        const converted = convertGraphToAPI(executionGraph);
+        execution = {
+          prompt: converted.apiWorkflow,
+          workflow: serializeGraph(executionGraph),
+        };
       }
 
       // Step 5: Submit to server with workflow tracking information
-      const promptId = await ComfyUIService.executeWorkflow(apiWorkflow, {
+      const promptId = await ComfyUIService.executeWorkflow(execution, {
         workflowId: id, // Use the workflow ID from URL params
         workflowName: workflow?.name || t('workflow.newWorkflowName')
       });
@@ -1479,85 +1682,6 @@ const WorkflowEditor: React.FC = () => {
       setIsExecuting(false);
     }
   };
-
-  // Create modified graph with current changes (including new seed values)
-  const createModifiedGraph = useCallback((originalGraph: any, modifications: Map<number, Record<string, any>>) => {
-
-    // 1. Graph runtime copy (object structure preserved without serialization)
-    const modifiedGraph = {
-      _nodes: originalGraph._nodes.map((node: any) => ({
-        ...node,
-        // widgets array copy (runtime object preservation)
-        widgets: node.widgets ? [...node.widgets] : undefined,
-        _widgets: node._widgets ? [...node._widgets] : undefined,
-        // widgets_values array copy
-        widgets_values: Array.isArray(node.widgets_values)
-          ? [...node.widgets_values]
-          : node.widgets_values ? { ...node.widgets_values } : undefined
-      })),
-      _links: { ...originalGraph._links },
-      _groups: originalGraph._groups ? [...originalGraph._groups] : [],
-      last_node_id: originalGraph.last_node_id || 0,
-      last_link_id: originalGraph.last_link_id || 0
-    };
-
-    // 2. Apply modifications
-    if (modifications.size > 0) {
-
-      modifications.forEach((nodeModifications, nodeId) => {
-        const graphNode = modifiedGraph._nodes?.find((n: any) => Number(n.id) === nodeId);
-        if (graphNode) {
-          Object.entries(nodeModifications).forEach(([paramName, newValue]) => {
-            let modified = false;
-
-            // Method 1: Update widgets array (for runtime display)
-            if (graphNode.widgets) {
-              const widget = graphNode.widgets.find((w: any) => w.name === paramName);
-              if (widget) {
-                widget.value = newValue;
-                modified = true;
-              }
-            }
-
-            // Method 2: Update _widgets array (alternative location)
-            if (graphNode._widgets) {
-              const _widget = graphNode._widgets.find((w: any) => w.name === paramName);
-              if (_widget) {
-                _widget.value = newValue;
-                modified = true;
-              }
-            }
-
-            // Method 3: Update widgets_values object (discovered structure)
-            if (graphNode.widgets_values && typeof graphNode.widgets_values === 'object' && !Array.isArray(graphNode.widgets_values)) {
-              if (paramName in graphNode.widgets_values) {
-                graphNode.widgets_values[paramName] = newValue;
-                modified = true;
-              }
-            }
-
-            // Method 4: Update widgets_values array (traditional structure)
-            if (graphNode.widgets_values && Array.isArray(graphNode.widgets_values)) {
-              const widgetIndex = graphNode.widgets?.findIndex((w: any) => w.name === paramName);
-              if (widgetIndex !== -1 && widgetIndex < graphNode.widgets_values.length) {
-                graphNode.widgets_values[widgetIndex] = newValue;
-                modified = true;
-              }
-            }
-
-            if (!modified) {
-              console.warn(`Could not update widget "${paramName}" in any location for node ${nodeId}`);
-            }
-          });
-        } else {
-          console.warn(`Graph node ${nodeId} not found`);
-        }
-      });
-
-    }
-
-    return modifiedGraph;
-  }, []);
 
   // Handle interrupt
   const handleInterrupt = useCallback(async () => {
@@ -1767,27 +1891,6 @@ const WorkflowEditor: React.FC = () => {
     onSetWidgetValue: widgetEditor.setWidgetValue
   });
 
-  // Convert LiteGraph groups to group bounds (only if needed for compatibility)
-  const convertLiteGraphGroups = useCallback((groups: IComfyGraphGroup[]): GroupBounds[] => {
-    if (!groups || !Array.isArray(groups)) return [];
-
-    return groups.map((group: IComfyGraphGroup) => {
-      const bounding = group.bounding;
-      if (!bounding) return null;
-
-      const [x, y, width, height] = bounding;
-
-      return {
-        x: x,
-        y: y,
-        width: width,
-        height: height,
-        title: group.title || '',
-        color: group.color || '#444',
-        id: group.id // Use the actual group ID from ComfyUI, not array index!
-      };
-    }).filter(Boolean) as GroupBounds[];
-  }, []);
   // #endregion helper functions for tools
 
   // #region Node Actions
@@ -3540,12 +3643,19 @@ const WorkflowEditor: React.FC = () => {
       <WorkflowHeader
         workflow={workflow!}
         selectedNode={selectedNode}
-        hasUnsavedChanges={officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications()}
+        hasUnsavedChanges={historyWorkflowSession?.mode === 'preview'
+          ? false
+          : historyWorkflowDirty || (officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications())}
         isSaving={isSaving}
         saveSucceeded={saveSucceeded}
         sessionStack={sessionStack}
         onNavigateBreadcrumb={jumpToSession}
         onNavigateBack={() => {
+          if (historyWorkflowSession) {
+            void handleRestoreHistoryCheckpoint();
+            return;
+          }
+
           // Check if we are in a subgraph session
           if (sessionStack.length > 1) {
             popSession();
@@ -3574,11 +3684,24 @@ const WorkflowEditor: React.FC = () => {
         onSaveChanges={handleSaveChanges}
       />
 
+      {historyWorkflowSession && (
+        <HistoryWorkflowSessionBar
+          filename={historyWorkflowSession.filename}
+          nodeCount={historyWorkflowSession.nodeCount}
+          isApplied={historyWorkflowSession.mode === 'applied'}
+          isBusy={isHistorySessionBusy}
+          top={canvasToggleTop}
+          onRestore={handleRestoreHistoryCheckpoint}
+          onApply={handleApplyHistoryWorkflow}
+          onSaveAsNew={handleSaveHistoryWorkflowAsNew}
+        />
+      )}
+
       {/* Canvas */}
       {officialCanvasEnabled ? (
         <CanvasHost
           workflowJson={workflow?.workflow_json ?? null}
-          workflowKey={id ?? null}
+          workflowKey={id ? `${id}:${canvasWorkflowRevision}` : null}
           onReady={handleBridgeReady}
           onGraphMutated={handleBridgeGraphMutated}
         />
@@ -3601,10 +3724,11 @@ const WorkflowEditor: React.FC = () => {
 
       {/* Canvas controls: float just below the header and follow its
           dynamic height (progress bar etc.) */}
-      <div
-        className="fixed right-3 z-30 flex flex-col items-end gap-2 transition-[top] duration-200"
-        style={{ top: canvasToggleTop }}
-      >
+      {!historyWorkflowSession && (
+        <div
+          className="fixed right-3 z-30 flex flex-col items-end gap-2 transition-[top] duration-200"
+          style={{ top: canvasToggleTop }}
+        >
       {/* Canvas mode toggle */}
       <div
         role="group"
@@ -3640,7 +3764,7 @@ const WorkflowEditor: React.FC = () => {
         >
           Official <span className="normal-case">β</span>
         </button>
-      </div>
+        </div>
 
       {/* Official node renderer toggle (Nodes 2.0 vs Classic) — an official
           frontend setting; hidden when this frontend doesn't expose it */}
@@ -3682,6 +3806,7 @@ const WorkflowEditor: React.FC = () => {
         </div>
       )}
       </div>
+      )}
 
       {/* Floating Control Panel - Hidden during repositioning and connection mode */}
       {!canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && (
@@ -3911,9 +4036,9 @@ const WorkflowEditor: React.FC = () => {
 
       {/* Workflow Save Button - Floating separately */}
       {/* Workflow Save Button - Floating separately */}
-      {!isLatentPreviewFullscreen && (
+      {!isLatentPreviewFullscreen && historyWorkflowSession?.mode !== 'preview' && (
         <WorkflowSaveButton
-          hasUnsavedChanges={officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications()}
+          hasUnsavedChanges={historyWorkflowDirty || (officialCanvasEnabled ? canvasDirty : widgetEditor.hasModifications())}
           isSaving={isSaving}
           saveSucceeded={saveSucceeded}
           onSaveChanges={handleSaveChanges}
@@ -3921,7 +4046,7 @@ const WorkflowEditor: React.FC = () => {
       )}
 
       {/* Workflow Controls Panel (Right Top) - Hidden during repositioning, connection mode, full-screen preview, and official canvas mode */}
-      {(!officialCanvasEnabled && !canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && !isLatentPreviewFullscreen) && (
+      {(!officialCanvasEnabled && !historyWorkflowSession && !canvasInteraction.repositionMode.isActive && !connectionMode.connectionMode.isActive && !isLatentPreviewFullscreen) && (
         <FloatingControlsPanel
           onRandomizeSeeds={handleRandomizeSeeds}
           onShowGroupModer={() => setIsGroupModeModalOpen(true)}
@@ -3960,6 +4085,7 @@ const WorkflowEditor: React.FC = () => {
           installablePackageCount={installablePackageCount}
           missingNodesCount={missingWorkflowNodes.length}
           onShowMissingNodeInstaller={() => setIsMissingNodeModalOpen(true)}
+          onOpenHistoryWorkflow={handleOpenHistoryWorkflow}
         />
       )}
 

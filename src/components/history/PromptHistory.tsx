@@ -13,6 +13,7 @@ import { PromptTracker } from '@/utils/promptTracker';
 import { IComfyFileInfo } from '@/shared/types/comfy/IComfyFile';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import type { IComfyJson } from '@/shared/types/app/IComfyJson';
 
 const isImageFile = (filename: string): boolean => {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
@@ -22,6 +23,33 @@ const isImageFile = (filename: string): boolean => {
 const isVideoFile = (filename: string): boolean => {
   const ext = filename.split('.').pop()?.toLowerCase() || '';
   return ['mp4', 'avi', 'mov', 'mkv', 'webm', 'wmv', 'flv'].includes(ext);
+};
+
+const HISTORY_PAGE_SIZE = 20;
+
+const getOutputFiles = (outputs: unknown): IComfyFileInfo[] => {
+  if (!outputs || typeof outputs !== 'object') return [];
+
+  const files: IComfyFileInfo[] = [];
+  Object.values(outputs).forEach((output) => {
+    if (!output || typeof output !== 'object') return;
+    const outputData = output as {
+      images?: IComfyFileInfo[];
+      videos?: IComfyFileInfo[];
+      gifs?: IComfyFileInfo[];
+    };
+    [...(outputData.images || []), ...(outputData.videos || []), ...(outputData.gifs || [])]
+      .forEach((file) => {
+        if (file.filename && file.type !== 'temp') {
+          files.push({
+            ...file,
+            subfolder: file.subfolder || '',
+            type: file.type || 'output',
+          });
+        }
+      });
+  });
+  return files;
 };
 
 interface PromptHistoryItem {
@@ -180,7 +208,7 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick, imageL
     >
       <div
         ref={thumbnailRef}
-        className="flex-shrink-0 w-9 h-9 bg-white/[0.05] border border-white/[0.08] rounded-md overflow-hidden relative"
+        className="flex-shrink-0 w-[52px] h-[52px] bg-white/[0.05] border border-white/[0.08] rounded-lg overflow-hidden relative"
       >
         <div className="absolute inset-0 flex items-center justify-center">
           {!isInView || hasError ? (
@@ -227,7 +255,8 @@ const LazyThumbnail: React.FC<LazyThumbnailProps> = ({ file, onFileClick, imageL
 export const PromptHistoryContent: React.FC<{
   onClose?: () => void;
   isEmbedded?: boolean;
-}> = ({ onClose, isEmbedded = false }) => {
+  onOpenWorkflow?: (workflow: IComfyJson, filename: string) => void | Promise<void>;
+}> = ({ onClose, isEmbedded = false, onOpenWorkflow }) => {
   const { t } = useTranslation();
   const { url: serverUrl } = useConnectionStore();
   const [activeTab, setActiveTab] = useState<'queues' | 'outputs'>('queues');
@@ -239,12 +268,18 @@ export const PromptHistoryContent: React.FC<{
   const [expandedPromptId, setExpandedPromptId] = useState<string | null>(null);
   const [selectedErrorItem, setSelectedErrorItem] = useState<PromptHistoryItem | null>(null);
   const [isErrorDetailOpen, setIsErrorDetailOpen] = useState(false);
+  const historyLoadLimitRef = useRef(HISTORY_PAGE_SIZE);
+  const [hasMoreHistory, setHasMoreHistory] = useState(true);
+  const [isLoadingMoreHistory, setIsLoadingMoreHistory] = useState(false);
 
   // Outputs tab states
   const [outputFiles, setOutputFiles] = useState<IComfyFileInfo[]>([]);
   const [allFilesForLookup, setAllFilesForLookup] = useState<IComfyFileInfo[]>([]);
   const [outputsLoading, setOutputsLoading] = useState(false);
   const [outputsError, setOutputsError] = useState<string | null>(null);
+  const outputHistoryLoadLimitRef = useRef(HISTORY_PAGE_SIZE);
+  const [hasMoreOutputHistory, setHasMoreOutputHistory] = useState(true);
+  const [isLoadingMoreOutputHistory, setIsLoadingMoreOutputHistory] = useState(false);
   const [previewFile, setPreviewFile] = useState<IComfyFileInfo | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
@@ -278,6 +313,19 @@ export const PromptHistoryContent: React.FC<{
   };
 
   const previewInfo = getPreviewFileInfo();
+  const queuePreviewFiles = useMemo(
+    () => historyData.flatMap((item) => getOutputFiles(item.outputs)),
+    [historyData]
+  );
+  const previewFiles = activeTab === 'queues' ? queuePreviewFiles : outputFiles;
+  const visibleOutputFiles = useMemo(() => outputFiles.slice(0, 20), [outputFiles]);
+  const previewIndex = previewFile
+    ? previewFiles.findIndex((file) =>
+      file.filename === previewFile.filename &&
+      file.subfolder === previewFile.subfolder &&
+      file.type === previewFile.type
+    )
+    : -1;
 
   useEffect(() => {
     if (activeTab === 'queues') {
@@ -316,15 +364,16 @@ export const PromptHistoryContent: React.FC<{
     };
   }, []);
 
-  const fetchHistory = async () => {
-    setIsLoading(true);
+  const fetchHistoryWithLimit = async (maxItems: number, background = false) => {
+    if (!background) setIsLoading(true);
     setError(null);
 
     try {
       const [rawHistory, queueStatus] = await Promise.all([
-        ComfyUIService.getAllHistory(100),
+        ComfyUIService.getAllHistory(maxItems),
         ComfyUIService.getQueueStatus()
       ]);
+      setHasMoreHistory(Object.keys(rawHistory).length >= maxItems);
 
       const allQueueData = [...queueStatus.queue_pending, ...queueStatus.queue_running];
       PromptTracker.syncWithQueueStatus(allQueueData);
@@ -449,16 +498,34 @@ export const PromptHistoryContent: React.FC<{
       console.error('Failed to fetch prompt history:', error);
       setError('Failed to load queue. Please check your connection.');
     } finally {
-      setIsLoading(false);
+      if (!background) setIsLoading(false);
     }
   };
 
-  const loadOutputHistory = async () => {
-    setOutputsLoading(true);
+  const fetchHistory = () => fetchHistoryWithLimit(historyLoadLimitRef.current);
+
+  const loadMoreHistory = async () => {
+    if (isLoadingMoreHistory || !hasMoreHistory) return;
+    const nextLimit = historyLoadLimitRef.current + HISTORY_PAGE_SIZE;
+    historyLoadLimitRef.current = nextLimit;
+    setIsLoadingMoreHistory(true);
+    try {
+      await fetchHistoryWithLimit(nextLimit, true);
+    } finally {
+      setIsLoadingMoreHistory(false);
+    }
+  };
+
+  const loadOutputHistoryWithLimit = async (maxItems: number, background = false) => {
+    if (!background) setOutputsLoading(true);
     setOutputsError(null);
 
     try {
-      const historyFiles = await comfyFileService.getFilesFromHistory(100);
+      const {
+        files: historyFiles,
+        historyEntryCount,
+      } = await comfyFileService.getFilesFromHistoryWithCount(maxItems);
+      setHasMoreOutputHistory(historyEntryCount >= maxItems);
 
       const sortedFiles = historyFiles.sort((a, b) => {
         if (typeof a.executionOrder === 'number' && typeof b.executionOrder === 'number') {
@@ -499,7 +566,7 @@ export const PromptHistoryContent: React.FC<{
 
       // Also fetch the complete file list from server to build a better lookup map
       // This matches OutputsGallery behavior and handles thumbnails in temp/ elsewhere
-      try {
+      if (!background) try {
         const serverFiles = await comfyFileService.listFiles();
         const allImages = [...serverFiles.images, ...serverFiles.files.filter(f => isImageFile(f.filename))];
         setAllFilesForLookup(prev => {
@@ -523,7 +590,21 @@ export const PromptHistoryContent: React.FC<{
       console.error('❌ Failed to load output history:', err);
       setOutputsError('Failed to load output history');
     } finally {
-      setOutputsLoading(false);
+      if (!background) setOutputsLoading(false);
+    }
+  };
+
+  const loadOutputHistory = () => loadOutputHistoryWithLimit(outputHistoryLoadLimitRef.current);
+
+  const loadMoreOutputHistory = async () => {
+    if (isLoadingMoreOutputHistory || !hasMoreOutputHistory) return;
+    const nextLimit = outputHistoryLoadLimitRef.current + HISTORY_PAGE_SIZE;
+    outputHistoryLoadLimitRef.current = nextLimit;
+    setIsLoadingMoreOutputHistory(true);
+    try {
+      await loadOutputHistoryWithLimit(nextLimit, true);
+    } finally {
+      setIsLoadingMoreOutputHistory(false);
     }
   };
 
@@ -596,38 +677,6 @@ export const PromptHistoryContent: React.FC<{
 
   const getShortPromptId = (promptId: string): string => {
     return promptId.length > 12 ? `${promptId.substring(0, 8)}...${promptId.substring(promptId.length - 4)}` : promptId;
-  };
-
-  const getOutputFiles = (outputs: any): IComfyFileInfo[] => {
-    if (!outputs) return [];
-
-    const files: IComfyFileInfo[] = [];
-    Object.values(outputs).forEach((output: any) => {
-      if (output.images) {
-        output.images.forEach((img: any) => {
-          if (img.filename && img.type !== 'temp') {
-            files.push({
-              filename: img.filename,
-              subfolder: img.subfolder || '',
-              type: img.type || 'output'
-            });
-          }
-        });
-      }
-      if (output.gifs) {
-        output.gifs.forEach((gif: any) => {
-          if (gif.filename && gif.type !== 'temp') {
-            files.push({
-              filename: gif.filename,
-              subfolder: gif.subfolder || '',
-              type: gif.type || 'output'
-            });
-          }
-        });
-      }
-    });
-
-    return files;
   };
 
   const toggleOutputsExpansion = (promptId: string) => {
@@ -971,7 +1020,7 @@ export const PromptHistoryContent: React.FC<{
 
                 {!outputsLoading && !outputsError && outputFiles.length > 0 && (
                   <div className={`${isEmbedded ? 'p-1' : 'p-6'} space-y-3`}>
-                    {outputFiles.slice(0, 20).map((file, index) => (
+                    {visibleOutputFiles.map((file, index) => (
                       <LazyThumbnail
                         key={`${file.filename}-${index}`}
                         file={file}
@@ -1011,7 +1060,18 @@ export const PromptHistoryContent: React.FC<{
             url={previewUrl || undefined}
             onClose={handlePreviewClose}
             onRetry={handlePreviewRetry}
-            isCompact={isEmbedded}
+            isCompact={false}
+            files={previewFiles}
+            initialIndex={previewIndex}
+            comfyFileService={comfyFileService}
+            hasMoreFiles={activeTab === 'queues' ? hasMoreHistory : hasMoreOutputHistory}
+            isLoadingMoreFiles={activeTab === 'queues' ? isLoadingMoreHistory : isLoadingMoreOutputHistory}
+            onLoadMoreFiles={activeTab === 'queues' ? loadMoreHistory : loadMoreOutputHistory}
+            onOpenWorkflow={onOpenWorkflow ? async (workflowJson, filename) => {
+              await onOpenWorkflow(workflowJson, filename);
+              handlePreviewClose();
+              onClose?.();
+            } : undefined}
           />
         </div>
       )}
