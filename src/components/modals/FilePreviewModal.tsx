@@ -68,7 +68,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
   const [embeddedWorkflow, setEmbeddedWorkflow] = useState<IComfyJson | null>(null);
   const [isCheckingWorkflow, setIsCheckingWorkflow] = useState(false);
   const [isOpeningWorkflow, setIsOpeningWorkflow] = useState(false);
-  const [slideDirection, setSlideDirection] = useState(0);
   const canOpenWorkflow = Boolean(onOpenWorkflow);
   const touchStartRef = useRef<{ x: number; y: number } | null>(null);
   const isImageZoomedRef = useRef(false);
@@ -102,7 +101,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
       setDimensions(initialDimensions);
       setDuration(initialDuration);
       setShowInfo(false);
-      setSlideDirection(0);
       isImageZoomedRef.current = false;
     }
   }, [isOpen, initialIndex, initialFilename, initialIsImage, initialUrl, initialLoading, initialError, initialFileSize, initialFileType, initialDimensions, initialDuration]);
@@ -157,7 +155,6 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     if (index < 0 || index >= files.length || !comfyFileService) return;
 
     const file = files[index];
-    setSlideDirection(index > currentIndex ? 1 : -1);
     setCurrentIndex(index);
     setFilename(file.filename);
     setIsImage(isImageFile(file.filename));
@@ -187,7 +184,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
     setTimeout(() => {
       setLoading(false);
     }, 100);
-  }, [files, comfyFileService, currentIndex]);
+  }, [files, comfyFileService]);
 
   const handlePrevious = useCallback(() => {
     if (currentIndex > 0) {
@@ -557,52 +554,42 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
                   touchStartRef.current = null;
                 }}
               >
-                <AnimatePresence initial={false} mode="popLayout" custom={slideDirection}>
-                  <motion.div
-                    key={url}
-                    custom={slideDirection}
-                    initial={{ opacity: 0, x: slideDirection * 90 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: slideDirection * -90 }}
-                    transition={{ duration: 0.22, ease: 'easeOut' }}
-                    className="absolute inset-0 flex h-full w-full items-center justify-center"
-                  >
-                    {isImage ? (
-                      <TransformWrapper
-                        initialScale={1}
-                        minScale={0.5}
-                        maxScale={8}
-                        centerOnInit
-                        onTransformed={(_, state) => {
-                          isImageZoomedRef.current = state.scale > 1.02;
-                        }}
+                <div className="absolute inset-0 flex h-full w-full items-center justify-center">
+                  {isImage ? (
+                    <TransformWrapper
+                      initialScale={1}
+                      minScale={0.5}
+                      maxScale={8}
+                      centerOnInit
+                      onTransformed={(_, state) => {
+                        isImageZoomedRef.current = state.scale > 1.02;
+                      }}
+                    >
+                      <TransformComponent
+                        wrapperStyle={{ width: "100%", height: "100%" }}
+                        contentStyle={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
                       >
-                        <TransformComponent
-                          wrapperStyle={{ width: "100%", height: "100%" }}
-                          contentStyle={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}
-                        >
-                          <img
-                            src={url}
-                            alt={filename}
-                            className="max-w-full max-h-full object-contain"
-                            onError={handleImageError}
-                          />
-                        </TransformComponent>
-                      </TransformWrapper>
-                    ) : (
-                      <video
-                        src={`${url}#t=0.001`}
-                        controls
-                        preload="auto"
-                        className="max-w-full max-h-full object-contain"
-                        onError={handleVideoError}
-                        {...(isCompact ? { playsInline: true, "webkit-playsinline": "true" } : {})}
-                      >
-                        {t('media.videoNotSupported')}
-                      </video>
-                    )}
-                  </motion.div>
-                </AnimatePresence>
+                        <img
+                          src={url}
+                          alt={filename}
+                          className="max-w-full max-h-full object-contain"
+                          onError={handleImageError}
+                        />
+                      </TransformComponent>
+                    </TransformWrapper>
+                  ) : (
+                    <video
+                      src={`${url}#t=0.001`}
+                      controls
+                      preload="auto"
+                      className="max-w-full max-h-full object-contain"
+                      onError={handleVideoError}
+                      {...(isCompact ? { playsInline: true, "webkit-playsinline": "true" } : {})}
+                    >
+                      {t('media.videoNotSupported')}
+                    </video>
+                  )}
+                </div>
 
                 {/* Navigation Arrows - Static Mounting to avoid re-animation on file shift */}
                 {!isCompact && files.length > 1 && (
