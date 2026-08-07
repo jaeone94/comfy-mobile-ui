@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Loader2, ChevronRight, Home, Network } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -101,7 +101,6 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
   onNavigateBreadcrumb,
 }) => {
   const { t } = useTranslation();
-  const [showCheckmark, setShowCheckmark] = useState(false);
   const breadcrumbRef = useRef<HTMLDivElement>(null);
 
   // Auto-scroll breadcrumbs to the right when session stack changes
@@ -112,16 +111,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
     }
   }, [sessionStack]);
 
-  // Handle save success animation
-  useEffect(() => {
-    if (saveSucceeded) {
-      setShowCheckmark(true);
-      const timer = setTimeout(() => {
-        setShowCheckmark(false);
-      }, 1000); // Show checkmark for 1 second before fade out
-      return () => clearTimeout(timer);
-    }
-  }, [saveSucceeded]);
+  const showSaveSuccess = saveSucceeded && !hasUnsavedChanges;
 
   return (
     <header className="absolute top-0 left-0 right-0 z-10 pwa-header">
@@ -183,7 +173,7 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
           {/* Save Button Slot - Reserved space to prevent breadcrumb invasion */}
           <div className="w-9 h-9 flex items-center justify-end flex-shrink-0">
             <AnimatePresence>
-              {(hasUnsavedChanges || showCheckmark) && (
+              {(hasUnsavedChanges || isSaving || showSaveSuccess) && (
                 <motion.div
                   initial={{ opacity: 0, x: 20, scale: 0.8 }}
                   animate={{ opacity: 1, x: 0, scale: 1 }}
@@ -192,19 +182,19 @@ export const WorkflowHeader: React.FC<WorkflowHeaderProps> = ({
                 >
                   <button
                     onClick={onSaveChanges}
-                    disabled={isSaving || showCheckmark}
-                    className={`w-9 h-9 flex items-center justify-center rounded-[10px] text-white transition-all ${showCheckmark
+                    disabled={isSaving || showSaveSuccess}
+                    className={`w-9 h-9 flex items-center justify-center rounded-[10px] text-white transition-all ${showSaveSuccess
                       ? 'bg-[#34c77b]'
                       : isSaving
                         ? 'bg-[#34c77b]/60 cursor-not-allowed'
                         : 'bg-[#34c77b] hover:bg-[#3fd08a]'
                       }`}
-                    style={showCheckmark ? undefined : { boxShadow: '0 2px 10px rgba(52,199,123,0.35)' }}
-                    title={showCheckmark ? t('common.saved') : isSaving ? t('common.saving') : t('workflow.saveChanges')}
+                    style={showSaveSuccess ? undefined : { boxShadow: '0 2px 10px rgba(52,199,123,0.35)' }}
+                    title={showSaveSuccess ? t('common.saved') : isSaving ? t('common.saving') : t('workflow.saveChanges')}
                   >
                     <SaveToCheckIcon
                       isSaving={isSaving}
-                      isSuccess={showCheckmark}
+                      isSuccess={showSaveSuccess}
                       size={16}
                     />
                   </button>
