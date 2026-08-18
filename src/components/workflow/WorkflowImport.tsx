@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ArrowLeft, Download, Server, AlertCircle, CheckCircle, Loader2, ExternalLink, Search, X } from 'lucide-react';
+import { ArrowLeft, Download, Server, AlertCircle, CheckCircle, Loader2, ExternalLink, Search, X, Folder, ChevronRight, CornerLeftUp } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,7 +16,10 @@ interface ServerWorkflowInfo {
   description?: string;
   author?: string;
   createdAt?: Date;
+  /** Path relative to the server's workflows root, e.g. "portraits/sdxl/hires.json". */
   filename?: string;
+  /** Folder part of `filename`, '' for the root. */
+  folder: string;
   size?: number;
   modified?: Date;
 }
@@ -49,14 +52,54 @@ const WorkflowImport: React.FC = () => {
     errorMessage: ''
   });
   const [searchQuery, setSearchQuery] = useState<string>('');
+  // '' is the workflows root; otherwise a path like 'portraits/sdxl'.
+  const [currentFolder, setCurrentFolder] = useState<string>('');
 
-  // Filter workflows based on search query
-  const filteredWorkflows = serverWorkflows.filter(workflow => {
-    if (!searchQuery.trim()) return true;
+  const isSearching = searchQuery.trim().length > 0;
+
+  // While searching, look across every folder and show full paths - scoping the
+  // search to the open folder would hide the matches people are looking for.
+  const searchMatches = serverWorkflows.filter(workflow => {
+    if (!isSearching) return false;
     const query = searchQuery.toLowerCase();
-    const name = (workflow.filename || workflow.name || '').toLowerCase();
-    return name.includes(query);
+    return (workflow.filename || workflow.name || '').toLowerCase().includes(query);
   });
+
+  const folderPrefix = currentFolder ? `${currentFolder}/` : '';
+
+  // Files sitting directly in the open folder.
+  const workflowsInFolder = serverWorkflows.filter(w => w.folder === currentFolder);
+
+  // Immediate subfolders, each with the total number of workflows beneath it.
+  const subfolders = (() => {
+    const counts = new Map<string, number>();
+    for (const workflow of serverWorkflows) {
+      if (workflow.folder === currentFolder) continue;
+      if (currentFolder && !workflow.folder.startsWith(folderPrefix)) continue;
+
+      const remainder = workflow.folder.slice(folderPrefix.length);
+      const childName = remainder.split('/')[0];
+      if (!childName) continue;
+      counts.set(childName, (counts.get(childName) || 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  })();
+
+  const breadcrumbs = currentFolder ? currentFolder.split('/') : [];
+
+  // Drives the list body and the empty state alike.
+  const filteredWorkflows = isSearching ? searchMatches : workflowsInFolder;
+  const hasAnythingToShow = filteredWorkflows.length > 0 || (!isSearching && subfolders.length > 0);
+
+  const openFolder = (name: string) => {
+    setCurrentFolder(currentFolder ? `${currentFolder}/${name}` : name);
+  };
+
+  const goToBreadcrumb = (index: number) => {
+    setCurrentFolder(index < 0 ? '' : breadcrumbs.slice(0, index + 1).join('/'));
+  };
 
   // Load workflows when server requirements are met
   useEffect(() => {
@@ -83,13 +126,30 @@ const WorkflowImport: React.FC = () => {
 
       if (result.success && result.workflows) {
         // Map API response to ServerWorkflowInfo interface
-        const mappedWorkflows: ServerWorkflowInfo[] = result.workflows.map(workflow => ({
-          id: workflow.filename.replace('.json', ''),
-          name: workflow.filename.replace('.json', ''),
-          filename: workflow.filename,
-          size: workflow.size || 0,
-          modified: workflow.modified ? new Date(workflow.modified * 1000) : new Date()
-        }));
+        const mappedWorkflows: ServerWorkflowInfo[] = result.workflows.map(workflow => {
+          // `filename` is a path relative to the workflows root. Older
+          // extensions return a bare filename and no folder field, so derive
+          // both rather than depending on the server being up to date.
+          const relativePath: string = workflow.filename || '';
+          const separatorIndex = relativePath.lastIndexOf('/');
+          const folder = workflow.folder ?? (
+            separatorIndex >= 0 ? relativePath.slice(0, separatorIndex) : ''
+          );
+          const baseName = separatorIndex >= 0
+            ? relativePath.slice(separatorIndex + 1)
+            : relativePath;
+
+          return {
+            id: relativePath.replace(/\.json$/i, ''),
+            // Display and duplicate-detection use the bare name; the full path
+            // stays in `filename` because that is what the API addresses.
+            name: baseName.replace(/\.json$/i, ''),
+            filename: relativePath,
+            folder,
+            size: workflow.size || 0,
+            modified: workflow.modified ? new Date(workflow.modified * 1000) : new Date()
+          };
+        });
 
         setServerWorkflows(mappedWorkflows);
         setError(null);
@@ -157,7 +217,7 @@ const WorkflowImport: React.FC = () => {
       });
 
       // Generate unique name
-      const baseName = serverWorkflow.filename?.replace(/\.json$/i, '') || 'untitled';
+      const baseName = serverWorkflow.name || serverWorkflow.filename?.replace(/\.json$/i, '') || 'untitled';
       const uniqueName = generateUniqueFilename(baseName, existingNames);
 
       console.log('🔍 Import Debug - Name generation:', {
@@ -579,7 +639,7 @@ const WorkflowImport: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-2 px-0.5">
                   <h2 className="font-mono text-[10px] font-semibold text-[#565d6b] tracking-[0.14em] uppercase whitespace-nowrap">
-                    {searchQuery ? t('workflow.import.foundCount', { count: filteredWorkflows.length }) : t('workflow.import.serverWorkflows', { count: serverWorkflows.length })}
+                    {isSearching ? t('workflow.import.foundCount', { count: filteredWorkflows.length }) : t('workflow.import.serverWorkflows', { count: serverWorkflows.length })}
                   </h2>
                   <div className="flex-1 h-px bg-white/[0.06]" />
                   <Button
@@ -596,7 +656,69 @@ const WorkflowImport: React.FC = () => {
                 </div>
               </div>
 
-              {filteredWorkflows.length === 0 ? (
+              {!isSearching && breadcrumbs.length > 0 && (
+                <div className="flex items-center gap-1 flex-wrap mb-2.5 px-0.5">
+                  <button
+                    type="button"
+                    onClick={() => goToBreadcrumb(-1)}
+                    className="text-[11.5px] font-medium text-[#7ba3f5]"
+                  >
+                    {t('workflow.import.rootFolder')}
+                  </button>
+                  {breadcrumbs.map((segment, index) => (
+                    <React.Fragment key={`${segment}-${index}`}>
+                      <ChevronRight className="h-3 w-3 text-[#31363f] flex-shrink-0" />
+                      <button
+                        type="button"
+                        onClick={() => goToBreadcrumb(index)}
+                        disabled={index === breadcrumbs.length - 1}
+                        className={`text-[11.5px] font-medium break-all ${index === breadcrumbs.length - 1
+                          ? 'text-[#e9ebef]'
+                          : 'text-[#7ba3f5]'
+                        }`}
+                      >
+                        {segment}
+                      </button>
+                    </React.Fragment>
+                  ))}
+                </div>
+              )}
+
+              {!isSearching && subfolders.length > 0 && (
+                <div className="grid grid-cols-[minmax(0,1fr)] gap-2 mb-2">
+                  {currentFolder && (
+                    <button
+                      type="button"
+                      onClick={() => goToBreadcrumb(breadcrumbs.length - 2)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-white/5 bg-white/[0.02] text-left"
+                    >
+                      <CornerLeftUp className="h-4 w-4 text-[#66758a] flex-shrink-0" strokeWidth={1.9} />
+                      <span className="text-[13px] font-medium text-[#8a919e]">
+                        {t('workflow.import.parentFolder')}
+                      </span>
+                    </button>
+                  )}
+                  {subfolders.map(folder => (
+                    <button
+                      key={folder.name}
+                      type="button"
+                      onClick={() => openFolder(folder.name)}
+                      className="flex items-center gap-2.5 px-3 py-2.5 rounded-xl border border-white/5 bg-white/[0.025] hover:bg-white/5 text-left transition-colors"
+                    >
+                      <Folder className="h-4 w-4 text-[#7ba3f5] flex-shrink-0" strokeWidth={1.9} />
+                      <span className="flex-1 min-w-0 text-[13px] font-semibold text-[#e9ebef] line-clamp-1 break-all">
+                        {folder.name}
+                      </span>
+                      <span className="font-mono text-[10px] text-[#565d6b] flex-shrink-0">
+                        {folder.count}
+                      </span>
+                      <ChevronRight className="h-3.5 w-3.5 text-[#31363f] flex-shrink-0" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {!hasAnythingToShow ? (
                 <Card className="bg-black/20 border-white/5">
                   <CardContent className="py-12 text-center">
                     <Server className="h-10 w-12 mx-auto mb-4 text-white/20" />
@@ -621,8 +743,16 @@ const WorkflowImport: React.FC = () => {
                           <div className="flex gap-3 items-center w-full">
                             <div className="flex-1 min-w-0">
                               <h3 className="text-[13px] font-semibold text-[#e9ebef] leading-[1.35] line-clamp-1 break-all">
-                                {workflow.filename?.replace(/\.json$/i, '') || t('workflow.newWorkflowName')}
+                                {workflow.name || t('workflow.newWorkflowName')}
                               </h3>
+                              {isSearching && workflow.folder && (
+                                <div className="flex items-center gap-1 mt-0.5 min-w-0">
+                                  <Folder className="h-2.5 w-2.5 text-[#565d6b] flex-shrink-0" strokeWidth={2} />
+                                  <span className="font-mono text-[10px] text-[#565d6b] line-clamp-1 break-all">
+                                    {workflow.folder}
+                                  </span>
+                                </div>
+                              )}
                               <div className="flex items-center gap-1.5 mt-1 font-mono text-[10px] text-[#565d6b] whitespace-nowrap">
                                 <span>{formatDate(workflow.modified?.getTime() || Date.now())}</span>
                                 <span className="text-[#31363f]">·</span>

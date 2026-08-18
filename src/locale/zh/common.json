@@ -221,6 +221,8 @@
             "failedTitle": "导入失败",
             "failedDesc": "无法从服务器导入工作流。",
             "serverWorkflows": "服务器工作流 ({{count}})",
+            "rootFolder": "工作流",
+            "parentFolder": "上级文件夹",
             "foundCount": "找到 {{count}} 个工作流",
             "noWorkflowsOnServer": "服务器上未找到工作流",
             "noResultsQuery": "没有符合搜索条件的工作流",

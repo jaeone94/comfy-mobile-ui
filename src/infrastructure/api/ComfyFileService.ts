@@ -312,7 +312,14 @@ export class ComfyFileService {
 
       // Ensure .json extension
       const workflowFilename = filename.endsWith('.json') ? filename : `${filename}.json`;
-      const endpoint = `${this.serverUrl}/comfymobile/api/workflows/content/${encodeURIComponent(workflowFilename)}`;
+      // Workflows can sit in subfolders, so the separators must survive as real
+      // path separators. Encoding the whole string would turn them into %2F and
+      // leave the route match up to the server's decoding behaviour.
+      const encodedPath = workflowFilename
+        .split('/')
+        .map(segment => encodeURIComponent(segment))
+        .join('/');
+      const endpoint = `${this.serverUrl}/comfymobile/api/workflows/content/${encodedPath}`;
 
 
       const response = await axios.get(endpoint, {
