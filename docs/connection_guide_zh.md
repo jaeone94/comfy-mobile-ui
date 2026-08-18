@@ -49,3 +49,13 @@
 - 在这种情况下，ComfyUI **仅允许 `https://` 连接**。
 - 必须在地址前加上 `https://`，并确认该地址在移动设备上可以进行 SSL 连接。
 - **输入示例:** `https://192.168.0.85:8188`
+
+### 4. 使用 ComfyUI-Login
+如果服务器受 [ComfyUI-Login](https://github.com/liusida/ComfyUI-Login) 保护：
+- 在 **服务器设置 > 身份验证**中选择 **ComfyUI-Login**。
+- 复制 ComfyUI 控制台中 `For direct API calls, use token=` 后显示的值，并将其粘贴到 **API 令牌**中。
+- 请使用生成的 API 令牌，而不是明文密码。也可以在 `<ComfyUI>/login/PASSWORD` 文件的第一行找到该令牌。
+- 默认情况下，令牌仅保留在当前浏览器会话中。启用**在此设备上保持登录**后，令牌会保存在设备上，关闭标签页后无需重新输入；此时令牌也会包含在浏览器数据备份中。在公用设备上请保持关闭。
+
+> [!WARNING]
+> 请像保护密码一样保护 API 令牌。通过不受信任的网络连接时请使用 HTTPS。

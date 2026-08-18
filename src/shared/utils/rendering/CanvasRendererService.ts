@@ -6,6 +6,7 @@ import { DEFAULT_CANVAS_CONFIG, CanvasConfig } from '@/config/canvasConfig';
 import { IComfyGraphGroup } from '@/shared/types/app/base';
 import { ComfyGraphNode } from '@/core/domain/ComfyGraphNode';
 import { useConnectionStore } from '@/ui/store/connectionStore';
+import { withComfyAuth } from '@/infrastructure/auth/ComfyAuthService';
 
 // Alias for backward compatibility
 type IGroup = IComfyGraphGroup;
@@ -127,7 +128,7 @@ async function loadComfyImage(filename: string, nodeId?: number): Promise<HTMLIm
     }
 
     // Build URL for ComfyUI file view
-    const url = `${serverUrl}/view?filename=${encodeURIComponent(actualFilename)}&type=input${subfolder ? `&subfolder=${encodeURIComponent(subfolder)}` : ''}`;
+    const url = withComfyAuth(`${serverUrl}/view?filename=${encodeURIComponent(actualFilename)}&type=input${subfolder ? `&subfolder=${encodeURIComponent(subfolder)}` : ''}`);
 
     img.crossOrigin = 'anonymous';
     img.onload = () => {

@@ -49,3 +49,13 @@ If certificates are provided to ComfyUI via launch arguments (`--tls-keyfile`, `
 - ComfyUI will **only allow HTTPS** connections.
 - You must use `https://` in the address and verify that the address is SSL-reachable from your mobile device.
 - **Example:** `https://192.168.0.85:8188`
+
+### 4. Using ComfyUI-Login
+If [ComfyUI-Login](https://github.com/liusida/ComfyUI-Login) protects your server:
+- In **Server Settings > Authentication**, select **ComfyUI-Login**.
+- Copy the value printed after `For direct API calls, use token=` in the ComfyUI console and paste it into **API token**.
+- Use the generated API token, not your plain-text password. The token is also the first line of `<ComfyUI>/login/PASSWORD`.
+- By default the token is kept only for the current browser session. Enable **Stay signed in on this device** to store it on the device so you do not have to re-enter it after closing the tab; the token is then also included in browser-data backups. Leave it off on shared devices.
+
+> [!WARNING]
+> Treat the API token like a password. Use HTTPS when connecting through an untrusted network.

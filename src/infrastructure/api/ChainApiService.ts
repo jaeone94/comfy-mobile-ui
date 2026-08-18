@@ -5,6 +5,7 @@
  */
 
 import axios from 'axios';
+import { withComfyAuth } from '@/infrastructure/auth/ComfyAuthService';
 import { IWorkflowChain } from '@/core/chain/types';
 
 export interface ChainListResponse {
@@ -274,5 +275,5 @@ export async function saveChainThumbnail(
  * Get thumbnail URL for a workflow node in the chain
  */
 export function getChainThumbnailUrl(serverUrl: string, chainId: string, nodeId: string): string {
-  return `${serverUrl}/comfymobile/api/chains/thumbnails/${chainId}/${nodeId}.png`;
+  return withComfyAuth(`${serverUrl}/comfymobile/api/chains/thumbnails/${chainId}/${nodeId}.png`);
 }

@@ -8,6 +8,8 @@
  * - Auto-close connection after completion
  */
 
+import { withComfyAuth } from '@/infrastructure/auth/ComfyAuthService';
+
 // Simple EventEmitter implementation for browser compatibility
 class EventEmitter {
   private events: Record<string, Function[]> = {};
@@ -90,10 +92,10 @@ export class PromptWebSocketService extends EventEmitter {
       
       // If WebSocket is not connected yet, connect it
       if (!this.ws || this.ws.readyState !== WebSocket.OPEN) {
-        const wsUrl = this.options.serverUrl
+        const wsUrl = withComfyAuth(this.options.serverUrl
           .replace('http://', 'ws://')
           .replace('https://', 'wss://') + 
-          `/ws?clientId=${this.options.clientId}`;
+          `/ws?clientId=${this.options.clientId}`);
 
         this.ws = new WebSocket(wsUrl);
       } else {
@@ -443,7 +445,9 @@ export class PromptWebSocketService extends EventEmitter {
    * Pre-connect WebSocket for early error detection
    */
   async preConnect(): Promise<void> {
-    const wsUrl = `ws://${this.options.serverUrl.replace(/^https?:\/\//, '')}/ws?clientId=${this.options.clientId}`;
+    const wsUrl = withComfyAuth(
+      `${this.options.serverUrl.startsWith('https://') ? 'wss' : 'ws'}://${this.options.serverUrl.replace(/^https?:\/\//, '')}/ws?clientId=${this.options.clientId}`
+    );
     
     this.ws = new WebSocket(wsUrl);
     

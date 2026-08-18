@@ -12,6 +12,7 @@ import { ComfyFileService } from '@/infrastructure/api/ComfyFileService';
 import { isImageFile } from '@/shared/utils/ComfyFileUtils';
 import { extractWorkflowFromPng } from '@/utils/pngMetadataExtractor';
 import type { IComfyJson } from '@/shared/types/app/IComfyJson';
+import { comfyAuthenticatedFetch } from '@/infrastructure/auth/ComfyAuthService';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -128,7 +129,7 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
       setIsCheckingWorkflow(true);
       try {
-        const response = await fetch(url);
+        const response = await comfyAuthenticatedFetch(url);
         if (!response.ok) return;
         const blob = await response.blob();
         const pngFile = new File([blob], filename, { type: 'image/png' });

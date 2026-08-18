@@ -2,13 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Wifi, WifiOff, Loader2, Server, TestTube, CheckCircle, XCircle, Info, Save, Power } from 'lucide-react';
+import { ArrowLeft, WifiOff, Loader2, CheckCircle, XCircle, Info, Power, Eye, EyeOff, ShieldCheck, Check } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
 
 interface ServerSettingsProps {
   onBack?: () => void;
@@ -23,9 +20,15 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
     isConnecting,
     error,
     apiStatus,
-    wsStatus,
     extensionStatus,
+    authMode,
+    authToken,
+    rememberAuthToken,
+    errorCode,
     setUrl,
+    setAuthMode,
+    setAuthToken,
+    setRememberAuthToken,
     connect,
     disconnect,
     setError,
@@ -33,10 +36,26 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
   } = useConnectionStore();
 
   const [inputUrl, setInputUrl] = useState(url);
+  const [inputAuthMode, setInputAuthMode] = useState(authMode);
+  const [inputAuthToken, setInputAuthToken] = useState(authToken);
+  const [showAuthToken, setShowAuthToken] = useState(false);
+  const [inputRememberToken, setInputRememberToken] = useState(rememberAuthToken);
 
   useEffect(() => {
     setInputUrl(url);
   }, [url]);
+
+  useEffect(() => {
+    setInputAuthMode(authMode);
+  }, [authMode]);
+
+  useEffect(() => {
+    setInputAuthToken(authToken);
+  }, [authToken]);
+
+  useEffect(() => {
+    setInputRememberToken(rememberAuthToken);
+  }, [rememberAuthToken]);
 
   useEffect(() => {
     const cleanup = initializeWebSocketListeners();
@@ -66,9 +85,15 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
       return;
     }
 
-    if (inputUrl !== url) {
-      setUrl(inputUrl);
+    if (inputAuthMode === 'comfyui-login' && !inputAuthToken.trim()) {
+      setError(t('serverSettings.authentication.tokenRequired'));
+      return;
     }
+
+    setUrl(inputUrl);
+    setAuthMode(inputAuthMode);
+    setRememberAuthToken(inputAuthMode === 'comfyui-login' && inputRememberToken);
+    setAuthToken(inputAuthMode === 'comfyui-login' ? inputAuthToken : '');
 
     try {
       await connect();
@@ -184,7 +209,11 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
             {error && (
               <div className="mb-3 p-2.5 bg-[#f25555]/10 border border-[#f25555]/25 rounded-lg flex items-start gap-2">
                 <XCircle className="h-3.5 w-3.5 text-[#f87c7c] flex-shrink-0 mt-0.5" strokeWidth={1.9} />
-                <div className="text-[11.5px] leading-relaxed text-[#f87c7c]">{error}</div>
+                <div className="text-[11.5px] leading-relaxed text-[#f87c7c]">
+                  {errorCode === 'authentication_required'
+                    ? t('serverSettings.authentication.authRequired')
+                    : error}
+                </div>
               </div>
             )}
           </div>
@@ -234,6 +263,106 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 );
               })}
             </div>
+
+            <div className="h-px bg-white/[0.06] my-4" />
+
+            <div className="flex items-center gap-2 mb-2.5">
+              <ShieldCheck className="h-3.5 w-3.5 text-[#7ba3f5]" strokeWidth={1.8} />
+              <div className="text-[13px] font-semibold text-[#e9ebef]">
+                {t('serverSettings.authentication.title')}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-1.5">
+              {(['none', 'comfyui-login'] as const).map((mode) => {
+                const active = inputAuthMode === mode;
+                return (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => {
+                      setInputAuthMode(mode);
+                      setError(null);
+                    }}
+                    className={`min-h-10 px-3 rounded-[10px] border text-[12px] font-semibold transition-colors ${active
+                      ? 'text-[#7ba3f5] border-[#3069f0]/35'
+                      : 'text-[#8a919e] border-white/[0.08] hover:text-[#c8ccd4]'
+                    }`}
+                    style={{ background: active ? 'rgba(61,123,253,.1)' : 'rgba(255,255,255,.035)' }}
+                  >
+                    {mode === 'none'
+                      ? t('serverSettings.authentication.none')
+                      : t('serverSettings.authentication.comfyLogin')}
+                  </button>
+                );
+              })}
+            </div>
+
+            {inputAuthMode === 'comfyui-login' && (
+              <div className="mt-3">
+                <Label htmlFor="comfyui-login-token" className="font-mono text-[10px] font-medium text-[#565d6b] tracking-[0.12em] uppercase">
+                  {t('serverSettings.authentication.tokenLabel')}
+                </Label>
+                <div className="relative mt-[7px]">
+                  <Input
+                    id="comfyui-login-token"
+                    type={showAuthToken ? 'text' : 'password'}
+                    value={inputAuthToken}
+                    onChange={(event) => {
+                      setInputAuthToken(event.target.value);
+                      setError(null);
+                    }}
+                    autoComplete="off"
+                    spellCheck={false}
+                    placeholder={t('serverSettings.authentication.tokenPlaceholder')}
+                    className="h-[42px] pl-3 pr-11 font-mono text-[12px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#5b8af5]/40"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowAuthToken((visible) => !visible)}
+                    aria-label={showAuthToken
+                      ? t('serverSettings.authentication.hideToken')
+                      : t('serverSettings.authentication.showToken')}
+                    className="absolute right-0 top-0 h-[42px] w-11 flex items-center justify-center text-[#66758a] hover:text-[#c8ccd4]"
+                  >
+                    {showAuthToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </button>
+                </div>
+                <p className="text-[11px] leading-relaxed text-[#66758a] mt-[7px]">
+                  {t('serverSettings.authentication.tokenDesc')}
+                </p>
+                <button
+                  type="button"
+                  role="checkbox"
+                  aria-checked={inputRememberToken}
+                  onClick={() => setInputRememberToken((remember) => !remember)}
+                  className="mt-3 w-full flex items-start gap-2.5 text-left"
+                >
+                  <span
+                    className={`mt-[1px] h-4 w-4 flex-shrink-0 rounded-[5px] border flex items-center justify-center transition-colors ${inputRememberToken
+                      ? 'bg-[#3069f0] border-[#3069f0]'
+                      : 'border-white/[0.16]'
+                    }`}
+                  >
+                    {inputRememberToken && <Check className="h-3 w-3 text-white" strokeWidth={3} />}
+                  </span>
+                  <span className="flex-1">
+                    <span className="block text-[12px] font-medium text-[#c8ccd4]">
+                      {t('serverSettings.authentication.rememberLabel')}
+                    </span>
+                    <span className="block text-[11px] leading-relaxed text-[#66758a] mt-0.5">
+                      {t('serverSettings.authentication.rememberDesc')}
+                    </span>
+                  </span>
+                </button>
+
+                <div className="mt-2 p-2.5 rounded-lg border border-amber-400/15 bg-amber-400/[0.06] text-[10.5px] leading-relaxed text-amber-200/65">
+                  {inputRememberToken
+                    ? t('serverSettings.authentication.persistNotice')
+                    : t('serverSettings.authentication.sessionNotice')}
+                </div>
+              </div>
+            )}
 
             <div className="mt-4">
               {isConnected ? (

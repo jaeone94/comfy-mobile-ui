@@ -1,6 +1,22 @@
 import axios from 'axios';
 import type { AxiosInstance } from 'axios';
 import type { ConnectionConfig } from '@/shared/types/comfy/connection';
+import { applyComfyAuthToAxiosConfig } from '@/infrastructure/auth/ComfyAuthService';
+
+export type ConnectionErrorCode = 'authentication_required';
+
+export interface ConnectionTestResult {
+  success: boolean;
+  error?: string;
+  errorCode?: ConnectionErrorCode;
+}
+
+export class ConnectionServiceError extends Error {
+  constructor(message: string, readonly code?: ConnectionErrorCode) {
+    super(message);
+    this.name = 'ConnectionServiceError';
+  }
+}
 
 export class ConnectionService {
   private api: AxiosInstance | null = null;
@@ -24,6 +40,7 @@ export class ConnectionService {
         'Content-Type': 'application/json'
       }
     });
+    this.api.interceptors.request.use(applyComfyAuthToAxiosConfig);
   }
 
   async pingServer(timeout?: number): Promise<boolean> {
@@ -44,7 +61,9 @@ export class ConnectionService {
         return response.status === 200;
       } catch (fallbackError) {
         if (axios.isAxiosError(fallbackError)) {
-          if (fallbackError.code === 'ECONNABORTED') {
+          if (fallbackError.response?.status === 401) {
+            throw new ConnectionServiceError('Authentication required', 'authentication_required');
+          } else if (fallbackError.code === 'ECONNABORTED') {
             throw new Error('Connection timeout - server may be unreachable');
           } else if (fallbackError.response?.status === 404) {
             throw new Error('Invalid ComfyUI endpoint - please check the URL');
@@ -73,14 +92,15 @@ export class ConnectionService {
     }
   }
 
-  async testConnection(timeout?: number): Promise<{ success: boolean; error?: string }> {
+  async testConnection(timeout?: number): Promise<ConnectionTestResult> {
     try {
       await this.pingServer(timeout);
       return { success: true };
     } catch (error) {
       return { 
         success: false, 
-        error: error instanceof Error ? error.message : 'Unknown error' 
+        error: error instanceof Error ? error.message : 'Unknown error',
+        errorCode: error instanceof ConnectionServiceError ? error.code : undefined
       };
     }
   }

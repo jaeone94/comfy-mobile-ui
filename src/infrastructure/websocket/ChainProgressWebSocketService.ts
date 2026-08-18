@@ -5,6 +5,8 @@
  * Similar pattern to GlobalWebSocketService but dedicated to chain progress tracking
  */
 
+import { withComfyAuth } from '@/infrastructure/auth/ComfyAuthService';
+
 // EventEmitter implementation with ID support
 class EventEmitter {
   private events: Record<string, Function[]> = {};
@@ -168,7 +170,9 @@ class ChainProgressWebSocketService extends EventEmitter {
       error: null
     });
 
-    const wsUrl = this.serverUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/comfymobile/api/chains/progress';
+    const wsUrl = withComfyAuth(
+      this.serverUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/comfymobile/api/chains/progress'
+    );
 
     this.webSocket = new WebSocket(wsUrl);
 

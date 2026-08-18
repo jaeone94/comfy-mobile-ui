@@ -13,6 +13,7 @@ import { ComfyNodeMetadataService } from '@/infrastructure/api/ComfyNodeMetadata
 import type { Workflow } from '@/shared/types/app/IComfyWorkflow'
 import type { IComfyJson } from '@/shared/types/app/base'
 import type { IObjectInfo } from '@/shared/types/comfy/IComfyObjectInfo'
+import { comfyAuthenticatedFetch } from '@/infrastructure/auth/ComfyAuthService'
 
 /**
  * Process uploaded workflow file
@@ -150,7 +151,7 @@ export async function createWorkflowFromUrl(url: string): Promise<{
   error?: string
 }> {
   try {
-    const response = await fetch(url)
+    const response = await comfyAuthenticatedFetch(url)
     if (!response.ok) {
       return { success: false, error: `HTTP ${response.status}: ${response.statusText}` }
     }
