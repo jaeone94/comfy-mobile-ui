@@ -25,6 +25,7 @@ try:
     from .handlers.snapshot_handler import *
     from .handlers.backup_handler import *
     from .handlers.system_handler import *
+    from .handlers.auth_handler import get_auth_token
     from .handlers.widget_handler import *
     from .handlers.node_mapping_handler import *
     from .handlers.manager_handler import *
@@ -89,6 +90,9 @@ def setup_routes():
                 
                 # System routes
                 app.router.add_get('/comfymobile/api/status', api_status)
+                # Lets a browser session that logged into ComfyUI-Login read the
+                # API token, so remote users need neither console nor file access.
+                app.router.add_get('/comfymobile/api/auth/token', get_auth_token)
                 app.router.add_post('/comfymobile/api/reboot', reboot_server)
                 app.router.add_post('/comfymobile/api/translate', translate_text)
                 app.router.add_get('/comfymobile/api/translation/local/status', local_translation_status)

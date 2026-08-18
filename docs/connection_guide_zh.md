@@ -52,10 +52,15 @@
 
 ### 4. 使用 ComfyUI-Login
 如果服务器受 [ComfyUI-Login](https://github.com/liusida/ComfyUI-Login) 保护：
-- 在 **服务器设置 > 身份验证**中选择 **ComfyUI-Login**。
-- 复制 ComfyUI 控制台中 `For direct API calls, use token=` 后显示的值，并将其粘贴到 **API 令牌**中。
+- 最简单的方法：点击令牌输入框下方的**从服务器获取令牌**。这会打开 `<服务器>/comfymobile/api/auth/token`，使用 ComfyUI-Login 密码登录后即可看到带复制按钮的令牌。无需访问控制台或文件。
+- 或者复制 ComfyUI 控制台中 `For direct API calls, use token=` 之后输出的值。该值仅在启动时输出一次，重启后很容易错过。
 - 请使用生成的 API 令牌，而不是明文密码。也可以在 `<ComfyUI>/login/PASSWORD` 文件的第一行找到该令牌。
 - 默认情况下，令牌仅保留在当前浏览器会话中。启用**在此设备上保持登录**后，令牌会保存在设备上，关闭标签页后无需重新输入；此时令牌也会包含在浏览器数据备份中。在公用设备上请保持关闭。
 
 > [!WARNING]
-> 请像保护密码一样保护 API 令牌。通过不受信任的网络连接时请使用 HTTPS。
+> 请像对待密码一样对待 API 令牌。在不受信任的网络上连接时请使用 HTTPS。
+
+> [!IMPORTANT]
+> 请使用不带值的 `--enable-cors-header` 启动 ComfyUI。如果指定了特定来源，
+> ComfyUI-Login 只会在带有该 `Origin` 头的请求中接受令牌，而图像和媒体请求不会发送
+> `Origin`，这会导致预览和缩略图无法加载。

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, WifiOff, Loader2, CheckCircle, XCircle, Info, Power, Eye, EyeOff, ShieldCheck, Check } from 'lucide-react';
+import { ArrowLeft, WifiOff, Loader2, CheckCircle, XCircle, Info, Power, Eye, EyeOff, ShieldCheck, Check, ExternalLink } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { Label } from '@/components/ui/label';
@@ -331,6 +331,18 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 <p className="text-[11px] leading-relaxed text-[#66758a] mt-[7px]">
                   {t('serverSettings.authentication.tokenDesc')}
                 </p>
+
+                {inputUrl.trim() && (
+                  <a
+                    href={`${inputUrl.trim().replace(/\/$/, '')}/comfymobile/api/auth/token`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-2 text-[11.5px] font-medium text-[#7ba3f5]"
+                  >
+                    <ExternalLink className="h-3 w-3" strokeWidth={2} />
+                    {t('serverSettings.authentication.fetchToken')}
+                  </a>
+                )}
                 <button
                   type="button"
                   role="checkbox"

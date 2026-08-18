@@ -52,10 +52,15 @@ Mobile UI 접속 후, 앱 내의 **[서버 설정]** 메뉴에서 실제 ComfyUI
 
 ### 4. ComfyUI-Login을 사용하는 경우
 서버가 [ComfyUI-Login](https://github.com/liusida/ComfyUI-Login)으로 보호되어 있다면:
-- **서버 설정 > 인증**에서 **ComfyUI-Login**을 선택하세요.
-- ComfyUI 콘솔의 `For direct API calls, use token=` 뒤에 출력되는 값을 복사하여 **API 토큰**에 붙여넣으세요.
+- 가장 쉬운 방법: 토큰 입력란 아래의 **서버에서 토큰 발급받기**를 누르세요. `<서버>/comfymobile/api/auth/token`이 열리고, ComfyUI-Login 비밀번호로 로그인하면 복사 버튼과 함께 토큰이 표시됩니다. 콘솔이나 파일 접근이 전혀 필요 없습니다.
+- 또는 ComfyUI 콘솔에서 `For direct API calls, use token=` 뒤에 출력된 값을 복사하세요. 시작 시 한 번만 출력되므로 재시작 후에는 놓치기 쉽습니다.
 - 일반 비밀번호가 아니라 생성된 API 토큰을 사용해야 합니다. 토큰은 `<ComfyUI>/login/PASSWORD` 파일의 첫 번째 줄에서도 확인할 수 있습니다.
 - 기본적으로 토큰은 현재 브라우저 세션에만 유지됩니다. **이 기기에서 로그인 유지**를 켜면 토큰이 기기에 저장되어 탭을 닫아도 다시 입력할 필요가 없으며, 이때 토큰은 브라우저 데이터 백업에도 포함됩니다. 공용 기기에서는 끄고 사용하세요.
 
 > [!WARNING]
 > API 토큰은 비밀번호처럼 취급하세요. 신뢰할 수 없는 네트워크에서는 HTTPS를 사용해야 합니다.
+
+> [!IMPORTANT]
+> ComfyUI는 값 없이 `--enable-cors-header`로 실행하세요. 특정 오리진을 지정하면
+> ComfyUI-Login이 그 `Origin` 헤더가 붙은 요청에서만 토큰을 인정하는데, 이미지·미디어
+> 요청은 `Origin`을 보내지 않기 때문에 미리보기와 썸네일이 로드되지 않습니다.

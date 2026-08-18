@@ -52,10 +52,16 @@ If certificates are provided to ComfyUI via launch arguments (`--tls-keyfile`, `
 
 ### 4. Using ComfyUI-Login
 If [ComfyUI-Login](https://github.com/liusida/ComfyUI-Login) protects your server:
-- In **Server Settings > Authentication**, select **ComfyUI-Login**.
-- Copy the value printed after `For direct API calls, use token=` in the ComfyUI console and paste it into **API token**.
+- Easiest way: tap **Get the token from the server** under the token field. It opens `<server>/comfymobile/api/auth/token`, which asks you to log in with your ComfyUI-Login password and then shows the token with a copy button. Nothing else is needed - no console, no file access.
+- Alternatively, copy the value printed after `For direct API calls, use token=` in the ComfyUI console. It is printed once at startup, so it is easy to miss on a restart.
 - Use the generated API token, not your plain-text password. The token is also the first line of `<ComfyUI>/login/PASSWORD`.
 - By default the token is kept only for the current browser session. Enable **Stay signed in on this device** to store it on the device so you do not have to re-enter it after closing the tab; the token is then also included in browser-data backups. Leave it off on shared devices.
 
 > [!WARNING]
 > Treat the API token like a password. Use HTTPS when connecting through an untrusted network.
+
+> [!IMPORTANT]
+> Start ComfyUI with a bare `--enable-cors-header` (no value). Passing a specific origin
+> makes ComfyUI-Login accept the token only on requests carrying that exact `Origin`
+> header, and image/media requests send no `Origin` at all - previews and thumbnails
+> would fail to load.
