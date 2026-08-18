@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useConnectionStore } from '@/ui/store/connectionStore';
-import { comfyAuthenticatedFetch, COMFY_AUTH_TOKEN_KEY_PREFIX } from '@/infrastructure/auth/ComfyAuthService';
+import { comfyAuthenticatedFetch, getComfyAuthTokenStorageKey } from '@/infrastructure/auth/ComfyAuthService';
 import {
   Database,
   Download,
@@ -91,6 +91,11 @@ export const BrowserDataBackup: React.FC = () => {
         // Endpoint not found - extension might not support backup yet
         console.warn('Backup status endpoint not found (404)');
         setBackupInfo({ hasBackup: false });
+      } else if (response.status === 401) {
+        // Without this an auth failure would read as "no backup exists"
+        console.warn('Backup status check rejected (401)');
+        setError(t('serverSettings.authentication.authRequired'));
+        setBackupInfo({ hasBackup: false });
       } else {
         console.warn('Failed to check backup status:', response.status, response.statusText);
         setBackupInfo({ hasBackup: false });
@@ -101,7 +106,7 @@ export const BrowserDataBackup: React.FC = () => {
     } finally {
       setIsCheckingBackup(false);
     }
-  }, [serverUrl]);
+  }, [serverUrl, t]);
 
   // Get current IndexedDB version dynamically
   const getCurrentDBVersion = async (): Promise<number> => {
@@ -156,12 +161,14 @@ export const BrowserDataBackup: React.FC = () => {
         }
       });
 
-      // Auth tokens are only in localStorage when the user chose to stay signed
-      // in on this device; session-only tokens never reach the backup.
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key?.startsWith(COMFY_AUTH_TOKEN_KEY_PREFIX)) {
-          data.localStorage[key] = localStorage.getItem(key);
+      // Only the current server's token, and only when the user chose to stay
+      // signed in on this device. Tokens for other servers must never be
+      // uploaded to this one, and session-only tokens are not in localStorage.
+      const authTokenKey = getComfyAuthTokenStorageKey(serverUrl);
+      if (authTokenKey) {
+        const authToken = localStorage.getItem(authTokenKey);
+        if (authToken !== null) {
+          data.localStorage[authTokenKey] = authToken;
         }
       }
 

@@ -22,6 +22,7 @@ import {
   clearComfyAuthToken,
   COMFY_AUTH_TOKEN_KEY_PREFIX,
   configureComfyAuth,
+  getComfyAuthTokenStorageKey,
   loadComfyAuthToken,
   normalizeComfyAuthToken,
   saveComfyAuthToken,
@@ -109,6 +110,19 @@ assert.equal(sessionStorageStub.getItem(storageKey), token);
 
 // ws:// URLs resolve to the same origin key as https://.
 assert.equal(loadComfyAuthToken('wss://comfy.example:8188/ws'), token);
+
+// Each server gets its own key, so a backup can target exactly one of them.
+const otherUrl = 'https://other.example:8188';
+const otherKey = getComfyAuthTokenStorageKey(otherUrl)!;
+assert.equal(getComfyAuthTokenStorageKey(storageUrl), storageKey);
+assert.notEqual(otherKey, storageKey);
+assert.equal(getComfyAuthTokenStorageKey('not a url'), null);
+
+saveComfyAuthToken(otherUrl, 'other-server-token', true);
+saveComfyAuthToken(storageUrl, token, true);
+assert.equal(localStorageStub.getItem(otherKey), 'other-server-token');
+assert.equal(localStorageStub.getItem(storageKey), token);
+clearComfyAuthToken(otherUrl);
 
 clearComfyAuthToken(storageUrl);
 assert.equal(loadComfyAuthToken(storageUrl), '');

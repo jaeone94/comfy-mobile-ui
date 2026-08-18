@@ -39,10 +39,17 @@ const getComparableOrigin = (value: string): string | null => {
   }
 };
 
-const getStorageKey = (serverUrl: string): string | null => {
+/**
+ * Storage key holding the token for one ComfyUI origin. Exported so callers that
+ * need a specific server's token (such as the backup collector) can address it
+ * without re-deriving the origin normalization.
+ */
+export const getComfyAuthTokenStorageKey = (serverUrl: string): string | null => {
   const origin = getComparableOrigin(serverUrl);
   return origin ? `${COMFY_AUTH_TOKEN_KEY_PREFIX}${origin}` : null;
 };
+
+const getStorageKey = getComfyAuthTokenStorageKey;
 
 const getStore = (persistent: boolean): Storage | null => {
   try {
