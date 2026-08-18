@@ -222,6 +222,8 @@
             "failedTitle": "Import Failed",
             "failedDesc": "Could not import workflow from server.",
             "serverWorkflows": "Server Workflows ({{count}})",
+            "rootFolder": "Workflows",
+            "parentFolder": "Parent folder",
             "foundCount": "Found {{count}} workflows",
             "noWorkflowsOnServer": "No workflows found on server",
             "noResultsQuery": "No workflows match your search",

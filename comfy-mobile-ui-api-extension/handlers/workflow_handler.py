@@ -16,6 +16,49 @@ def ensure_workflows_directory() -> str:
     os.makedirs(workflows_dir, exist_ok=True)
     return workflows_dir
 
+def resolve_workflow_path(relative_path: str) -> Optional[str]:
+    """
+    Resolve a client-supplied workflow path against the workflows directory.
+
+    Workflows may live in subfolders, so a plain "reject anything containing a
+    separator" check is no longer possible. Instead the joined path is fully
+    resolved - following symlinks - and required to stay inside the workflows
+    directory. Returns None when the path escapes, is absolute, or is empty.
+    """
+    if not relative_path:
+        return None
+
+    # Clients send POSIX separators; accept backslashes too so Windows-authored
+    # paths do not silently resolve to a single oddly named file.
+    candidate = relative_path.replace(os.sep, '/').replace('\\', '/').strip('/')
+    if not candidate:
+        return None
+
+    if os.path.isabs(candidate) or os.path.splitdrive(candidate)[0]:
+        return None
+
+    workflows_dir = get_workflows_directory()
+    root = os.path.realpath(workflows_dir)
+    target = os.path.realpath(os.path.join(root, *candidate.split('/')))
+
+    # commonpath raises when the two live on different drives, which is itself
+    # an escape.
+    try:
+        if os.path.commonpath([root, target]) != root:
+            return None
+    except ValueError:
+        return None
+
+    if target == root:
+        return None
+
+    return target
+
+def to_relative_workflow_path(absolute_path: str) -> str:
+    """Path relative to the workflows directory, with POSIX separators."""
+    root = os.path.realpath(get_workflows_directory())
+    return os.path.relpath(absolute_path, root).replace(os.sep, '/')
+
 async def list_workflows(request):
     """List all workflow files in user/default/workflows directory"""
     try:
@@ -23,13 +66,36 @@ async def list_workflows(request):
         workflows = []
         
         if os.path.exists(workflows_dir):
-            for file in os.listdir(workflows_dir):
-                if file.endswith('.json'):
-                    file_path = os.path.join(workflows_dir, file)
+            # Users organise large collections into subfolders, so walk the
+            # tree. Symlinked directories are not followed (os.walk default).
+            for current_dir, dir_names, file_names in os.walk(workflows_dir):
+                # Skip dot-directories such as .git or editor state.
+                dir_names[:] = [d for d in dir_names if not d.startswith('.')]
+
+                for file in file_names:
+                    if not file.endswith('.json'):
+                        continue
+
+                    file_path = os.path.join(current_dir, file)
+                    relative_path = to_relative_workflow_path(file_path)
+
+                    # os.walk declines to follow symlinked *directories*, but a
+                    # symlinked file still shows up here and os.stat would report
+                    # its target's size and mtime. Filtering through the same
+                    # resolver the content endpoint uses keeps the two in step,
+                    # so nothing is listed that would then fail to open.
+                    if resolve_workflow_path(relative_path) is None:
+                        continue
+
                     file_info = get_file_info(file_path)
-                    
+
                     workflows.append({
-                        "filename": file,
+                        # Identifier for the content endpoint: path relative to
+                        # the workflows root, POSIX separators.
+                        "filename": relative_path,
+                        # Split out so clients can group without re-parsing.
+                        "name": file,
+                        "folder": os.path.dirname(relative_path),
                         "size": file_info["size"],
                         "modified": file_info["modified"],
                         "modified_iso": file_info["modified_iso"]
@@ -145,21 +211,20 @@ async def get_workflow_content(request):
     try:
         filename = request.match_info['filename']
         
-        # Security: ensure filename doesn't contain path traversal
-        if '..' in filename or '/' in filename or '\\' in filename:
+        # Ensure .json extension
+        if not filename.endswith('.json'):
+            filename += '.json'
+        
+        # Workflows may live in subfolders, so containment is verified by
+        # resolving the path rather than by rejecting separators outright.
+        workflow_path = resolve_workflow_path(filename)
+        if workflow_path is None:
             return web.json_response({
                 "status": "error",
                 "message": "Invalid filename"
             }, status=400)
         
-        # Ensure .json extension
-        if not filename.endswith('.json'):
-            filename += '.json'
-            
-        workflows_dir = get_workflows_directory()
-        workflow_path = os.path.join(workflows_dir, filename)
-        
-        if not os.path.exists(workflow_path):
+        if not os.path.isfile(workflow_path):
             return web.json_response({
                 "status": "error",
                 "message": f"Workflow file '{filename}' not found"

@@ -101,7 +101,7 @@ def setup_routes():
                 
                 # Workflow routes
                 app.router.add_get('/comfymobile/api/workflows/list', list_workflows)
-                app.router.add_get('/comfymobile/api/workflows/content/{filename}', get_workflow_content)
+                app.router.add_get('/comfymobile/api/workflows/content/{filename:.*}', get_workflow_content)
                 app.router.add_post('/comfymobile/api/workflows/save', save_workflow)
                 app.router.add_post('/comfymobile/api/workflows/upload', upload_workflow)
                 
@@ -229,7 +229,7 @@ def setup_routes():
             
             # Basic workflow routes for compatibility
             routes.get('/comfymobile/api/workflows/list')(list_workflows)
-            routes.get('/comfymobile/api/workflows/content/{filename}')(get_workflow_content)
+            routes.get('/comfymobile/api/workflows/content/{filename:.*}')(get_workflow_content)
             routes.post('/comfymobile/api/workflows/save')(save_workflow)
             routes.post('/comfymobile/api/workflows/upload')(upload_workflow)
             

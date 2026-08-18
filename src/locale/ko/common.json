@@ -222,6 +222,8 @@
             "failedTitle": "가져오기 실패",
             "failedDesc": "서버에서 워크플로우를 가져올 수 없습니다.",
             "serverWorkflows": "서버 워크플로우 ({{count}})",
+            "rootFolder": "워크플로",
+            "parentFolder": "상위 폴더",
             "foundCount": "{{count}}개의 워크플로우 발견",
             "noWorkflowsOnServer": "서버에서 워크플로우를 찾을 수 없습니다",
             "noResultsQuery": "검색과 일치하는 워크플로우가 없습니다",

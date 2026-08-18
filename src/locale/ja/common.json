@@ -220,6 +220,8 @@
             "failedTitle": "インポート失敗",
             "failedDesc": "サーバーからワークフローをインポートできませんでした。",
             "serverWorkflows": "サーバーワークフロー ({{count}})",
+            "rootFolder": "ワークフロー",
+            "parentFolder": "親フォルダー",
             "foundCount": "{{count}} 件のワークフローが見つかりました",
             "noWorkflowsOnServer": "サーバー上にワークフローが見つかりません",
             "noResultsQuery": "検索条件に一致するワークフローはありません",
