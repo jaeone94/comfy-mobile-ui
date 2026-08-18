@@ -37,6 +37,37 @@ interface BackupInfo {
   size?: number;
 }
 
+const CONNECTION_STORAGE_KEY = 'comfy-mobile-connection';
+
+/**
+ * Restoring the connection settings must not change which server we talk to.
+ *
+ * The backup is fetched through the server the user is connected to right now,
+ * so the local address is known-good while the backed-up one may have been
+ * written on another device or network. Authentication preferences are worth
+ * carrying over; the address is not.
+ */
+const mergeConnectionSettings = (backedUp: string): string => {
+  try {
+    const incoming = JSON.parse(backedUp);
+    const local = JSON.parse(localStorage.getItem(CONNECTION_STORAGE_KEY) || '{}');
+
+    if (!incoming?.state || !local?.state) return backedUp;
+
+    return JSON.stringify({
+      ...incoming,
+      state: {
+        ...incoming.state,
+        url: local.state.url,
+        autoReconnectEnabled: local.state.autoReconnectEnabled
+      }
+    });
+  } catch {
+    // Nothing local to preserve, or unparseable - take the backup as-is.
+    return backedUp;
+  }
+};
+
 export const BrowserDataBackup: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -150,7 +181,7 @@ export const BrowserDataBackup: React.FC = () => {
         'comfy-workflow-folders',
         'comfyui_custom_widget_types',
         'comfyui_node_patches',
-        'comfy-mobile-connection', // Server URL and authentication preferences
+        CONNECTION_STORAGE_KEY, // Server URL and authentication preferences
         'i18nextLng' // Language preference
       ];
 
@@ -338,6 +369,10 @@ export const BrowserDataBackup: React.FC = () => {
         // Restore localStorage
         if (backupData.localStorage) {
           Object.entries(backupData.localStorage).forEach(([key, value]) => {
+            if (key === CONNECTION_STORAGE_KEY) {
+              localStorage.setItem(key, mergeConnectionSettings(value as string));
+              return;
+            }
             localStorage.setItem(key, value as string);
           });
         }

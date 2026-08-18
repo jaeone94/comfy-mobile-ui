@@ -20,10 +20,14 @@ def resolve_workflow_path(relative_path: str) -> Optional[str]:
     """
     Resolve a client-supplied workflow path against the workflows directory.
 
-    Workflows may live in subfolders, so a plain "reject anything containing a
-    separator" check is no longer possible. Instead the joined path is fully
-    resolved - following symlinks - and required to stay inside the workflows
-    directory. Returns None when the path escapes, is absolute, or is empty.
+    Containment is checked lexically: the path is normalised and must not climb
+    out of the workflows root. Symlinks are deliberately *not* resolved away.
+    This app assumes a single owner, and a symlink inside the workflows folder
+    is that owner's way of pulling a shared library in - ComfyUI itself serves
+    those workflows, so refusing them here would only break a legitimate setup.
+    Anyone able to plant a symlink there can already read the files directly.
+
+    Returns None when the path escapes, is absolute, or is empty.
     """
     if not relative_path:
         return None
@@ -37,26 +41,28 @@ def resolve_workflow_path(relative_path: str) -> Optional[str]:
     if os.path.isabs(candidate) or os.path.splitdrive(candidate)[0]:
         return None
 
-    workflows_dir = get_workflows_directory()
-    root = os.path.realpath(workflows_dir)
-    target = os.path.realpath(os.path.join(root, *candidate.split('/')))
-
-    # commonpath raises when the two live on different drives, which is itself
-    # an escape.
-    try:
-        if os.path.commonpath([root, target]) != root:
-            return None
-    except ValueError:
+    # normpath collapses '..' textually, which is exactly the check we want:
+    # it tells us where the path points relative to the root without letting a
+    # symlink's target influence the verdict.
+    normalised = os.path.normpath(os.path.join(*candidate.split('/')))
+    if normalised.startswith(os.pardir + os.sep) or normalised == os.pardir:
+        return None
+    if os.path.isabs(normalised) or os.path.splitdrive(normalised)[0]:
+        return None
+    if normalised == os.curdir:
         return None
 
-    if target == root:
-        return None
+    return os.path.join(get_workflows_directory(), normalised)
 
-    return target
 
 def to_relative_workflow_path(absolute_path: str) -> str:
-    """Path relative to the workflows directory, with POSIX separators."""
-    root = os.path.realpath(get_workflows_directory())
+    """
+    Path relative to the workflows directory, with POSIX separators.
+
+    Uses the literal root rather than its real path so that entries reached
+    through a symlinked directory keep the name the client asked for.
+    """
+    root = get_workflows_directory()
     return os.path.relpath(absolute_path, root).replace(os.sep, '/')
 
 async def list_workflows(request):
@@ -66,9 +72,25 @@ async def list_workflows(request):
         workflows = []
         
         if os.path.exists(workflows_dir):
-            # Users organise large collections into subfolders, so walk the
-            # tree. Symlinked directories are not followed (os.walk default).
-            for current_dir, dir_names, file_names in os.walk(workflows_dir):
+            # Symlinked directories are followed so that a linked-in workflow
+            # library shows up, which means guarding against link cycles: a link
+            # pointing at an ancestor would otherwise walk forever.
+            visited_dirs = set()
+
+            for current_dir, dir_names, file_names in os.walk(workflows_dir, followlinks=True):
+                try:
+                    marker = os.stat(current_dir)
+                    key = (marker.st_dev, marker.st_ino)
+                except OSError:
+                    continue
+
+                # st_ino is 0 on some filesystems; fall back to the real path.
+                identity = key if key[1] else os.path.realpath(current_dir)
+                if identity in visited_dirs:
+                    dir_names[:] = []
+                    continue
+                visited_dirs.add(identity)
+
                 # Skip dot-directories such as .git or editor state.
                 dir_names[:] = [d for d in dir_names if not d.startswith('.')]
 
@@ -79,11 +101,7 @@ async def list_workflows(request):
                     file_path = os.path.join(current_dir, file)
                     relative_path = to_relative_workflow_path(file_path)
 
-                    # os.walk declines to follow symlinked *directories*, but a
-                    # symlinked file still shows up here and os.stat would report
-                    # its target's size and mtime. Filtering through the same
-                    # resolver the content endpoint uses keeps the two in step,
-                    # so nothing is listed that would then fail to open.
+                    # Keeps the listing to what the content endpoint will serve.
                     if resolve_workflow_path(relative_path) is None:
                         continue
 
