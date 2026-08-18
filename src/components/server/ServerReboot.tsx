@@ -9,6 +9,7 @@ import { useConnectionStore } from '@/ui/store/connectionStore';
 import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
 import { globalWebSocketService } from '@/infrastructure/websocket/GlobalWebSocketService';
 import { toast } from 'sonner';
+import { comfyAuthenticatedFetch } from '@/infrastructure/auth/ComfyAuthService';
 
 interface ServerRebootProps {
   onBack?: () => void;
@@ -240,7 +241,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000); // health check timeout 15 seconds - multiple sessions can run simultaneously
 
-        const healthResponse = await fetch(`${url}/system_stats`, {
+        const healthResponse = await comfyAuthenticatedFetch(`${url}/system_stats`, {
           method: 'GET',
           headers: {
             'Accept': 'application/json'
@@ -260,7 +261,7 @@ const ServerReboot: React.FC<ServerRebootProps> = ({ onBack }) => {
 
           // Step 3: Check Extension API (required for reboot functionality)
           try {
-            const extensionResponse = await fetch(`${url}/comfymobile/api/status`, {
+            const extensionResponse = await comfyAuthenticatedFetch(`${url}/comfymobile/api/status`, {
               method: 'GET',
               headers: { 'Accept': 'application/json' },
               signal: AbortSignal.timeout(10000) // 10 seconds timeout

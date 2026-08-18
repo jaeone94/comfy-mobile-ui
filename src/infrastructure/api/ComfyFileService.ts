@@ -4,6 +4,7 @@
  */
 
 import axios from 'axios';
+import { withComfyAuth } from '@/infrastructure/auth/ComfyAuthService';
 import {
   IComfyFileInfo,
   IComfyFileUploadOptions,
@@ -804,7 +805,7 @@ export class ComfyFileService {
       downloadUrl += `&t=${timestamp}`;
     }
 
-    return downloadUrl;
+    return withComfyAuth(downloadUrl);
   }
 
   /**

@@ -32,6 +32,7 @@ async def api_status(request):
         "endpoints": [
             # Core endpoints
             "GET /comfymobile/api/status",
+            "GET /comfymobile/api/auth/token",
             "POST /comfymobile/api/reboot",
             
             # Workflow endpoints

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
+import { comfyAuthenticatedFetch } from '@/infrastructure/auth/ComfyAuthService';
 import { createPortal } from 'react-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,7 +82,7 @@ export const WorkflowSnapshots: React.FC<WorkflowSnapshotsProps> = ({
   // API call helper
   const apiCall = async (endpoint: string, options?: RequestInit) => {
     try {
-      const response = await fetch(`${serverUrl}${endpoint}`, {
+      const response = await comfyAuthenticatedFetch(`${serverUrl}${endpoint}`, {
         headers: {
           'Content-Type': 'application/json',
           ...options?.headers,

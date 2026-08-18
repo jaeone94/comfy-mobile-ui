@@ -1,4 +1,5 @@
 import { getApiKey } from '@/infrastructure/storage/ApiKeyStorageService';
+import { comfyAuthenticatedFetch } from '@/infrastructure/auth/ComfyAuthService';
 
 export type TranslationProvider = 'groq' | 'deepl' | 'argos';
 export type TranslationSourceLanguage =
@@ -128,7 +129,7 @@ export const translateText = async ({
   const normalizedServerUrl = normalizeServerUrl(serverUrl);
   let response: Response;
   try {
-    response = await fetch(`${normalizedServerUrl}/comfymobile/api/translate`, {
+    response = await comfyAuthenticatedFetch(`${normalizedServerUrl}/comfymobile/api/translate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -172,7 +173,7 @@ export const translateText = async ({
 
 export const getLocalTranslationStatus = async (serverUrl: string): Promise<LocalTranslationStatus> => {
   const normalizedServerUrl = normalizeServerUrl(serverUrl);
-  const response = await fetch(`${normalizedServerUrl}/comfymobile/api/translation/local/status`, {
+  const response = await comfyAuthenticatedFetch(`${normalizedServerUrl}/comfymobile/api/translation/local/status`, {
     signal: AbortSignal.timeout(10_000)
   });
   if (!response.ok) {
@@ -185,7 +186,7 @@ export const startLocalTranslationEngineInstall = async (
   serverUrl: string
 ): Promise<LocalEngineInstallStatus> => {
   const normalizedServerUrl = normalizeServerUrl(serverUrl);
-  const response = await fetch(
+  const response = await comfyAuthenticatedFetch(
     `${normalizedServerUrl}/comfymobile/api/translation/local/engine/install`,
     {
       method: 'POST',
@@ -208,7 +209,7 @@ export const installLocalTranslationPairs = async (
   pairs: string[]
 ): Promise<string[]> => {
   const normalizedServerUrl = normalizeServerUrl(serverUrl);
-  const response = await fetch(
+  const response = await comfyAuthenticatedFetch(
     `${normalizedServerUrl}/comfymobile/api/translation/local/packages/install`,
     {
       method: 'POST',

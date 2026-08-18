@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useConnectionStore } from '@/ui/store/connectionStore';
+import { comfyAuthenticatedFetch, getComfyAuthTokenStorageKey } from '@/infrastructure/auth/ComfyAuthService';
 import {
   Database,
   Download,
@@ -74,7 +75,7 @@ export const BrowserDataBackup: React.FC = () => {
   const checkBackupStatus = useCallback(async () => {
     try {
       setIsCheckingBackup(true);
-      const response = await fetch(`${serverUrl}/comfymobile/api/backup/status`);
+      const response = await comfyAuthenticatedFetch(`${serverUrl}/comfymobile/api/backup/status`);
 
       if (response.ok) {
         const contentType = response.headers.get('content-type');
@@ -90,6 +91,11 @@ export const BrowserDataBackup: React.FC = () => {
         // Endpoint not found - extension might not support backup yet
         console.warn('Backup status endpoint not found (404)');
         setBackupInfo({ hasBackup: false });
+      } else if (response.status === 401) {
+        // Without this an auth failure would read as "no backup exists"
+        console.warn('Backup status check rejected (401)');
+        setError(t('serverSettings.authentication.authRequired'));
+        setBackupInfo({ hasBackup: false });
       } else {
         console.warn('Failed to check backup status:', response.status, response.statusText);
         setBackupInfo({ hasBackup: false });
@@ -100,7 +106,7 @@ export const BrowserDataBackup: React.FC = () => {
     } finally {
       setIsCheckingBackup(false);
     }
-  }, [serverUrl]);
+  }, [serverUrl, t]);
 
   // Get current IndexedDB version dynamically
   const getCurrentDBVersion = async (): Promise<number> => {
@@ -144,6 +150,7 @@ export const BrowserDataBackup: React.FC = () => {
         'comfy-workflow-folders',
         'comfyui_custom_widget_types',
         'comfyui_node_patches',
+        'comfy-mobile-connection', // Server URL and authentication preferences
         'i18nextLng' // Language preference
       ];
 
@@ -153,6 +160,17 @@ export const BrowserDataBackup: React.FC = () => {
           data.localStorage[key] = value;
         }
       });
+
+      // Only the current server's token, and only when the user chose to stay
+      // signed in on this device. Tokens for other servers must never be
+      // uploaded to this one, and session-only tokens are not in localStorage.
+      const authTokenKey = getComfyAuthTokenStorageKey(serverUrl);
+      if (authTokenKey) {
+        const authToken = localStorage.getItem(authTokenKey);
+        if (authToken !== null) {
+          data.localStorage[authTokenKey] = authToken;
+        }
+      }
 
       console.log(`Collected ${Object.keys(data.localStorage).length} core localStorage keys`);
     } catch (error) {
@@ -277,7 +295,7 @@ export const BrowserDataBackup: React.FC = () => {
       });
 
       // Send to server
-      const response = await fetch(`${serverUrl}/comfymobile/api/backup`, {
+      const response = await comfyAuthenticatedFetch(`${serverUrl}/comfymobile/api/backup`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -310,7 +328,7 @@ export const BrowserDataBackup: React.FC = () => {
       setError('');
 
       // Get backup data from server
-      const response = await fetch(`${serverUrl}/comfymobile/api/backup/restore`, {
+      const response = await comfyAuthenticatedFetch(`${serverUrl}/comfymobile/api/backup/restore`, {
         method: 'POST'
       });
 

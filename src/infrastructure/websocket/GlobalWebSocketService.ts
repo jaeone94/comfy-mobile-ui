@@ -6,6 +6,8 @@
  * Handles reconnection, event broadcasting, and client ID management
  */
 
+import { withComfyAuth } from '@/infrastructure/auth/ComfyAuthService';
+
 // EventEmitter implementation with ID support (compatible with original ComfyApiClient)
 class EventEmitter {
   private events: Record<string, Function[]> = {};
@@ -334,7 +336,9 @@ class GlobalWebSocketService extends EventEmitter {
       error: null
     });
 
-    const wsUrl = this.serverUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/comfymobile/ws?clientId=' + this.clientId;
+    const wsUrl = withComfyAuth(
+      this.serverUrl.replace('http://', 'ws://').replace('https://', 'wss://') + '/comfymobile/ws?clientId=' + this.clientId
+    );
 
     this.webSocket = new WebSocket(wsUrl);
 

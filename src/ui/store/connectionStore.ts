@@ -1,14 +1,26 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
-import type { ConnectionState } from '@/shared/types/comfy/connection';
+import type { ComfyAuthMode, ConnectionState } from '@/shared/types/comfy/connection';
 import { connectionService } from '@/infrastructure/api/ConnectionService';
 import { globalWebSocketService, type GlobalWebSocketState } from '@/infrastructure/websocket/GlobalWebSocketService';
+import {
+  clearComfyAuthToken,
+  configureComfyAuth,
+  loadComfyAuthToken,
+  normalizeComfyAuthToken,
+  saveComfyAuthToken,
+  comfyAuthenticatedFetch
+} from '@/infrastructure/auth/ComfyAuthService';
 
 interface ConnectionStore extends ConnectionState {
   setUrl: (url: string) => void;
   connect: () => Promise<void>;
   disconnect: () => void;
   setError: (error: string | null) => void;
+  setAuthMode: (mode: ComfyAuthMode) => void;
+  setAuthToken: (token: string) => void;
+  setRememberAuthToken: (remember: boolean) => void;
+  hydrateAuth: () => void;
   retryConnection: () => Promise<void>;
   autoReconnectEnabled: boolean;
   setAutoReconnect: (enabled: boolean) => void;
@@ -34,6 +46,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         isConnecting: false,
         lastPingTime: null,
         error: null,
+        errorCode: null,
         hasExtension: false,
         remoteVersion: null,
         apiStatus: 'idle',
@@ -41,12 +54,53 @@ export const useConnectionStore = create<ConnectionStore>()(
         extensionStatus: 'idle',
         isCheckingExtension: false,
         autoReconnectEnabled: true,
+        authMode: 'none',
+        authToken: '',
+        rememberAuthToken: false,
 
         // Initialize WebSocket state
         webSocket: globalWebSocketService.getState(),
 
         setUrl: (url: string) => {
-          set({ url, error: null });
+          const { authMode } = get();
+          const authToken = authMode === 'comfyui-login' ? loadComfyAuthToken(url) : '';
+          configureComfyAuth({ serverUrl: url, mode: authMode, token: authToken });
+          set({ url, authToken, error: null, errorCode: null });
+        },
+
+        setAuthMode: (authMode: ComfyAuthMode) => {
+          const { url, authToken, rememberAuthToken } = get();
+          const nextToken = authMode === 'comfyui-login' ? authToken : '';
+          // Leaving ComfyUI-Login must not leave the token behind in storage.
+          if (authMode !== 'comfyui-login') clearComfyAuthToken(url);
+          else saveComfyAuthToken(url, nextToken, rememberAuthToken);
+          configureComfyAuth({ serverUrl: url, mode: authMode, token: nextToken });
+          set({ authMode, authToken: nextToken, error: null, errorCode: null });
+        },
+
+        setAuthToken: (authToken: string) => {
+          const { url, authMode, rememberAuthToken } = get();
+          const normalizedToken = normalizeComfyAuthToken(authToken);
+          saveComfyAuthToken(url, normalizedToken, rememberAuthToken);
+          configureComfyAuth({ serverUrl: url, mode: authMode, token: normalizedToken });
+          set({ authToken: normalizedToken, error: null, errorCode: null });
+        },
+
+        setRememberAuthToken: (rememberAuthToken: boolean) => {
+          const { url, authToken } = get();
+          // Move the existing token to the store the new choice implies.
+          saveComfyAuthToken(url, authToken, rememberAuthToken);
+          set({ rememberAuthToken });
+        },
+
+        hydrateAuth: () => {
+          const { url, authMode: storedAuthMode, rememberAuthToken } = get();
+          const authMode: ComfyAuthMode = storedAuthMode === 'comfyui-login'
+            ? 'comfyui-login'
+            : 'none';
+          const authToken = authMode === 'comfyui-login' ? loadComfyAuthToken(url) : '';
+          configureComfyAuth({ serverUrl: url, mode: authMode, token: authToken });
+          set({ authMode, authToken, rememberAuthToken: rememberAuthToken === true });
         },
 
         connect: async () => {
@@ -58,12 +112,15 @@ export const useConnectionStore = create<ConnectionStore>()(
             isConnected: false,
             isConnecting: true,
             error: null,
+            errorCode: null,
             apiStatus: 'checking',
             wsStatus: 'checking',
             extensionStatus: 'checking'
           });
 
           try {
+            const { authMode, authToken } = get();
+            configureComfyAuth({ serverUrl: url, mode: authMode, token: authToken });
             connectionService.setBaseURL(url);
 
             // 1. Check API Connection
@@ -86,7 +143,8 @@ export const useConnectionStore = create<ConnectionStore>()(
               set({
                 isConnected: true,
                 isConnecting: false,
-                error: null
+                error: null,
+                errorCode: null
               });
             } else {
               set({
@@ -95,7 +153,8 @@ export const useConnectionStore = create<ConnectionStore>()(
                 apiStatus: 'failed',
                 wsStatus: 'failed',
                 extensionStatus: 'failed',
-                error: result.error || 'Connection failed'
+                error: result.error || 'Connection failed',
+                errorCode: result.errorCode || null
               });
             }
           } catch (error) {
@@ -105,7 +164,8 @@ export const useConnectionStore = create<ConnectionStore>()(
               apiStatus: 'failed',
               wsStatus: 'failed',
               extensionStatus: 'failed',
-              error: error instanceof Error ? error.message : 'Unknown error'
+              error: error instanceof Error ? error.message : 'Unknown error',
+              errorCode: null
             });
           }
         },
@@ -121,6 +181,7 @@ export const useConnectionStore = create<ConnectionStore>()(
             isConnected: false,
             lastPingTime: null,
             error: null,
+            errorCode: null,
             hasExtension: false,
             remoteVersion: null,
             apiStatus: 'idle',
@@ -131,7 +192,7 @@ export const useConnectionStore = create<ConnectionStore>()(
         },
 
         setError: (error: string | null) => {
-          set({ error });
+          set({ error, errorCode: null });
         },
 
         retryConnection: async () => {
@@ -170,12 +231,19 @@ export const useConnectionStore = create<ConnectionStore>()(
           set({
             isConnecting: true,
             error: null,
+            errorCode: null,
             apiStatus: 'checking',
             wsStatus: 'checking',
             extensionStatus: 'checking'
           });
 
           try {
+            const { authMode, authToken: currentToken } = get();
+            const authToken = currentToken || (
+              authMode === 'comfyui-login' ? loadComfyAuthToken(url) : ''
+            );
+            if (authToken !== currentToken) set({ authToken });
+            configureComfyAuth({ serverUrl: url, mode: authMode, token: authToken });
             // Check app version independently of connection status
             get().checkExtension();
 
@@ -189,7 +257,8 @@ export const useConnectionStore = create<ConnectionStore>()(
                 isConnecting: false,
                 lastPingTime: Date.now(),
                 apiStatus: 'success',
-                error: null
+                error: null,
+                errorCode: null
               });
 
               // Auto-connect WebSocket when HTTP auto-connection succeeds
@@ -201,7 +270,8 @@ export const useConnectionStore = create<ConnectionStore>()(
                 apiStatus: 'idle',
                 wsStatus: 'idle',
                 extensionStatus: 'idle',
-                error: null // Don't show error for auto-connect failures
+                error: null, // Don't show error for auto-connect failures
+                errorCode: null
               });
             }
           } catch (error) {
@@ -211,7 +281,8 @@ export const useConnectionStore = create<ConnectionStore>()(
               apiStatus: 'idle',
               wsStatus: 'idle',
               extensionStatus: 'idle',
-              error: null
+              error: null,
+              errorCode: null
             });
           }
         },
@@ -239,7 +310,7 @@ export const useConnectionStore = create<ConnectionStore>()(
           }
 
           try {
-            const apiRes = await fetch(`${url}/comfymobile/api/status`, {
+            const apiRes = await comfyAuthenticatedFetch(`${url}/comfymobile/api/status`, {
               method: 'GET',
               signal: AbortSignal.timeout(3000)
             });
@@ -317,7 +388,9 @@ export const useConnectionStore = create<ConnectionStore>()(
         name: STORAGE_KEY,
         partialize: (state) => ({
           url: state.url,
-          autoReconnectEnabled: state.autoReconnectEnabled
+          autoReconnectEnabled: state.autoReconnectEnabled,
+          authMode: state.authMode,
+          rememberAuthToken: state.rememberAuthToken
         }),
       }
     )

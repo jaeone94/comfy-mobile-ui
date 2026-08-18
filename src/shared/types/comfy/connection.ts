@@ -1,4 +1,5 @@
 export type ConnectionStepStatus = 'idle' | 'checking' | 'success' | 'failed';
+export type ComfyAuthMode = 'none' | 'comfyui-login';
 
 export interface ConnectionState {
   url: string;
@@ -11,6 +12,11 @@ export interface ConnectionState {
   apiStatus: ConnectionStepStatus;
   wsStatus: ConnectionStepStatus;
   extensionStatus: ConnectionStepStatus;
+  authMode: ComfyAuthMode;
+  authToken: string;
+  /** Keep the token in localStorage (and in browser-data backups) instead of the tab session. */
+  rememberAuthToken: boolean;
+  errorCode: 'authentication_required' | null;
 }
 
 export interface ServerInfo {
