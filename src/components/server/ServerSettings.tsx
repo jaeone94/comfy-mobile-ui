@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useTranslation } from 'react-i18next';
 import { Input } from '@/components/ui/input';
-import { ArrowLeft, WifiOff, Loader2, CheckCircle, XCircle, Info, Power, Eye, EyeOff, ShieldCheck, Check, ExternalLink } from 'lucide-react';
+import { ArrowLeft, WifiOff, Loader2, CheckCircle, XCircle, Info, Power, Eye, EyeOff, ShieldCheck, Check, ExternalLink, ChevronDown } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useConnectionStore } from '@/ui/store/connectionStore';
 import { Label } from '@/components/ui/label';
@@ -40,6 +40,9 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
   const [inputAuthToken, setInputAuthToken] = useState(authToken);
   const [showAuthToken, setShowAuthToken] = useState(false);
   const [inputRememberToken, setInputRememberToken] = useState(rememberAuthToken);
+  // Most servers have no ComfyUI-Login, so this stays out of the way until it
+  // is either already in use or the server actually answers with a 401.
+  const [showAuthSection, setShowAuthSection] = useState(authMode === 'comfyui-login');
 
   useEffect(() => {
     setInputUrl(url);
@@ -56,6 +59,12 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
   useEffect(() => {
     setInputRememberToken(rememberAuthToken);
   }, [rememberAuthToken]);
+
+  useEffect(() => {
+    if (authMode === 'comfyui-login' || errorCode === 'authentication_required') {
+      setShowAuthSection(true);
+    }
+  }, [authMode, errorCode]);
 
   useEffect(() => {
     const cleanup = initializeWebSocketListeners();
@@ -266,13 +275,29 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
 
             <div className="h-px bg-white/[0.06] my-4" />
 
-            <div className="flex items-center gap-2 mb-2.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-[#7ba3f5]" strokeWidth={1.8} />
-              <div className="text-[13px] font-semibold text-[#e9ebef]">
+            <button
+              type="button"
+              onClick={() => setShowAuthSection(visible => !visible)}
+              className="w-full flex items-center gap-2 mb-2.5"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-[#7ba3f5] flex-shrink-0" strokeWidth={1.8} />
+              <div className="flex-1 text-left text-[13px] font-semibold text-[#e9ebef]">
                 {t('serverSettings.authentication.title')}
               </div>
-            </div>
+              {!showAuthSection && (
+                <span className="text-[11px] text-[#565d6b]">
+                  {inputAuthMode === 'comfyui-login'
+                    ? t('serverSettings.authentication.comfyLogin')
+                    : t('serverSettings.authentication.none')}
+                </span>
+              )}
+              <ChevronDown
+                className={`h-3.5 w-3.5 text-[#66758a] flex-shrink-0 transition-transform ${showAuthSection ? 'rotate-180' : ''}`}
+                strokeWidth={1.9}
+              />
+            </button>
 
+            {showAuthSection && (<>
             <div className="grid grid-cols-2 gap-1.5">
               {(['none', 'comfyui-login'] as const).map((mode) => {
                 const active = inputAuthMode === mode;
@@ -375,6 +400,7 @@ const ServerSettings: React.FC<ServerSettingsProps> = ({ onBack }) => {
                 </div>
               </div>
             )}
+            </>)}
 
             <div className="mt-4">
               {isConnected ? (

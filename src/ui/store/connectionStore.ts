@@ -56,7 +56,9 @@ export const useConnectionStore = create<ConnectionStore>()(
         autoReconnectEnabled: true,
         authMode: 'none',
         authToken: '',
-        rememberAuthToken: false,
+        // Personal-device app: re-typing the token every time the tab closes
+        // costs more than it protects. Users on a shared machine can turn it off.
+        rememberAuthToken: true,
 
         // Initialize WebSocket state
         webSocket: globalWebSocketService.getState(),
@@ -100,7 +102,9 @@ export const useConnectionStore = create<ConnectionStore>()(
             : 'none';
           const authToken = authMode === 'comfyui-login' ? loadComfyAuthToken(url) : '';
           configureComfyAuth({ serverUrl: url, mode: authMode, token: authToken });
-          set({ authMode, authToken, rememberAuthToken: rememberAuthToken === true });
+          // Absent in state persisted before this setting existed - default on,
+          // matching a fresh install rather than silently opting them out.
+          set({ authMode, authToken, rememberAuthToken: rememberAuthToken !== false });
         },
 
         connect: async () => {

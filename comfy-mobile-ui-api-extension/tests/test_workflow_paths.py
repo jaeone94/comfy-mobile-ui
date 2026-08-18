@@ -2,8 +2,10 @@
 Path containment tests for workflow subfolder support.
 
 Allowing subfolders meant replacing a blanket "reject any separator" check with
-resolution-based containment, so these cover what that rule used to cover for
-free: traversal, absolute paths, and symlinks pointing outside the root.
+lexical containment, so these cover what that rule used to cover for free:
+traversal and absolute paths. Symlinks are intentionally permitted - this is a
+single-owner app and a link in the workflows folder is the owner's own doing -
+so the tests assert they stay usable, and that a link cycle cannot hang the walk.
 
 Run with:  python tests/test_workflow_paths.py
 """
@@ -61,7 +63,18 @@ FAILURES = []
 def _walk_listing(workflows_dir):
     """Relative paths list_workflows would return, using the same rules."""
     found = []
-    for current_dir, dir_names, file_names in os.walk(workflows_dir):
+    visited = set()
+    for current_dir, dir_names, file_names in os.walk(workflows_dir, followlinks=True):
+        try:
+            marker = os.stat(current_dir)
+            key = (marker.st_dev, marker.st_ino)
+        except OSError:
+            continue
+        identity = key if key[1] else os.path.realpath(current_dir)
+        if identity in visited:
+            dir_names[:] = []
+            continue
+        visited.add(identity)
         dir_names[:] = [d for d in dir_names if not d.startswith('.')]
         for name in file_names:
             if not name.endswith('.json'):
@@ -129,33 +142,48 @@ def main():
     check(resolve_workflow_path("/") is None, "root itself")
     check(resolve_workflow_path(".") is None, "dot resolves to the root")
 
-    # A symlinked file inside the root that points outside must not be readable,
-    # matching os.walk's refusal to follow symlinked directories when listing.
+    # Symlinks are the owner pulling in a shared library, so they stay usable.
     link = os.path.join(workflows_dir, "linked.json")
+    linked_dir = os.path.join(workflows_dir, "linked-library")
     symlinks_supported = True
     try:
         os.symlink(secret, link)
+        os.symlink(outside_dir, linked_dir, target_is_directory=True)
     except (OSError, NotImplementedError, AttributeError):
         symlinks_supported = False
 
+    print("symlinks stay usable:")
     if symlinks_supported:
-        check(resolve_workflow_path("linked.json") is None,
-              "symlink escaping the root")
+        check(resolve_workflow_path("linked.json") is not None,
+              "symlinked file resolves")
+        check(resolve_workflow_path("linked-library/secret.json") is not None,
+              "file inside a symlinked directory resolves")
     else:
-        print("  skip symlink escape (not permitted on this platform)")
+        print("  skip (symlinks not permitted on this platform)")
 
-    # A symlinked file is enumerated by os.walk even though os.walk will not
-    # descend into symlinked directories, and os.stat would then report the
-    # outside target's metadata. The listing filters through the same resolver,
-    # so listed and readable stay the same set.
     print("listing matches read policy:")
+    listed = _walk_listing(workflows_dir)
+    check("root.json" in listed, "regular root file is listed")
+    check("portraits/sdxl/hires.json" in listed, "nested file is listed")
+    check(all(resolve_workflow_path(rel) is not None for rel in listed),
+          "everything listed is readable")
     if symlinks_supported:
-        listed = _walk_listing(workflows_dir)
-        check("linked.json" not in listed, "symlinked file is not listed")
-        check("root.json" in listed, "regular root file is listed")
-        check("portraits/sdxl/hires.json" in listed, "nested file is listed")
-        check(all(resolve_workflow_path(rel) is not None for rel in listed),
-              "everything listed is readable")
+        check("linked.json" in listed, "symlinked file is listed")
+        check("linked-library/secret.json" in listed,
+              "file inside a symlinked directory is listed")
+
+    # A link pointing at an ancestor makes followlinks=True recurse forever
+    # without the cycle guard; this must terminate rather than hang.
+    print("symlink cycle terminates:")
+    if symlinks_supported:
+        try:
+            os.symlink(workflows_dir, os.path.join(nested_dir, "loop"),
+                       target_is_directory=True)
+            cycled = _walk_listing(workflows_dir)
+            check(len(cycled) < 500, "walk terminates on a self-referencing link")
+            check("root.json" in cycled, "regular files still found while cycling")
+        except (OSError, NotImplementedError):
+            print("  skip (could not create the cycle)")
     else:
         print("  skip (symlinks not permitted on this platform)")
 

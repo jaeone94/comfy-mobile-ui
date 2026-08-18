@@ -14,7 +14,7 @@ export interface ConnectionState {
   extensionStatus: ConnectionStepStatus;
   authMode: ComfyAuthMode;
   authToken: string;
-  /** Keep the token in localStorage (and in browser-data backups) instead of the tab session. */
+  /** Keep the token in localStorage (and in browser-data backups) instead of the tab session. Defaults on. */
   rememberAuthToken: boolean;
   errorCode: 'authentication_required' | null;
 }

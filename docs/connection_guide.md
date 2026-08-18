@@ -55,7 +55,7 @@ If [ComfyUI-Login](https://github.com/liusida/ComfyUI-Login) protects your serve
 - Easiest way: tap **Get the token from the server** under the token field. It opens `<server>/comfymobile/api/auth/token`, which asks you to log in with your ComfyUI-Login password and then shows the token with a copy button. Nothing else is needed - no console, no file access.
 - Alternatively, copy the value printed after `For direct API calls, use token=` in the ComfyUI console. It is printed once at startup, so it is easy to miss on a restart.
 - Use the generated API token, not your plain-text password. The token is also the first line of `<ComfyUI>/login/PASSWORD`.
-- By default the token is kept only for the current browser session. Enable **Stay signed in on this device** to store it on the device so you do not have to re-enter it after closing the tab; the token is then also included in browser-data backups. Leave it off on shared devices.
+- **Stay signed in on this device** is on by default: the token is stored on the device, survives closing the tab, and is included in browser-data backups. Turn it off on a shared machine and the token is kept only for the current browser session.
 
 > [!WARNING]
 > Treat the API token like a password. Use HTTPS when connecting through an untrusted network.
