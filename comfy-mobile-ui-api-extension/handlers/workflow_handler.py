@@ -67,9 +67,7 @@ async def list_workflows(request):
         
         if os.path.exists(workflows_dir):
             # Users organise large collections into subfolders, so walk the
-            # tree. Symlinked directories are not followed (os.walk default),
-            # which keeps the listing consistent with what
-            # resolve_workflow_path is willing to read back.
+            # tree. Symlinked directories are not followed (os.walk default).
             for current_dir, dir_names, file_names in os.walk(workflows_dir):
                 # Skip dot-directories such as .git or editor state.
                 dir_names[:] = [d for d in dir_names if not d.startswith('.')]
@@ -79,8 +77,17 @@ async def list_workflows(request):
                         continue
 
                     file_path = os.path.join(current_dir, file)
-                    file_info = get_file_info(file_path)
                     relative_path = to_relative_workflow_path(file_path)
+
+                    # os.walk declines to follow symlinked *directories*, but a
+                    # symlinked file still shows up here and os.stat would report
+                    # its target's size and mtime. Filtering through the same
+                    # resolver the content endpoint uses keeps the two in step,
+                    # so nothing is listed that would then fail to open.
+                    if resolve_workflow_path(relative_path) is None:
+                        continue
+
+                    file_info = get_file_info(file_path)
 
                     workflows.append({
                         # Identifier for the content endpoint: path relative to

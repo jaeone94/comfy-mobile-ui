@@ -58,6 +58,21 @@ to_relative_workflow_path = _handler.to_relative_workflow_path
 FAILURES = []
 
 
+def _walk_listing(workflows_dir):
+    """Relative paths list_workflows would return, using the same rules."""
+    found = []
+    for current_dir, dir_names, file_names in os.walk(workflows_dir):
+        dir_names[:] = [d for d in dir_names if not d.startswith('.')]
+        for name in file_names:
+            if not name.endswith('.json'):
+                continue
+            relative = to_relative_workflow_path(os.path.join(current_dir, name))
+            if resolve_workflow_path(relative) is None:
+                continue
+            found.append(relative)
+    return found
+
+
 def check(condition, label):
     if condition:
         print("  ok   %s" % label)
@@ -128,6 +143,21 @@ def main():
               "symlink escaping the root")
     else:
         print("  skip symlink escape (not permitted on this platform)")
+
+    # A symlinked file is enumerated by os.walk even though os.walk will not
+    # descend into symlinked directories, and os.stat would then report the
+    # outside target's metadata. The listing filters through the same resolver,
+    # so listed and readable stay the same set.
+    print("listing matches read policy:")
+    if symlinks_supported:
+        listed = _walk_listing(workflows_dir)
+        check("linked.json" not in listed, "symlinked file is not listed")
+        check("root.json" in listed, "regular root file is listed")
+        check("portraits/sdxl/hires.json" in listed, "nested file is listed")
+        check(all(resolve_workflow_path(rel) is not None for rel in listed),
+              "everything listed is readable")
+    else:
+        print("  skip (symlinks not permitted on this platform)")
 
     print("relative path mapping:")
     check(to_relative_workflow_path(nested_file) == "portraits/sdxl/hires.json",
