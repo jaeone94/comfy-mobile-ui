@@ -93,7 +93,7 @@ async def _translate_with_groq(session, api_key, text, source_language, target_l
     )
 
     body = {
-        "model": "qwen/qwen3.6-27b",
+        "model": "qwen/qwen3.8-27b",
         "messages": [
             {"role": "system", "content": system_prompt},
             {"role": "user", "content": text},
