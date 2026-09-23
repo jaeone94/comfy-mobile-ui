@@ -5,6 +5,7 @@
  */
 
 import { ComfyGraphNode } from './ComfyGraphNode'
+import { hasDynamicInputs, reconcileDynamicLinks } from '@/core/services/DynamicInputService'
 import { ComfyNodeMetadataService, registerSynthesizedMetadata } from '@/infrastructure/api/ComfyNodeMetadataService'
 import { SubgraphMetadataService } from '@/core/services/SubgraphMetadataService'
 import { initializeMobileUIMetadata, getControlAfterGenerate } from '@/shared/utils/workflowMetadata'
@@ -217,6 +218,11 @@ export class ComfyGraph {
       }
     }
 
+    for (const node of this._nodes) {
+      node.attachDynamicGraph(this)
+      if (hasDynamicInputs(node.nodeData)) reconcileDynamicLinks(node, this)
+    }
+
     // Store groups if present, converting Float32Array to regular arrays
     let maxGroupId = 0;
     if (data.groups && Array.isArray(data.groups)) {
@@ -307,6 +313,7 @@ export class ComfyGraph {
 
   // Interface compatibility methods
   add(node: ComfyGraphNode): void {
+    node.attachDynamicGraph(this)
     this._nodes.push(node)
   }
 

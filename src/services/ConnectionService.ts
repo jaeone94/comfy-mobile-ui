@@ -1,4 +1,5 @@
 import { IComfyJson, IComfyGraph } from '@/shared/types/app/base';
+import { hasDynamicInputs, syncDynamicWorkflow } from '@/core/services/DynamicInputService';
 
 export interface ConnectionServiceResult {
   updatedWorkflowJson: IComfyJson;
@@ -35,6 +36,9 @@ export class ConnectionService {
     // CRITICAL: Do NOT deep clone the graph using JSON methods as it destroys ComfyGraphNode instances (methods/widgets)
     // We will mutate the graph structure cautiously or return the same graph instance with updates
     const updatedGraph = graph;
+    if (graph._nodes.some(node => hasDynamicInputs((node as any).nodeData))) {
+      syncDynamicWorkflow(graph, updatedWorkflowJson);
+    }
 
     // Generate new link ID
     const newLinkId = Math.max(
@@ -100,6 +104,10 @@ export class ConnectionService {
     updatedWorkflowJson.last_link_id = newLinkId;
     updatedGraph.last_link_id = newLinkId;
 
+    (targetGraphNode as any).attachDynamicGraph?.(updatedGraph);
+    (targetGraphNode as any).refreshDynamicInputs?.();
+    if (hasDynamicInputs((targetGraphNode as any).nodeData)) syncDynamicWorkflow(updatedGraph, updatedWorkflowJson);
+
     return {
       updatedWorkflowJson,
       updatedGraph,
@@ -120,7 +128,7 @@ export class ConnectionService {
     if (!targetInputSlot?.link) return;
 
     const existingLinkId = targetInputSlot.link;
-    this.removeConnection(workflowJson, graph, existingLinkId);
+    this.removeConnection(workflowJson, graph, existingLinkId, false);
   }
 
   /**
@@ -208,20 +216,34 @@ export class ConnectionService {
   static removeConnection(
     workflowJson: IComfyJson,
     graph: IComfyGraph,
-    linkId: number
+    linkId: number,
+    reconcile = true
   ) {
+    const targetLink = graph._links?.[linkId];
+    const dynamicNode = graph._nodes.find(node => node.id === targetLink?.target_id) as any;
+    const disconnectedName = dynamicNode?.inputs?.[targetLink?.target_slot ?? -1]?.name;
     const link = workflowJson.links?.find(l => l[0] === linkId);
     if (!link) {
       // If not in JSON, try to find in Graph links (safety fallback)
       if (graph._links && graph._links[linkId]) {
         const gLink = graph._links[linkId];
         this.disconnectNodes(workflowJson, graph, gLink.origin_id, gLink.origin_slot, gLink.target_id, gLink.target_slot, linkId);
+        if (reconcile && hasDynamicInputs(dynamicNode?.nodeData)) {
+          dynamicNode.attachDynamicGraph(graph);
+          dynamicNode.refreshDynamicInputs(disconnectedName);
+          syncDynamicWorkflow(graph, workflowJson);
+        }
       }
       return;
     }
 
     const [id, sourceNodeId, sourceSlot, targetNodeId, targetSlot] = link;
     this.disconnectNodes(workflowJson, graph, sourceNodeId, sourceSlot, targetNodeId, targetSlot, linkId);
+    if (reconcile && hasDynamicInputs(dynamicNode?.nodeData)) {
+      dynamicNode.attachDynamicGraph(graph);
+      dynamicNode.refreshDynamicInputs(disconnectedName);
+      syncDynamicWorkflow(graph, workflowJson);
+    }
   }
 
   private static disconnectNodes(

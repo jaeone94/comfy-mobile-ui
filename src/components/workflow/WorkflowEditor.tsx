@@ -16,6 +16,7 @@ import type { PreparedWorkflowExecution } from '@/shared/types/comfy/IComfyAPI';
 // Core Services
 import { WorkflowGraphService, serializeGraph, loadWorkflowToGraph, addNodeToWorkflow, removeNodeWithLinks, removeGroup, createInputSlots, createOutputSlots } from '@/core/services/WorkflowGraphService';
 import { createExecutionGraph } from '@/core/services/WorkflowExecutionService';
+import { hasDynamicInputs, syncDynamicWorkflow } from '@/core/services/DynamicInputService';
 import { SubgraphExtractService } from '@/core/services/SubgraphExtractService';
 import { ConnectionService } from '@/services/ConnectionService';
 import { detectMissingWorkflowNodes, MissingWorkflowNode, resolveMissingNodePackages } from '@/services/MissingNodesService';
@@ -304,11 +305,28 @@ const WorkflowEditor: React.FC = () => {
   const currentPromptIdRef = useRef<string | null>(null);
 
   // Widget value editor hook
-  const widgetEditor = useWidgetValueEditor();
+  const widgetEditor = useWidgetValueEditor({ processor: {
+    setWidgetValue: (nodeId: number, name: string, value: any) => {
+      const node = currentGraph?.getNodeById(nodeId);
+      if (!node || !hasDynamicInputs(node.nodeData)) return;
+      node.attachDynamicGraph(currentGraph);
+      node.setWidgetValue(name, value);
+      if (sessionStack.length === 1 && workflow?.workflow_json) syncDynamicWorkflow(currentGraph, workflow.workflow_json);
+      setCanvasUpdateTrigger(previous => previous + 1);
+    },
+    getWidgetValue: (nodeId: number, name: string) => {
+      const node = currentGraph?.getNodeById(nodeId);
+      return node && hasDynamicInputs(node.nodeData) ? node.getWidget(name)?.value : undefined;
+    }
+  }});
 
   // Sync comfyGraphRef and WidgetEditor with current session
   useEffect(() => {
     comfyGraphRef.current = currentGraph;
+    if (currentGraph && sessionStack.length === 1 && workflow?.workflow_json &&
+        currentGraph._nodes.some((node: ComfyGraphNode) => hasDynamicInputs(node.nodeData))) {
+      syncDynamicWorkflow(currentGraph, workflow.workflow_json);
+    }
 
     // Recalculate and update bounds for the new graph (Main or Subgraph)
     // This ensures the renderer draws the correct nodes/groups for the active session
@@ -2238,7 +2256,7 @@ const WorkflowEditor: React.FC = () => {
         }
 
         // 3. Add to live graph
-        currentGraph._nodes.push(newNode);
+        currentGraph.add(newNode);
         // Sync graph last_node_id
         currentGraph.last_node_id = newNodeId;
 
@@ -2886,6 +2904,7 @@ const WorkflowEditor: React.FC = () => {
       }
 
       const linkId = jsonNode.inputs[inputSlot].link;
+      const disconnectedName = graphNode.inputs[inputSlot]?.name;
       if (!linkId) {
         console.warn('No link to disconnect');
         return;
@@ -2966,6 +2985,12 @@ const WorkflowEditor: React.FC = () => {
         }
       }
 
+      if (hasDynamicInputs(graphNode.nodeData)) {
+        graphNode.attachDynamicGraph(comfyGraphRef.current);
+        graphNode.refreshDynamicInputs(disconnectedName);
+        syncDynamicWorkflow(comfyGraphRef.current, workflow.workflow_json);
+      }
+
       // 4. Use the directly modified workflow for backend save
       // Create shallow copy to trigger React updates
       const updatedWorkflow = { ...workflow };
@@ -3014,6 +3039,8 @@ const WorkflowEditor: React.FC = () => {
 
       // Find the target node's input link BEFORE removing from links array
       const linkInfo = workflow.workflow_json.links.find(link => link[0] === linkId);
+      const dynamicTarget = linkInfo ? comfyGraphRef.current.getNodeById(linkInfo[3]) : undefined;
+      const disconnectedName = linkInfo ? dynamicTarget?.inputs[linkInfo[4]]?.name : undefined;
 
       // 1. Update ComfyGraph directly (for instant visual feedback)
       // Remove link from ComfyGraph _links
@@ -3088,27 +3115,20 @@ const WorkflowEditor: React.FC = () => {
         }
       }
 
-      // 4. Use the directly modified workflow for backend save
-      // Create shallow copy to trigger React updates
+      if (dynamicTarget && hasDynamicInputs(dynamicTarget.nodeData)) {
+        dynamicTarget.attachDynamicGraph(comfyGraphRef.current);
+        dynamicTarget.refreshDynamicInputs(disconnectedName);
+        syncDynamicWorkflow(comfyGraphRef.current, workflow.workflow_json);
+      }
       const updatedWorkflow = { ...workflow };
-
-      // Save to backend asynchronously without updating React state
       updateWorkflow(updatedWorkflow).catch(error => {
         console.error('Failed to save workflow:', error);
         toast.error(t('workflow.updateError'));
       });
-
-      // Update local state and sync
       setWorkflow(updatedWorkflow);
       syncWorkflow(updatedWorkflow);
       forceRender();
-
-      // Trigger canvas redraw with imperceptible viewport change
-      setViewport(prev => ({ ...prev, scale: prev.scale + 0.00001 }));
-      setTimeout(() => {
-        setViewport(prev => ({ ...prev, scale: prev.scale - 0.00001 }));
-      }, 10);
-
+      setCanvasUpdateTrigger(previous => previous + 1);
       toast.success(t('workflow.disconnected'));
 
     } catch (error) {
@@ -3237,6 +3257,9 @@ const WorkflowEditor: React.FC = () => {
               nodeMetadata,
               workflow.workflow_json.mobile_ui_metadata
             );
+            if (hasDynamicInputs(nodeMetadata)) {
+              updatedNodes[nodeIndex] = { ...updatedNodes[nodeIndex], ...graphNode.serialize() };
+            }
           }
         }
       }
@@ -3246,6 +3269,9 @@ const WorkflowEditor: React.FC = () => {
         ...workflow.workflow_json,
         nodes: updatedNodes
       };
+      if (comfyGraphRef.current._nodes.some((node: ComfyGraphNode) => hasDynamicInputs(node.nodeData))) {
+        syncDynamicWorkflow(comfyGraphRef.current, updatedWorkflowJson);
+      }
 
       // Save the updated workflow
       const updatedWorkflow = {
