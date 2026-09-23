@@ -14,6 +14,8 @@ const EXTENSION_DIR = path.join(PROJECT_ROOT, 'comfy-mobile-ui-api-extension');
 const WEB_TARGET_DIR = path.join(EXTENSION_DIR, 'web');
 const DEPLOY_DIR = path.join(PROJECT_ROOT, 'deploy');
 const TEMP_DIR = path.join(PROJECT_ROOT, 'temp_deploy');
+const EXCLUDED_NAMES = new Set(['.git', '__pycache__', '.update_staging', 'comfyui_original_args.json']);
+const isRuntimeArtifact = (name) => EXCLUDED_NAMES.has(name) || /\.(?:pyc|pyo|log)$/i.test(name);
 
 console.log('🚀 Starting Advanced Deployment Process...');
 
@@ -23,6 +25,7 @@ console.log('🚀 Starting Advanced Deployment Process...');
 function copyFolderSync(from, to) {
     if (!fs.existsSync(to)) fs.mkdirSync(to, { recursive: true });
     fs.readdirSync(from).forEach(element => {
+        if (isRuntimeArtifact(element)) return;
         const fromPath = path.join(from, element);
         const toPath = path.join(to, element);
         const stat = fs.lstatSync(fromPath);
@@ -65,9 +68,8 @@ try {
     fs.mkdirSync(innerTempDir, { recursive: true });
 
     // Copy everything from extension dir to temp (excluding git/backups)
-    const exclude = ['.git', '__pycache__', '.update_staging', 'watchdog.log', 'comfyui_output.log'];
     fs.readdirSync(EXTENSION_DIR).forEach(item => {
-        if (!exclude.includes(item)) {
+        if (!isRuntimeArtifact(item)) {
             const src = path.join(EXTENSION_DIR, item);
             const dest = path.join(innerTempDir, item);
             if (fs.lstatSync(src).isDirectory()) {
