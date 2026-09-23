@@ -1,4 +1,5 @@
 import type { ComfyGraph } from '@/core/domain/ComfyGraph';
+import { hasDynamicInputs } from './DynamicInputService';
 
 export type WidgetModifications = ReadonlyMap<
   number,
@@ -49,6 +50,12 @@ const cloneNode = (sourceNode: RuntimeExecutionNode): RuntimeExecutionNode => {
       ? { ...sourceNode.widgets_values }
       : sourceNode.widgets_values;
 
+  const source = sourceNode as any;
+  const clone = clonedNode as any;
+  clone.inputs = source.inputs?.map((input: any) => ({ ...input }));
+  clone.outputs = source.outputs?.map((output: any) => ({ ...output, links: output.links ? [...output.links] : output.links }));
+  if (source.dynamicValues) clone.dynamicValues = new Map(source.dynamicValues);
+
   return clonedNode;
 };
 
@@ -67,11 +74,12 @@ export const createExecutionGraph = <TGraph extends ComfyGraph>(
     originalGraph,
     {
       _nodes: sourceNodes.map(cloneNode),
-      _links: { ...(originalGraph._links ?? {}) },
+      _links: Object.fromEntries(Object.entries(originalGraph._links ?? {}).map(([id, link]) => [id, { ...link }])),
       _groups: originalGraph._groups ? [...originalGraph._groups] : [],
     },
   ) as TGraph;
   const executionNodes = executionGraph._nodes as unknown as RuntimeExecutionNode[];
+  executionGraph._nodes.forEach(node => node.attachDynamicGraph?.(executionGraph));
 
   modifications.forEach((nodeModifications, nodeId) => {
     const node = executionNodes.find((candidate) => Number(candidate.id) === nodeId);
@@ -81,6 +89,10 @@ export const createExecutionGraph = <TGraph extends ComfyGraph>(
     }
 
     Object.entries(nodeModifications).forEach(([parameterName, value]) => {
+      if (hasDynamicInputs((node as any).nodeData)) {
+        (node as any).setWidgetValue(parameterName, value);
+        return;
+      }
       let applied = false;
 
       for (const widgets of [node.widgets, node._widgets]) {

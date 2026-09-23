@@ -411,7 +411,7 @@ export const NodeDetailModal: React.FC<NodeDetailModalProps> = ({
         }
 
         return [];
-    }, [selectedNode, metadata]);
+    }, [selectedNode, metadata, (selectedNode as any).dynamicRevision]);
 
     // Preview extraction
     const extractVideoPreview = () => {

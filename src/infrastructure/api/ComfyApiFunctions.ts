@@ -1960,6 +1960,7 @@ function processNodeWidgetInputs(node: any, apiNodeInputs: Record<string, any>):
     console.log(`Using _widgets approach for node ${node.id} (${node.type})`);
 
     for (const widget of node._widgets) {
+      if (widget.serialize === false) continue;
       // Check if this widget corresponds to a connected input
       const correspondingInput = node.inputs?.find((input: any) =>
         input.name === widget.name && input.link !== null && input.link !== undefined

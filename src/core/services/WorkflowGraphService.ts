@@ -9,6 +9,7 @@ import { ComfyNodeMetadataService } from '@/infrastructure/api/ComfyNodeMetadata
 import { IObjectInfo } from '@/shared/types/comfy/IComfyObjectInfo'
 import { IComfyJson, IComfyJsonNode } from '@/shared/types/app/base'
 import preprocessWorkflowJson from '@/core/services/WorkflowJsonPreprocessor'
+import { expandDynamicInputs, hasDynamicInputs } from './DynamicInputService'
 
 /**
  * Load workflow data into a new graph
@@ -187,7 +188,9 @@ function createNodeInstance(
     : calculateNodeSize(nodeMetadata);
 
   // Create input slots (including widget slots, following input_order)
-  const inputs = createInputSlots(nodeMetadata.input || {}, nodeMetadata.input_order);
+  const dynamicLayout = hasDynamicInputs(nodeMetadata)
+    ? expandDynamicInputs(nodeMetadata, [], initialValues || {}) : null;
+  const inputs = dynamicLayout?.inputs ?? createInputSlots(nodeMetadata.input || {}, nodeMetadata.input_order);
 
   // Create output slots
   const outputs = createOutputSlots(
@@ -196,7 +199,7 @@ function createNodeInstance(
   );
 
   // Get default widget values (overridden by initialValues if provided)
-  const widgetValues = getDefaultWidgetValues(
+  const widgetValues = dynamicLayout?.widgets.map(widget => widget.value) ?? getDefaultWidgetValues(
     nodeMetadata.input || {},
     nodeMetadata.input_order,
     initialValues

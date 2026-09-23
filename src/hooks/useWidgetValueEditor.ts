@@ -80,7 +80,8 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     // Save to local state
     setModifiedWidgetValues(prev => {
       const newMap = new Map(prev);
-      const nodeValues = newMap.get(nodeId) || {};
+      const nodeValues = Object.fromEntries(Object.entries(newMap.get(nodeId) || {})
+        .filter(([name]) => !name.startsWith(paramName + '.')));
       nodeValues[paramName] = editingValue;
       newMap.set(nodeId, nodeValues);
       return newMap;
@@ -132,7 +133,8 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
     // Save to local state
     setModifiedWidgetValues(prev => {
       const newMap = new Map(prev);
-      const nodeValues: NodeWidgetModifications = newMap.get(nodeId) || {};
+      const nodeValues: NodeWidgetModifications = Object.fromEntries(Object.entries(newMap.get(nodeId) || {})
+        .filter(([name]) => !name.startsWith(paramName + '.')));
       nodeValues[paramName] = value;
       newMap.set(nodeId, nodeValues);
       return newMap;
@@ -263,7 +265,8 @@ export const useWidgetValueEditor = (options?: UseWidgetValueEditorOptions) => {
   const setModifiedWidgetValue = (nodeId: number, paramName: string, value: any) => {
     setModifiedWidgetValues(prev => {
       const newMap = new Map(prev);
-      const nodeValues = newMap.get(nodeId) || {};
+      const nodeValues = Object.fromEntries(Object.entries(newMap.get(nodeId) || {})
+        .filter(([name]) => !name.startsWith(paramName + '.')));
       nodeValues[paramName] = value;
       newMap.set(nodeId, nodeValues);
       return newMap;

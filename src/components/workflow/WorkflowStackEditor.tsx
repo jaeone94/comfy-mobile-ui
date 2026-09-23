@@ -148,7 +148,7 @@ const StackNode: React.FC<StackNodeProps> = ({ node, widgetEditor, onModeChange,
             }
         }
         return [];
-    }, [node]);
+    }, [node, node.dynamicRevision]);
 
     const currentMode = (node as any)?.mode || 0;
     const isMuted = currentMode === 2;

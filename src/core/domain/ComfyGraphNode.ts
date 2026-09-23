@@ -18,6 +18,7 @@ import type { NodeConnection, NodeInput, NodeOutput } from '@/shared/types/app/I
 import { GraphEventTypes, emit } from './GraphEventSystem'
 import { NodeMode } from '@/shared/types/app/enums'
 import { graphChangeLogger, createWidgetsValuesProxy } from '@/utils/GraphChangeLogger'
+import { expandDynamicInputs, hasDynamicInputs, reconcileDynamicLinks } from '@/core/services/DynamicInputService'
 import { createSpecialNodeWidgets, hasSpecialNodeWidgetProcessor } from '@/core/services/SpecialNodeWidgetProcessor'
 import WorkflowMappingService from '@/core/services/WorkflowMappingService'
 
@@ -52,6 +53,42 @@ export class ComfyGraphNode implements IComfyGraphNode {
 
   // Internal state
   private _widgets: IComfyWidget[]
+  private dynamicValues = new Map<string, any>()
+  dynamicRevision = 0
+  dynamicGraph?: any
+
+  attachDynamicGraph(graph: any): void {
+    Object.defineProperty(this, 'dynamicGraph', { value: graph, writable: true, configurable: true, enumerable: false })
+  }
+
+  refreshDynamicInputs(disconnectedName?: string): void {
+    if (!hasDynamicInputs(this.nodeData)) return
+    for (const widget of this._widgets) {
+      const key = (widget.options as any)?.dynamicKey
+      if (key) this.dynamicValues.set(key, widget.value)
+    }
+    if (disconnectedName) {
+      const layout = expandDynamicInputs(this.nodeData, this.inputs, {}, this.dynamicValues)
+      const group = layout.groups.find(group => group.names.some(row => row.includes(disconnectedName)))
+      const ordinal = group?.names.findIndex(row => row.includes(disconnectedName)) ?? -1
+      if (group && ordinal >= Math.max(0, group.min - 1) &&
+        !this.inputs.some(input => group.names[ordinal].includes(input.name) && input.link != null)) {
+        // Shift a whole row, preserving paired inputs and their links together.
+        this.inputs = this.inputs.filter(input => !group.names[ordinal].includes(input.name))
+          .map(input => {
+            const row = group.names.findIndex(names => names.includes(input.name))
+            if (row <= ordinal) return input
+            return { ...input, name: group.names[row - 1][group.names[row].indexOf(input.name)] }
+          })
+      }
+    }
+    const layout = expandDynamicInputs(this.nodeData, this.inputs, {}, this.dynamicValues)
+    this.inputs = layout.inputs
+    this._widgets = layout.widgets.map(widget => this.createWidget(widget))
+    this.widgets_values = this._widgets.map(widget => widget.value)
+    this.dynamicRevision++
+    if (this.dynamicGraph) reconcileDynamicLinks(this, this.dynamicGraph)
+  }
   private _isExecuting: boolean = false
   private _lastExecutionTime: number = 0
   private _executionId: string | null = null
@@ -166,6 +203,18 @@ export class ComfyGraphNode implements IComfyGraphNode {
    */
   initializeWidgets(widgetValues: any[] | Record<string, any>, nodeMetadata?: any, workflowMetadata?: any): void {
     this._widgets = []
+
+    if (hasDynamicInputs(nodeMetadata)) {
+      this.nodeData = nodeMetadata
+      this.dynamicValues = new Map()
+      const layout = expandDynamicInputs(nodeMetadata, this.inputs, widgetValues)
+      this.inputs = layout.inputs
+      this._widgets = layout.widgets.map(widget => this.createWidget(widget))
+      this.widgets_values = this._widgets.map(widget => widget.value)
+      this.dynamicRevision++
+      if (this.dynamicGraph) reconcileDynamicLinks(this, this.dynamicGraph)
+      return
+    }
 
     // Initialize widgets_values proxy
     if (widgetValues && !this.widgets_values) {
@@ -778,6 +827,8 @@ export class ComfyGraphNode implements IComfyGraphNode {
 
     const previousValue = widget.value
     widget.value = value
+
+    if (hasDynamicInputs(this.nodeData)) this.refreshDynamicInputs()
 
     // 🔧 GraphChangeLogger: Log widget value change via setter method
     graphChangeLogger.logChange({
