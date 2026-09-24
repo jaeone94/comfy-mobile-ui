@@ -13,6 +13,7 @@ import { isImageFile } from '@/shared/utils/ComfyFileUtils';
 import { extractWorkflowFromPng } from '@/utils/pngMetadataExtractor';
 import type { IComfyJson } from '@/shared/types/app/IComfyJson';
 import { comfyAuthenticatedFetch } from '@/infrastructure/auth/ComfyAuthService';
+import { getMediaDownloadUrl } from '@/shared/utils/mediaDownload';
 
 interface FilePreviewModalProps {
   isOpen: boolean;
@@ -292,18 +293,15 @@ export const FilePreviewModal: React.FC<FilePreviewModalProps> = ({
 
     setIsDownloading(true);
     try {
-      // Create a hidden link and trigger download directly via browser
-      // This avoids loading the entire file into memory (Blob)
-      const link = document.body.appendChild(document.createElement('a'));
-
-      // Add download attribute to suggest filename
+      // The server sends Content-Disposition: attachment, including across origins.
+      // Keep this navigation synchronous with the tap; do not buffer videos in a Blob.
+      const downloadUrl = getMediaDownloadUrl(url, window.location.href);
+      const link = document.createElement('a');
       link.download = filename;
-      link.href = url;
-
-      // Important: for many browsers, cross-origin download attribute doesn't work 
-      // without server headers. But simple link navigation is safer for memory.
-      link.click();
-      link.remove();
+      link.href = downloadUrl;
+      link.referrerPolicy = 'no-referrer';
+      document.body.appendChild(link);
+      try { link.click(); } finally { link.remove(); }
 
       toast.success(t('media.downloadStarted'), {
         description: t('media.downloadStartedDesc', { filename }),
