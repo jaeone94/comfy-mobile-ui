@@ -599,6 +599,9 @@
         }
     },
     "gallery": {
+        "generateThumbnail": "썸네일 생성",
+        "generatingThumbnail": "생성 중…",
+        "thumbnailFailed": "썸네일 생성 실패",
         "uploadVideos": "영상 업로드",
         "uploadVideoDestination": "{{folder}}에 저장 · 영상 여러 개 선택 가능",
         "uploadVideoResult": "{{total}}개 중 {{uploaded}}개 영상 업로드 완료",
@@ -664,6 +667,9 @@
         "deleteConfirmConfirm": "전체 삭제"
     },
     "media": {
+        "makeCompatiblePreview": "호환 미리보기 만들기",
+        "compatiblePreviewPreparing": "호환 미리보기 준비 중…",
+        "compatiblePreviewReady": "임시 MP4 미리보기입니다. 다운로드는 원본 파일을 사용합니다.",
         "loading": "로딩 중...",
         "loadingVideo": "비디오 로딩 중...",
         "failedToLoad": "로드 실패",

@@ -599,6 +599,9 @@
         }
     },
     "gallery": {
+        "generateThumbnail": "Generate thumbnail",
+        "generatingThumbnail": "Generating…",
+        "thumbnailFailed": "Thumbnail generation failed",
         "uploadVideos": "Upload videos",
         "uploadVideoDestination": "Save to {{folder}} · Select multiple videos",
         "uploadVideoResult": "Uploaded {{uploaded}} / {{total}} videos",
@@ -664,6 +667,9 @@
         "deleteConfirmConfirm": "Delete Everything"
     },
     "media": {
+        "makeCompatiblePreview": "Create compatible preview",
+        "compatiblePreviewPreparing": "Preparing compatible preview…",
+        "compatiblePreviewReady": "Playing a temporary MP4 preview. Downloads still use the original file.",
         "loading": "Loading...",
         "loadingVideo": "Loading video...",
         "failedToLoad": "Failed to load",

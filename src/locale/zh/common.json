@@ -596,6 +596,9 @@
         }
     },
     "gallery": {
+        "generateThumbnail": "生成缩略图",
+        "generatingThumbnail": "正在生成…",
+        "thumbnailFailed": "缩略图生成失败",
         "uploadVideos": "上传视频",
         "uploadVideoDestination": "保存到 {{folder}} · 可选择多个视频",
         "uploadVideoResult": "已上传 {{uploaded}} / {{total}} 个视频",
@@ -661,6 +664,9 @@
         "deleteConfirmConfirm": "全部删除"
     },
     "media": {
+        "makeCompatiblePreview": "生成兼容预览",
+        "compatiblePreviewPreparing": "正在准备兼容预览…",
+        "compatiblePreviewReady": "正在播放临时MP4预览。下载仍使用原始文件。",
         "loading": "加载中...",
         "loadingVideo": "正在加载视频...",
         "failedToLoad": "加载失败",

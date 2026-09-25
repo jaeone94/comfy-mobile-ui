@@ -25,6 +25,32 @@ export class ComfyFileService {
     this.timeout = timeout;
   }
 
+  async generateVideoThumbnail(file: IComfyFileInfo): Promise<IComfyFileInfo> {
+    const response = await axios.post(`${this.serverUrl}/comfymobile/api/videos/thumbnail`, {
+      filename: file.filename, subfolder: file.subfolder === '/' ? '' : file.subfolder, type: file.type,
+    }, { timeout: 150000 });
+    return response.data.thumbnail;
+  }
+
+  async prepareVideoPreview(file: IComfyFileInfo, signal: AbortSignal, onStatus: (status: string) => void): Promise<string> {
+    const base = `${this.serverUrl}/comfymobile/api/videos/preview`;
+    let { data } = await axios.post(base, {
+      filename: file.filename, subfolder: file.subfolder === '/' ? '' : file.subfolder, type: file.type,
+    }, { timeout: 15000, signal });
+    while (data.status !== 'ready') {
+      if (data.status === 'error') throw new Error(data.error || 'Preview conversion failed');
+      onStatus(data.status);
+      await new Promise<void>((resolve, reject) => {
+        const onAbort = () => { clearTimeout(timer); reject(new DOMException('Aborted', 'AbortError')); };
+        const timer = setTimeout(() => { signal.removeEventListener('abort', onAbort); resolve(); }, 1500);
+        if (signal.aborted) onAbort();
+        else signal.addEventListener('abort', onAbort, { once: true });
+      });
+      ({ data } = await axios.get(`${base}/${data.id}/status`, { timeout: 15000, signal }));
+    }
+    return withComfyAuth(`${base}/${data.id}/file`);
+  }
+
   /**
    * Test connection to ComfyUI server
    */

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { ArrowLeft, Image as ImageIcon, Video, Loader2, RefreshCw, Server, AlertCircle, CheckCircle, Trash2, FolderOpen, Check, X, MousePointer, ChevronLeft, CheckSquare, Copy, LayoutGrid, FolderTree, ChevronRight, Upload } from 'lucide-react';
+import { toast } from 'sonner';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -64,6 +65,7 @@ interface LazyImageProps {
   fileService: ComfyFileService;
   videoLookupMap: Map<string, IComfyFileInfo>;
   imageLookupMap: Map<string, IComfyFileInfo>;
+  onThumbnailGenerated: (thumbnail: IComfyFileInfo) => void;
 }
 
 const LazyImage: React.FC<LazyImageProps> = ({
@@ -75,7 +77,8 @@ const LazyImage: React.FC<LazyImageProps> = ({
   onSelectionChange,
   fileService,
   videoLookupMap,
-  imageLookupMap
+  imageLookupMap,
+  onThumbnailGenerated
 }) => {
   const { t } = useTranslation();
   // Videos never gate the loading overlay (poster/placeholder shows instantly)
@@ -136,6 +139,29 @@ const LazyImage: React.FC<LazyImageProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [file, imageLookupMap, posterFailed]);
 
+  const [isGeneratingThumbnail, setIsGeneratingThumbnail] = useState(false);
+  const thumbnailRequest = useRef(false);
+  useEffect(() => {
+    setPosterFailed(false);
+    setHasError(false);
+  }, [imageLookupMap]);
+
+  const handleGenerateThumbnail = async (event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (thumbnailRequest.current) return;
+    thumbnailRequest.current = true;
+    setIsGeneratingThumbnail(true);
+    try {
+      const thumbnail = await fileService.generateVideoThumbnail(file);
+      onThumbnailGenerated(thumbnail);
+    } catch (error: any) {
+      toast.error(t('gallery.thumbnailFailed'), { description: error.response?.data?.error || error.message });
+    } finally {
+      thumbnailRequest.current = false;
+      setIsGeneratingThumbnail(false);
+    }
+  };
+
   const handleClick = () => {
     if (isSelectionMode && onSelectionChange) {
       onSelectionChange(file, !isSelected);
@@ -192,6 +218,14 @@ const LazyImage: React.FC<LazyImageProps> = ({
             <div className="w-full h-full flex items-center justify-center" style={{ background: '#0d1016' }}>
               <Video className="h-10 w-10 text-white/20" strokeWidth={1.6} />
             </div>
+          )}
+          {!isSelectionMode && !findMatchingImageForVideo(file.filename) && (
+            <button onClick={handleGenerateThumbnail} disabled={isGeneratingThumbnail}
+              className="absolute bottom-2 inset-x-2 z-40 rounded-lg border border-white/20 bg-black/75 px-2 py-2 text-[11px] text-white flex items-center justify-center gap-1 disabled:opacity-60"
+              aria-label={t('gallery.generateThumbnail')}>
+              {isGeneratingThumbnail && <Loader2 className="h-3 w-3 animate-spin" />}
+              {t(isGeneratingThumbnail ? 'gallery.generatingThumbnail' : 'gallery.generateThumbnail')}
+            </button>
           )}
           {/* Video Overlay Icon */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
@@ -321,6 +355,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   // Memoize the service instance to prevent infinite loops
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
 
+
+  const galleryContext = useRef('');
+  galleryContext.current = `${serverUrl}|${activeFolder}`;
+  const handleThumbnailGenerated = useCallback((thumbnail: IComfyFileInfo) => {
+    if (galleryContext.current !== `${serverUrl}|${activeFolder}`) return;
+    setFiles(previous => ({ ...previous, images: [thumbnail, ...previous.images.filter(image =>
+      !(image.filename === thumbnail.filename && image.subfolder === thumbnail.subfolder && image.type === thumbnail.type))] }));
+  }, [serverUrl, activeFolder]);
 
   const loadFiles = useCallback(async () => {
     setLoading(true);
@@ -1161,6 +1203,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                           fileService={comfyFileService}
                           videoLookupMap={videoLookupMap}
                           imageLookupMap={imageLookupMap}
+                          onThumbnailGenerated={handleThumbnailGenerated}
                         />
                       ))}
                     </div>
@@ -1191,6 +1234,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                       fileService={comfyFileService}
                       videoLookupMap={videoLookupMap}
                       imageLookupMap={imageLookupMap}
+                          onThumbnailGenerated={handleThumbnailGenerated}
                     />
                   ))}
                 </motion.div>
