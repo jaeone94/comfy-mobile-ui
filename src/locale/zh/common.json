@@ -1295,9 +1295,9 @@
         "subfolderDesc": "将下载内容组织在 ComfyUI 输入目录内的子文件夹中。",
         "downloadInfo": "下载信息",
         "infoSave": "视频将保存到：",
-        "infoFormat": "格式：H.264/AAC MP4（兼容 iOS/移动端）",
-        "infoQuality": "质量：最高可用质量（最高 1080p）",
-        "infoPlayback": "针对移动端播放优化，支持快速启动",
+        "infoFormat": "格式：保留原始编码，合并时优先使用兼容的MP4，否则使用MKV。",
+        "infoQuality": "画质：自动选择可用的最高画质视频格式。",
+        "infoPlayback": "播放兼容性取决于所选编码和容器。",
         "downloading": "正在下载视频...",
         "downloadProgress": "下载进度",
         "waitingLogs": "正在等待下载日志...",
@@ -1310,7 +1310,15 @@
             "upgradeSuccess": "yt-dlp 升级成功！",
             "updatedVersion": "已更新至版本：{{version}}",
             "upgradeFailed": "升级 yt-dlp 失败"
-        }
+        },
+        "formatLabel": "视频格式",
+        "formatAuto": "自动（可用的最高画质）",
+        "formatLoad": "获取格式",
+        "formatHelp": "根据URL自动识别网站。自动模式会在下载时检查可用格式；如需手动选择，请获取列表。",
+        "formatNeedsFfmpeg": "需要FFmpeg",
+        "formatMergeAudio": "自动合并音频",
+        "formatWithAudio": "含音频",
+        "formatSilent": "无声"
     },
     "workflowChain": {
         "title": "工作流链",

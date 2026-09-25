@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Video, Download, X, AlertTriangle, CheckCircle, Loader2, Play, ExternalLink, Globe, RefreshCw } from 'lucide-react';
 import { toast } from 'sonner';
 import { useConnectionStore } from '@/ui/store/connectionStore';
-import ComfyUIService from '@/infrastructure/api/ComfyApiClient';
+import ComfyUIService, { type VideoFormatsResponse } from '@/infrastructure/api/ComfyApiClient';
 import type { LogEntry, LogsWsMessage } from '@/core/domain';
 
 interface VideoDownloadStatus {
@@ -37,7 +37,7 @@ interface VideoDownloadResponse {
 const VideoDownloader: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { isConnected, hasExtension, isCheckingExtension } = useConnectionStore();
+  const { isConnected, hasExtension, isCheckingExtension, url: serverUrl } = useConnectionStore();
 
   // Form state
   const [videoUrl, setVideoUrl] = useState('');
@@ -49,6 +49,41 @@ const VideoDownloader: React.FC = () => {
   const [isLoadingStatus, setIsLoadingStatus] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
+
+  const [formatId, setFormatId] = useState('auto');
+  const [formatResult, setFormatResult] = useState<VideoFormatsResponse | null>(null);
+  const [isLoadingFormats, setIsLoadingFormats] = useState(false);
+  const [formatError, setFormatError] = useState('');
+  const formatRequest = useRef<AbortController | null>(null);
+
+  const resetFormats = () => {
+    formatRequest.current?.abort();
+    formatRequest.current = null;
+    setFormatId('auto');
+    setFormatResult(null);
+    setFormatError('');
+    setIsLoadingFormats(false);
+  };
+
+  useEffect(() => {
+    resetFormats();
+    return () => { formatRequest.current?.abort(); };
+  }, [videoUrl, serverUrl, isConnected, hasExtension]);
+
+  const loadFormats = async () => {
+    resetFormats();
+    const controller = new AbortController();
+    formatRequest.current = controller;
+    setIsLoadingFormats(true);
+    try {
+      const result = await ComfyUIService.getVideoFormats(videoUrl.trim(), controller.signal);
+      if (!controller.signal.aborted) setFormatResult(result);
+    } catch (error: any) {
+      if (!controller.signal.aborted) setFormatError(error.response?.data?.error || t('common.error'));
+    } finally {
+      if (!controller.signal.aborted) setIsLoadingFormats(false);
+    }
+  };
 
   // Log tracking
   const [logMessages, setLogMessages] = useState<LogEntry[]>([]);
@@ -140,7 +175,8 @@ const VideoDownloader: React.FC = () => {
 
     try {
       const requestParams: any = {
-        url: videoUrl.trim()
+        url: videoUrl.trim(),
+        format_id: formatId
       };
 
       if (customFilename.trim()) {
@@ -175,11 +211,11 @@ const VideoDownloader: React.FC = () => {
           description: response.error || response.message
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error downloading video:', error);
       setIsDownloadActive(false);
       toast.error(t('videoDownloader.toast.failed'), {
-        description: t('common.error')
+        description: error.response?.data?.error || t('common.error')
       });
     } finally {
       setIsDownloading(false);
@@ -188,6 +224,7 @@ const VideoDownloader: React.FC = () => {
 
   // Upgrade yt-dlp to latest version
   const handleUpgradeYtDlp = async () => {
+    resetFormats();
     setIsUpgrading(true);
     try {
       const response = await ComfyUIService.upgradeYtDlp();
@@ -219,7 +256,7 @@ const VideoDownloader: React.FC = () => {
     if (hasServerRequirements) {
       loadDownloadStatus();
     }
-  }, [hasServerRequirements]);
+  }, [hasServerRequirements, serverUrl]);
 
   const getSupportedSitesDisplay = (sites: string[]) => {
     const mainSites = sites.slice(0, 8);
@@ -359,7 +396,7 @@ const VideoDownloader: React.FC = () => {
                     {downloadStatus.yt_dlp_available && (
                       <Button
                         onClick={handleUpgradeYtDlp}
-                        disabled={isUpgrading}
+                        disabled={isUpgrading || isDownloading || isLoadingFormats}
                         variant="ghost"
                         size="sm"
                         className="h-6 px-2 text-xs text-[#5b8af5] hover:text-[#7ba3f5] hover:bg-[#3069f0]/10"
@@ -442,12 +479,39 @@ const VideoDownloader: React.FC = () => {
                       type="url"
                       placeholder={t('videoDownloader.videoUrlPlaceholder')}
                       value={videoUrl}
-                      onChange={(e) => setVideoUrl(e.target.value)}
+                      onChange={(e) => { resetFormats(); setVideoUrl(e.target.value); }}
+                      disabled={isDownloading || isUpgrading}
                       className="h-[42px] px-3 font-mono text-[11.5px] bg-white/[0.045] dark:bg-transparent border-white/[0.08] text-[#e9ebef] placeholder:text-[#565d6b] rounded-[10px] focus-visible:ring-0 focus-visible:border-[#3069f0]/50"
                     />
                     <p className="text-xs text-white/40">
                       {t('videoDownloader.videoUrlDesc')}
                     </p>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="video-format">{t('videoDownloader.formatLabel')}</Label>
+                    <div className="flex gap-2">
+                      <select id="video-format" value={formatId} onChange={e => setFormatId(e.target.value)}
+                        disabled={isDownloading || isUpgrading || isLoadingFormats}
+                        className="min-w-0 flex-1 h-[42px] rounded-[10px] border border-white/10 bg-[#141820] px-3 text-xs text-[#e9ebef]">
+                        <option value="auto">{t('videoDownloader.formatAuto')}</option>
+                        {formatResult?.formats.map(format => (
+                          <option key={format.id} value={format.id} disabled={!format.available}>
+                            {[format.resolution, format.fps ? `${format.fps}fps` : '', format.ext, format.vcodec, `#${format.id}`,
+                              t(`videoDownloader.${!format.available ? 'formatNeedsFfmpeg' : format.merges_audio ? 'formatMergeAudio' : format.has_audio ? 'formatWithAudio' : 'formatSilent'}`)]
+                              .filter(Boolean).join(' · ')}
+                          </option>
+                        ))}
+                      </select>
+                      <Button type="button" variant="outline" onClick={loadFormats}
+                        disabled={!videoUrl.trim() || isDownloading || isUpgrading || isLoadingFormats}>
+                        {isLoadingFormats && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
+                        {t('videoDownloader.formatLoad')}
+                      </Button>
+                    </div>
+                    <p className="text-xs text-white/40">{t('videoDownloader.formatHelp')}</p>
+                    {formatResult && <p className="text-xs text-white/60 break-words">{formatResult.extractor} · {formatResult.title}</p>}
+                    {formatError && <p role="alert" className="text-xs text-red-400">{formatError}</p>}
                   </div>
 
                   <div className="space-y-2">
@@ -495,7 +559,7 @@ const VideoDownloader: React.FC = () => {
 
                   <Button
                     onClick={handleStartDownload}
-                    disabled={!videoUrl.trim() || isDownloading}
+                    disabled={!videoUrl.trim() || isDownloading || isUpgrading || isLoadingFormats}
                     className="w-full h-11 rounded-[10px] bg-[#3069f0] hover:bg-[#3f78f5] text-white text-[13px] font-semibold shadow-[0_2px_12px_rgba(48,105,240,0.3)] active:scale-98 transition-transform duration-75 disabled:opacity-50"
                   >
                     {isDownloading ? (

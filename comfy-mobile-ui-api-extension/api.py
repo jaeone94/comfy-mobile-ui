@@ -182,6 +182,7 @@ def setup_routes():
                 app.router.add_post('/comfymobile/api/manager/queue/install', manager_queue_install)
 
                 # Video download routes
+                app.router.add_post('/comfymobile/api/videos/formats', get_video_formats)
                 app.router.add_post('/comfymobile/api/videos/download', download_youtube_video)
                 app.router.add_get('/comfymobile/api/videos/download/status', get_video_download_status)
                 app.router.add_post('/comfymobile/api/logs/subscribe', subscribe_to_logs)

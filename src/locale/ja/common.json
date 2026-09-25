@@ -1294,9 +1294,9 @@
         "subfolderDesc": "ComfyUI入力ディレクトリ内のサブフォルダにダウンロードを整理します。",
         "downloadInfo": "ダウンロード情報",
         "infoSave": "動画保存先：",
-        "infoFormat": "形式：H.264/AAC MP4（iOS/モバイル互換）",
-        "infoQuality": "品質：最高利用可能品質（最大1080p）",
-        "infoPlayback": "モバイル再生と高速開始のために最適化済み",
+        "infoFormat": "形式：元のコーデックを維持し、結合時は互換性があればMP4、それ以外はMKVで保存します。",
+        "infoQuality": "画質：自動では利用可能な最高画質の動画形式を選択します。",
+        "infoPlayback": "再生互換性は選択したコーデックとコンテナに依存します。",
         "downloading": "動画をダウンロード中...",
         "downloadProgress": "ダウンロード状況",
         "waitingLogs": "ダウンロードログを待機中...",
@@ -1309,7 +1309,15 @@
             "upgradeSuccess": "yt-dlpを正常にアップグレードしました！",
             "updatedVersion": "更新バージョン：{{version}}",
             "upgradeFailed": "yt-dlpのアップグレードに失敗しました"
-        }
+        },
+        "formatLabel": "動画形式",
+        "formatAuto": "自動（利用可能な最高画質）",
+        "formatLoad": "形式を取得",
+        "formatHelp": "サイトはURLから自動検出します。自動ではダウンロード時に形式を確認します。手動で選ぶ場合は一覧を取得してください。",
+        "formatNeedsFfmpeg": "FFmpegが必要",
+        "formatMergeAudio": "音声を自動結合",
+        "formatWithAudio": "音声あり",
+        "formatSilent": "音声なし"
     },
     "workflowChain": {
         "title": "ワークフローチェーン",

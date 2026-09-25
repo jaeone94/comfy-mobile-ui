@@ -1298,9 +1298,9 @@
         "subfolderDesc": "ComfyUI 입력 디렉토리 내의 하위 폴더에 다운로드를 구성합니다.",
         "downloadInfo": "다운로드 정보",
         "infoSave": "비디오 저장 위치:",
-        "infoFormat": "형식: H.264/AAC MP4 (iOS/모바일 호환)",
-        "infoQuality": "품질: 최대 1080p까지 사용 가능한 최고 품질",
-        "infoPlayback": "빠른 시작을 위해 모바일 재생에 최적화됨",
+        "infoFormat": "포맷: 원본 코덱을 유지하며, 병합 시 호환되면 MP4, 아니면 MKV로 저장합니다.",
+        "infoQuality": "화질: 자동은 사용 가능한 다운로드 포맷 중 최고 화질을 선택합니다.",
+        "infoPlayback": "재생 호환성은 선택한 코덱과 컨테이너에 따라 달라집니다.",
         "downloading": "비디오 다운로드 중...",
         "downloadProgress": "다운로드 진행 상황",
         "waitingLogs": "다운로드 로그 대기 중...",
@@ -1313,7 +1313,15 @@
             "upgradeSuccess": "yt-dlp가 성공적으로 업그레이드되었습니다!",
             "updatedVersion": "업데이트된 버전: {{version}}",
             "upgradeFailed": "yt-dlp 업그레이드 실패"
-        }
+        },
+        "formatLabel": "영상 포맷",
+        "formatAuto": "자동 (사용 가능한 최고 화질)",
+        "formatLoad": "포맷 조회",
+        "formatHelp": "사이트는 URL로 자동 감지합니다. 자동은 다운로드 시 포맷을 확인하며, 직접 선택하려면 목록을 조회하세요.",
+        "formatNeedsFfmpeg": "FFmpeg 필요",
+        "formatMergeAudio": "음성 자동 병합",
+        "formatWithAudio": "음성 포함",
+        "formatSilent": "무음"
     },
     "workflowChain": {
         "title": "워크플로우 체인",

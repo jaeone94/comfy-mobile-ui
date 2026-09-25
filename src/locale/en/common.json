@@ -1298,9 +1298,9 @@
         "subfolderDesc": "Organize downloads in a subfolder within the ComfyUI input directory.",
         "downloadInfo": "Download Information",
         "infoSave": "Videos will be saved to:",
-        "infoFormat": "Format: MP4 with H.264/AAC (iOS/mobile compatible)",
-        "infoQuality": "Quality: Best available up to 1080p",
-        "infoPlayback": "Optimized for mobile playback with fast start",
+        "infoFormat": "Format: Original codecs; merged files use MP4 where compatible, otherwise MKV.",
+        "infoQuality": "Quality: Auto chooses the best available downloadable video format.",
+        "infoPlayback": "Playback compatibility depends on the selected codec and container.",
         "downloading": "Downloading Video...",
         "downloadProgress": "Download Progress",
         "waitingLogs": "Waiting for download logs...",
@@ -1313,7 +1313,15 @@
             "upgradeSuccess": "yt-dlp upgraded successfully!",
             "updatedVersion": "Updated to version: {{version}}",
             "upgradeFailed": "Failed to upgrade yt-dlp"
-        }
+        },
+        "formatLabel": "Video format",
+        "formatAuto": "Auto (best available)",
+        "formatLoad": "Load formats",
+        "formatHelp": "The site is detected from the URL. Auto checks available formats when downloading; load the list to choose manually.",
+        "formatNeedsFfmpeg": "FFmpeg required",
+        "formatMergeAudio": "Auto-merge audio",
+        "formatWithAudio": "With audio",
+        "formatSilent": "Silent"
     },
     "workflowChain": {
         "title": "Workflow Chains",

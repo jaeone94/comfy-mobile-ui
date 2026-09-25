@@ -1651,10 +1651,37 @@ const getVideoDownloadStatus = async (): Promise<any> => {
   }
 };
 
+export interface VideoFormatOption {
+  id: string;
+  ext: string;
+  resolution: string;
+  fps: number | null;
+  vcodec: string;
+  has_audio: boolean;
+  requires_ffmpeg: boolean;
+  merges_audio: boolean;
+  available: boolean;
+}
+
+export interface VideoFormatsResponse {
+  success: boolean;
+  title: string;
+  extractor: string;
+  ffmpeg_available: boolean;
+  formats: VideoFormatOption[];
+}
+
+const getVideoFormats = async (url: string, signal?: AbortSignal): Promise<VideoFormatsResponse> => {
+  initializeService();
+  const response = await axios.post(`${serverUrl}/comfymobile/api/videos/formats`, { url }, { timeout: 100000, signal });
+  return response.data;
+};
+
 const downloadVideo = async (params: {
   url: string;
   filename?: string;
   subfolder?: string;
+  format_id?: string;
 }): Promise<any> => {
   initializeService();
   try {
@@ -1856,6 +1883,7 @@ const ComfyUIService = {
   // Video download APIs
   getVideoDownloadStatus,
   downloadVideo,
+  getVideoFormats,
   upgradeYtDlp,
 
   // Logging APIs

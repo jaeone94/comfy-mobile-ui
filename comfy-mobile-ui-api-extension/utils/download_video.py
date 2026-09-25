@@ -1,255 +1,151 @@
-#!/usr/bin/env python3
-import sys
-import os
-import subprocess
 import argparse
 import asyncio
-import locale
+import json
+import os
+import re
+import shutil
+import sys
+from urllib.parse import urlparse
+
 import folder_paths
-from typing import Dict, Any, Optional, Callable
 
-def safe_decode(data: bytes) -> str:
-    """
-    Safely decode bytes to string with robust encoding detection.
 
-    First tries system preferred encoding, then falls back to trying
-    multiple common encodings before using UTF-8 with error replacement.
-    """
-    if not data:
-        return ""
+class FormatError(ValueError):
+    pass
 
-    # First try: system preferred encoding
-    try:
-        return data.decode(locale.getpreferredencoding())
-    except (UnicodeDecodeError, LookupError):
-        pass
 
-    # Fallback: try multiple encodings in order of likelihood
-    encodings_to_try = ['utf-8', 'cp949', 'cp1252', 'latin1']
-    for encoding in encodings_to_try:
-        try:
-            return data.decode(encoding)
-        except UnicodeDecodeError:
+def validate_url(url):
+    url = url.strip() if isinstance(url, str) else url
+    if not isinstance(url, str) or urlparse(url).scheme not in ('http', 'https') or not urlparse(url).hostname:
+        raise FormatError('Enter a valid HTTP or HTTPS video URL.')
+    return url.strip()
+
+
+def normalize_formats(info, ffmpeg_available):
+    if info.get('_type') in ('playlist', 'multi_video') or 'entries' in info:
+        raise FormatError('Please use a single video URL, not a playlist or multi-video post.')
+    formats = info.get('formats') or [info]
+    # yt-dlp orders formats from worst to best. Keep its current ranking.
+    usable = [f for f in formats if not f.get('has_drm') and (f.get('url') or f.get('fragments'))
+              and re.fullmatch(r'[\w.-]+', str(f.get('format_id', '')))
+              and f.get('protocol') != 'mhtml' and f.get('ext') != 'mhtml']
+    audio = [f for f in usable if f.get('vcodec') == 'none' and f.get('acodec') not in (None, 'none')]
+    result = []
+    for f in usable:
+        if f.get('vcodec') == 'none':
             continue
+        if not f.get('vcodec') and not (f.get('height') or f.get('ext') in ('mp4', 'webm', 'mkv', 'mov', 'flv', 'avi')):
+            continue
+        # Missing codec metadata is common for direct MP4 links; do not treat it as video-only.
+        has_audio = f.get('acodec') != 'none'
+        needs_merge = not has_audio and bool(audio)
+        audio_id = str(audio[-1]['format_id']) if needs_merge else None
+        needs_ffmpeg = needs_merge or f.get('protocol') in ('m3u8', 'rtmp', 'rtsp', 'mms')
+        result.append({
+            'id': str(f['format_id']), 'ext': f.get('ext', ''),
+            'resolution': f.get('resolution') or (str(f['height']) + 'p' if f.get('height') else ''),
+            'fps': f.get('fps'), 'vcodec': f.get('vcodec'), 'acodec': f.get('acodec'),
+            'has_audio': has_audio or needs_merge, 'requires_ffmpeg': needs_ffmpeg, 'merges_audio': needs_merge,
+            'available': not needs_ffmpeg or ffmpeg_available,
+            'selector': str(f['format_id']) + ('+' + audio_id if audio_id else ''),
+        })
+    if not result:
+        raise FormatError('No downloadable video formats were found for this URL.')
+    return result
 
-    # Final fallback: UTF-8 with error replacement
-    return data.decode('utf-8', errors='replace')
 
-async def download_video_async(url: str, output_dir: Optional[str] = None, filename: Optional[str] = None, progress_callback: Optional[Callable] = None) -> Dict[str, Any]:
-    """
-    Downloads videos from various sites to MP4 format asynchronously.
-    (Supports 1000+ sites including YouTube, TikTok, Instagram, Twitch)
-
-    Args:
-        url (str): Video URL to download
-        output_dir (str, optional): Output directory. Defaults to ComfyUI input directory
-        filename (str, optional): Custom filename (without extension)
-
-    Returns:
-        Dict[str, Any]: Result dictionary with success status and details
-    """
+async def probe_video_formats(url):
+    url = validate_url(url)
+    process = await asyncio.create_subprocess_exec(
+        sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist',
+        '--dump-single-json', '--skip-download', '--no-warnings', '--encoding', 'utf-8', '--', url,
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
     try:
-        # Use ComfyUI input directory if not specified
-        if output_dir is None:
-            output_dir = folder_paths.get_input_directory()
+        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=90)
+    except (asyncio.TimeoutError, asyncio.CancelledError):
+        if process.returncode is None:
+            process.kill()
+        await process.communicate()
+        raise
+    if process.returncode:
+        raise FormatError(stderr.decode('utf-8', errors='replace').strip() or 'Could not inspect this video.')
+    info = json.loads(stdout)
+    ffmpeg = shutil.which('ffmpeg') is not None
+    return {
+        'title': info.get('title', ''), 'extractor': info.get('extractor_key') or info.get('extractor', ''),
+        'ffmpeg_available': ffmpeg, 'formats': normalize_formats(info, ffmpeg),
+    }
 
-        # Ensure output directory exists
+
+def choose_format(formats, format_id='auto'):
+    if not isinstance(format_id, str):
+        raise FormatError('Invalid format ID.')
+    candidates = [f for f in formats if f['available'] and (format_id == 'auto' or f['id'] == format_id)]
+    if not candidates:
+        raise FormatError('This format is unavailable. Refresh the format list; merging video and audio requires FFmpeg.')
+    return candidates[-1]
+
+
+async def download_video_async(url, output_dir=None, filename=None, progress_callback=None, format_id='auto'):
+    process = None
+    try:
+        # Always re-probe: format IDs and availability can change after yt-dlp updates.
+        metadata = await probe_video_formats(url)
+        selected = choose_format(metadata['formats'], format_id)
+        output_dir = os.path.realpath(output_dir or folder_paths.get_input_directory())
         os.makedirs(output_dir, exist_ok=True)
-
-        # Build output filename pattern
-        if filename:
-            output_pattern = f"{output_dir}/{filename}.%(ext)s"
-        else:
-            output_pattern = f"{output_dir}/%(title)s.%(ext)s"
-
-        # Build yt-dlp command with high-quality iOS-compatible codec settings
-        cmd = [
-            sys.executable, "-m", "yt_dlp",
-            # High-quality format selection (up to 1440p for better quality)
-            # Priority: H.264 + AAC for maximum compatibility
-            "-f", "bestvideo[height<=1440][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1440][vcodec^=h264]+bestaudio[acodec^=aac]/bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=h264]+bestaudio[acodec^=aac]/best[height<=1440]",
-            "--merge-output-format", "mp4",  # Merge to MP4
-            # High-quality H.264 encoding with optimized settings
-            "--postprocessor-args", "ffmpeg:-c:v libx264 -preset slow -crf 18 -profile:v high -level 4.1 -c:a aac -b:a 192k -movflags +faststart",
-            # Optimize for mobile playback
-            "--embed-metadata",
-            # Progress output options
-            "--newline",  # Each progress update on new line
-            "-o", output_pattern,  # Output filename pattern
-            url
-        ]
-
-        print(f"Starting video download: {url}")
-        print(f"Output directory: {os.path.abspath(output_dir)}")
-
-        # Execute yt-dlp asynchronously with real-time output
-        process = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-
-        stdout_lines = []
-
-        # Read stdout line by line for real-time progress
-        while True:
-            line = await process.stdout.readline()
-            if not line:
-                break
-
-            line_text = safe_decode(line.rstrip())
-            if line_text:
-                stdout_lines.append(line_text)
-                print(line_text)  # Print to console
-
-                # Send progress to callback if provided
+        if filename and (not isinstance(filename, str) or filename in ('.', '..') or re.search(r'[\\/:*?"<>|\x00-\x1f]', filename)):
+            raise FormatError('Custom filename must be a filename without directory separators.')
+        template = filename.replace('%', '%%') if filename else '%(title)s [%(id)s] [%(format_id)s]'
+        marker = '__COMFY_FILE__'
+        cmd = [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist',
+               '--encoding', 'utf-8', '--newline', '--progress', '--no-simulate', '-f', selected['selector'],
+               '--print', 'after_move:' + marker + '%(filepath)j',
+               '-o', os.path.join(output_dir, template + '.%(ext)s')]
+        if selected['merges_audio']:
+            cmd += ['--merge-output-format', 'mp4/mkv']
+        cmd += ['--', validate_url(url)]
+        process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+        lines, paths = [], []
+        async for line in process.stdout:
+            message = line.decode('utf-8', errors='replace').strip()
+            if message.startswith(marker):
+                paths.append(json.loads(message[len(marker):]))
+            else:
+                lines.append(message)
                 if progress_callback:
-                    try:
-                        await progress_callback(line_text)
-                    except Exception as e:
-                        print(f"Progress callback error: {e}")
-
-        # Wait for process to complete and get stderr
-        stderr = await process.stderr.read()
+                    await progress_callback(message)
+                else:
+                    print(message)
         await process.wait()
+        if process.returncode:
+            raise FormatError('\n'.join(lines[-20:]) or 'Video download failed.')
+        if len(paths) != 1 or not os.path.isfile(paths[0]):
+            raise FormatError('yt-dlp did not return a completed video file.')
+        path = os.path.realpath(paths[0])
+        if os.path.commonpath([output_dir, path]) != output_dir:
+            raise FormatError('Downloaded file is outside the output directory.')
+        return {'success': True, 'downloaded_file': os.path.basename(path), 'output_dir': output_dir,
+                'video_path': path, 'format_id': selected['id'], 'stdout': '\n'.join(lines)}
+    except asyncio.CancelledError:
+        raise
+    except Exception as error:
+        return {'success': False, 'error': str(error) or 'Video inspection timed out.'}
+    finally:
+        if process and process.returncode is None:
+            process.kill()
+            await process.wait()
 
-        if process.returncode == 0:
-            stdout_text = '\n'.join(stdout_lines)
-            print("Video download completed successfully!")
 
-            # Try to extract the actual downloaded filename from stdout
-            downloaded_file = None
+def download_video(url, output_dir='.'):
+    return asyncio.run(download_video_async(url, output_dir))
 
-            # First, try to find merged file from [Merger] line (most accurate for final file)
-            for line in stdout_lines:
-                if '[Merger] Merging formats into' in line:
-                    # Extract filename from merger line: [Merger] Merging formats into "path/file.mp4"
-                    if '"' in line:
-                        full_path = line.split('"')[1]  # Get path between quotes
-                        downloaded_file = os.path.basename(full_path)  # Extract just filename
-                        print(f"📁 Found merged file: {downloaded_file}")
-                        break
 
-            # If no merger line found, look for final .mp4 destination (skip temporary files)
-            if not downloaded_file:
-                for line in stdout_lines:
-                    if 'Destination:' in line and not line.endswith(('.f135.mp4', '.f140.m4a', '.f136.mp4', '.f251.webm')):
-                        # Skip temporary format files, only get final merged files
-                        full_path = line.split('Destination:')[-1].strip()
-                        if full_path.endswith('.mp4'):
-                            downloaded_file = os.path.basename(full_path)
-                            print(f"📁 Found destination file: {downloaded_file}")
-                            break
-
-            # Fallback: look for already downloaded files
-            if not downloaded_file:
-                for line in stdout_lines:
-                    if '[download]' in line and 'has already been downloaded' in line:
-                        downloaded_file = line.split('\\')[-1].split('/')[-1].split(' has already been downloaded')[0]
-                        print(f"📁 Found existing file: {downloaded_file}")
-                        break
-
-            return {
-                "success": True,
-                "message": "Video downloaded successfully",
-                "output_dir": output_dir,
-                "downloaded_file": downloaded_file,
-                "stdout": stdout_text
-            }
-        else:
-            stderr_text = safe_decode(stderr) if stderr else "Unknown error"
-            print(f"Video download failed: {stderr_text}")
-            return {
-                "success": False,
-                "error": stderr_text,
-                "message": "Video download failed"
-            }
-
-    except FileNotFoundError:
-        error_msg = "yt-dlp is not installed. Install it with: pip install yt-dlp"
-        print(error_msg)
-        return {
-            "success": False,
-            "error": error_msg,
-            "message": "yt-dlp not found"
-        }
-    except Exception as e:
-        error_msg = f"Unexpected error during video download: {str(e)}"
-        print(error_msg)
-        return {
-            "success": False,
-            "error": error_msg,
-            "message": "Unexpected error occurred"
-        }
-
-def download_video(url, output_dir="."):
-    """
-    Synchronous wrapper for backward compatibility.
-    Downloads videos from various sites to MP4 format.
-    (Supports 1000+ sites including YouTube, TikTok, Instagram, Twitch)
-
-    Args:
-        url (str): Video URL to download
-        output_dir (str): Output directory (default: current directory)
-    """
-    try:
-        # Build yt-dlp command with high-quality iOS-compatible codec settings
-        cmd = [
-            sys.executable, "-m", "yt_dlp",
-            # High-quality format selection (up to 1440p for better quality)
-            # Priority: H.264 + AAC for maximum compatibility
-            "-f", "bestvideo[height<=1440][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1440][vcodec^=h264]+bestaudio[acodec^=aac]/bestvideo[height<=1080][vcodec^=avc1]+bestaudio[acodec^=mp4a]/bestvideo[height<=1080][vcodec^=h264]+bestaudio[acodec^=aac]/best[height<=1440]",
-            "--merge-output-format", "mp4",  # Merge to MP4
-            # High-quality H.264 encoding with optimized settings
-            "--postprocessor-args", "ffmpeg:-c:v libx264 -preset slow -crf 18 -profile:v high -level 4.1 -c:a aac -b:a 192k -movflags +faststart",
-            # Optimize for mobile playbook
-            "--embed-metadata",
-            # Progress output options
-            "--newline",  # Each progress update on new line
-            "-o", f"{output_dir}/%(title)s.%(ext)s",  # Output filename pattern
-            url
-        ]
-
-        print(f"Starting download: {url}")
-        print(f"Save path: {os.path.abspath(output_dir)}")
-
-        # Execute yt-dlp
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
-
-        print("Download completed!")
-        if result.stdout:
-            print(result.stdout)
-
-    except subprocess.CalledProcessError as e:
-        print(f"Download failed: {e}")
-        if e.stderr:
-            print(f"Error message: {e.stderr}")
-        sys.exit(1)
-    except FileNotFoundError:
-        print("yt-dlp is not installed.")
-        print("Install with: pip install yt-dlp")
-        sys.exit(1)
-    except Exception as e:
-        print(f"Unexpected error: {e}")
-        sys.exit(1)
-
-def main():
-    parser = argparse.ArgumentParser(description="Download videos from various sites to MP4 format")
-    parser.add_argument("url", help="Video URL (YouTube, TikTok, Instagram, Twitch, etc.)")
-    parser.add_argument("-o", "--output", default=".", help="Output directory (default: current directory)")
-
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description='Download a video using currently available formats')
+    parser.add_argument('url')
+    parser.add_argument('-o', '--output', default='.')
     args = parser.parse_args()
-
-    # Validate URL format (check for HTTP/HTTPS protocol)
-    if not (args.url.startswith("http://") or args.url.startswith("https://")):
-        print("Please enter a valid URL (starting with http:// or https://)")
-        sys.exit(1)
-
-    # Create output directory if it doesn't exist
-    if not os.path.exists(args.output):
-        os.makedirs(args.output)
-
-    download_video(args.url, args.output)
-
-if __name__ == "__main__":
-    main()
+    result = download_video(args.url, args.output)
+    print(result)
+    sys.exit(0 if result['success'] else 1)
