@@ -14,8 +14,8 @@ const EXTENSION_DIR = path.join(PROJECT_ROOT, 'comfy-mobile-ui-api-extension');
 const WEB_TARGET_DIR = path.join(EXTENSION_DIR, 'web');
 const DEPLOY_DIR = path.join(PROJECT_ROOT, 'deploy');
 const TEMP_DIR = path.join(PROJECT_ROOT, 'temp_deploy');
-const EXCLUDED_NAMES = new Set(['.git', '__pycache__', '.update_staging', 'comfyui_original_args.json']);
-const isRuntimeArtifact = (name) => EXCLUDED_NAMES.has(name) || /\.(?:pyc|pyo|log)$/i.test(name);
+const EXCLUDED_NAMES = new Set(['.git', '__pycache__', '.update_staging', 'comfyui_original_args.json', 'cookie.txt', 'cookies.txt']);
+const isRuntimeArtifact = (name) => EXCLUDED_NAMES.has(name.toLowerCase()) || /\.(?:pyc|pyo|log)$/i.test(name);
 
 console.log('🚀 Starting Advanced Deployment Process...');
 

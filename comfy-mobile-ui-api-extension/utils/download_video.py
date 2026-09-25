@@ -5,6 +5,7 @@ import os
 import re
 import shutil
 import sys
+from pathlib import Path
 from urllib.parse import urlparse
 
 import folder_paths
@@ -12,6 +13,31 @@ import folder_paths
 
 class FormatError(ValueError):
     pass
+
+
+# Server-owned file, next to api.py. Never read browser cookies or accept a path from the FE.
+COOKIE_FILE = Path(__file__).resolve().parent.parent / 'cookie.txt'
+COOKIE_RETRY_ERROR = 'Cookie-authenticated request failed. Check cookie.txt format, expiry and account access.'
+
+
+def cookie_retry_command(command, error):
+    if '--cookies' in command:
+        return None
+    # Prefer the actual error over incidental warnings suggesting cookies.
+    errors = [line for line in error.splitlines() if re.search(r'\bERROR:', line, re.I)]
+    message = '\n'.join(errors) if errors else error
+    auth_error = re.search(
+        r'not available for all users|login required|log[ -]?in (?:is )?required|'
+        r'please (?:log[ -]?in|sign[ -]?in)|sign[ -]?in to|'
+        r'(?:use|provide|pass).{0,40}--cookies|authentication required|'
+        r'requires? authentication|HTTP Error 401|'
+        r'cookies? (?:are |is )?(?:required|expired|invalid)|'
+        r'로그인.{0,12}필요|모든 사용자에게 공개', message, re.I)
+    if not auth_error or not COOKIE_FILE.is_file():
+        return None
+    # Insert before the end-of-options marker; never let a URL become an option.
+    index = command.index('--')
+    return [*command[:index], '--cookies', str(COOKIE_FILE), *command[index:]]
 
 
 def validate_url(url):
@@ -56,19 +82,28 @@ def normalize_formats(info, ffmpeg_available):
 
 async def probe_video_formats(url):
     url = validate_url(url)
-    process = await asyncio.create_subprocess_exec(
-        sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist',
-        '--dump-single-json', '--skip-download', '--no-warnings', '--encoding', 'utf-8', '--', url,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-    try:
-        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=90)
-    except (asyncio.TimeoutError, asyncio.CancelledError):
-        if process.returncode is None:
-            process.kill()
-        await process.communicate()
-        raise
-    if process.returncode:
-        raise FormatError(stderr.decode('utf-8', errors='replace').strip() or 'Could not inspect this video.')
+    command = [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist',
+        '--dump-single-json', '--skip-download', '--no-warnings', '--encoding', 'utf-8', '--', url]
+    deadline = asyncio.get_running_loop().time() + 90
+    for attempt in range(2):
+        process = await asyncio.create_subprocess_exec(*command,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        try:
+            remaining = max(0, deadline - asyncio.get_running_loop().time())
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=remaining)
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            if process.returncode is None:
+                process.kill()
+            await process.communicate()
+            raise
+        if not process.returncode:
+            break
+        error = stderr.decode('utf-8', errors='replace').strip() or 'Could not inspect this video.'
+        retry = cookie_retry_command(command, error) if attempt == 0 else None
+        if retry is None:
+            # Malformed cookie files can cause yt-dlp to echo their contents. Never expose retry errors.
+            raise FormatError(COOKIE_RETRY_ERROR if attempt else error)
+        command = retry
     info = json.loads(stdout)
     ffmpeg = shutil.which('ffmpeg') is not None
     return {
@@ -105,21 +140,37 @@ async def download_video_async(url, output_dir=None, filename=None, progress_cal
         if selected['merges_audio']:
             cmd += ['--merge-output-format', 'mp4/mkv']
         cmd += ['--', validate_url(url)]
-        process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
-        lines, paths = [], []
-        async for line in process.stdout:
-            message = line.decode('utf-8', errors='replace').strip()
-            if message.startswith(marker):
-                paths.append(json.loads(message[len(marker):]))
-            else:
-                lines.append(message)
-                if progress_callback:
-                    await progress_callback(message)
+        for attempt in range(2):
+            process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
+            lines, paths = [], []
+            auth_errors = []
+            async for line in process.stdout:
+                message = line.decode('utf-8', errors='replace').strip()
+                if message.startswith(marker):
+                    paths.append(json.loads(message[len(marker):]))
                 else:
-                    print(message)
-        await process.wait()
-        if process.returncode:
-            raise FormatError('\n'.join(lines[-20:]) or 'Video download failed.')
+                    if not attempt:
+                        auth_errors.append(message)
+                    # Retry diagnostics may contain cookie-file contents; forward only download progress.
+                    if not attempt or message.startswith('[download]'):
+                        lines.append(message)
+                        if progress_callback:
+                            await progress_callback(message)
+                        else:
+                            print(message)
+            await process.wait()
+            if not process.returncode:
+                break
+            error = '\n'.join(auth_errors) or 'Video download failed.'
+            retry = cookie_retry_command(cmd, error) if attempt == 0 else None
+            if retry is None:
+                raise FormatError(COOKIE_RETRY_ERROR if attempt else error)
+            cmd = retry
+            message = 'Authentication failed. Retrying once with the server cookie.txt file.'
+            if progress_callback:
+                await progress_callback(message)
+            else:
+                print(message)
         if len(paths) != 1 or not os.path.isfile(paths[0]):
             raise FormatError('yt-dlp did not return a completed video file.')
         path = os.path.realpath(paths[0])
