@@ -21,7 +21,7 @@ export function isVideoFile(filename: string): boolean {
   // Remove any tags like [input] before checking extension
   const cleanFilename = filename.replace(/\s*\[.*?\]\s*$/, '');
   const ext = cleanFilename.toLowerCase().split('.').pop();
-  return ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'mpg', 'mpeg'].includes(ext || '');
+  return ['mp4', 'webm', 'avi', 'mov', 'mkv', 'flv', 'wmv', 'm4v', 'mpg', 'mpeg'].includes(ext || '');
 }
 
 /**

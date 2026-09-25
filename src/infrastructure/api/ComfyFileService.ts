@@ -437,7 +437,7 @@ export class ComfyFileService {
   /**
    * Upload a file to ComfyUI server
    */
-  async uploadFile(options: IComfyFileUploadOptions): Promise<IComfyFileUploadResponse | null> {
+  async uploadFile(options: IComfyFileUploadOptions, signal?: AbortSignal): Promise<IComfyFileUploadResponse | null> {
     try {
       const { file, filename, subfolder = '', type = 'input', overwrite = false } = options;
 
@@ -466,6 +466,7 @@ export class ComfyFileService {
             'Content-Type': 'multipart/form-data',
           },
           timeout: this.timeout,
+          signal,
         }
       );
 

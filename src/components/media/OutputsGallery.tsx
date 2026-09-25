@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { ArrowLeft, Image as ImageIcon, Video, Loader2, RefreshCw, Server, AlertCircle, CheckCircle, Trash2, FolderOpen, Check, X, MousePointer, ChevronLeft, CheckSquare, Copy, LayoutGrid, FolderTree, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Image as ImageIcon, Video, Loader2, RefreshCw, Server, AlertCircle, CheckCircle, Trash2, FolderOpen, Check, X, MousePointer, ChevronLeft, CheckSquare, Copy, LayoutGrid, FolderTree, ChevronRight, Upload } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -13,6 +13,8 @@ import { SimpleConfirmDialog } from '../ui/SimpleConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
 
+
+import { uploadGalleryMedia, type GalleryUploadProgress } from '@/shared/utils/galleryUpload';
 
 type TabType = 'images' | 'videos';
 type FolderType = 'input' | 'output' | 'temp' | 'all';
@@ -296,6 +298,12 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const [previewError, setPreviewError] = useState<string | null>(null);
   const [currentPreviewIndex, setCurrentPreviewIndex] = useState<number>(-1);
 
+  const uploadInputRef = useRef<HTMLInputElement>(null);
+  const uploadController = useRef<AbortController | null>(null);
+  const [uploadKind, setUploadKind] = useState<TabType>('images');
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<GalleryUploadProgress | null>(null);
+
   // View mode states
   const [viewMode, setViewMode] = useState<'flat' | 'folders'>('flat');
   const [selectedSubfolder, setSelectedSubfolder] = useState<string | null>(null);
@@ -364,6 +372,41 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     }
   }, [comfyFileService, activeFolder]);
 
+
+  const latestLoadFiles = useRef(loadFiles);
+  latestLoadFiles.current = loadFiles;
+
+  useEffect(() => {
+    uploadController.current?.abort();
+    uploadController.current = null;
+    setIsUploading(false);
+    setUploadProgress(null);
+    return () => { uploadController.current?.abort(); };
+  }, [serverUrl, isConnected]);
+
+  const handleUploadMedia = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const selected = Array.from(event.currentTarget.files || []);
+    // Allow selecting the same files again after a failure or cancelling the picker.
+    event.currentTarget.value = '';
+    if (!selected.length || uploadController.current || !isConnected || activeFolder !== 'input') return;
+    const controller = new AbortController();
+    uploadController.current = controller;
+    const subfolder = viewMode === 'folders' && selectedSubfolder !== '/' ? selectedSubfolder || '' : '';
+    setUploadKind(activeTab);
+    setIsUploading(true);
+    setUploadProgress({ completed: 0, total: selected.length, uploaded: 0, failed: [], unsupported: [] });
+    try {
+      await uploadGalleryMedia(selected, file => new ComfyFileService(serverUrl, 3600000).uploadFile({
+        file, subfolder, type: 'input', overwrite: false,
+      }, controller.signal), setUploadProgress, controller.signal, activeTab);
+      if (!controller.signal.aborted) await latestLoadFiles.current();
+    } finally {
+      if (uploadController.current === controller) {
+        uploadController.current = null;
+        setIsUploading(false);
+      }
+    }
+  };
 
   // Load files when server requirements are met or folder changes
   useEffect(() => {
@@ -850,6 +893,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
   return (
     <div className="fixed inset-0 overflow-y-auto overflow-x-hidden pt-safe pb-safe z-0" style={{ background: '#050608' }}>
+      <input ref={uploadInputRef} type="file" accept={activeTab === 'images' ? 'image/*' : 'video/*,.mkv,.m4v'} multiple className="hidden"
+        aria-label={t(activeTab === 'images' ? 'gallery.uploadImages' : 'gallery.uploadVideos')} onChange={handleUploadMedia} />
       {/* Immersive Fixed Header */}
       <header
         ref={headerRef}
@@ -960,6 +1005,37 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
             )}
           </div>
         </div>
+        {activeFolder === 'input' && isConnected && hasExtension && (
+          <div className="relative px-3.5 pb-3 md:px-8 pointer-events-auto">
+            <div className="flex items-center gap-3">
+              <Button onClick={() => uploadInputRef.current?.click()} disabled={isUploading}
+                className="shrink-0 bg-[#3069f0] hover:bg-[#3f78f5] text-white rounded-[10px]">
+                {isUploading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Upload className="h-4 w-4 mr-2" />}
+                {t(activeTab === 'images' ? 'gallery.uploadImages' : 'gallery.uploadVideos')}
+              </Button>
+              <p className="min-w-0 text-xs text-white/50 break-words">
+                {t(activeTab === 'images' ? 'gallery.uploadDestination' : 'gallery.uploadVideoDestination', { folder: `input/${viewMode === 'folders' && selectedSubfolder !== '/' ? selectedSubfolder || '' : ''}` })}
+              </p>
+            </div>
+          </div>
+        )}
+        {uploadProgress && (
+          <div className="relative mx-3.5 mb-3 md:mx-8 rounded-[10px] border border-white/10 bg-[#10141c] p-3 pointer-events-auto text-xs text-white/70">
+            <div className="flex items-center justify-between gap-2" role="status" aria-live="polite">
+              <span>{isUploading
+                ? t('gallery.uploadProgress', { completed: uploadProgress.completed, total: uploadProgress.total })
+                : t(uploadKind === 'images' ? 'gallery.uploadResult' : 'gallery.uploadVideoResult', { uploaded: uploadProgress.uploaded, total: uploadProgress.total })}</span>
+              {!isUploading && <button onClick={() => setUploadProgress(null)} aria-label={t('common.close')}><X className="h-4 w-4" /></button>}
+            </div>
+            {isUploading && <progress className="w-full mt-2 accent-[#3069f0]" value={uploadProgress.completed} max={uploadProgress.total} aria-label={t(activeTab === 'images' ? 'gallery.uploadImages' : 'gallery.uploadVideos')} />}
+            {(uploadProgress.failed.length > 0 || uploadProgress.unsupported.length > 0) && (
+              <div className="mt-2 max-h-24 overflow-y-auto break-words text-amber-300" role="alert">
+                {uploadProgress.failed.length > 0 && <p>{t('gallery.uploadFailedFiles', { files: uploadProgress.failed.join(', ') })}</p>}
+                {uploadProgress.unsupported.length > 0 && <p>{t(uploadKind === 'images' ? 'gallery.uploadUnsupported' : 'gallery.uploadVideoUnsupported', { files: uploadProgress.unsupported.join(', ') })}</p>}
+              </div>
+            )}
+          </div>
+        )}
       </header>
       {/* Main Grid Content - Dynamic Padding (header height for overlap feel) */}
       <main

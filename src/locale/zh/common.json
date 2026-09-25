@@ -596,6 +596,16 @@
         }
     },
     "gallery": {
+        "uploadVideos": "上传视频",
+        "uploadVideoDestination": "保存到 {{folder}} · 可选择多个视频",
+        "uploadVideoResult": "已上传 {{uploaded}} / {{total}} 个视频",
+        "uploadVideoUnsupported": "不支持的视频：{{files}}。请使用 MP4、MOV、WebM、MKV、AVI、FLV、WMV 或 M4V。",
+        "uploadImages": "上传图片",
+        "uploadDestination": "保存到 {{folder}} · 可选择多张照片",
+        "uploadProgress": "正在上传 {{completed}} / {{total}}",
+        "uploadResult": "已上传 {{uploaded}} / {{total}} 张图片",
+        "uploadFailedFiles": "上传失败（重新选择以重试）：{{files}}",
+        "uploadUnsupported": "不支持的图片：{{files}}。请使用 JPG、PNG、GIF、WebP 或 BMP。HEIC 请先转换为 JPEG。",
         "title": "图像和视频",
         "selectFile": "选择文件",
         "filesTotal": "共 {{count}} 个文件",

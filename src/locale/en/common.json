@@ -599,6 +599,16 @@
         }
     },
     "gallery": {
+        "uploadVideos": "Upload videos",
+        "uploadVideoDestination": "Save to {{folder}} · Select multiple videos",
+        "uploadVideoResult": "Uploaded {{uploaded}} / {{total}} videos",
+        "uploadVideoUnsupported": "Unsupported videos: {{files}}. Use MP4, MOV, WebM, MKV, AVI, FLV, WMV or M4V.",
+        "uploadImages": "Upload images",
+        "uploadDestination": "Save to {{folder}} · Select multiple photos",
+        "uploadProgress": "Uploading {{completed}} / {{total}}",
+        "uploadResult": "Uploaded {{uploaded}} / {{total}} images",
+        "uploadFailedFiles": "Upload failed (select again to retry): {{files}}",
+        "uploadUnsupported": "Unsupported images: {{files}}. Use JPG, PNG, GIF, WebP or BMP. For HEIC, export as JPEG first.",
         "title": "Image & Video",
         "selectFile": "Select File",
         "filesTotal": "{{count}} files total",

@@ -599,6 +599,16 @@
         }
     },
     "gallery": {
+        "uploadVideos": "영상 업로드",
+        "uploadVideoDestination": "{{folder}}에 저장 · 영상 여러 개 선택 가능",
+        "uploadVideoResult": "{{total}}개 중 {{uploaded}}개 영상 업로드 완료",
+        "uploadVideoUnsupported": "지원하지 않는 영상: {{files}}. MP4, MOV, WebM, MKV, AVI, FLV, WMV, M4V를 사용하세요.",
+        "uploadImages": "이미지 업로드",
+        "uploadDestination": "{{folder}}에 저장 · 사진 여러 장 선택 가능",
+        "uploadProgress": "업로드 중 {{completed}} / {{total}}",
+        "uploadResult": "{{total}}개 중 {{uploaded}}개 업로드 완료",
+        "uploadFailedFiles": "업로드 실패 (다시 선택하여 재시도): {{files}}",
+        "uploadUnsupported": "지원하지 않는 이미지: {{files}}. JPG, PNG, GIF, WebP, BMP를 사용하세요. HEIC는 JPEG로 변환 후 업로드하세요.",
         "title": "이미지 & 비디오",
         "selectFile": "파일 선택",
         "filesTotal": "총 {{count}}개 파일",

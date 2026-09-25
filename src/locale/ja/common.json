@@ -595,6 +595,16 @@
         }
     },
     "gallery": {
+        "uploadVideos": "動画をアップロード",
+        "uploadVideoDestination": "保存先 {{folder}} · 複数の動画を選択可能",
+        "uploadVideoResult": "{{total}}件中{{uploaded}}件の動画をアップロードしました",
+        "uploadVideoUnsupported": "未対応の動画：{{files}}。MP4、MOV、WebM、MKV、AVI、FLV、WMV、M4Vを使用してください。",
+        "uploadImages": "画像をアップロード",
+        "uploadDestination": "保存先 {{folder}} · 複数の写真を選択可能",
+        "uploadProgress": "アップロード中 {{completed}} / {{total}}",
+        "uploadResult": "{{total}}枚中{{uploaded}}枚をアップロードしました",
+        "uploadFailedFiles": "失敗（再選択して再試行）：{{files}}",
+        "uploadUnsupported": "未対応の画像：{{files}}。JPG、PNG、GIF、WebP、BMPを使用してください。HEICはJPEGに変換してください。",
         "title": "画像と動画",
         "selectFile": "ファイルを選択",
         "filesTotal": "合計 {{count}} ファイル",
