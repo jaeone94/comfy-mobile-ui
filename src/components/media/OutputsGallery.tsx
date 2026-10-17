@@ -13,6 +13,10 @@ import { FilePreviewModal } from '../modals/FilePreviewModal';
 import { SimpleConfirmDialog } from '../ui/SimpleConfirmDialog';
 import { useNavigate } from 'react-router-dom';
 import { isImageFile, isVideoFile } from '@/shared/utils/ComfyFileUtils';
+import { useShallow } from 'zustand/react/shallow';
+import { VirtualGalleryGrid } from './VirtualGalleryGrid';
+import { galleryFileKey } from '@/shared/utils/galleryGrid';
+import { useGalleryDragSelection } from '@/hooks/useGalleryDragSelection';
 
 
 import { uploadGalleryMedia, type GalleryUploadProgress } from '@/shared/utils/galleryUpload';
@@ -58,7 +62,6 @@ const findMatchingImageFile = (
 interface LazyImageProps {
   file: IComfyFileInfo;
   onImageClick: (file: IComfyFileInfo) => void;
-  index?: number; // For initial loading optimization
   isSelectionMode?: boolean;
   isSelected?: boolean;
   onSelectionChange?: (file: IComfyFileInfo, selected: boolean) => void;
@@ -68,10 +71,9 @@ interface LazyImageProps {
   onThumbnailGenerated: (thumbnail: IComfyFileInfo) => void;
 }
 
-const LazyImage: React.FC<LazyImageProps> = ({
+const LazyImage = React.memo(function LazyImage({
   file,
   onImageClick,
-  index = 0,
   isSelectionMode = false,
   isSelected = false,
   onSelectionChange,
@@ -79,16 +81,12 @@ const LazyImage: React.FC<LazyImageProps> = ({
   videoLookupMap,
   imageLookupMap,
   onThumbnailGenerated
-}) => {
+}: LazyImageProps) {
   const { t } = useTranslation();
   // Videos never gate the loading overlay (poster/placeholder shows instantly)
   const [isLoaded, setIsLoaded] = useState(() => isVideoFile(file.filename));
   const [hasError, setHasError] = useState(false);
-  const { url: serverUrl } = useConnectionStore();
-  // Lazy loading is delegated to the browser (loading="lazy" on the <img>)
-  // and offscreen render cost to CSS content-visibility on the tile — no
-  // per-item IntersectionObserver: at thousands of items, one observer per
-  // tile plus a framer-motion instance per tile dominated mount time.
+  // The grid mounts only nearby rows; cards never subscribe to server traffic.
 
 
   // Find matching image thumbnail for video files using the optimized map
@@ -173,7 +171,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
   return (
     <div
       className={`relative aspect-square overflow-hidden cursor-pointer group transition-transform duration-150 hover:scale-[1.02] active:scale-[0.98] ${isSelected ? 'z-10' : ''}`}
-      style={{ contentVisibility: 'auto', containIntrinsicSize: 'auto 256px', background: '#0d1016' }}
+      style={{ background: '#0d1016' }}
       onClick={handleClick}
     >
       {/* Loading Placeholder */}
@@ -206,6 +204,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
               src={matchingImageThumbnail}
               alt={file.filename}
               loading="lazy"
+              draggable={false}
               decoding="async"
               className="w-full h-full object-cover"
               onError={() => {
@@ -242,6 +241,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
               src={thumbnailUrl}
               alt={file.filename}
               loading="lazy"
+              draggable={false}
               decoding="async"
               className={`w-full h-full object-cover transition-opacity duration-300 ${isLoaded ? 'opacity-100' : 'opacity-0'}`}
               onLoad={() => setIsLoaded(true)}
@@ -292,7 +292,7 @@ const LazyImage: React.FC<LazyImageProps> = ({
       </div>
     </div>
   );
-};
+});
 
 interface OutputsGalleryProps {
   isFileSelectionMode?: boolean;
@@ -350,13 +350,18 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
   const navigate = useNavigate();
-  const { url: serverUrl, isConnected, hasExtension, isCheckingExtension, checkExtension } = useConnectionStore();
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const { url: serverUrl, isConnected, hasExtension, isCheckingExtension, checkExtension } = useConnectionStore(
+    useShallow(state => ({ url: state.url, isConnected: state.isConnected, hasExtension: state.hasExtension,
+      isCheckingExtension: state.isCheckingExtension, checkExtension: state.checkExtension }))
+  );
 
   // Memoize the service instance to prevent infinite loops
   const comfyFileService = useMemo(() => new ComfyFileService(serverUrl), [serverUrl]);
 
 
   const galleryContext = useRef('');
+  const listController = useRef<AbortController | null>(null);
   galleryContext.current = `${serverUrl}|${activeFolder}`;
   const handleThumbnailGenerated = useCallback((thumbnail: IComfyFileInfo) => {
     if (galleryContext.current !== `${serverUrl}|${activeFolder}`) return;
@@ -365,11 +370,15 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   }, [serverUrl, activeFolder]);
 
   const loadFiles = useCallback(async () => {
+    listController.current?.abort();
+    const controller = new AbortController();
+    listController.current = controller;
     setLoading(true);
     setError(null);
 
     try {
-      const fileList = await comfyFileService.listFiles();
+      const fileList = await comfyFileService.listFiles(controller.signal);
+      if (controller.signal.aborted) return;
 
       // Sort by modification time (newest first), fallback to filename if no modified field
       const sortByModified = (a: IComfyFileInfo, b: IComfyFileInfo) => {
@@ -407,10 +416,11 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
         filteredVideos: filteredVideos.length
       });
     } catch (err) {
+      if (controller.signal.aborted) return;
       console.error('❌ Failed to load files:', err);
       setError(t('gallery.loadingError') || 'Failed to load files');
     } finally {
-      setLoading(false);
+      if (!controller.signal.aborted) setLoading(false);
     }
   }, [comfyFileService, activeFolder]);
 
@@ -457,7 +467,12 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
       // Reset navigation when switching categories
       setSelectedSubfolder(null);
     }
-  }, [isConnected, hasExtension, loadFiles, activeFolder, activeTab]);
+    return () => { listController.current?.abort(); };
+  }, [isConnected, hasExtension, loadFiles]);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [activeFolder, activeTab, viewMode, selectedSubfolder]);
 
 
   const handleRetryConnection = () => {
@@ -465,7 +480,10 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     checkExtension();
   };
 
-  const handleFileClick = async (file: IComfyFileInfo) => {
+  // The stable wrapper lets unchanged cards skip selection/header renders.
+  const fileClickRef = useRef<(file: IComfyFileInfo) => Promise<void>>(async () => {});
+  const handleFileClick = useCallback((file: IComfyFileInfo) => { void fileClickRef.current(file); }, []);
+  fileClickRef.current = async (file: IComfyFileInfo) => {
     // File selection mode: handle file selection with auto-copy if needed
     if (isFileSelectionMode && onFileSelect) {
       try {
@@ -591,24 +609,14 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
   }, [selectedFiles]);
 
   // Selection mode handlers
-  const handleSelectionChange = (file: IComfyFileInfo, selected: boolean, isFolder: boolean = false) => {
-    const fileKey = isFolder
-      ? `folder:${file.subfolder || (file.filename === 'Root' ? '/' : file.filename)}` // Simplified for folder name but let's use fullPath logic
-      : `${file.filename}-${file.subfolder}-${file.type}`;
-
-    // Actually, for folders in our recursive view, info objects have 'fullPath'. 
-    // Let's adjust how we call this.
-
-    const newSelected = new Set(selectedFiles);
-
-    if (selected) {
-      newSelected.add(fileKey);
-    } else {
-      newSelected.delete(fileKey);
-    }
-
-    setSelectedFiles(newSelected);
-  };
+  const handleSelectionChange = useCallback((file: IComfyFileInfo, selected: boolean) => {
+    setSelectedFiles(previous => {
+      const next = new Set(previous);
+      if (selected) next.add(galleryFileKey(file));
+      else next.delete(galleryFileKey(file));
+      return next;
+    });
+  }, []);
 
   const handleSelectAll = (visibleOnly: boolean = true) => {
     const newSelected = new Set(selectedFiles);
@@ -931,10 +939,24 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
     return viewMode === 'folders' ? folderContent.files : currentFiles;
   }, [viewMode, folderContent.files, currentFiles]);
 
+  const selectionKeys = useMemo(() => navigableFiles.map(galleryFileKey), [navigableFiles]);
+  useGalleryDragSelection({ enabled: isSelectionMode, scrollRef, keys: selectionKeys,
+    selected: selectedFiles, onChange: setSelectedFiles, topInset: headerHeight });
+
+  const renderFile = (file: IComfyFileInfo) => (
+    <LazyImage file={file} onImageClick={handleFileClick}
+      isSelectionMode={isSelectionMode} isSelected={selectedFiles.has(galleryFileKey(file))}
+      onSelectionChange={handleSelectionChange} fileService={comfyFileService}
+      videoLookupMap={videoLookupMap} imageLookupMap={imageLookupMap}
+      onThumbnailGenerated={handleThumbnailGenerated} />
+  );
+
   const totalFiles = files.images.length + files.videos.length;
 
   return (
-    <div className="fixed inset-0 overflow-y-auto overflow-x-hidden pt-safe pb-safe z-0" style={{ background: '#050608' }}>
+    <div ref={scrollRef} className={`fixed inset-0 overflow-y-auto overflow-x-hidden pt-safe pb-safe z-0 ${isSelectionMode ? 'gallery-selection-mode' : ''}`}
+      style={{ background: '#050608', ...(isSelectionMode
+        ? { userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none', touchAction: 'pan-y pinch-zoom' } : {}) }}>
       <input ref={uploadInputRef} type="file" accept={activeTab === 'images' ? 'image/*' : 'video/*,.mkv,.m4v'} multiple className="hidden"
         aria-label={t(activeTab === 'images' ? 'gallery.uploadImages' : 'gallery.uploadVideos')} onChange={handleUploadMedia} />
       {/* Immersive Fixed Header */}
@@ -967,7 +989,7 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
             </h1>
             <p className={`font-mono text-[9px] font-medium tracking-[0.14em] uppercase mt-[3px] truncate ${isSelectionMode ? 'text-[#7ba3f5]' : 'text-[#8a919e]'}`}>
               {isSelectionMode
-                ? `${selectedFiles.size} SELECTED`
+                ? t('gallery.selectedCount', { count: selectedFiles.size })
                 : (viewMode === 'folders'
                   ? (selectedSubfolder && selectedSubfolder !== '/' ? selectedSubfolder : 'Root Folder')
                   : (activeFolder === 'all'
@@ -1047,6 +1069,11 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
             )}
           </div>
         </div>
+        {isSelectionMode && (
+          <p className="relative px-3.5 pb-2 text-[11px] text-[#9bb8f5] md:px-8">
+            {t('gallery.dragSelectionHint')}
+          </p>
+        )}
         {activeFolder === 'input' && isConnected && hasExtension && (
           <div className="relative px-3.5 pb-3 md:px-8 pointer-events-auto">
             <div className="flex items-center gap-3">
@@ -1190,23 +1217,8 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
 
                   {/* Files Section Second */}
                   {folderContent.files.length > 0 ? (
-                    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-0.5">
-                      {folderContent.files.map((file, index) => (
-                        <LazyImage
-                          key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
-                          file={file}
-                          index={index}
-                          onImageClick={handleFileClick}
-                          isSelectionMode={isSelectionMode}
-                          isSelected={selectedFiles.has(`${file.filename}-${file.subfolder}-${file.type}`)}
-                          onSelectionChange={handleSelectionChange}
-                          fileService={comfyFileService}
-                          videoLookupMap={videoLookupMap}
-                          imageLookupMap={imageLookupMap}
-                          onThumbnailGenerated={handleThumbnailGenerated}
-                        />
-                      ))}
-                    </div>
+                    <VirtualGalleryGrid items={folderContent.files} scrollRef={scrollRef}
+                      getKey={galleryFileKey} renderItem={renderFile} />
                   ) : folderContent.folders.length === 0 && (
                     <div className="text-center py-40">
                       <ImageIcon className="h-16 w-16 text-white/10 mx-auto mb-6" />
@@ -1220,23 +1232,9 @@ export const OutputsGallery: React.FC<OutputsGalleryProps> = ({
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-0.5"
                 >
-                  {currentFiles.map((file, index) => (
-                    <LazyImage
-                      key={`${file.filename}-${file.subfolder}-${file.type}-${index}`}
-                      file={file}
-                      index={index}
-                      onImageClick={handleFileClick}
-                      isSelectionMode={isSelectionMode}
-                      isSelected={selectedFiles.has(`${file.filename}-${file.subfolder}-${file.type}`)}
-                      onSelectionChange={handleSelectionChange}
-                      fileService={comfyFileService}
-                      videoLookupMap={videoLookupMap}
-                      imageLookupMap={imageLookupMap}
-                          onThumbnailGenerated={handleThumbnailGenerated}
-                    />
-                  ))}
+                  <VirtualGalleryGrid items={currentFiles} scrollRef={scrollRef}
+                    getKey={galleryFileKey} renderItem={renderFile} />
                 </motion.div>
               )}
             </AnimatePresence>

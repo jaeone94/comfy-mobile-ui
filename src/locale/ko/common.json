@@ -625,6 +625,7 @@
         "refreshFiles": "파일 새로고침",
         "enterSelectionMode": "선택 모드 진입",
         "exitSelectionMode": "선택 모드 종료",
+        "dragSelectionHint": "옆으로 밀어 연속 선택 · 위아래로 밀어 스크롤",
         "loading": "출력 파일 로딩 중...",
         "noFilesFound": "{{type}} 없음",
         "noFilesDescription": "아직 생성된 {{type}}이(가) 없습니다",

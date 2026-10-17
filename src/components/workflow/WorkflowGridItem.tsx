@@ -1,8 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { FileText, AlertCircle, Check } from 'lucide-react';
 import { Workflow } from '@/shared/types/app/IComfyWorkflow';
 import { generateWorkflowThumbnail } from '@/shared/utils/rendering/CanvasRendererService';
 import { useLongPress } from '@/hooks/useLongPress';
+
+// Keep only small rendered images across route changes, never full graphs.
+const thumbnailCache = new Map<string, string>();
+const thumbnailKey = (workflow: Workflow) => `${workflow.id}:${new Date(workflow.modifiedAt || workflow.createdAt).getTime()}:${workflow.nodeCount}`;
 
 interface WorkflowGridItemProps {
   workflow: Workflow;
@@ -19,19 +23,31 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
   isSelected = false,
   selectionMode = false,
 }) => {
-  const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(workflow.thumbnail);
+  const itemRef = useRef<HTMLDivElement>(null);
+  const [thumbnailUrl, setThumbnailUrl] = useState<string | undefined>(() => workflow.thumbnail || thumbnailCache.get(thumbnailKey(workflow)));
 
   useEffect(() => {
-    const generateMissingThumbnail = async () => {
-      if (workflow.nodeCount > 0 && !workflow.thumbnail && workflow.workflow_json) {
+    const key = thumbnailKey(workflow);
+    const cached = workflow.thumbnail || thumbnailCache.get(key);
+    setThumbnailUrl(cached);
+    if (cached || !workflow.nodeCount || !workflow.workflow_json) return;
+    let cancelled = false;
+    let scheduled = false;
+    let idle: number | undefined;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const generateMissingThumbnail = () => {
+      if (!cancelled) {
         try {
           const thumbnail = generateWorkflowThumbnail({
-            nodes: (workflow.workflow_json.nodes || []) as any,
-            links: (workflow.workflow_json.links || []) as any,
-            groups: (workflow.workflow_json.groups || []) as any
-          });
+            nodes: workflow.workflow_json.nodes || [],
+            links: workflow.workflow_json.links || [],
+            groups: workflow.workflow_json.groups || []
+          } as unknown as Parameters<typeof generateWorkflowThumbnail>[0]);
 
           if (thumbnail) {
+            thumbnailCache.delete(key);
+            thumbnailCache.set(key, thumbnail);
+            if (thumbnailCache.size > 64) thumbnailCache.delete(thumbnailCache.keys().next().value!);
             setThumbnailUrl(thumbnail);
           }
         } catch (error) {
@@ -40,7 +56,23 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
       }
     };
 
-    generateMissingThumbnail();
+    const schedule = () => {
+      if (scheduled) return;
+      scheduled = true;
+      if ('requestIdleCallback' in window) idle = window.requestIdleCallback(generateMissingThumbnail, { timeout: 1500 });
+      else timer = setTimeout(generateMissingThumbnail, 80);
+    };
+    const observer = typeof IntersectionObserver !== 'undefined' ? new IntersectionObserver(entries => {
+      if (entries.some(entry => entry.isIntersecting)) { observer?.disconnect(); schedule(); }
+    }, { rootMargin: '200px' }) : null;
+    if (observer && itemRef.current) observer.observe(itemRef.current);
+    else schedule();
+    return () => {
+      cancelled = true;
+      observer?.disconnect();
+      if (idle !== undefined) window.cancelIdleCallback(idle);
+      clearTimeout(timer);
+    };
   }, [workflow]);
 
   const longPressProps = useLongPress(onLongPress, onClick, { threshold: 500 });
@@ -55,6 +87,7 @@ const WorkflowGridItem: React.FC<WorkflowGridItemProps> = ({
 
   return (
     <div
+      ref={itemRef}
       className={`relative rounded-[10px] overflow-hidden cursor-pointer border transition-colors ${isSelected
         ? 'border-[#3069f0]/70 ring-1 ring-[#3069f0]/40'
         : 'border-white/[0.07] hover:border-white/[0.14]'

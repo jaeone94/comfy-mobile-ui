@@ -251,7 +251,8 @@ const WorkflowList: React.FC = () => {
     const workflowIds = currentFolderId ? folder?.workflows || [] : folderStructure.rootWorkflows;
     const folderIds = currentFolderId ? folder?.children || [] : folderStructure.rootFolders;
 
-    const currentWorkflows = workflows.filter((w) => workflowIds.includes(w.id));
+    const visibleWorkflowIds = new Set(workflowIds);
+    const currentWorkflows = workflows.filter((w) => visibleWorkflowIds.has(w.id));
     const currentFolders = folderIds.map((id) => folderStructure.folders[id]).filter(Boolean);
 
     return { workflows: currentWorkflows, folders: currentFolders };
