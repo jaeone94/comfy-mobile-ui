@@ -7,6 +7,15 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* WebKit also needs an explicit rule on descendants: a photo hold must not
+   become text selection or the image callout while selecting gallery items. */
+.gallery-selection-mode [data-gallery-index],
+.gallery-selection-mode [data-gallery-index] * {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* Custom dark variant for targeting dark mode elements */
 @custom-variant dark (&:is(.dark *));
 

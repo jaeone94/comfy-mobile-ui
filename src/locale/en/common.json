@@ -625,6 +625,7 @@
         "refreshFiles": "Refresh files",
         "enterSelectionMode": "Enter selection mode",
         "exitSelectionMode": "Exit selection mode",
+        "dragSelectionHint": "Swipe sideways to select · Swipe up/down to scroll",
         "loading": "Loading output files...",
         "noFilesFound": "No {{type}} found",
         "noFilesDescription": "No {{type}} have been generated yet",

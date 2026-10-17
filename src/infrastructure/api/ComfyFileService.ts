@@ -136,12 +136,12 @@ export class ComfyFileService {
   /**
    * Get list of files from server using custom ComfyUI Mobile UI API extension
    */
-  async listFiles(): Promise<IComfyFileListResponse> {
+  async listFiles(signal?: AbortSignal): Promise<IComfyFileListResponse> {
     try {
 
       // Try the custom API endpoint first
       try {
-        const response = await axios.get(`${this.serverUrl}/comfymobile/api/files/list`);
+        const response = await axios.get(`${this.serverUrl}/comfymobile/api/files/list`, { signal });
 
         if (response.data?.status === 'success') {
           const { images, videos, files } = response.data;
@@ -172,6 +172,7 @@ export class ComfyFileService {
           throw new Error('Custom API returned non-success status');
         }
       } catch (apiError) {
+        if (signal?.aborted) return { images: [], videos: [], files: [] };
         console.warn('Custom API not available, falling back to legacy method:', apiError);
 
         // Fallback: return empty results (legacy /view method doesn't work for listing)

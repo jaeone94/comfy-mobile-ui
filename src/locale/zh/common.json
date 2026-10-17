@@ -622,6 +622,7 @@
         "refreshFiles": "刷新文件",
         "enterSelectionMode": "进入选择模式",
         "exitSelectionMode": "退出选择模式",
+        "dragSelectionHint": "横向滑动连续选择 · 上下滑动滚动",
         "loading": "正在加载输出文件...",
         "noFilesFound": "未找到 {{type}}",
         "noFilesDescription": "尚未生成 {{type}}",

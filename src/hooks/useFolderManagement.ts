@@ -87,7 +87,9 @@ export const useFolderManagement = () => {
       });
 
       // All workflows not in folders go to root
-      const rootWorkflows = workflowIds.filter(id => !workflowsInFolders.has(id));
+      const rootWorkflows = deduplicate(workflowIds.filter(id => !workflowsInFolders.has(id)));
+      if (rootWorkflows.length === prev.rootWorkflows.length &&
+        rootWorkflows.every((id, index) => id === prev.rootWorkflows[index])) return prev;
 
       const updated = {
         ...prev,
