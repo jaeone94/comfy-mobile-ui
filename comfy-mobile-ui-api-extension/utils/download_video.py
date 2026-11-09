@@ -21,10 +21,20 @@ COOKIE_AUTH_ERROR = 'Cookie-authenticated request failed. Check cookie.txt forma
 
 
 def with_server_cookies(command):
-    if not COOKIE_FILE.is_file() or '--cookies' in command:
-        return command
     index = command.index('--')
     return [*command[:index], '--cookies', str(COOKIE_FILE), *command[index:]]
+
+
+def requires_cookie_auth(error):
+    errors = [line for line in error.splitlines() if re.search(r'\bERROR:', line, re.I)]
+    message = '\n'.join(errors) if errors else error
+    return re.search(
+        r'not available for all users|log[ -]?in (?:is )?required|'
+        r'please (?:log[ -]?in|sign[ -]?in)|sign[ -]?in to|'
+        r'(?:use|provide|pass).{0,40}--cookies|authentication required|'
+        r'requires? authentication|HTTP Error 401|'
+        r'cookies? (?:are |is )?(?:required|expired|invalid)|'
+        r'로그인.{0,12}필요|모든 사용자에게 공개', message, re.I) is not None
 
 
 def validate_url(url):
@@ -68,29 +78,42 @@ def normalize_formats(info, ffmpeg_available):
 
 
 async def probe_video_formats(url):
+    metadata, _ = await _probe_video_formats(url)
+    return metadata
+
+
+async def _probe_video_formats(url):
     url = validate_url(url)
     command = [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist',
         '--dump-single-json', '--skip-download', '--no-warnings', '--encoding', 'utf-8', '--', url]
-    command = with_server_cookies(command)
-    process = await asyncio.create_subprocess_exec(*command,
-        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
-    try:
-        stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=90)
-    except (asyncio.TimeoutError, asyncio.CancelledError):
-        if process.returncode is None:
-            process.kill()
-        await process.communicate()
-        raise
-    if process.returncode:
+    using_cookies = False
+    deadline = asyncio.get_running_loop().time() + 90
+    for attempt in range(2):
+        process = await asyncio.create_subprocess_exec(*command,
+            stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+        try:
+            remaining = max(0, deadline - asyncio.get_running_loop().time())
+            stdout, stderr = await asyncio.wait_for(process.communicate(), timeout=remaining)
+        except (asyncio.TimeoutError, asyncio.CancelledError):
+            if process.returncode is None:
+                process.kill()
+            await process.communicate()
+            raise
+        if not process.returncode:
+            break
         error = stderr.decode('utf-8', errors='replace').strip() or 'Could not inspect this video.'
+        if attempt == 0 and requires_cookie_auth(error) and COOKIE_FILE.is_file():
+            command = with_server_cookies(command)
+            using_cookies = True
+            continue
         # Malformed cookie diagnostics can echo file contents. Do not expose them.
-        raise FormatError(COOKIE_AUTH_ERROR if '--cookies' in command else error)
+        raise FormatError(COOKIE_AUTH_ERROR if using_cookies else error)
     info = json.loads(stdout)
     ffmpeg = shutil.which('ffmpeg') is not None
     return {
         'title': info.get('title', ''), 'extractor': info.get('extractor_key') or info.get('extractor', ''),
         'ffmpeg_available': ffmpeg, 'formats': normalize_formats(info, ffmpeg),
-    }
+    }, using_cookies
 
 
 def choose_format(formats, format_id='auto'):
@@ -106,7 +129,7 @@ async def download_video_async(url, output_dir=None, filename=None, progress_cal
     process = None
     try:
         # Always re-probe: format IDs and availability can change after yt-dlp updates.
-        metadata = await probe_video_formats(url)
+        metadata, using_cookies = await _probe_video_formats(url)
         selected = choose_format(metadata['formats'], format_id)
         output_dir = os.path.realpath(output_dir or folder_paths.get_input_directory())
         os.makedirs(output_dir, exist_ok=True)
@@ -121,8 +144,8 @@ async def download_video_async(url, output_dir=None, filename=None, progress_cal
         if selected['merges_audio']:
             cmd += ['--merge-output-format', 'mp4/mkv']
         cmd += ['--', validate_url(url)]
-        cmd = with_server_cookies(cmd)
-        using_cookies = '--cookies' in cmd
+        if using_cookies:
+            cmd = with_server_cookies(cmd)
         process = await asyncio.create_subprocess_exec(*cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.STDOUT)
         lines, paths = [], []
         async for line in process.stdout:

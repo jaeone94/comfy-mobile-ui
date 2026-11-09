@@ -6,7 +6,7 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('video_download_under_test', ROOT / 'utils/download_video.py')
@@ -85,7 +85,6 @@ class FormatTests(unittest.IsolatedAsyncioTestCase):
         with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)):
             with self.assertRaisesRegex(video.FormatError, 'Login required'):
                 await video.probe_video_formats('https://example.com/video')
-        from unittest.mock import Mock
         proc = types.SimpleNamespace(returncode=None, kill=Mock(), communicate=AsyncMock(side_effect=[asyncio.TimeoutError(), (b'', b'')]))
         with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)):
             with self.assertRaises(asyncio.TimeoutError):
@@ -101,7 +100,7 @@ class FormatTests(unittest.IsolatedAsyncioTestCase):
             stream.feed_eof()
             proc = types.SimpleNamespace(returncode=0, stdout=stream, wait=AsyncMock())
             metadata = {'formats': video.normalize_formats({'formats': [fmt('new-id')]}, True)}
-            with patch.object(video, 'probe_video_formats', AsyncMock(return_value=metadata)) as probe, patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+            with patch.object(video, '_probe_video_formats', AsyncMock(return_value=(metadata, False))) as probe, patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
                 result = await video.download_video_async('https://example.com/video', directory)
                 self.assertTrue(result['success'], result)
                 self.assertEqual(result['downloaded_file'], '한글.webm')
@@ -116,7 +115,7 @@ class FormatTests(unittest.IsolatedAsyncioTestCase):
             stream.feed_eof()
             proc = types.SimpleNamespace(returncode=0, stdout=stream, wait=AsyncMock())
             metadata = {'formats': video.normalize_formats({'formats': [fmt('18')]}, True)}
-            with patch.object(video, 'probe_video_formats', AsyncMock(return_value=metadata)), patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)):
+            with patch.object(video, '_probe_video_formats', AsyncMock(return_value=(metadata, False))), patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)):
                 result = await video.download_video_async('https://example.com/video', directory)
                 self.assertFalse(result['success'])
 
@@ -133,16 +132,39 @@ class CookieAuthenticationTests(unittest.IsolatedAsyncioTestCase):
         self.cookie_patch.stop()
         self.temp.cleanup()
 
-    async def test_probe_uses_cookie_on_first_request(self):
+    async def test_probe_retries_authentication_once_with_cookie(self):
+        unauthenticated = process_result(stderr=b'ERROR: This content is unreachable. Use --cookies for the authentication.', code=1)
         proc = process_result({'formats': [fmt('private-id')]})
-        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(side_effect=[unauthenticated, proc])) as spawn:
             result = await video.probe_video_formats('https://www.instagram.com/reel/example/')
         self.assertEqual(result['formats'][0]['id'], 'private-id')
-        spawn.assert_awaited_once()
+        self.assertEqual(set(result), {'title', 'extractor', 'ffmpeg_available', 'formats'})
+        self.assertEqual(spawn.await_count, 2)
+        self.assertNotIn('--cookies', spawn.call_args_list[0].args)
         command = spawn.call_args.args
         self.assertEqual(command[command.index('--cookies') + 1], str(self.cookie))
         self.assertLess(command.index('--cookies'), command.index('--'))
         self.assertNotIn('--cookies-from-browser', command)
+
+    async def test_public_probe_ignores_malformed_cookie_file(self):
+        self.cookie.write_text('not a Netscape cookie file')
+        proc = process_result({'formats': [fmt('public')]})
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+            await video.probe_video_formats('https://youtube.com/shorts/DCYuZLJ1p4Q')
+        spawn.assert_awaited_once()
+        self.assertNotIn('--cookies', spawn.call_args.args)
+
+    async def test_non_authentication_errors_do_not_use_cookies(self):
+        for error in [b'ERROR: Video unavailable', b'ERROR: HTTP Error 403: Forbidden',
+                      b'WARNING: Use --cookies for authentication\nERROR: Requested format is not available']:
+            with self.subTest(error=error):
+                proc = process_result(stderr=error, code=1)
+                with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+                    with self.assertRaises(video.FormatError) as caught:
+                        await video.probe_video_formats('https://example.com/video')
+                spawn.assert_awaited_once()
+                self.assertNotIn('--cookies', spawn.call_args.args)
+                self.assertEqual(str(caught.exception), error.decode())
 
     async def test_probe_without_cookie_and_no_retry(self):
         self.cookie.unlink()
@@ -157,12 +179,22 @@ class CookieAuthenticationTests(unittest.IsolatedAsyncioTestCase):
                 self.assertNotIn('--cookies', spawn.call_args.args)
 
     async def test_cookie_failure_is_not_retried_or_exposed(self):
+        unauthenticated = process_result(stderr=b'ERROR: Login required', code=1)
         proc = process_result(stderr=b'Invalid cookie file: secret-test-cookie', code=1)
-        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(side_effect=[unauthenticated, proc])) as spawn:
             with self.assertRaisesRegex(video.FormatError, 'Cookie-authenticated') as error:
                 await video.probe_video_formats('https://example.com/video')
-        spawn.assert_awaited_once()
+        self.assertEqual(spawn.await_count, 2)
         self.assertNotIn('secret-test-cookie', str(error.exception))
+
+    async def test_cookie_retry_timeout_or_cancellation_stops_process(self):
+        unauthenticated = process_result(stderr=b'ERROR: Login required', code=1)
+        for failure in (asyncio.TimeoutError, asyncio.CancelledError):
+            proc = types.SimpleNamespace(returncode=None, kill=Mock(), communicate=AsyncMock(side_effect=[failure(), (b'', b'')]))
+            with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(side_effect=[unauthenticated, proc])):
+                with self.assertRaises(failure):
+                    await video.probe_video_formats('https://example.com/video')
+            proc.kill.assert_called_once()
 
     def download_process(self, text, code):
         stream = asyncio.StreamReader()
@@ -174,32 +206,45 @@ class CookieAuthenticationTests(unittest.IsolatedAsyncioTestCase):
         target = Path(self.temp.name) / 'video.mp4'
         target.write_bytes(b'video')
         probe = process_result({'formats': [fmt('chosen')]})
+        unauthenticated = process_result(stderr=b'ERROR: Login required', code=1)
         download = self.download_process('WARNING: secret-test-cookie\n[download] 100%\n__COMFY_FILE__' + json.dumps(str(target)) + '\n', 0)
         progress = AsyncMock()
-        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(side_effect=[probe, download])) as spawn:
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(side_effect=[unauthenticated, probe, download])) as spawn:
             result = await video.download_video_async('https://example.com/video', self.temp.name, format_id='chosen', progress_callback=progress)
         self.assertTrue(result['success'], result)
         self.assertEqual(result['downloaded_file'], 'video.mp4')
-        self.assertEqual(spawn.await_count, 2)
-        for call in spawn.call_args_list:
+        self.assertEqual(spawn.await_count, 3)
+        self.assertNotIn('--cookies', spawn.call_args_list[0].args)
+        for call in spawn.call_args_list[1:]:
             self.assertEqual(call.args[call.args.index('--cookies') + 1], str(self.cookie))
         command = spawn.call_args.args
         self.assertEqual(command[command.index('-f') + 1], 'chosen')
         self.assertNotIn('secret-test-cookie', result['stdout'])
         self.assertNotIn('secret-test-cookie', str(progress.call_args_list))
 
+    async def test_public_download_does_not_add_existing_cookies(self):
+        self.cookie.write_text('not a Netscape cookie file')
+        target = Path(self.temp.name) / 'public.mp4'
+        target.write_bytes(b'video')
+        probe = process_result({'formats': [fmt('public')]})
+        download = self.download_process('__COMFY_FILE__' + json.dumps(str(target)) + '\n', 0)
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(side_effect=[probe, download])) as spawn:
+            result = await video.download_video_async('https://youtube.com/shorts/DCYuZLJ1p4Q', self.temp.name)
+        self.assertTrue(result['success'], result)
+        self.assertEqual(spawn.await_count, 2)
+        for call in spawn.call_args_list:
+            self.assertNotIn('--cookies', call.args)
+
     async def test_download_failures_never_retry_without_cookies(self):
         metadata = {'formats': video.normalize_formats({'formats': [fmt('chosen')]}, True)}
-        for cookie_exists in (True, False):
-            if not cookie_exists:
-                self.cookie.unlink()
+        for using_cookies in (True, False):
             proc = self.download_process('ERROR: Login required secret-test-cookie\n', 1)
-            with patch.object(video, 'probe_video_formats', AsyncMock(return_value=metadata)), patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+            with patch.object(video, '_probe_video_formats', AsyncMock(return_value=(metadata, using_cookies))), patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
                 result = await video.download_video_async('https://example.com/video', self.temp.name, progress_callback=AsyncMock())
             self.assertFalse(result['success'])
             spawn.assert_awaited_once()
-            self.assertEqual('--cookies' in spawn.call_args.args, cookie_exists)
-            if cookie_exists:
+            self.assertEqual('--cookies' in spawn.call_args.args, using_cookies)
+            if using_cookies:
                 self.assertNotIn('secret-test-cookie', result['error'])
 
 
