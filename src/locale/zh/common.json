@@ -1328,6 +1328,12 @@
             "updatedVersion": "已更新至版本：{{version}}",
             "upgradeFailed": "升级 yt-dlp 失败"
         },
+        "userAgentLabel": "用户代理",
+        "impersonateLabel": "浏览器指纹 (impersonate)",
+        "impersonateAuto": "自动 (支持的浏览器)",
+        "impersonateUnavailable": "不可用 (检查 yt-dlp / curl_cffi)",
+        "userAgentDefault": "yt-dlp 默认值",
+        "userAgentCustom": "自定义 User-Agent",
         "formatLabel": "视频格式",
         "formatAuto": "自动（可用的最高画质）",
         "formatLoad": "获取格式",

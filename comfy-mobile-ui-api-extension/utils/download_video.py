@@ -44,6 +44,49 @@ def validate_url(url):
     return url.strip()
 
 
+def validate_user_agent(user_agent):
+    if user_agent is None:
+        return None
+    if not isinstance(user_agent, str) or re.search(r'[^\x20-\x7e]', user_agent):
+        raise FormatError('User-Agent must contain printable ASCII characters only.')
+    return user_agent.strip() or None
+
+
+def validate_impersonate(impersonate):
+    if impersonate is None or impersonate == '':
+        return None
+    if not isinstance(impersonate, str) or not re.fullmatch(r'[a-z0-9]+(?:[.-][a-z0-9]+)*(?::[a-z0-9]+(?:[.-][a-z0-9]+)*)?', impersonate):
+        raise FormatError('Invalid browser impersonation target.')
+    return impersonate
+
+
+async def get_impersonate_targets():
+    process = await asyncio.create_subprocess_exec(
+        sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-colors', '--encoding', 'utf-8', '--list-impersonate-targets',
+        stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE)
+    try:
+        stdout, _ = await asyncio.wait_for(process.communicate(), timeout=5)
+    except (asyncio.TimeoutError, asyncio.CancelledError):
+        if process.returncode is None:
+            process.kill()
+        await process.communicate()
+        raise
+    if process.returncode:
+        raise FormatError('Could not list impersonation targets. Update yt-dlp and check curl_cffi.')
+    targets = []
+    # The CLI exposes a table, not JSON; unavailable rows have an extra column.
+    for line in stdout.decode('utf-8', errors='replace').splitlines():
+        columns = line.split()
+        if len(columns) != 3 or columns[0] in ('Client', '-'):
+            continue
+        client, os_name, _ = columns
+        target = client.lower() + (':' + os_name.lower() if os_name != '-' else '')
+        target = validate_impersonate(target)
+        if target not in targets:
+            targets.append(target)
+    return targets
+
+
 def normalize_formats(info, ffmpeg_available):
     if info.get('_type') in ('playlist', 'multi_video') or 'entries' in info:
         raise FormatError('Please use a single video URL, not a playlist or multi-video post.')
@@ -77,15 +120,22 @@ def normalize_formats(info, ffmpeg_available):
     return result
 
 
-async def probe_video_formats(url):
-    metadata, _ = await _probe_video_formats(url)
+async def probe_video_formats(url, user_agent=None, impersonate=None):
+    metadata, _ = await _probe_video_formats(url, user_agent=user_agent, impersonate=impersonate)
     return metadata
 
 
-async def _probe_video_formats(url):
+async def _probe_video_formats(url, user_agent=None, impersonate=None):
     url = validate_url(url)
+    user_agent = validate_user_agent(user_agent)
+    impersonate = validate_impersonate(impersonate)
     command = [sys.executable, '-m', 'yt_dlp', '--ignore-config', '--no-playlist',
-        '--dump-single-json', '--skip-download', '--no-warnings', '--encoding', 'utf-8', '--', url]
+        '--dump-single-json', '--skip-download', '--no-warnings', '--encoding', 'utf-8']
+    if user_agent:
+        command += ['--user-agent', user_agent]
+    if impersonate:
+        command += ['--impersonate', '' if impersonate == 'auto' else impersonate]
+    command += ['--', url]
     using_cookies = False
     deadline = asyncio.get_running_loop().time() + 90
     for attempt in range(2):
@@ -125,11 +175,13 @@ def choose_format(formats, format_id='auto'):
     return candidates[-1]
 
 
-async def download_video_async(url, output_dir=None, filename=None, progress_callback=None, format_id='auto'):
+async def download_video_async(url, output_dir=None, filename=None, progress_callback=None, format_id='auto', user_agent=None, impersonate=None):
     process = None
     try:
         # Always re-probe: format IDs and availability can change after yt-dlp updates.
-        metadata, using_cookies = await _probe_video_formats(url)
+        user_agent = validate_user_agent(user_agent)
+        impersonate = validate_impersonate(impersonate)
+        metadata, using_cookies = await _probe_video_formats(url, user_agent=user_agent, impersonate=impersonate)
         selected = choose_format(metadata['formats'], format_id)
         output_dir = os.path.realpath(output_dir or folder_paths.get_input_directory())
         os.makedirs(output_dir, exist_ok=True)
@@ -143,6 +195,10 @@ async def download_video_async(url, output_dir=None, filename=None, progress_cal
                '-o', os.path.join(output_dir, template + '.%(ext)s')]
         if selected['merges_audio']:
             cmd += ['--merge-output-format', 'mp4/mkv']
+        if user_agent:
+            cmd += ['--user-agent', user_agent]
+        if impersonate:
+            cmd += ['--impersonate', '' if impersonate == 'auto' else impersonate]
         cmd += ['--', validate_url(url)]
         if using_cookies:
             cmd = with_server_cookies(cmd)

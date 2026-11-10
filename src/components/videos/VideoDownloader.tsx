@@ -18,6 +18,8 @@ interface VideoDownloadStatus {
   input_directory: string;
   input_writable: boolean;
   supported_sites: string[];
+  impersonate_targets?: string[];
+  impersonate_error?: string | null;
 }
 
 interface VideoDownloadResponse {
@@ -34,6 +36,14 @@ interface VideoDownloadResponse {
   error?: string;
 }
 
+const USER_AGENT_PRESETS = [
+  { id: 'opera-windows', label: 'Opera 118 / Windows', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Safari/537.36 OPR/118.0.0.0' },
+  { id: 'chrome-windows', label: 'Chrome 143 / Windows', value: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36' },
+  { id: 'firefox-linux', label: 'Firefox 140 / Linux', value: 'Mozilla/5.0 (X11; Linux x86_64; rv:140.0) Gecko/20100101 Firefox/140.0' },
+  { id: 'firefox-ubuntu', label: 'Firefox 129 / Ubuntu', value: 'Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:129.0) Gecko/20100101 Firefox/129.0' },
+  { id: 'chrome-linux', label: 'Chrome 128 / Linux', value: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36' },
+];
+
 const VideoDownloader: React.FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -43,6 +53,13 @@ const VideoDownloader: React.FC = () => {
   const [videoUrl, setVideoUrl] = useState('');
   const [customFilename, setCustomFilename] = useState('');
   const [subfolder, setSubfolder] = useState('');
+  const [userAgentPreset, setUserAgentPreset] = useState('default');
+  const [customUserAgent, setCustomUserAgent] = useState('');
+  const [impersonate, setImpersonate] = useState('');
+  const userAgent = userAgentPreset === 'custom'
+    ? customUserAgent.trim()
+    : USER_AGENT_PRESETS.find(preset => preset.id === userAgentPreset)?.value || '';
+  const isUserAgentMissing = userAgentPreset === 'custom' && !userAgent;
 
   // API data
   const [downloadStatus, setDownloadStatus] = useState<VideoDownloadStatus | null>(null);
@@ -68,7 +85,11 @@ const VideoDownloader: React.FC = () => {
   useEffect(() => {
     resetFormats();
     return () => { formatRequest.current?.abort(); };
-  }, [videoUrl, serverUrl, isConnected, hasExtension]);
+  }, [videoUrl, userAgent, impersonate, serverUrl, isConnected, hasExtension]);
+
+  useEffect(() => {
+    setImpersonate('');
+  }, [serverUrl, isConnected, hasExtension]);
 
   const loadFormats = async () => {
     resetFormats();
@@ -76,7 +97,7 @@ const VideoDownloader: React.FC = () => {
     formatRequest.current = controller;
     setIsLoadingFormats(true);
     try {
-      const result = await ComfyUIService.getVideoFormats(videoUrl.trim(), controller.signal);
+      const result = await ComfyUIService.getVideoFormats(videoUrl.trim(), controller.signal, userAgent, impersonate);
       if (!controller.signal.aborted) setFormatResult(result);
     } catch (error: any) {
       if (!controller.signal.aborted) setFormatError(error.response?.data?.error || t('common.error'));
@@ -138,6 +159,10 @@ const VideoDownloader: React.FC = () => {
 
       if (response.success) {
         setDownloadStatus(response.status);
+        setImpersonate(current => {
+          const targets: string[] = response.status.impersonate_targets || [];
+          return (current === 'auto' && targets.length > 0) || targets.includes(current) ? current : '';
+        });
       } else {
         toast.error(t('videoDownloader.toast.failed'), {
           description: response.error
@@ -176,7 +201,9 @@ const VideoDownloader: React.FC = () => {
     try {
       const requestParams: any = {
         url: videoUrl.trim(),
-        format_id: formatId
+        format_id: formatId,
+        user_agent: userAgent || undefined,
+        impersonate: impersonate || undefined
       };
 
       if (customFilename.trim()) {
@@ -489,6 +516,39 @@ const VideoDownloader: React.FC = () => {
                   </div>
 
                   <div className="space-y-2">
+                    <Label htmlFor="video-user-agent">{t('videoDownloader.userAgentLabel')}</Label>
+                    <select id="video-user-agent" value={userAgentPreset}
+                      onChange={e => { resetFormats(); setUserAgentPreset(e.target.value); }}
+                      disabled={isDownloading || isUpgrading}
+                      title={userAgent || undefined}
+                      className="w-full min-w-0 h-[42px] rounded-lg border border-white/10 bg-[#141820] px-3 text-xs text-[#e9ebef]">
+                      <option value="default">{t('videoDownloader.userAgentDefault')}</option>
+                      {USER_AGENT_PRESETS.map(preset => <option key={preset.id} value={preset.id}>{preset.label}</option>)}
+                      <option value="custom">{t('videoDownloader.userAgentCustom')}</option>
+                    </select>
+                    {userAgentPreset === 'custom' && <>
+                      <Label htmlFor="video-custom-user-agent">{t('videoDownloader.userAgentCustom')}</Label>
+                      <Input id="video-custom-user-agent" value={customUserAgent}
+                        onChange={e => { resetFormats(); setCustomUserAgent(e.target.value); }}
+                        disabled={isDownloading || isUpgrading} placeholder="Mozilla/5.0 ..."
+                        className="w-full min-w-0 h-[42px] rounded-lg border-white/10 bg-[#141820] text-xs text-[#e9ebef] font-mono" />
+                    </>}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="video-impersonate">{t('videoDownloader.impersonateLabel')}</Label>
+                    <select id="video-impersonate" value={impersonate}
+                      onChange={e => { resetFormats(); setImpersonate(e.target.value); }}
+                      disabled={isDownloading || isUpgrading || isLoadingStatus || !downloadStatus.impersonate_targets?.length}
+                      title={downloadStatus.impersonate_error || undefined}
+                      className="w-full min-w-0 h-[42px] rounded-lg border border-white/10 bg-[#141820] px-3 text-xs text-[#e9ebef] disabled:opacity-50">
+                      <option value="">{t(`videoDownloader.${downloadStatus.impersonate_targets?.length ? 'userAgentDefault' : 'impersonateUnavailable'}`)}</option>
+                      {!!downloadStatus.impersonate_targets?.length && <option value="auto">{t('videoDownloader.impersonateAuto')}</option>}
+                      {downloadStatus.impersonate_targets?.map(target => <option key={target} value={target}>{target.replace(':', ' / ')}</option>)}
+                    </select>
+                  </div>
+
+                  <div className="space-y-2">
                     <Label htmlFor="video-format">{t('videoDownloader.formatLabel')}</Label>
                     <div className="flex gap-2">
                       <select id="video-format" value={formatId} onChange={e => setFormatId(e.target.value)}
@@ -504,7 +564,7 @@ const VideoDownloader: React.FC = () => {
                         ))}
                       </select>
                       <Button type="button" variant="outline" onClick={loadFormats}
-                        disabled={!videoUrl.trim() || isDownloading || isUpgrading || isLoadingFormats}>
+                        disabled={!videoUrl.trim() || isUserAgentMissing || isDownloading || isUpgrading || isLoadingFormats}>
                         {isLoadingFormats && <Loader2 className="mr-1 h-4 w-4 animate-spin" />}
                         {t('videoDownloader.formatLoad')}
                       </Button>
@@ -559,7 +619,7 @@ const VideoDownloader: React.FC = () => {
 
                   <Button
                     onClick={handleStartDownload}
-                    disabled={!videoUrl.trim() || isDownloading || isUpgrading || isLoadingFormats}
+                    disabled={!videoUrl.trim() || isUserAgentMissing || isDownloading || isUpgrading || isLoadingFormats}
                     className="w-full h-11 rounded-[10px] bg-[#3069f0] hover:bg-[#3f78f5] text-white text-[13px] font-semibold shadow-[0_2px_12px_rgba(48,105,240,0.3)] active:scale-98 transition-transform duration-75 disabled:opacity-50"
                   >
                     {isDownloading ? (

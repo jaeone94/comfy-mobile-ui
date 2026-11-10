@@ -1331,6 +1331,12 @@
             "updatedVersion": "Updated to version: {{version}}",
             "upgradeFailed": "Failed to upgrade yt-dlp"
         },
+        "userAgentLabel": "User-Agent",
+        "impersonateLabel": "Browser impersonation",
+        "impersonateAuto": "Auto (available browser)",
+        "impersonateUnavailable": "Unavailable (check yt-dlp / curl_cffi)",
+        "userAgentDefault": "yt-dlp default",
+        "userAgentCustom": "Custom User-Agent",
         "formatLabel": "Video format",
         "formatAuto": "Auto (best available)",
         "formatLoad": "Load formats",

@@ -7,7 +7,7 @@ import sys
 from typing import Dict, Any, Optional
 from aiohttp import web
 import folder_paths
-from ..utils.download_video import download_video_async, probe_video_formats, validate_url
+from ..utils.download_video import download_video_async, probe_video_formats, validate_url, validate_user_agent, validate_impersonate, get_impersonate_targets, FormatError
 from ..utils.video_thumbnail import generate_video_thumbnail_async
 
 async def get_video_formats(request):
@@ -16,7 +16,9 @@ async def get_video_formats(request):
         if not isinstance(data, dict):
             raise ValueError('Expected a JSON object.')
         url = validate_url(data.get('url'))
-        result = await probe_video_formats(url)
+        user_agent = validate_user_agent(data.get('user_agent'))
+        impersonate = validate_impersonate(data.get('impersonate'))
+        result = await probe_video_formats(url, user_agent=user_agent, impersonate=impersonate)
         # Do not expose signed media URLs or internal format selector expressions.
         result['formats'] = [{k: v for k, v in f.items() if k != 'selector'} for f in reversed(result['formats'])]
         return web.json_response({'success': True, **result})
@@ -43,6 +45,11 @@ async def download_youtube_video(request):
         url = data['url']
         filename = data.get('filename')  # Optional custom filename
         subfolder = data.get('subfolder', '')  # Optional subfolder within input directory
+        try:
+            user_agent = validate_user_agent(data.get('user_agent'))
+            impersonate = validate_impersonate(data.get('impersonate'))
+        except ValueError as error:
+            return web.json_response({'success': False, 'error': str(error)}, status=400)
 
         # Validate URL format
         import urllib.parse
@@ -84,7 +91,7 @@ async def download_youtube_video(request):
             print(message)
 
         # Download video using the async function
-        result = await download_video_async(url, target_dir, filename, progress_callback, format_id=data.get('format_id', 'auto'))
+        result = await download_video_async(url, target_dir, filename, progress_callback, format_id=data.get('format_id', 'auto'), user_agent=user_agent, impersonate=impersonate)
 
         if result["success"]:
             # Wait a brief moment for file system to fully complete the merge process
@@ -196,6 +203,14 @@ async def get_video_download_status(request):
             yt_dlp_version = None
             yt_dlp_available = False
 
+        impersonate_targets = []
+        impersonate_error = None
+        if yt_dlp_available:
+            try:
+                impersonate_targets = await get_impersonate_targets()
+            except (FormatError, asyncio.TimeoutError, OSError):
+                impersonate_error = 'Could not list impersonation targets. Update yt-dlp and check curl_cffi.'
+
         # Check if FFmpeg is available for thumbnail generation
         try:
             result = subprocess.run(['ffmpeg', '-version'],
@@ -216,6 +231,8 @@ async def get_video_download_status(request):
             "status": {
                 "yt_dlp_available": yt_dlp_available,
                 "yt_dlp_version": yt_dlp_version,
+                "impersonate_targets": impersonate_targets,
+                "impersonate_error": impersonate_error,
                 "ffmpeg_available": ffmpeg_available,
                 "ffmpeg_version": ffmpeg_version,
                 "thumbnail_generation_available": ffmpeg_available,

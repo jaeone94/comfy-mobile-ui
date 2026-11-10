@@ -74,6 +74,8 @@ class FormatTests(unittest.IsolatedAsyncioTestCase):
             result = await video.probe_video_formats('https://example.com/video')
             self.assertEqual(result['extractor'], 'Instagram')
             self.assertIn('--dump-single-json', spawn.call_args.args)
+            self.assertNotIn('--user-agent', spawn.call_args.args)
+            self.assertNotIn('--impersonate', spawn.call_args.args)
             self.assertEqual(spawn.call_args.args[-2:], ('--', 'https://example.com/video'))
             self.assertFalse(result['ffmpeg_available'])
         for url in [None, 'file:///tmp/video', '--help', 'ftp://example.com/video']:
@@ -90,6 +92,26 @@ class FormatTests(unittest.IsolatedAsyncioTestCase):
             with self.assertRaises(asyncio.TimeoutError):
                 await video.probe_video_formats('https://example.com/video')
         proc.kill.assert_called_once()
+
+    async def test_custom_user_agent_is_one_argument_before_url(self):
+        agent = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0'
+        proc = process_result({'formats': [fmt('1')]})
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+            await video.probe_video_formats('https://example.com/video', user_agent=agent)
+        command = spawn.call_args.args
+        self.assertEqual(command[command.index('--user-agent') + 1], agent)
+        self.assertLess(command.index('--user-agent'), command.index('--'))
+
+    async def test_invalid_user_agent_does_not_start_a_process(self):
+        for agent in [123, [], 'browser\r\nCookie: secret', 'browser\x00', 'browser\tvalue']:
+            with self.subTest(agent=agent), patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock()) as spawn:
+                with self.assertRaises(video.FormatError):
+                    await video.probe_video_formats('https://example.com/video', user_agent=agent)
+                result = await video.download_video_async('https://example.com/video', user_agent=agent)
+                self.assertFalse(result['success'])
+                spawn.assert_not_awaited()
+        for agent in [None, '', '   ']:
+            self.assertIsNone(video.validate_user_agent(agent))
 
     async def test_download_uses_fresh_choice_and_machine_file_path(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -209,11 +231,17 @@ class CookieAuthenticationTests(unittest.IsolatedAsyncioTestCase):
         unauthenticated = process_result(stderr=b'ERROR: Login required', code=1)
         download = self.download_process('WARNING: secret-test-cookie\n[download] 100%\n__COMFY_FILE__' + json.dumps(str(target)) + '\n', 0)
         progress = AsyncMock()
+        agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/143.0.0.0'
         with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(side_effect=[unauthenticated, probe, download])) as spawn:
-            result = await video.download_video_async('https://example.com/video', self.temp.name, format_id='chosen', progress_callback=progress)
+            result = await video.download_video_async('https://example.com/video', self.temp.name, format_id='chosen', progress_callback=progress, user_agent=agent, impersonate='chrome-136:windows-10')
         self.assertTrue(result['success'], result)
         self.assertEqual(result['downloaded_file'], 'video.mp4')
         self.assertEqual(spawn.await_count, 3)
+        for call in spawn.call_args_list:
+            self.assertEqual(call.args[call.args.index('--user-agent') + 1], agent)
+            self.assertEqual(call.args.count('--user-agent'), 1)
+            self.assertEqual(call.args[call.args.index('--impersonate') + 1], 'chrome-136:windows-10')
+            self.assertEqual(call.args.count('--impersonate'), 1)
         self.assertNotIn('--cookies', spawn.call_args_list[0].args)
         for call in spawn.call_args_list[1:]:
             self.assertEqual(call.args[call.args.index('--cookies') + 1], str(self.cookie))
@@ -234,6 +262,8 @@ class CookieAuthenticationTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(spawn.await_count, 2)
         for call in spawn.call_args_list:
             self.assertNotIn('--cookies', call.args)
+            self.assertNotIn('--user-agent', call.args)
+            self.assertNotIn('--impersonate', call.args)
 
     async def test_download_failures_never_retry_without_cookies(self):
         metadata = {'formats': video.normalize_formats({'formats': [fmt('chosen')]}, True)}
@@ -246,6 +276,42 @@ class CookieAuthenticationTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual('--cookies' in spawn.call_args.args, using_cookies)
             if using_cookies:
                 self.assertNotIn('secret-test-cookie', result['error'])
+
+
+class ImpersonationTests(unittest.IsolatedAsyncioTestCase):
+    async def test_lists_only_installed_targets(self):
+        output = b'[info] Available impersonate targets\nClient OS Source\n----------------\nChrome-136 Windows-10 curl_cffi\nSafari-18.0 Macos-15 curl_cffi\nChrome - curl_cffi\nTor - curl_cffi>=0.11 (unavailable)\n'
+        proc = types.SimpleNamespace(returncode=0, communicate=AsyncMock(return_value=(output, b'')))
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+            self.assertEqual(await video.get_impersonate_targets(), ['chrome-136:windows-10', 'safari-18.0:macos-15', 'chrome'])
+        self.assertIn('--list-impersonate-targets', spawn.call_args.args)
+        self.assertNotIn('--cookies', spawn.call_args.args)
+        proc.communicate.return_value = (b'Client OS Source\nChrome - curl_cffi (unavailable)\n', b'')
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)):
+            self.assertEqual(await video.get_impersonate_targets(), [])
+
+    async def test_list_failure_and_timeout(self):
+        proc = process_result(code=1)
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)):
+            with self.assertRaises(video.FormatError):
+                await video.get_impersonate_targets()
+        for failure in (asyncio.TimeoutError, asyncio.CancelledError):
+            proc = types.SimpleNamespace(returncode=None, kill=Mock(), communicate=AsyncMock(side_effect=[failure(), (b'', b'')]))
+            with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)):
+                with self.assertRaises(failure):
+                    await video.get_impersonate_targets()
+            proc.kill.assert_called_once()
+
+    async def test_auto_and_invalid_targets(self):
+        proc = process_result({'formats': [fmt('public')]})
+        with patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock(return_value=proc)) as spawn:
+            await video.probe_video_formats('https://example.com/video', impersonate='auto')
+        self.assertEqual(spawn.call_args.args[spawn.call_args.args.index('--impersonate') + 1], '')
+        for value in [123, True, [], '--cookies', 'chrome --proxy=secret', 'chrome\nfirefox', '../chrome']:
+            with self.subTest(value=value), patch.object(video.asyncio, 'create_subprocess_exec', AsyncMock()) as spawn:
+                with self.assertRaises(video.FormatError):
+                    await video.probe_video_formats('https://example.com/video', impersonate=value)
+                spawn.assert_not_awaited()
 
 
 class FormatApiTests(unittest.IsolatedAsyncioTestCase):
@@ -268,6 +334,8 @@ class FormatApiTests(unittest.IsolatedAsyncioTestCase):
             spec.loader.exec_module(self.handler)
         app = web.Application()
         app.router.add_post('/formats', self.handler.get_video_formats)
+        app.router.add_post('/download', self.handler.download_youtube_video)
+        app.router.add_get('/status', self.handler.get_video_download_status)
         self.client = TestClient(TestServer(app))
         await self.client.start_server()
 
@@ -291,6 +359,47 @@ class FormatApiTests(unittest.IsolatedAsyncioTestCase):
                 response = await self.client.post('/formats', json=payload)
                 self.assertEqual(response.status, 400)
             probe.assert_not_awaited()
+
+    async def test_user_agent_is_forwarded_by_both_endpoints(self):
+        agent = 'Mozilla/5.0 (X11; Linux x86_64) Firefox/140.0'
+        url = 'https://example.com/video'
+        with patch.object(self.handler, 'probe_video_formats', AsyncMock(return_value={'formats': []})) as probe:
+            response = await self.client.post('/formats', json={'url': url, 'user_agent': agent, 'impersonate': 'chrome'})
+            self.assertEqual(response.status, 200)
+            probe.assert_awaited_once_with(url, user_agent=agent, impersonate='chrome')
+        with tempfile.TemporaryDirectory() as directory:
+            with patch('builtins.print'), patch.object(self.handler.folder_paths, 'get_input_directory', return_value=directory, create=True), patch.object(self.handler, 'download_video_async', AsyncMock(return_value={'success': False, 'error': 'test download'})) as download:
+                response = await self.client.post('/download', json={'url': url, 'user_agent': agent, 'impersonate': 'chrome'})
+                self.assertEqual(response.status, 500)
+                self.assertEqual(download.call_args.kwargs['user_agent'], agent)
+                self.assertEqual(download.call_args.kwargs['impersonate'], 'chrome')
+
+    async def test_status_reports_targets_without_breaking_other_capabilities(self):
+        for value in (['chrome-136:windows-10'], video.FormatError('not supported')):
+            listing = AsyncMock(side_effect=value) if isinstance(value, Exception) else AsyncMock(return_value=value)
+            with patch.object(self.handler.subprocess, 'run', return_value=types.SimpleNamespace(stdout='test-version')), patch.object(self.handler.folder_paths, 'get_input_directory', return_value=tempfile.gettempdir(), create=True), patch.object(self.handler, 'get_impersonate_targets', listing):
+                response = await self.client.get('/status')
+                self.assertEqual(response.status, 200)
+                status = (await response.json())['status']
+                self.assertTrue(status['yt_dlp_available'])
+                self.assertEqual(status['impersonate_targets'], [] if isinstance(value, Exception) else value)
+                self.assertEqual(bool(status['impersonate_error']), isinstance(value, Exception))
+
+    async def test_endpoints_reject_header_injection_before_processing(self):
+        for path in ['/formats', '/download']:
+            with patch.object(self.handler, 'probe_video_formats', AsyncMock()) as probe, patch.object(self.handler, 'download_video_async', AsyncMock()) as download:
+                response = await self.client.post(path, json={'url': 'https://example.com/video', 'user_agent': 'browser\r\nCookie: secret'})
+                self.assertEqual(response.status, 400)
+                probe.assert_not_awaited()
+                download.assert_not_awaited()
+
+    async def test_endpoints_reject_invalid_impersonation(self):
+        for path in ['/formats', '/download']:
+            with patch.object(self.handler, 'probe_video_formats', AsyncMock()) as probe, patch.object(self.handler, 'download_video_async', AsyncMock()) as download:
+                response = await self.client.post(path, json={'url': 'https://example.com/video', 'impersonate': '--cookies'})
+                self.assertEqual(response.status, 400)
+                probe.assert_not_awaited()
+                download.assert_not_awaited()
 
     async def test_timeout_is_actionable(self):
         with patch.object(self.handler, 'probe_video_formats', AsyncMock(side_effect=asyncio.TimeoutError)):

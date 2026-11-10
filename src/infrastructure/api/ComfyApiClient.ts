@@ -1671,9 +1671,9 @@ export interface VideoFormatsResponse {
   formats: VideoFormatOption[];
 }
 
-const getVideoFormats = async (url: string, signal?: AbortSignal): Promise<VideoFormatsResponse> => {
+const getVideoFormats = async (url: string, signal?: AbortSignal, userAgent?: string, impersonate?: string): Promise<VideoFormatsResponse> => {
   initializeService();
-  const response = await axios.post(`${serverUrl}/comfymobile/api/videos/formats`, { url }, { timeout: 100000, signal });
+  const response = await axios.post(`${serverUrl}/comfymobile/api/videos/formats`, { url, user_agent: userAgent || undefined, impersonate: impersonate || undefined }, { timeout: 100000, signal });
   return response.data;
 };
 
@@ -1682,6 +1682,8 @@ const downloadVideo = async (params: {
   filename?: string;
   subfolder?: string;
   format_id?: string;
+  user_agent?: string;
+  impersonate?: string;
 }): Promise<any> => {
   initializeService();
   try {

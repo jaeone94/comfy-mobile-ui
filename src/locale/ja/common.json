@@ -1327,6 +1327,12 @@
             "updatedVersion": "更新バージョン：{{version}}",
             "upgradeFailed": "yt-dlpのアップグレードに失敗しました"
         },
+        "userAgentLabel": "ユーザーエージェント",
+        "impersonateLabel": "ブラウザー偽装 (impersonate)",
+        "impersonateAuto": "自動 (対応ブラウザー)",
+        "impersonateUnavailable": "利用不可 (yt-dlp / curl_cffi を確認)",
+        "userAgentDefault": "yt-dlp の既定値",
+        "userAgentCustom": "カスタム User-Agent",
         "formatLabel": "動画形式",
         "formatAuto": "自動（利用可能な最高画質）",
         "formatLoad": "形式を取得",

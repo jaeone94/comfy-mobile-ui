@@ -1331,6 +1331,12 @@
             "updatedVersion": "업데이트된 버전: {{version}}",
             "upgradeFailed": "yt-dlp 업그레이드 실패"
         },
+        "userAgentLabel": "사용자 에이전트",
+        "impersonateLabel": "브라우저 지문 (impersonate)",
+        "impersonateAuto": "자동 (지원 브라우저)",
+        "impersonateUnavailable": "사용 불가 (yt-dlp / curl_cffi 확인)",
+        "userAgentDefault": "yt-dlp 기본값",
+        "userAgentCustom": "직접 입력",
         "formatLabel": "영상 포맷",
         "formatAuto": "자동 (사용 가능한 최고 화질)",
         "formatLoad": "포맷 조회",
